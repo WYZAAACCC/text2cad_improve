@@ -17,6 +17,14 @@ import time
 import uuid
 from pathlib import Path
 
+ALLOWED_ACTIONS: set[str] = {
+    "create_block_part",
+    "create_block_with_hole",
+    "create_l_bracket",
+    "create_stepped_block",
+    "export_step",
+}
+
 
 class NXJobQueue:
     """File-based job queue for communicating with NX bridge."""
@@ -36,10 +44,39 @@ class NXJobQueue:
         ]:
             d.mkdir(parents=True, exist_ok=True)
 
+    @property
+    def heartbeat_path(self) -> Path:
+        """Path to the bridge heartbeat file."""
+        return self.running_dir / "heartbeat.json"
+
+    def bridge_status(self, stale_after_s: float = 15.0) -> dict:
+        """Read heartbeat and report whether the NX bridge is alive."""
+        hp = self.heartbeat_path
+        if not hp.exists():
+            return {"bridge_running": False, "reason": "heartbeat_missing"}
+        try:
+            data = json.loads(hp.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return {"bridge_running": False, "reason": "heartbeat_unreadable"}
+        age_s = time.time() - float(data.get("time_epoch", 0))
+        return {
+            "bridge_running": age_s <= stale_after_s,
+            "heartbeat_age_s": round(age_s, 3),
+            "heartbeat": data,
+        }
+
     # ── submit ──────────────────────────────────────────────────────
 
     def submit(self, action: str, params: dict) -> str:
-        """Write a job to the pending directory. Returns *job_id*."""
+        """Write a job to the pending directory. Returns *job_id*.
+
+        Raises ValueError if *action* is not in ALLOWED_ACTIONS.
+        """
+        if action not in ALLOWED_ACTIONS:
+            raise ValueError(
+                f"Unknown NX action '{action}'. Allowed: {sorted(ALLOWED_ACTIONS)}"
+            )
+
         job_id = uuid.uuid4().hex
         job = {
             "job_id": job_id,

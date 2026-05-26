@@ -5,10 +5,27 @@ from __future__ import annotations
 from seekflow import tool
 from seekflow.types import ToolPolicy
 
+from pathlib import Path as _Path
+
 from seekflow_engineering_tools.common.models import EngineeringActionResult
-from seekflow_engineering_tools.common.paths import ensure_inside_workspace
+from seekflow_engineering_tools.common.paths import ensure_extension, ensure_inside_workspace
 from seekflow_engineering_tools.config import EngineeringToolsConfig
 from seekflow_engineering_tools.solidworks.com_client import SolidWorksClient
+
+
+def _assert_file_created(path, label="output", min_size=1):
+    """Raise if *path* does not exist or is empty."""
+    p = _Path(path) if not isinstance(path, _Path) else path
+    if not p.exists():
+        raise FileNotFoundError(f"{label} file was not created: {p}")
+    if p.stat().st_size < min_size:
+        raise ValueError(f"{label} file is empty: {p} ({p.stat().st_size} bytes)")
+
+
+def _require_positive(name, value):
+    """Raise if *value* is not > 0."""
+    if value <= 0:
+        raise ValueError(f"{name} must be > 0, got {value}")
 
 
 def _solidworks_write_policy(
@@ -118,13 +135,17 @@ def build_solidworks_tools(config: EngineeringToolsConfig):
             client.create_extruded_box(model, length_m, width_m, height_m)
 
             # Save SLDPRT
-            client.save_as(model, out_sldprt_path)
+            if not client.save_as(model, out_sldprt_path):
+                raise RuntimeError(f"SolidWorks SaveAs failed for {out_sldprt_path}")
+            _assert_file_created(out_sldprt_path, "SLDPRT")
 
             files_created = [str(out_sldprt_path)]
 
             # Export STEP if requested
             if out_step_path:
-                client.export_step(model, out_step_path)
+                if not client.export_step(model, out_step_path):
+                    raise RuntimeError(f"SolidWorks STEP export failed for {out_step_path}")
+                _assert_file_created(out_step_path, "STEP")
                 files_created.append(str(out_step_path))
 
             return EngineeringActionResult(

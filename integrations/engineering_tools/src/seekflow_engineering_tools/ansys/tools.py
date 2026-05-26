@@ -390,6 +390,8 @@ def build_ansys_tools(config: EngineeringToolsConfig):
                 message="ANSYS APDL template job finished.",
                 files_created=[str(inp_path), run["output_file"]],
                 log_path=run["output_file"],
+                stdout_tail=run.get("stdout_tail"),
+                stderr_tail=run.get("stderr_tail"),
                 metrics=metrics,
                 warnings=warnings,
                 error=None if not run["has_error"] else "ANSYS reported an error.",

@@ -16,7 +16,8 @@ class TestSolidWorksRecipeTools:
         assert "solidworks_create_box_part" in tool_names
         assert "solidworks_health_check" in tool_names
         assert "solidworks_export_step" in tool_names
-        assert len(tools) == 5
+        assert "solidworks_create_true_involute_gear_part" in tool_names
+        assert len(tools) == 6
 
     def test_build_sw_tools_all_have_policies(self):
         from seekflow_engineering_tools.config import EngineeringToolsConfig

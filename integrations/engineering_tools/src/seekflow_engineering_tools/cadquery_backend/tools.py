@@ -1,6 +1,6 @@
 """SeekFlow tools for the CadQuery backend.
 
-Provides compile and inspect tools that don't require commercial CAD.
+Provides compile, build, and inspect tools that don't require commercial CAD.
 """
 
 from __future__ import annotations
@@ -10,6 +10,7 @@ from pathlib import Path
 from seekflow import tool
 from seekflow.types import ToolPolicy
 
+from seekflow_engineering_tools.cadquery_backend.builder import build_cadquery_from_cad_ir
 from seekflow_engineering_tools.cadquery_backend.compiler import (
     compile_cad_ir_to_cadquery_script,
 )
@@ -17,6 +18,7 @@ from seekflow_engineering_tools.cadquery_backend.inspector import (
     inspect_step_with_cadquery,
 )
 from seekflow_engineering_tools.common.models import EngineeringActionResult
+from seekflow_engineering_tools.common.paths import ensure_inside_workspace
 from seekflow_engineering_tools.ir.cad import CADPartSpec
 
 
@@ -58,10 +60,55 @@ def build_cadquery_tools(config):
 
     cadquery_compile_cad_ir_to_script = cadquery_compile_cad_ir_to_script.with_policy(
         ToolPolicy(
-            capabilities={"cad.solidworks.read"},
+            capabilities={"cad.cadquery.read"},
             risk="read",
             timeout_s=30,
             parallel_safe=True,
+        )
+    )
+
+    @tool(
+        name="cadquery_build_from_cad_ir",
+        description=(
+            "Build a real STEP file from a CAD-IR specification using CadQuery. "
+            "Compiles, executes, verifies output, inspects, and validates. "
+            "Returns detailed metrics including bbox, volume, and body count."
+        ),
+        cache=False,
+        sanitize=True,
+        trusted=False,
+    )
+    def cadquery_build_from_cad_ir(
+        spec: dict,
+        out_step: str,
+        inspect: bool = True,
+    ) -> dict:
+        try:
+            cad_spec = CADPartSpec.model_validate(spec)
+            return build_cadquery_from_cad_ir(
+                spec=cad_spec,
+                config=config,
+                out_step=out_step,
+                inspect=inspect,
+            )
+        except Exception as exc:
+            return EngineeringActionResult(
+                ok=False,
+                software="cadquery",
+                action="build_from_cad_ir",
+                error=str(exc),
+            ).model_dump()
+
+    cadquery_build_from_cad_ir = cadquery_build_from_cad_ir.with_policy(
+        ToolPolicy(
+            capabilities={"cad.cadquery.write", "filesystem.write"},
+            risk="write",
+            timeout_s=180,
+            workspace_root=config.workspace_root,
+            path_params=frozenset({"out_step"}),
+            parallel_safe=False,
+            requires_approval=False,
+            idempotent=False,
         )
     )
 
@@ -77,7 +124,16 @@ def build_cadquery_tools(config):
     )
     def cadquery_inspect_step(step_path: str) -> dict:
         try:
-            info = inspect_step_with_cadquery(Path(step_path))
+            safe_path = ensure_inside_workspace(config.workspace_root, step_path)
+            if not safe_path.exists():
+                return EngineeringActionResult(
+                    ok=False,
+                    software="cadquery",
+                    action="inspect_step",
+                    error=f"STEP file not found: {safe_path}",
+                ).model_dump()
+
+            info = inspect_step_with_cadquery(safe_path)
             if info.get("error"):
                 return EngineeringActionResult(
                     ok=False,
@@ -104,7 +160,7 @@ def build_cadquery_tools(config):
 
     cadquery_inspect_step = cadquery_inspect_step.with_policy(
         ToolPolicy(
-            capabilities={"cad.solidworks.read"},
+            capabilities={"cad.cadquery.read", "cad.generic.inspect"},
             risk="read",
             timeout_s=60,
             parallel_safe=True,
@@ -113,6 +169,7 @@ def build_cadquery_tools(config):
 
     tools.extend([
         cadquery_compile_cad_ir_to_script,
+        cadquery_build_from_cad_ir,
         cadquery_inspect_step,
     ])
     return tools

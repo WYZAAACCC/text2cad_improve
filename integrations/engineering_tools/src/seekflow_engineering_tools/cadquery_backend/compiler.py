@@ -25,61 +25,92 @@ def _compile_recipe(feature) -> list[str]:
 
 
 def _compile_extrude(feature) -> list[str]:
-    """Generate CadQuery code for an extrude feature."""
+    """Generate CadQuery code for an extrude feature.
+
+    Supports rectangle, circle, and polygon profiles.
+    Supports add and cut operations.
+    """
     lines = []
     op = feature.operation
     dir_sign = "-" if feature.direction == "-" else ""
+    profile = feature.sketch.profile
 
     if op == "add":
-        lines.append(
-            f"result = ("
-        )
-        lines.append(
-            f"    cq.Workplane('{feature.sketch.plane}')"
-        )
-        lines.append(
-            f"    .rect({feature.sketch.profile.width_mm}, "
-            f"{feature.sketch.profile.height_mm})"
-        )
-        lines.append(
-            f"    .extrude({dir_sign}{feature.depth_mm})"
-        )
+        lines.append("result = (")
+        lines.append(f"    cq.Workplane('{feature.sketch.plane}')")
+
+        if profile.type == "rectangle":
+            lines.append(
+                f"    .rect({profile.width_mm}, {profile.height_mm})"
+            )
+        elif profile.type == "circle":
+            lines.append(
+                f"    .circle({profile.diameter_mm} / 2.0)"
+            )
+        elif profile.type == "polygon":
+            pts = ", ".join(
+                f"({p[0]}, {p[1]})" for p in profile.points_mm
+            )
+            lines.append(f"    .polyline([{pts}]).close()")
+        else:
+            raise CadQueryCompileError(f"Unsupported profile type: {profile.type}")
+
+        lines.append(f"    .extrude({dir_sign}{feature.depth_mm})")
         lines.append(")")
+
     elif op == "cut":
-        lines.append(
-            f"result = ("
-        )
-        lines.append(
-            f"    result.faces('>Z').workplane()"
-        )
-        lines.append(
-            f"    .rect({feature.sketch.profile.width_mm}, "
-            f"{feature.sketch.profile.height_mm})"
-        )
-        lines.append(
-            f"    .cutBlind({dir_sign}{feature.depth_mm})"
-        )
+        lines.append("result = (")
+        lines.append("    result.faces('>Z').workplane()")
+
+        if profile.type == "rectangle":
+            lines.append(
+                f"    .rect({profile.width_mm}, {profile.height_mm})"
+            )
+        elif profile.type == "circle":
+            lines.append(
+                f"    .circle({profile.diameter_mm} / 2.0)"
+            )
+        elif profile.type == "polygon":
+            pts = ", ".join(
+                f"({p[0]}, {p[1]})" for p in profile.points_mm
+            )
+            lines.append(f"    .polyline([{pts}]).close()")
+        else:
+            raise CadQueryCompileError(f"Unsupported profile type: {profile.type}")
+
+        lines.append(f"    .cutBlind({dir_sign}{feature.depth_mm})")
         lines.append(")")
+
     return lines
 
 
 def _compile_hole(feature) -> list[str]:
-    """Generate CadQuery code for a hole feature."""
+    """Generate CadQuery code for a hole feature.
+
+    Supports through_all and depth_mm modes.
+    Non-Z-axis holes raise CadQueryCompileError.
+    """
+    if feature.axis != "Z":
+        raise CadQueryCompileError(
+            f"CadQuery hole axis '{feature.axis}' is not supported. Only Z-axis holes are implemented."
+        )
+
     lines = []
     hx, hy = feature.position_mm[:2]
-    hz = feature.position_mm[2] if len(feature.position_mm) > 2 else 0
 
-    lines.append(
-        f"result = ("
-    )
-    lines.append(
-        f"    result.faces('>Z').workplane()"
-    )
-    lines.append(
-        f"    .center({hx}, {hy})"
-    )
-    depth_str = f"    .hole({feature.diameter_mm})"
-    lines.append(depth_str)
+    lines.append("result = (")
+    lines.append("    result.faces('>Z').workplane()")
+    lines.append(f"    .center({hx}, {hy})")
+
+    if feature.through_all:
+        lines.append(f"    .hole({feature.diameter_mm})")
+    elif feature.depth_mm is not None:
+        lines.append(f"    .hole({feature.diameter_mm}, depth={feature.depth_mm})")
+    else:
+        raise CadQueryCompileError(
+            "Hole feature must set through_all=True or provide depth_mm."
+        )
+
     lines.append(")")
     return lines
 
@@ -88,23 +119,31 @@ def _compile_circular_pattern_holes(feature) -> list[str]:
     """Generate CadQuery code for circular pattern holes."""
     lines = []
     cx, cy = feature.center_mm[:2]
-    lines.append(
-        f"result = ("
-    )
-    lines.append(
-        f"    result.faces('>Z').workplane()"
-    )
-    lines.append(
-        f"    .center({cx}, {cy})"
-    )
+    lines.append("result = (")
+    lines.append("    result.faces('>Z').workplane()")
+    lines.append(f"    .center({cx}, {cy})")
     lines.append(
         f"    .polarArray({feature.pitch_circle_diameter_mm / 2.0}, 0, 360, "
         f"{feature.count})"
     )
-    lines.append(
-        f"    .hole({feature.hole_diameter_mm})"
-    )
+    lines.append(f"    .hole({feature.hole_diameter_mm})")
     lines.append(")")
+    return lines
+
+
+def _compile_fillet(feature) -> list[str]:
+    """Generate CadQuery code for a fillet feature."""
+    lines = [
+        f"result = result.fillet({feature.radius_mm})"
+    ]
+    return lines
+
+
+def _compile_chamfer(feature) -> list[str]:
+    """Generate CadQuery code for a chamfer feature."""
+    lines = [
+        f"result = result.chamfer({feature.distance_mm})"
+    ]
     return lines
 
 
@@ -131,6 +170,10 @@ def compile_cad_ir_to_cadquery_script(
             lines.extend(_compile_hole(feature))
         elif feature.type == "circular_pattern_holes":
             lines.extend(_compile_circular_pattern_holes(feature))
+        elif feature.type == "fillet":
+            lines.extend(_compile_fillet(feature))
+        elif feature.type == "chamfer":
+            lines.extend(_compile_chamfer(feature))
         else:
             raise CadQueryCompileError(
                 f"Unsupported feature type for cadquery: {feature.type}"

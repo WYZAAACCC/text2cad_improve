@@ -18,21 +18,9 @@ from seekflow_engineering_tools.nx.job_queue import NXJobQueue
 # ── Heartbeat helpers ────────────────────────────────────────────────────────
 
 
-def _heartbeat_path(job_root: Path) -> Path:
-    return job_root / "running" / "heartbeat.json"
-
-
-def _bridge_status(job_root: Path, stale_after_s: float = 15.0) -> dict:
-    hp = _heartbeat_path(job_root)
-    if not hp.exists():
-        return {"bridge_running": False, "reason": "heartbeat_missing"}
-    data = json.loads(hp.read_text(encoding="utf-8"))
-    age_s = time.time() - float(data.get("time_epoch", 0))
-    return {
-        "bridge_running": age_s <= stale_after_s,
-        "heartbeat_age_s": age_s,
-        "heartbeat": data,
-    }
+def _bridge_status_from_queue(job_root: Path, stale_after_s: float = 15.0) -> dict:
+    q = NXJobQueue(job_root)
+    return q.bridge_status(stale_after_s=stale_after_s)
 
 
 # ── Job submission helper ────────────────────────────────────────────────────
@@ -99,7 +87,7 @@ def build_nx_tools(config: EngineeringToolsConfig):
         try:
             q = NXJobQueue(job_root)
             status = q.queue_status()
-            bridge_info = _bridge_status(job_root)
+            bridge_info = q.bridge_status()
             return EngineeringActionResult(
                 ok=True,
                 software="nx",

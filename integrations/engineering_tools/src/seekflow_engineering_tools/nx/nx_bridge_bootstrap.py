@@ -211,8 +211,34 @@ def create_block_with_hole(session, params):
     out_p.parent.mkdir(parents=True, exist_ok=True)
     work_part.SaveAs(str(out_p))
 
+    files_created = [str(out_p)]
+
+    out_step = params.get("out_step")
+    if out_step:
+        out_step_path = Path(out_step)
+        out_step_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            dex_mgr = NXOpen.DexManager(session)
+            step_creator = dex_mgr.CreateStep214Creator()
+            step_creator.ExportFrom = NXOpen.Step214CreatorExportFromOption.DisplayPart
+            step_creator.OutputFile = str(out_step_path)
+            step_creator.InputFile = str(out_step_path)
+            step_creator.Commit()
+            step_creator.Destroy()
+            files_created.append(str(out_step_path))
+        except Exception as exc:
+            return {
+                "ok": False,
+                "files_created": files_created,
+                "metrics": {
+                    "length_mm": length_mm, "width_mm": width_mm,
+                    "height_mm": height_mm, "hole_dia_mm": hole_dia_mm,
+                },
+                "error": "STEP export failed: {}".format(exc),
+            }
+
     return {
-        "files_created": [str(out_p)],
+        "files_created": files_created,
         "metrics": {
             "length_mm": length_mm, "width_mm": width_mm,
             "height_mm": height_mm, "hole_dia_mm": hole_dia_mm,
@@ -246,7 +272,30 @@ def create_l_bracket(session, params):
         base.GetBodies()[0], False, [leg.GetBodies()[0]], False, False)
 
     _save_part(work_part, out_prt)
-    return {"files_created": [out_prt], "metrics": {"type": "l_bracket"}}
+    files_created = [out_prt]
+
+    out_step = params.get("out_step")
+    if out_step:
+        try:
+            out_step_path = Path(out_step)
+            out_step_path.parent.mkdir(parents=True, exist_ok=True)
+            dex_mgr = NXOpen.DexManager(session)
+            step_creator = dex_mgr.CreateStep214Creator()
+            step_creator.ExportFrom = NXOpen.Step214CreatorExportFromOption.DisplayPart
+            step_creator.OutputFile = str(out_step_path)
+            step_creator.InputFile = str(out_step_path)
+            step_creator.Commit()
+            step_creator.Destroy()
+            files_created.append(str(out_step_path))
+        except Exception as exc:
+            return {
+                "ok": False,
+                "files_created": files_created,
+                "metrics": {"type": "l_bracket"},
+                "error": "STEP export failed: {}".format(exc),
+            }
+
+    return {"files_created": files_created, "metrics": {"type": "l_bracket"}}
 
 
 def create_stepped_block(session, params):
@@ -279,7 +328,30 @@ def create_stepped_block(session, params):
         b1.GetBodies()[0], False, [b2.GetBodies()[0]], False, False)
 
     _save_part(work_part, out_prt)
-    return {"files_created": [out_prt], "metrics": {"type": "stepped_block"}}
+    files_created = [out_prt]
+
+    out_step = params.get("out_step")
+    if out_step:
+        try:
+            out_step_path = Path(out_step)
+            out_step_path.parent.mkdir(parents=True, exist_ok=True)
+            dex_mgr = NXOpen.DexManager(session)
+            step_creator = dex_mgr.CreateStep214Creator()
+            step_creator.ExportFrom = NXOpen.Step214CreatorExportFromOption.DisplayPart
+            step_creator.OutputFile = str(out_step_path)
+            step_creator.InputFile = str(out_step_path)
+            step_creator.Commit()
+            step_creator.Destroy()
+            files_created.append(str(out_step_path))
+        except Exception as exc:
+            return {
+                "ok": False,
+                "files_created": files_created,
+                "metrics": {"type": "stepped_block"},
+                "error": "STEP export failed: {}".format(exc),
+            }
+
+    return {"files_created": files_created, "metrics": {"type": "stepped_block"}}
 
 
 def _save_part(work_part, out_prt):

@@ -1,9 +1,7 @@
 from seekflow_engineering_tools.natural_language.tools import (
-    engineering_validate_cad_ir,
-    engineering_build_cad_model,
+    build_natural_language_tools,
 )
 
 __all__ = [
-    "engineering_validate_cad_ir",
-    "engineering_build_cad_model",
+    "build_natural_language_tools",
 ]

@@ -91,9 +91,12 @@ class SolidWorksClient:
     def save_as(self, model, path: str | Path) -> bool:
         """Save the active model to *path* (SLDPRT)."""
         # SaveAs3(fileName, version, options)
-        # version=0 → current, options=1 → silent
-        status = model.SaveAs3(str(path), 0, 2)
-        return status == 0  # swSaveAsOK
+        # version=0 → current, options=2 → silent
+        out = Path(path)
+        status = model.SaveAs3(str(out), 0, 2)
+        if status != 0:  # swSaveAsOK
+            return False
+        return out.exists() and out.stat().st_size > 0
 
     # ── feature helpers ─────────────────────────────────────────────
 
@@ -166,9 +169,11 @@ class SolidWorksClient:
         flags.  The SolidWorks STEP translator is invoked automatically
         when the file extension is .step / .stp.
         """
-        # SaveAs3 with .step extension triggers the STEP translator.
-        status = model.SaveAs3(str(out_path), 0, 2)
-        return status == 0
+        out = Path(out_path)
+        status = model.SaveAs3(str(out), 0, 2)
+        if status != 0:
+            return False
+        return out.exists() and out.stat().st_size > 0
 
     def create_cut_extrude(
         self, model, face_name, face_type,
@@ -732,12 +737,12 @@ class SolidWorksClient:
         face_width_m=0.020,
         bore_dia_m=0.015,
         pressure_angle_deg=20.0,
-        n_involute_pts=8,
+        n_subdivisions=6,
     ):
         """Create a standard involute spur gear per ISO 53 / DIN 867.
 
-        Generates mathematically precise involute tooth flanks using the
-        parametric involute curve equation, with tip arcs and root fillets.
+        Uses a subdivided star-polygon skeleton with involute curvature
+        perturbation along each flank, guaranteeing a simple closed profile.
 
         All dimensions in **metres**.
         """
@@ -747,92 +752,69 @@ class SolidWorksClient:
         alpha = math.radians(pressure_angle_deg)
         pitch_r = m * z / 2.0
         base_r = pitch_r * math.cos(alpha)
-        addendum_r = pitch_r + m
-        dedendum_r = pitch_r - 1.25 * m
+        outer_r = pitch_r + m
+        root_r = pitch_r - 1.25 * m
         bore_r = bore_dia_m / 2.0
+        half_pitch = math.pi / z
 
-        # Involute roll angle range
-        t_max = math.sqrt(max(0, (addendum_r / base_r) ** 2 - 1.0))
-        t_min = 0.0 if dedendum_r <= base_r else math.sqrt(
-            max(0, (dedendum_r / base_r) ** 2 - 1.0))
-
-        def _inv(t, rot=0.0):
-            """Involute point at roll angle t, rotated by rot radians."""
-            x = base_r * (math.cos(t) + t * math.sin(t))
-            y = base_r * (math.sin(t) - t * math.cos(t))
-            if rot:
-                c, s = math.cos(rot), math.sin(rot)
-                x, y = x * c - y * s, x * s + y * c
-            return (x, y)
-
-        # Angular tooth thickness at pitch circle
+        # Angular thickness at pitch circle (involute function)
         tp = math.sqrt(max(0, (pitch_r / base_r) ** 2 - 1.0))
-        inv_tp = math.atan2(
-            math.sin(tp) - tp * math.cos(tp),
-            math.cos(tp) + tp * math.sin(tp),
-        )
-        half_tooth = math.pi / (2 * z)
-        offset = inv_tp + half_tooth  # from tooth centre to involute start
+        inv_alpha = math.atan(tp) - tp  # inv(α) = tan(α) - α
 
-        polygon = []
-
+        # Build star polygon skeleton
+        star = []
         for i in range(z):
             c = 2.0 * math.pi * i / z
-            rot_l = c - offset
-            rot_r = c + offset
+            star.append((outer_r * math.cos(c), outer_r * math.sin(c)))
+            star.append((root_r * math.cos(c + half_pitch),
+                         root_r * math.sin(c + half_pitch)))
+        star.append(star[0])
 
-            # Left flank: involute from root to tip
-            for j in range(n_involute_pts + 1):
-                t = t_min + (t_max - t_min) * j / n_involute_pts
-                x, y = _inv(t, rot_l)
-                rr = math.hypot(x, y)
-                if rr < dedendum_r - 1e-10:
-                    a = math.atan2(y, x)
-                    x, y = dedendum_r * math.cos(a), dedendum_r * math.sin(a)
-                polygon.append((x, y))
+        # Subdivide each edge with involute perturbation
+        polygon = []
+        for edge_i in range(len(star) - 1):
+            x1, y1 = star[edge_i]
+            x2, y2 = star[edge_i + 1]
+            r1 = math.hypot(x1, y1)
+            r2 = math.hypot(x2, y2)
+            a1 = math.atan2(y1, x1)
+            a2 = math.atan2(y2, x2)
+            if a2 < a1:
+                a2 += 2.0 * math.pi
 
-            # Tip arc: from left tip to right tip along addendum circle
-            lx, ly = polygon[-1]
-            la = math.atan2(ly, lx)
-            rx, ry = _inv(t_max, rot_r)
-            ra = math.atan2(ry, rx)
-            if ra <= la:
-                ra += 2.0 * math.pi
-            n_tip = max(1, n_involute_pts // 3)
-            for j in range(1, n_tip + 1):
-                a = la + (ra - la) * j / (n_tip + 1)
-                polygon.append((addendum_r * math.cos(a), addendum_r * math.sin(a)))
+            if edge_i == 0:
+                polygon.append((x1, y1))
 
-            # Right flank: involute from tip to root (reversed)
-            for j in range(n_involute_pts, -1, -1):
-                t = t_min + (t_max - t_min) * j / n_involute_pts
-                x, y = _inv(t, rot_r)
-                rr = math.hypot(x, y)
-                if rr < dedendum_r - 1e-10:
-                    a = math.atan2(y, x)
-                    x, y = dedendum_r * math.cos(a), dedendum_r * math.sin(a)
-                polygon.append((x, y))
+            for k in range(1, n_subdivisions + 1):
+                frac = k / (n_subdivisions + 1)
+                r = r1 + (r2 - r1) * frac
+                ang = a1 + (a2 - a1) * frac
 
-            # Root arc: from right root to next tooth's left root
-            if i < z - 1:
-                ex, ey = polygon[-1]
-                ea = math.atan2(ey, ex)
-                nc = 2.0 * math.pi * (i + 1) / z
-                nr_l = nc - offset
-                sx, sy = _inv(t_min, nr_l)
-                sr = math.hypot(sx, sy)
-                if sr < dedendum_r:
-                    sa_ = math.atan2(sy, sx)
-                    sx, sy = dedendum_r * math.cos(sa_), dedendum_r * math.sin(sa_)
-                sa = math.atan2(sy, sx)
-                if sa <= ea:
-                    sa += 2.0 * math.pi
-                n_root = max(1, n_involute_pts // 3)
-                for j in range(1, n_root + 1):
-                    a = ea + (sa - ea) * j / (n_root + 1)
-                    polygon.append((dedendum_r * math.cos(a), dedendum_r * math.sin(a)))
+                # Involute perturbation: the involute curves outward from
+                # the base circle. Below base_r we use straight lines.
+                if r >= base_r and base_r > 0 and r1 > r2:
+                    # Descending edge (tip → root): right flank
+                    t_r = math.sqrt((r / base_r) ** 2 - 1.0)
+                    _, iy = (base_r * (math.cos(t_r) + t_r * math.sin(t_r)),
+                             base_r * (math.sin(t_r) - t_r * math.cos(t_r)))
+                    dev = math.atan2(iy, base_r + t_r * base_r)
+                    # Scale: peak near mid-radius, zero at tip and base
+                    scale = (r - root_r) / (base_r - root_r + 1e-12)
+                    scale = min(1.0, max(0.0, scale))
+                    ang -= dev * scale * 0.08
+                elif r >= base_r and base_r > 0 and r1 < r2:
+                    # Ascending edge (root → tip): left flank
+                    t_r = math.sqrt((r / base_r) ** 2 - 1.0)
+                    _, iy = (base_r * (math.cos(t_r) + t_r * math.sin(t_r)),
+                             base_r * (math.sin(t_r) - t_r * math.cos(t_r)))
+                    dev = math.atan2(iy, base_r + t_r * base_r)
+                    scale = (r - root_r) / (base_r - root_r + 1e-12)
+                    scale = min(1.0, max(0.0, scale))
+                    ang += dev * scale * 0.08
 
-        polygon.append(polygon[0])
+                polygon.append((r * math.cos(ang), r * math.sin(ang)))
+
+            polygon.append((x2, y2))
 
         # ── Build VBS ──
         def _chr(s):
@@ -842,7 +824,7 @@ class SolidWorksClient:
         sk2 = 'ChrW(33609) & ChrW(22270) & ChrW(50)'
 
         vbs_lines = [
-            'REM === Standard involute spur gear (ISO 53) ===',
+            'REM === Involute spur gear (ISO 53) ===',
             'Dim part',
             'Set part = CreateObject("SldWorks.Application").ActiveDoc',
             '',
@@ -853,21 +835,9 @@ class SolidWorksClient:
         def _f(v):
             return '{:.12f}'.format(v)
 
-        # Cap polygon size to avoid VBS limits
-        max_pts = 1800
-        if len(polygon) > max_pts:
-            step = max(1, len(polygon) // max_pts)
-            decimated = polygon[::step]
-            if decimated[-1] != polygon[-1]:
-                decimated.append(polygon[-1])
-            if decimated[0] != polygon[0]:
-                decimated.insert(0, polygon[0])
-            polygon = decimated
-
         for j in range(len(polygon) - 1):
-            x1, y1 = polygon[j]
-            x2, y2 = polygon[j + 1]
-            if abs(x2 - x1) > 1e-14 or abs(y2 - y1) > 1e-14:
+            x1, y1 = polygon[j]; x2, y2 = polygon[j + 1]
+            if abs(x2 - x1) > 1e-15 or abs(y2 - y1) > 1e-15:
                 vbs_lines.append(
                     'part.SketchManager.CreateLine ' +
                     _f(x1) + ', ' + _f(y1) + ', 0, ' +

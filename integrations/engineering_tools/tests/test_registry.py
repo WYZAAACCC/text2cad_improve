@@ -15,7 +15,7 @@ from seekflow_engineering_tools.common.models import EngineeringActionResult
 
 
 class TestBuildEngineeringTools:
-    def test_returns_empty_list_when_all_disabled(self, tmp_path: Path):
+    def test_returns_cadquery_and_nl_tools_when_all_disabled(self, tmp_path: Path):
         config = EngineeringToolsConfig(
             workspace_root=tmp_path / "ws",
             solidworks_enabled=False,
@@ -23,7 +23,13 @@ class TestBuildEngineeringTools:
             ansys_enabled=False,
         )
         tools = build_engineering_tools(config)
-        assert tools == []
+        names = {t.name for t in tools}
+        # CadQuery and NL tools are always registered
+        assert "cadquery_compile_cad_ir_to_script" in names
+        assert "cadquery_inspect_step" in names
+        assert "cadquery_build_from_cad_ir" in names
+        assert "engineering_validate_cad_ir" in names
+        assert "engineering_build_cad_model" in names
 
     def test_returns_ansys_tools_when_enabled(self, tmp_path: Path):
         config = EngineeringToolsConfig(
@@ -91,7 +97,7 @@ class TestCapabilities:
             "cae.ansys.write",
             "cae.ansys.solve",
         }
-        assert ENGINEERING_CAPABILITIES == required
+        assert required.issubset(ENGINEERING_CAPABILITIES)
 
 
 class TestEngineeringActionResult:

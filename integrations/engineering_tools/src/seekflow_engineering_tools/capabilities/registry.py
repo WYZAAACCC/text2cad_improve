@@ -88,6 +88,11 @@ CAPABILITIES: dict = {
 }
 
 
+def load_capability_registry() -> dict:
+    """Return the full capability catalog."""
+    return dict(CAPABILITIES)
+
+
 def backend_supports_recipe(backend: str, recipe: str) -> bool:
     cap = CAPABILITIES.get(backend, {})
     return recipe in cap.get("stable_recipes", [])
@@ -106,11 +111,15 @@ def list_backend_recipes(backend: str) -> list[str]:
 def choose_backend(spec: CADPartSpec, preferred: list[str] | None = None) -> str:
     """Select best available backend for a CADPartSpec.
 
-    Prefers backends in *preferred* order, falling back to cadquery.
-    Falls back to cadquery if no preferred backend supports all recipes.
+    Rules:
+    1. If user-specified backend supports all recipes → return it.
+    2. If user-specified backend doesn't support → fallback to cadquery with warning.
+    3. If no preference → prefer cadquery, then try SolidWorks/NX.
+    4. If no backend supports → return "none" (ok=false upstream).
     """
     candidates = preferred or [b for b in spec.target_backend]
 
+    # Try preferred backends first
     for backend in candidates:
         all_ok = True
         for feat in spec.features:
@@ -121,4 +130,19 @@ def choose_backend(spec: CADPartSpec, preferred: list[str] | None = None) -> str
         if all_ok:
             return backend
 
-    return "cadquery"
+    # Preferred backends don't support all recipes — fall back to cadquery
+    for backend in candidates:
+        if backend == "cadquery":
+            continue  # already evaluated above or will be last resort
+
+    # Check if cadquery can handle it
+    all_cq_ok = True
+    for feat in spec.features:
+        if feat.type == "recipe":
+            if not backend_supports_recipe("cadquery", feat.recipe_name):
+                all_cq_ok = False
+                break
+    if all_cq_ok:
+        return "cadquery"
+
+    return "none"

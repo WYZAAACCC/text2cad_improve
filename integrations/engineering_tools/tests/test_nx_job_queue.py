@@ -69,8 +69,8 @@ class TestNXJobQueue:
 
     def test_queue_status(self, tmp_path: Path):
         q = NXJobQueue(tmp_path)
-        q.submit("action_a", {})
-        q.submit("action_b", {})
+        q.submit("create_block_part", {})
+        q.submit("create_block_with_hole", {"length_mm": 10, "width_mm": 10, "height_mm": 10, "hole_dia_mm": 5, "out_prt": "test.prt"})
 
         status = q.queue_status()
         assert status["pending"] == 2
@@ -78,8 +78,8 @@ class TestNXJobQueue:
 
     def test_multiple_jobs_independent(self, tmp_path: Path):
         q = NXJobQueue(tmp_path)
-        id1 = q.submit("a", {"n": 1})
-        id2 = q.submit("b", {"n": 2})
+        id1 = q.submit("create_block_part", {"n": 1})
+        id2 = q.submit("create_l_bracket", {"n": 2})
 
         (q.done_dir / f"{id1}.result.json").write_text(
             json.dumps({"job_id": id1, "ok": True})

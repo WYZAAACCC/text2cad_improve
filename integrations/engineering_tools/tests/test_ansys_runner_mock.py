@@ -66,7 +66,7 @@ class TestParsers:
     def test_scan_out_for_errors(self, tmp_path: Path):
         out = tmp_path / "output.out"
         out.write_text("line1\n*** ERROR *** something went wrong\nline3\n")
-        errors = scan_out_for_errors(out)
+        errors, warnings = scan_out_for_errors(out)
         assert len(errors) == 1
         assert "something went wrong" in errors[0]
 
