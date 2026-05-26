@@ -1,0 +1,29 @@
+nlcad_version: "0.1"
+part:
+  name: "l_bracket"
+  units: "mm"
+  target_backend: ["nx12", "cadquery"]
+
+parameters:
+  base_length_mm: 100
+  base_width_mm: 60
+  thickness_mm: 15
+  leg_height_mm: 60
+
+features:
+  - id: "main"
+    type: "recipe"
+    recipe_name: "l_bracket"
+    parameters:
+      base_length_mm: 100
+      base_width_mm: 60
+      thickness_mm: 15
+      leg_height_mm: 60
+
+validation:
+  expected_body_count: 1
+  tolerance_mm: 0.2
+
+outputs:
+  native: true
+  step: true

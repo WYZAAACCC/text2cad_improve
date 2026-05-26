@@ -32,7 +32,7 @@ class EngineeringToolsConfig(BaseModel):
     )
     solidworks_default_timeout_s: int = 180
 
-    # ── NX / UG 18.0 ────────────────────────────────────────────────
+    # ── Siemens NX 12.0 ─────────────────────────────────────────────
     nx_enabled: bool = Field(
         default_factory=lambda: os.environ.get("NX_ENABLED", "1") == "1"
     )

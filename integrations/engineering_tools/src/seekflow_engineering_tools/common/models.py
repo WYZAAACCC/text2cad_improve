@@ -11,7 +11,7 @@ class EngineeringActionResult(BaseModel):
     """Every engineering tool returns this structure – never raw objects."""
 
     ok: bool
-    software: Literal["solidworks", "nx", "ansys"]
+    software: Literal["solidworks", "nx", "ansys", "cadquery", "generic"]
     action: str
 
     message: str = ""

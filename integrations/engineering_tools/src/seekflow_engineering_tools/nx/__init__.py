@@ -1,1 +1,1 @@
-"""UG / Siemens NX 18.0 bridge."""
+"""UG / Siemens NX 12.0 bridge."""

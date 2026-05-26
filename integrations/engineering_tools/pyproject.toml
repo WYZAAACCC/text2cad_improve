@@ -1,7 +1,7 @@
 [project]
 name = "seekflow-engineering-tools"
 version = "0.1.0"
-description = "SolidWorks 2025, NX 18.0, ANSYS 18.1 bridges for SeekFlow Agent."
+description = "SolidWorks 2025, NX 12.0, ANSYS 18.1 bridges for SeekFlow Agent."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
@@ -39,6 +39,9 @@ dependencies = [
 [project.optional-dependencies]
 solidworks = [
     "pywin32>=306; platform_system == 'Windows'",
+]
+cadquery = [
+    "cadquery>=2.5",
 ]
 dev = [
     "pytest>=8.0.0",

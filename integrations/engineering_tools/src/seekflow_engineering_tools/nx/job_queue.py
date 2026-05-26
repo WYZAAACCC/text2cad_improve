@@ -1,4 +1,4 @@
-"""File-queue bridge for NX 18.0 — the safe NXOpen integration path.
+"""File-queue bridge for NX 12.0 — the safe NXOpen integration path.
 
 Problem:
   NXOpen Python requires a running NX session. You cannot simply

@@ -1,0 +1,33 @@
+nlcad_version: "0.1"
+part:
+  name: "stepped_block"
+  units: "mm"
+  target_backend: ["nx12", "cadquery"]
+
+parameters:
+  base_length_mm: 80
+  base_width_mm: 80
+  base_height_mm: 20
+  top_length_mm: 60
+  top_width_mm: 60
+  top_height_mm: 30
+
+features:
+  - id: "main"
+    type: "recipe"
+    recipe_name: "stepped_block"
+    parameters:
+      base_length_mm: 80
+      base_width_mm: 80
+      base_height_mm: 20
+      top_length_mm: 60
+      top_width_mm: 60
+      top_height_mm: 30
+
+validation:
+  expected_body_count: 1
+  tolerance_mm: 0.2
+
+outputs:
+  native: true
+  step: true

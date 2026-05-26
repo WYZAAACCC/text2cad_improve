@@ -10,12 +10,100 @@ from seekflow.types import ToolPolicy
 from seekflow_engineering_tools.ansys.apdl_runner import AnsysAPDLRunner
 from seekflow_engineering_tools.ansys.apdl_templates import (
     static_cantilever_beam_rect_apdl,
+    list_templates,
 )
 from seekflow_engineering_tools.ansys.parsers import parse_result_summary
 from seekflow_engineering_tools.common.models import EngineeringActionResult
 from seekflow_engineering_tools.common.paths import ensure_inside_workspace
 from seekflow_engineering_tools.common.validation import sanitise_jobname
 from seekflow_engineering_tools.config import EngineeringToolsConfig
+
+# Preloaded template schemas for ansys_list_apdl_templates
+_ANSYS_TEMPLATE_SCHEMAS = {
+    "static_cantilever_beam_rect": {
+        "analysis_type": "static_structural",
+        "units": "mm,N,MPa",
+        "parameters": {
+            "length_mm": {"type": "float", "required": True, "min": 1},
+            "width_mm": {"type": "float", "required": True, "min": 0.1},
+            "height_mm": {"type": "float", "required": True, "min": 0.1},
+            "force_n": {"type": "float", "required": True},
+            "element_size_mm": {"type": "float", "required": False, "default": 10.0},
+        },
+        "metrics": ["max_displacement_mm", "max_von_mises_mpa"],
+    },
+    "plate_with_hole_tension": {
+        "analysis_type": "static_structural",
+        "units": "mm,N,MPa",
+        "parameters": {
+            "plate_width_mm": {"type": "float", "default": 200.0},
+            "plate_height_mm": {"type": "float", "default": 100.0},
+            "plate_thickness_mm": {"type": "float", "default": 10.0},
+            "hole_diameter_mm": {"type": "float", "default": 20.0},
+            "tensile_stress_mpa": {"type": "float", "default": 100.0},
+            "element_size_mm": {"type": "float", "default": 5.0},
+        },
+        "metrics": ["max_von_mises_mpa", "stress_concentration_factor"],
+    },
+    "beam_thermal": {
+        "analysis_type": "thermal_steady",
+        "units": "mm,C,W",
+        "parameters": {
+            "length_mm": {"type": "float", "default": 200.0},
+            "width_mm": {"type": "float", "default": 20.0},
+            "height_mm": {"type": "float", "default": 20.0},
+            "temp_left_c": {"type": "float", "default": 100.0},
+            "temp_right_c": {"type": "float", "default": 0.0},
+            "ambient_temp_c": {"type": "float", "default": 25.0},
+            "element_size_mm": {"type": "float", "default": 5.0},
+        },
+        "metrics": ["tmin_c", "tmax_c", "tmid_c"],
+    },
+    "cantilever_modal": {
+        "analysis_type": "modal",
+        "units": "mm,tonne,N,MPa",
+        "parameters": {
+            "length_mm": {"type": "float", "default": 200.0},
+            "width_mm": {"type": "float", "default": 20.0},
+            "height_mm": {"type": "float", "default": 20.0},
+            "young_mpa": {"type": "float", "default": 210000.0},
+            "density_kgmm3": {"type": "float", "default": 7.85e-6},
+            "poisson": {"type": "float", "default": 0.3},
+            "n_modes": {"type": "int", "default": 5},
+            "element_size_mm": {"type": "float", "default": 10.0},
+        },
+        "metrics": ["modal_frequencies_hz"],
+    },
+    "buckling_column": {
+        "analysis_type": "buckling",
+        "units": "mm,N,MPa",
+        "parameters": {
+            "length_mm": {"type": "float", "default": 500.0},
+            "width_mm": {"type": "float", "default": 20.0},
+            "height_mm": {"type": "float", "default": 20.0},
+            "young_mpa": {"type": "float", "default": 210000.0},
+            "poisson": {"type": "float", "default": 0.3},
+            "element_size_mm": {"type": "float", "default": 10.0},
+        },
+        "metrics": ["buckling_load_factor", "pcr_n"],
+    },
+    "bilinear_plastic": {
+        "analysis_type": "bilinear_plastic",
+        "units": "mm,N,MPa",
+        "parameters": {
+            "length_mm": {"type": "float", "default": 100.0},
+            "width_mm": {"type": "float", "default": 10.0},
+            "height_mm": {"type": "float", "default": 10.0},
+            "young_mpa": {"type": "float", "default": 210000.0},
+            "yield_stress_mpa": {"type": "float", "default": 235.0},
+            "tangent_modulus_mpa": {"type": "float", "default": 2100.0},
+            "displacement_mm": {"type": "float", "default": 5.0},
+            "element_size_mm": {"type": "float", "default": 5.0},
+            "n_substeps": {"type": "int", "default": 20},
+        },
+        "metrics": ["max_plastic_strain", "tip_displacement_mm"],
+    },
+}
 
 
 def build_ansys_tools(config: EngineeringToolsConfig):
@@ -66,6 +154,44 @@ def build_ansys_tools(config: EngineeringToolsConfig):
             capabilities={"cae.ansys.read"},
             risk="read",
             timeout_s=30,
+            parallel_safe=True,
+        )
+    )
+
+    # ── list_apdl_templates ──────────────────────────────────────────
+
+    @tool(
+        name="ansys_list_apdl_templates",
+        description=(
+            "List all built-in ANSYS 18.1 Mechanical APDL templates and "
+            "their expected parameters, units, analysis types, and result metrics."
+        ),
+        cache=False,
+        sanitize=True,
+        trusted=False,
+    )
+    def ansys_list_apdl_templates() -> dict:
+        try:
+            return EngineeringActionResult(
+                ok=True,
+                software="ansys",
+                action="list_apdl_templates",
+                message=f"Found {len(_ANSYS_TEMPLATE_SCHEMAS)} ANSYS APDL templates.",
+                metrics={"templates": _ANSYS_TEMPLATE_SCHEMAS},
+            ).model_dump()
+        except Exception as exc:
+            return EngineeringActionResult(
+                ok=False,
+                software="ansys",
+                action="list_apdl_templates",
+                error=str(exc),
+            ).model_dump()
+
+    ansys_list_apdl_templates = ansys_list_apdl_templates.with_policy(
+        ToolPolicy(
+            capabilities={"cae.ansys.read"},
+            risk="read",
+            timeout_s=10,
             parallel_safe=True,
         )
     )
@@ -144,8 +270,11 @@ def build_ansys_tools(config: EngineeringToolsConfig):
             # Parse results
             summary_path = job_dir / "result_summary.txt"
             metrics = {}
+            warnings: list[str] = []
             if summary_path.exists():
                 metrics = parse_result_summary(summary_path)
+            else:
+                warnings.append("result_summary.txt was not generated.")
 
             files_created = [
                 str(inp_path),
@@ -154,7 +283,6 @@ def build_ansys_tools(config: EngineeringToolsConfig):
             if summary_path.exists():
                 files_created.append(str(summary_path))
 
-            warnings: list[str] = []
             if run["has_warning"]:
                 warnings.append("ANSYS output contains WARNING messages.")
 
@@ -198,7 +326,9 @@ def build_ansys_tools(config: EngineeringToolsConfig):
         name="ansys_run_apdl_template",
         description=(
             "Run a named APDL template from the built-in library. "
-            "Available templates: static_cantilever_beam_rect."
+            "Available templates: static_cantilever_beam_rect, "
+            "plate_with_hole_tension, beam_thermal, cantilever_modal, "
+            "buckling_column, bilinear_plastic. Units depend on template schema."
         ),
         cache=False,
         sanitize=True,
@@ -216,6 +346,11 @@ def build_ansys_tools(config: EngineeringToolsConfig):
             from seekflow_engineering_tools.ansys.apdl_templates import (
                 render_template,
             )
+            from seekflow_engineering_tools.ansys.template_registry import (
+                validate_template_parameters,
+            )
+
+            validated_params = validate_template_parameters(template_name, parameters)
 
             safe_jobname = sanitise_jobname(jobname)
             job_dir = ensure_inside_workspace(
@@ -224,7 +359,7 @@ def build_ansys_tools(config: EngineeringToolsConfig):
             job_dir.mkdir(parents=True, exist_ok=True)
 
             inp_path = job_dir / f"{safe_jobname}.inp"
-            apdl = render_template(template_name, **parameters)
+            apdl = render_template(template_name, **validated_params)
             inp_path.write_text(apdl, encoding="utf-8")
 
             runner = AnsysAPDLRunner(
@@ -241,7 +376,12 @@ def build_ansys_tools(config: EngineeringToolsConfig):
             )
 
             summary_path = job_dir / "result_summary.txt"
-            metrics = parse_result_summary(summary_path)
+            metrics = {}
+            warnings: list[str] = []
+            if summary_path.exists():
+                metrics = parse_result_summary(summary_path)
+            else:
+                warnings.append("result_summary.txt was not generated.")
 
             return EngineeringActionResult(
                 ok=not run["has_error"],
@@ -251,6 +391,8 @@ def build_ansys_tools(config: EngineeringToolsConfig):
                 files_created=[str(inp_path), run["output_file"]],
                 log_path=run["output_file"],
                 metrics=metrics,
+                warnings=warnings,
+                error=None if not run["has_error"] else "ANSYS reported an error.",
             ).model_dump()
 
         except Exception as exc:
@@ -275,6 +417,7 @@ def build_ansys_tools(config: EngineeringToolsConfig):
 
     tools.extend([
         ansys_health_check,
+        ansys_list_apdl_templates,
         ansys_static_cantilever_beam_rect,
         ansys_run_apdl_template,
     ])

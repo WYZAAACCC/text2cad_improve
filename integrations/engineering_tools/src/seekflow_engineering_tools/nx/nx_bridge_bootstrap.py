@@ -117,8 +117,16 @@ def create_block_part(session, params):
             step_creator.Commit()
             step_creator.Destroy()
             files_created.append(str(out_step_path))
-        except Exception:
-            pass  # STEP translator requires license/configuration
+        except Exception as exc:
+            return {
+                "files_created": files_created,
+                "metrics": {
+                    "length_mm": length_mm,
+                    "width_mm": width_mm,
+                    "height_mm": height_mm,
+                },
+                "error": "STEP export failed: {}".format(exc),
+            }
 
     return {
         "files_created": files_created,
@@ -344,6 +352,24 @@ def process_one_job(session, job_file):
             pass
 
 
+# ── Heartbeat ──────────────────────────────────────────────────────────────
+
+
+def write_heartbeat(session):
+    # type: (object) -> None
+    payload = {
+        "time_epoch": time.time(),
+        "time_iso": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "nx_version": str(session.GetEnvironmentVariableValue("UGII_VERSION"))
+        if hasattr(session, "GetEnvironmentVariableValue")
+        else "12.0",
+        "job_root": str(JOB_ROOT),
+    }
+    (RUNNING / "heartbeat.json").write_text(
+        json.dumps(payload, indent=2), encoding="utf-8"
+    )
+
+
 # ── Main loop ─────────────────────────────────────────────────────────────
 
 
@@ -362,12 +388,23 @@ def main():
     lw.WriteLine("SeekFlow NX Bridge started (NX 12.0).")
     lw.WriteLine("Watching: {}".format(JOB_ROOT))
 
+    last_heartbeat = 0.0
+    HEARTBEAT_INTERVAL_S = 5.0
+
     try:
         while True:
             stop_file = JOB_ROOT / "STOP"
             if stop_file.exists():
                 lw.WriteLine("SeekFlow NX Bridge stopped by STOP file.")
                 break
+
+            # Write heartbeat every 5 seconds
+            if time.time() - last_heartbeat >= HEARTBEAT_INTERVAL_S:
+                try:
+                    write_heartbeat(session)
+                    last_heartbeat = time.time()
+                except Exception:
+                    pass
 
             jobs = sorted(
                 [f for f in PENDING.iterdir() if f.suffix == ".json"],

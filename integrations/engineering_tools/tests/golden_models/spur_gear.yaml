@@ -1,0 +1,29 @@
+nlcad_version: "0.1"
+part:
+  name: "spur_gear"
+  units: "mm"
+  target_backend: ["solidworks2025", "cadquery"]
+
+parameters:
+  module_mm: 3
+  teeth: 20
+  face_width_mm: 20
+  bore_dia_mm: 15
+
+features:
+  - id: "main"
+    type: "recipe"
+    recipe_name: "spur_gear"
+    parameters:
+      module_mm: 3
+      teeth: 20
+      face_width_mm: 20
+      bore_dia_mm: 15
+
+validation:
+  expected_body_count: 1
+  tolerance_mm: 0.2
+
+outputs:
+  native: true
+  step: true

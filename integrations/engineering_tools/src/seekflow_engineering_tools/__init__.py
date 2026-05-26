@@ -1,4 +1,4 @@
-"""SeekFlow Engineering Tools - SolidWorks 2025, NX 18.0, ANSYS 18.1 bridges.
+"""SeekFlow Engineering Tools - SolidWorks 2025, NX 12.0, ANSYS 18.1 bridges.
 
 Provides auditable, policy-enforced tools for local CAD/CAE automation.
 """

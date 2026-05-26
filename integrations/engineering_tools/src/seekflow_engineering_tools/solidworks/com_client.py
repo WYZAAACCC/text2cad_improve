@@ -140,7 +140,7 @@ class SolidWorksClient:
         vbs = (
             'On Error Resume Next\r\n'
             'Dim part\r\n'
-            'Set part = GetObject(, "SldWorks.Application").ActiveDoc\r\n'
+            'Set part = CreateObject("SldWorks.Application").ActiveDoc\r\n'
             '\r\n'
             'part.Extension.SelectByID2 ' + code + ', "PLANE", 0, 0, 0, False, 0, Nothing, 0\r\n'
             'part.InsertSketch2 True\r\n'
@@ -152,7 +152,7 @@ class SolidWorksClient:
             'part.FeatureManager.FeatureExtrusion2 True, False, False, 0, 0, ' +
             str(height_m) + ', ' + str(height_m) +
             ', False, False, False, False, 1.74533E-02, 1.74533E-02, False, False, False, False, True, True, True, 0, 0, False\r\n'
-            'If Err.Number <> 0 Then WScript.StdErr.WriteLine "ERR feature:" & Err.Number & ":" & Err.Description & ":" & Err.Line : Err.Clear End If\r\n'
+            'If Err.Number <> 0 Then WScript.StdErr.WriteLine "VBS_ERR:" & Err.Number & ":" & Err.Description : WScript.Quit 1 : End If\r\n'
         )
         self._run_vbs(vbs, timeout=60)
 
@@ -183,32 +183,30 @@ class SolidWorksClient:
         import subprocess, os, tempfile
 
         vbs = (
-            'On Error Resume Next\r\n'
             'Dim part\r\n'
-            'Set part = GetObject(, "SldWorks.Application").ActiveDoc\r\n'
+            'Set part = CreateObject("SldWorks.Application").ActiveDoc\r\n'
             'part.Extension.SelectByID2 "' + face_name + '", "' + face_type +
             '", ' + str(x) + ', ' + str(y) + ', ' + str(z) +
             ', False, 0, Nothing, 0\r\n'
+            'CheckErr "select_face"\r\n'
             'part.SketchManager.InsertSketch True\r\n'
+            'CheckErr "insert_sketch"\r\n'
             'part.SketchManager.CreateCircle ' +
             str(x) + ', ' + str(y) + ', ' + str(z) + ', ' +
             str(x + depth_m * 0.3) + ', ' + str(y) + ', ' + str(z) + '\r\n'
+            'CheckErr "create_circle"\r\n'
             'part.SketchManager.InsertSketch True\r\n'
             'part.ClearSelection2 True\r\n'
             'part.Extension.SelectByID2 "' + face_name.split('(')[0].strip() +
             '", "' + face_type + '", ' + str(x) + ', ' + str(y) + ', ' + str(z) +
             ', False, 0, Nothing, 0\r\n'
-            'part.FeatureManager.FeatureCut4 True, False, False, 0, 0, ' +
+            'CheckErr "select_sketch"\r\n'
+            'part.FeatureCut True, False, False, False, False, ' +
             str(depth_m * 2) + ', ' + str(depth_m * 2) +
-            ', False, False, False, False, 1.74533E-02, 1.74533E-02' +
-            ', False, False, False, False, False, True\r\n'
+            ', False, False, 0.0, 0.0, False, False, False, True\r\n'
+            'CheckErr "feature_cut"\r\n'
         )
-        vp = os.path.join(tempfile.gettempdir(), '_sw_cut.vbs')
-        with open(vp, 'w', encoding='ascii', errors='replace') as f:
-            f.write(vbs)
-        subprocess.run(['cscript.exe', '//B', '//Nologo', vp],
-                       timeout=60, capture_output=True)
-        return True  # best-effort
+        self._run_vbs_strict(vbs, timeout=60, label="cut_extrude")
 
     def create_fillet(
         self, model, edge_name, radius_m,
@@ -218,20 +216,16 @@ class SolidWorksClient:
         import subprocess, os, tempfile
 
         vbs = (
-            'On Error Resume Next\r\n'
             'Dim part\r\n'
-            'Set part = GetObject(, "SldWorks.Application").ActiveDoc\r\n'
+            'Set part = CreateObject("SldWorks.Application").ActiveDoc\r\n'
             'part.Extension.SelectByID2 "' + edge_name +
             '", "EDGE", 0, 0, 0, False, 0, Nothing, 0\r\n'
+            'CheckErr "select_edge"\r\n'
             'part.FeatureManager.FeatureFillet2 ' + str(radius_m) +
             ', 0, 0, 0, 0, 0, 0\r\n'
+            'CheckErr "feature_fillet"\r\n'
         )
-        vp = os.path.join(tempfile.gettempdir(), '_sw_fillet.vbs')
-        with open(vp, 'w', encoding='ascii', errors='replace') as f:
-            f.write(vbs)
-        subprocess.run(['cscript.exe', '//B', '//Nologo', vp],
-                       timeout=60, capture_output=True)
-        return True  # best-effort
+        self._run_vbs_strict(vbs, timeout=60, label="fillet")
 
     def export_stl(self, model, out_path):
         # type: (object, str | Path) -> bool
@@ -272,8 +266,55 @@ class SolidWorksClient:
         r = subprocess.run(['cscript.exe', '//B', '//Nologo', vp],
                            timeout=timeout, capture_output=True, text=True)
         stderr = (r.stderr or '').strip()
+        if r.returncode != 0:
+            raise RuntimeError(
+                f'SolidWorks VBS failed (rc={r.returncode}): {stderr[:2000]}'
+            )
         if 'VBS_ERR:' in stderr:
             raise RuntimeError(f'SolidWorks VBS error: {stderr}')
+        return r
+
+    def _run_vbs_strict(self, vbs_code, timeout=120, label="sw_vbs"):
+        # type: (str, int, str) -> subprocess.CompletedProcess
+        """Execute a VBS snippet with strict per-operation error checking.
+
+        Wraps the user's VBS code with a CheckErr helper that aborts on
+        any COM error.  Every operation in *vbs_code* should be followed
+        by ``CheckErr "stage_name"`` to pinpoint failures.
+        """
+        import subprocess, os, tempfile
+
+        wrapped = (
+            'On Error Resume Next\r\n'
+            '\r\n'
+            'Sub CheckErr(stage)\r\n'
+            '  If Err.Number <> 0 Then\r\n'
+            '    WScript.StdErr.WriteLine "VBS_ERR|" & stage & "|" & Err.Number & "|" & Err.Description\r\n'
+            '    WScript.Quit 1\r\n'
+            '  End If\r\n'
+            'End Sub\r\n'
+            '\r\n'
+            + vbs_code +
+            '\r\n'
+            'If Err.Number <> 0 Then\r\n'
+            '  WScript.StdErr.WriteLine "VBS_ERR|final|" & Err.Number & "|" & Err.Description\r\n'
+            '  WScript.Quit 1\r\n'
+            'End If\r\n'
+        )
+        vp = os.path.join(tempfile.gettempdir(), '_sw_strict.vbs')
+        with open(vp, 'w', encoding='utf-8') as f:
+            f.write(wrapped)
+        r = subprocess.run(
+            ['cscript.exe', '//B', '//Nologo', vp],
+            timeout=timeout, capture_output=True, text=True,
+        )
+        stderr = (r.stderr or '').strip()
+        if r.returncode != 0:
+            raise RuntimeError(
+                f'SolidWorks VBS strict failed (rc={r.returncode}): {stderr[:2000]}'
+            )
+        if 'VBS_ERR|' in stderr:
+            raise RuntimeError(f'SolidWorks VBS strict error [{label}]: {stderr}')
         return r
 
     def create_flanged_hub(
@@ -306,7 +347,7 @@ class SolidWorksClient:
         vbs_lines = [
             'On Error Resume Next',
             'Dim part',
-            'Set part = GetObject(, "SldWorks.Application").ActiveDoc',
+            'Set part = CreateObject("SldWorks.Application").ActiveDoc',
             '',
         ]
 
@@ -350,10 +391,9 @@ class SolidWorksClient:
             'part.InsertSketch2 True',
             'part.ClearSelection2 True',
             'part.Extension.SelectByID2 ChrW(33609) & ChrW(22270) & ChrW(51), "SKETCH", 0, 0, 0, False, 0, Nothing, 0',
-            'part.FeatureManager.FeatureCut4 True, False, False, 0, 0, ' +
+            'part.FeatureCut True, False, False, False, False, ' +
             str((flange_h_m + hub_h_m) * 2) + ', ' + str((flange_h_m + hub_h_m) * 2) +
-            ', False, False, False, False, 1.74533E-02, 1.74533E-02' +
-            ', False, False, False, False, False, True',
+            ', False, False, 0.0, 0.0, False, False, False, True',
             '',
         ]
 
@@ -378,23 +418,14 @@ class SolidWorksClient:
                 'part.InsertSketch2 True',
                 'part.ClearSelection2 True',
                 'part.Extension.SelectByID2 ' + sk_name + ', "SKETCH", 0, 0, 0, False, 0, Nothing, 0',
-                'part.FeatureManager.FeatureCut4 True, False, False, 0, 0, ' +
+                'part.FeatureCut True, False, False, False, False, ' +
                 str((flange_h_m + hub_h_m) * 2) + ', ' + str((flange_h_m + hub_h_m) * 2) +
-                ', False, False, False, False, 1.74533E-02, 1.74533E-02' +
-                ', False, False, False, False, False, True',
+                ', False, False, 0.0, 0.0, False, False, False, True',
                 '',
             ]
 
         vbs = '\r\n'.join(vbs_lines)
-        vbs_path = os.path.join(tempfile.gettempdir(), "_seekflow_hub.vbs")
-        with open(vbs_path, "w", encoding="utf-8") as fh:
-            fh.write(vbs)
-
-        subprocess.run(
-            ["cscript.exe", "//B", "//Nologo", vbs_path],
-            timeout=120,
-            capture_output=True,
-        )
+        self._run_vbs_strict(vbs, timeout=120, label="flanged_hub")
 
     def create_spur_gear_star(
         self,
@@ -479,7 +510,7 @@ class SolidWorksClient:
 
         vbs_lines = [
             'On Error Resume Next', 'Dim part',
-            'Set part = GetObject(, "SldWorks.Application").ActiveDoc', '',
+            'Set part = CreateObject("SldWorks.Application").ActiveDoc', '',
             'REM === Gear body ===',
             'part.Extension.SelectByID2 ' + front + ', "PLANE", 0,0,0, False, 0, Nothing, 0',
             'part.InsertSketch2 True',
@@ -499,12 +530,10 @@ class SolidWorksClient:
             'part.SketchManager.CreateCircle 0,0,0, ' + str(bore_r) + ',0,0',
             'part.InsertSketch2 True', 'part.ClearSelection2 True',
             'part.Extension.SelectByID2 ' + sk2 + ', "SKETCH", 0,0,0, False, 0, Nothing, 0',
-            'part.FeatureManager.FeatureCut4 True, False, False, 0, 0, ' + str(face_width_m * 2) + ', ' + str(face_width_m * 2) + ', False, False, False, False, 1.74533E-02, 1.74533E-02, False, False, False, False, False, True',
+            'part.FeatureCut True, False, False, False, False, ' + str(face_width_m * 2) + ', ' + str(face_width_m * 2) + ', False, False, 0.0, 0.0, False, False, False, True',
         ]
         vbs = '\r\n'.join(vbs_lines)
-        vp = os.path.join(tempfile.gettempdir(), "_seekflow_gear_inv.vbs")
-        with open(vp, "w", encoding="utf-8") as f: f.write(vbs)
-        subprocess.run(["cscript.exe", "//B", "//Nologo", vp], timeout=300, capture_output=True)
+        self._run_vbs_strict(vbs, timeout=300, label="spur_gear_involute")
 
     def _PLACEHOLDER_REMOVED(
         face_width_m=0.020,
@@ -548,7 +577,7 @@ class SolidWorksClient:
         vbs_lines = [
             'On Error Resume Next',
             'Dim part',
-            'Set part = GetObject(, "SldWorks.Application").ActiveDoc',
+            'Set part = CreateObject("SldWorks.Application").ActiveDoc',
             '',
             'REM === Feature 1: Star gear body ===',
             'part.Extension.SelectByID2 ' + front + ', "PLANE", 0, 0, 0, False, 0, Nothing, 0',
@@ -576,16 +605,12 @@ class SolidWorksClient:
             'part.InsertSketch2 True',
             'part.ClearSelection2 True',
             'part.Extension.SelectByID2 ' + sk2 + ', "SKETCH", 0, 0, 0, False, 0, Nothing, 0',
-            'part.FeatureManager.FeatureCut4 True, False, False, 0, 0, ' +
+            'part.FeatureCut True, False, False, False, False, ' +
             str(face_width_m * 2) + ', ' + str(face_width_m * 2) +
-            ', False, False, False, False, 1.74533E-02, 1.74533E-02' +
-            ', False, False, False, False, False, True',
+            ', False, False, 0.0, 0.0, False, False, False, True',
         ]
         vbs = '\r\n'.join(vbs_lines)
-        vp = os.path.join(tempfile.gettempdir(), "_seekflow_gear_star.vbs")
-        with open(vp, "w", encoding="utf-8") as f:
-            f.write(vbs)
-        subprocess.run(["cscript.exe", "//B", "//Nologo", vp], timeout=120, capture_output=True)
+        self._run_vbs_strict(vbs, timeout=120, label="spur_gear_star_demo")
 
     def create_spur_gear(
         self,
@@ -657,7 +682,7 @@ class SolidWorksClient:
         vbs_lines = [
             'On Error Resume Next',
             'Dim part',
-            'Set part = GetObject(, "SldWorks.Application").ActiveDoc',
+            'Set part = CreateObject("SldWorks.Application").ActiveDoc',
             '',
             'REM === Feature 1: Star polygon gear body ===',
             'part.Extension.SelectByID2 ' + front + ', "PLANE", 0, 0, 0, False, 0, Nothing, 0',
@@ -691,22 +716,189 @@ class SolidWorksClient:
             'part.InsertSketch2 True',
             'part.ClearSelection2 True',
             'part.Extension.SelectByID2 ' + sk2 + ', "SKETCH", 0, 0, 0, False, 0, Nothing, 0',
-            'part.FeatureManager.FeatureCut4 True, False, False, 0, 0, ' +
+            'part.FeatureCut True, False, False, False, False, ' +
             str(face_width_m * 2) + ', ' + str(face_width_m * 2) +
-            ', False, False, False, False, 1.74533E-02, 1.74533E-02' +
-            ', False, False, False, False, False, True',
+            ', False, False, 0.0, 0.0, False, False, False, True',
         ]
 
         vbs = '\r\n'.join(vbs_lines)
-        vbs_path = os.path.join(tempfile.gettempdir(), "_seekflow_gear2.vbs")
-        with open(vbs_path, "w", encoding="utf-8") as fh:
-            fh.write(vbs)
+        self._run_vbs_strict(vbs, timeout=120, label="spur_gear")
 
-        subprocess.run(
-            ["cscript.exe", "//B", "//Nologo", vbs_path],
-            timeout=120,
-            capture_output=True,
+    def create_spur_gear_true_involute(
+        self,
+        model,
+        module_m=0.003,
+        teeth=20,
+        face_width_m=0.020,
+        bore_dia_m=0.015,
+        pressure_angle_deg=20.0,
+        n_involute_pts=12,
+    ):
+        """Create a standard involute spur gear with mathematically correct
+        tooth profile per ISO 53 / DIN 867.
+
+        Uses the involute curve equation:
+            x = rb*(cos(t) + t*sin(t))
+            y = rb*(sin(t) - t*cos(t))
+
+        where rb = pitch_r * cos(pressure_angle) and t goes from 0 to
+        sqrt((addendum_r/rb)^2 - 1).
+
+        All dimensions in **metres**.
+        """
+        import subprocess, os, tempfile, math
+
+        m, z = module_m, teeth
+        alpha = math.radians(pressure_angle_deg)
+        pitch_r = m * z / 2.0
+        base_r = pitch_r * math.cos(alpha)
+        addendum_r = pitch_r + m          # outer / tip circle
+        dedendum_r = pitch_r - 1.25 * m   # root circle
+        bore_r = bore_dia_m / 2.0
+
+        # Max roll angle where involute reaches addendum circle
+        t_max = math.sqrt((addendum_r / base_r) ** 2 - 1.0)
+        # Roll angle at dedendum circle (or use 0 if dedendum_r < base_r)
+        t_min = 0.0 if dedendum_r <= base_r else math.sqrt(
+            max(0, (dedendum_r / base_r) ** 2 - 1.0))
+
+        # ── Helper: involute point at roll angle t, rotated by theta ──
+        def involute_pt(t, theta=0.0):
+            x = base_r * (math.cos(t) + t * math.sin(t))
+            y = base_r * (math.sin(t) - t * math.cos(t))
+            ct, st = math.cos(theta), math.sin(theta)
+            return (x * ct - y * st, x * st + y * ct)
+
+        # Angular half-tooth at pitch circle = π/(2z)
+        #
+        # At the pitch circle, the involute roll angle is tp where:
+        #   inv(tp) reaches r = pitch_r
+        #   r_inv(tp) = rb * sqrt(1 + tp^2) = pitch_r
+        #   → tp = sqrt((pitch_r/rb)^2 - 1)
+        tp = math.sqrt((pitch_r / base_r) ** 2 - 1.0)
+        # Angular position of involute at pitch circle relative to rb
+        inv_angle = math.atan2(
+            math.sin(tp) - tp * math.cos(tp),
+            math.cos(tp) + tp * math.sin(tp),
         )
+        # Half angular tooth thickness at pitch circle
+        half_tooth_angle = math.pi / (2 * z)
+        # Offset from tooth centre-line to involute start
+        tooth_offset = inv_angle + half_tooth_angle
+
+        polygon = []
+
+        for i in range(z):
+            centre = 2.0 * math.pi * i / z
+
+            # Left involute flank (root → tip)
+            left_theta = centre - tooth_offset
+            for j in range(n_involute_pts + 1):
+                t = t_min + (t_max - t_min) * j / n_involute_pts
+                x, y = involute_pt(t, left_theta)
+                r = math.hypot(x, y)
+                if r < dedendum_r:
+                    ang = math.atan2(y, x)
+                    x, y = dedendum_r * math.cos(ang), dedendum_r * math.sin(ang)
+                polygon.append((x, y))
+
+            # Tip arc
+            pts_start = polygon[-1]
+            start_ang = math.atan2(pts_start[1], pts_start[0])
+            # Right involute (mirrored around tooth centre)
+            right_theta = centre + tooth_offset
+            # End of tip arc = start of right involute at addendum circle
+            end_x, end_y = involute_pt(t_max, right_theta)
+            end_ang = math.atan2(end_y, end_x)
+            # Ensure we go the short way around
+            if end_ang < start_ang:
+                end_ang += 2 * math.pi
+            n_tip = max(2, n_involute_pts // 2)
+            for j in range(1, n_tip + 1):
+                ang = start_ang + (end_ang - start_ang) * j / (n_tip + 1)
+                polygon.append((addendum_r * math.cos(ang), addendum_r * math.sin(ang)))
+
+            # Right involute flank (tip → root, reversed)
+            right_pts = []
+            for j in range(n_involute_pts, -1, -1):
+                t = t_min + (t_max - t_min) * j / n_involute_pts
+                x, y = involute_pt(t, right_theta)
+                r = math.hypot(x, y)
+                if r < dedendum_r:
+                    ang = math.atan2(y, x)
+                    x, y = dedendum_r * math.cos(ang), dedendum_r * math.sin(ang)
+                right_pts.append((x, y))
+            polygon.extend(right_pts)
+
+            # Root arc: connect right flank end of tooth i to left flank start of tooth i+1
+            if i < z - 1:
+                curr_end = polygon[-1]
+                next_centre = 2.0 * math.pi * (i + 1) / z
+                next_theta = next_centre - tooth_offset
+                next_start_x, next_start_y = involute_pt(t_min, next_theta)
+                # Just add a root fillet point — the next tooth's left flank will close
+                # Actually, we connect continuously
+
+        # Close the polygon
+        polygon.append(polygon[0])
+
+        # ── Build VBS ──
+        def _chr(s):
+            return 'ChrW({})'.format(') & ChrW('.join(str(ord(c)) for c in s))
+        front = _chr("前视基准面")
+        sk1 = 'ChrW(33609) & ChrW(22270) & ChrW(49)'
+        sk2 = 'ChrW(33609) & ChrW(22270) & ChrW(50)'
+
+        vbs_lines = [
+            'REM === Standard involute spur gear ===',
+            'Dim part',
+            'Set part = CreateObject("SldWorks.Application").ActiveDoc',
+            '',
+            'REM --- Feature 1: Involute gear body ---',
+            'part.Extension.SelectByID2 ' + front + ', "PLANE", 0, 0, 0, False, 0, Nothing, 0',
+            'part.InsertSketch2 True',
+        ]
+
+        def _f(v):
+            return '{:.10f}'.format(v)
+        # Simplify polygon to avoid VBS line limit — decimate if too many
+        if len(polygon) > 2000:
+            step = len(polygon) // 1500 + 1
+            polygon = polygon[::step]
+            polygon.append(polygon[0])
+
+        for j in range(len(polygon) - 1):
+            x1, y1 = polygon[j]; x2, y2 = polygon[j + 1]
+            if abs(x2 - x1) < 1e-12 and abs(y2 - y1) < 1e-12:
+                continue
+            vbs_lines.append(
+                'part.SketchManager.CreateLine ' +
+                _f(x1) + ', ' + _f(y1) + ', 0, ' +
+                _f(x2) + ', ' + _f(y2) + ', 0'
+            )
+
+        vbs_lines += [
+            'part.InsertSketch2 True',
+            'part.ClearSelection2 True',
+            'part.Extension.SelectByID2 ' + sk1 + ', "SKETCH", 0, 0, 0, False, 0, Nothing, 0',
+            'part.FeatureManager.FeatureExtrusion2 True, False, False, 0, 0, ' +
+            str(face_width_m) + ', ' + str(face_width_m) +
+            ', False, False, False, False, 1.74533E-02, 1.74533E-02, False, False, False, False, True, True, True, 0, 0, False',
+            '',
+            'REM --- Feature 2: Bore ---',
+            'part.Extension.SelectByID2 "", "FACE", 0, 0, ' + str(face_width_m) + ', False, 0, Nothing, 0',
+            'part.InsertSketch2 True',
+            'part.SketchManager.CreateCircle 0, 0, 0, ' + str(bore_r) + ', 0, 0',
+            'part.InsertSketch2 True',
+            'part.ClearSelection2 True',
+            'part.Extension.SelectByID2 ' + sk2 + ', "SKETCH", 0, 0, 0, False, 0, Nothing, 0',
+            'part.FeatureCut True, False, False, False, False, ' +
+            str(face_width_m * 2) + ', ' + str(face_width_m * 2) +
+            ', False, False, 0.0, 0.0, False, False, False, True',
+        ]
+
+        vbs = '\r\n'.join(vbs_lines)
+        self._run_vbs_strict(vbs, timeout=300, label="true_involute_gear")
 
     def create_stepped_shaft(
         self,

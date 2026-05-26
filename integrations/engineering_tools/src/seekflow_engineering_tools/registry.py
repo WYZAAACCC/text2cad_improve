@@ -92,7 +92,7 @@ class EngineeringDeepSeekAgent:
             "tools only. Never invent file results. Always report tool output."
         ),
         backstory: str = (
-            "You are connected to local SolidWorks 2025, NX 18.0, and "
+            "You are connected to local SolidWorks 2025, NX 12.0, and "
             "ANSYS 18.1 through audited SeekFlow tools."
         ),
         **kwargs,

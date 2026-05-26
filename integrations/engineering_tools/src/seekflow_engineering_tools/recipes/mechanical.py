@@ -1,0 +1,143 @@
+from __future__ import annotations
+
+from seekflow_engineering_tools.recipes.base import RecipeDefinition, RecipeParameter
+
+MECHANICAL_RECIPES: list[RecipeDefinition] = [
+    RecipeDefinition(
+        name="box",
+        category="primitive",
+        description="Rectangular block / box.",
+        parameters=[
+            RecipeParameter(name="length_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="width_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="height_mm", type="float", unit="mm", required=True),
+        ],
+        supported_backends=["solidworks2025", "nx12", "cadquery"],
+        validation_defaults={"expected_body_count": 1},
+    ),
+    RecipeDefinition(
+        name="cylinder",
+        category="primitive",
+        description="Circular cylinder.",
+        parameters=[
+            RecipeParameter(name="diameter_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="height_mm", type="float", unit="mm", required=True),
+        ],
+        supported_backends=["cadquery"],
+    ),
+    RecipeDefinition(
+        name="plate_with_holes",
+        category="mechanical",
+        description="Flat plate with circular hole pattern.",
+        parameters=[
+            RecipeParameter(name="plate_width_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="plate_height_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="plate_thickness_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="hole_diameter_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="hole_count_x", type="int", unit="mm", required=False, default=1),
+            RecipeParameter(name="hole_count_y", type="int", unit="mm", required=False, default=1),
+        ],
+        supported_backends=["cadquery"],
+    ),
+    RecipeDefinition(
+        name="block_with_hole",
+        category="mechanical",
+        description="Rectangular block with a single through-hole.",
+        parameters=[
+            RecipeParameter(name="length_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="width_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="height_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="hole_dia_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="hole_x_mm", type="float", unit="mm", required=False),
+            RecipeParameter(name="hole_z_mm", type="float", unit="mm", required=False),
+        ],
+        supported_backends=["nx12", "cadquery"],
+        validation_defaults={"expected_body_count": 1, "expected_through_hole_count": 1},
+    ),
+    RecipeDefinition(
+        name="l_bracket",
+        category="mechanical",
+        description="L-shaped bracket from two perpendicular blocks.",
+        parameters=[
+            RecipeParameter(name="base_length_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="base_width_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="thickness_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="leg_height_mm", type="float", unit="mm", required=True),
+        ],
+        supported_backends=["nx12", "cadquery"],
+        validation_defaults={"expected_body_count": 1},
+    ),
+    RecipeDefinition(
+        name="stepped_block",
+        category="mechanical",
+        description="Two-tier stepped block — large base + smaller top.",
+        parameters=[
+            RecipeParameter(name="base_length_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="base_width_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="base_height_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="top_length_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="top_width_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="top_height_mm", type="float", unit="mm", required=True),
+        ],
+        supported_backends=["nx12", "cadquery"],
+        validation_defaults={"expected_body_count": 1},
+    ),
+    RecipeDefinition(
+        name="flanged_hub",
+        category="mechanical",
+        description="Flanged hub with central bore and bolt holes on PCD.",
+        parameters=[
+            RecipeParameter(name="flange_dia_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="flange_thickness_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="hub_dia_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="hub_height_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="bore_dia_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="bolt_pcd_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="bolt_dia_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="bolt_count", type="int", required=True),
+        ],
+        supported_backends=["solidworks2025", "cadquery"],
+        validation_defaults={
+            "expected_body_count": 1,
+            "expected_through_hole_count": 5,
+            "tolerance_mm": 0.2,
+            "expected_bbox_mm": [80, 80, 40],
+        },
+    ),
+    RecipeDefinition(
+        name="spur_gear",
+        category="mechanical",
+        description="Spur gear — star-polygon body with centre bore.",
+        parameters=[
+            RecipeParameter(name="module_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="teeth", type="int", required=True),
+            RecipeParameter(name="face_width_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="bore_dia_mm", type="float", unit="mm", required=True),
+        ],
+        supported_backends=["solidworks2025", "cadquery"],
+        validation_defaults={"expected_body_count": 1},
+    ),
+    RecipeDefinition(
+        name="shaft_basic",
+        category="mechanical",
+        description="Basic cylindrical stepped shaft.",
+        parameters=[
+            RecipeParameter(name="total_length_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="shaft_dia_mm", type="float", unit="mm", required=True),
+        ],
+        supported_backends=["cadquery"],
+    ),
+    RecipeDefinition(
+        name="shaft_with_keyway",
+        category="mechanical",
+        description="Stepped shaft with keyway slot.",
+        parameters=[
+            RecipeParameter(name="total_length_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="shaft_dia_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="keyway_width_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="keyway_depth_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="keyway_offset_from_end_mm", type="float", unit="mm", required=False, default=0.0),
+        ],
+        supported_backends=["cadquery"],
+    ),
+]

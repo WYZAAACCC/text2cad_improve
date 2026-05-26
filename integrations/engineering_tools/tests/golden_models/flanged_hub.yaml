@@ -1,0 +1,40 @@
+nlcad_version: "0.1"
+part:
+  name: "flanged_hub"
+  units: "mm"
+  target_backend: ["solidworks2025", "cadquery"]
+
+parameters:
+  flange_dia_mm: 80
+  flange_thickness_mm: 12
+  hub_dia_mm: 40
+  hub_height_mm: 28
+  bore_dia_mm: 20
+  bolt_pcd_mm: 60
+  bolt_dia_mm: 8
+  bolt_count: 4
+
+features:
+  - id: "main"
+    type: "recipe"
+    recipe_name: "flanged_hub"
+    parameters:
+      flange_dia_mm: 80
+      flange_thickness_mm: 12
+      hub_dia_mm: 40
+      hub_height_mm: 28
+      bore_dia_mm: 20
+      bolt_pcd_mm: 60
+      bolt_dia_mm: 8
+      bolt_count: 4
+
+validation:
+  expected_bbox_mm: [80, 80, 40]
+  expected_body_count: 1
+  expected_through_hole_count: 5
+  tolerance_mm: 0.2
+
+outputs:
+  native: true
+  step: true
+  stl: false

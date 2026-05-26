@@ -1,0 +1,30 @@
+nlcad_version: "0.1"
+part:
+  name: "block_with_hole"
+  units: "mm"
+  target_backend: ["nx12", "cadquery"]
+
+parameters:
+  length_mm: 100
+  width_mm: 60
+  height_mm: 40
+  hole_dia_mm: 16
+
+features:
+  - id: "main"
+    type: "recipe"
+    recipe_name: "block_with_hole"
+    parameters:
+      length_mm: 100
+      width_mm: 60
+      height_mm: 40
+      hole_dia_mm: 16
+
+validation:
+  expected_body_count: 1
+  expected_through_hole_count: 1
+  tolerance_mm: 0.2
+
+outputs:
+  native: true
+  step: true

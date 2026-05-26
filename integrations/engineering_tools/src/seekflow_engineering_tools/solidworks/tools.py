@@ -147,6 +147,272 @@ def build_solidworks_tools(config: EngineeringToolsConfig):
         _solidworks_write_policy(config, {"out_sldprt", "out_step"})
     )
 
+    # ── create_flanged_hub_part ─────────────────────────────────────
+
+    @tool(
+        name="solidworks_create_flanged_hub_part",
+        description=(
+            "Create a flanged hub in SolidWorks 2025 — flange disc, central "
+            "hub boss, centre bore, and equally spaced bolt holes on a PCD. "
+            "All dimensions in mm. Optionally export STEP."
+        ),
+        cache=False,
+        sanitize=True,
+        trusted=False,
+    )
+    def solidworks_create_flanged_hub_part(
+        flange_dia_mm: float,
+        flange_thickness_mm: float,
+        hub_dia_mm: float,
+        hub_height_mm: float,
+        bore_dia_mm: float,
+        bolt_pcd_mm: float,
+        bolt_dia_mm: float,
+        bolt_count: int,
+        out_sldprt: str,
+        out_step: str | None = None,
+    ) -> dict:
+        try:
+            out_sldprt_path = ensure_inside_workspace(config.workspace_root, out_sldprt)
+            out_step_path = None
+            if out_step:
+                out_step_path = ensure_inside_workspace(config.workspace_root, out_step)
+
+            if out_sldprt_path.exists() and not config.allow_overwrite:
+                return EngineeringActionResult(
+                    ok=False,
+                    software="solidworks",
+                    action="create_flanged_hub_part",
+                    error=f"Output file {out_sldprt_path} already exists.",
+                ).model_dump()
+
+            client = SolidWorksClient(
+                visible=config.solidworks_visible,
+                part_template=config.solidworks_part_template,
+            ).connect()
+
+            model = client.new_part()
+            client.create_flanged_hub(
+                model,
+                flange_dia_m=flange_dia_mm / 1000.0,
+                flange_h_m=flange_thickness_mm / 1000.0,
+                hub_dia_m=hub_dia_mm / 1000.0,
+                hub_h_m=hub_height_mm / 1000.0,
+                bore_dia_m=bore_dia_mm / 1000.0,
+                bolt_pcd_m=bolt_pcd_mm / 1000.0,
+                bolt_dia_m=bolt_dia_mm / 1000.0,
+                bolt_count=bolt_count,
+            )
+
+            client.save_as(model, out_sldprt_path)
+            files_created = [str(out_sldprt_path)]
+
+            if out_step_path:
+                client.export_step(model, out_step_path)
+                files_created.append(str(out_step_path))
+
+            return EngineeringActionResult(
+                ok=True,
+                software="solidworks",
+                action="create_flanged_hub_part",
+                message="SolidWorks flanged hub created successfully.",
+                files_created=files_created,
+                metrics={
+                    "flange_dia_mm": flange_dia_mm,
+                    "flange_thickness_mm": flange_thickness_mm,
+                    "hub_dia_mm": hub_dia_mm,
+                    "hub_height_mm": hub_height_mm,
+                    "bore_dia_mm": bore_dia_mm,
+                    "bolt_pcd_mm": bolt_pcd_mm,
+                    "bolt_dia_mm": bolt_dia_mm,
+                    "bolt_count": bolt_count,
+                    "expected_through_hole_count": bolt_count + 1,
+                },
+            ).model_dump()
+
+        except Exception as exc:
+            return EngineeringActionResult(
+                ok=False,
+                software="solidworks",
+                action="create_flanged_hub_part",
+                error=str(exc),
+            ).model_dump()
+
+    solidworks_create_flanged_hub_part = solidworks_create_flanged_hub_part.with_policy(
+        _solidworks_write_policy(config, {"out_sldprt", "out_step"})
+    )
+
+    # ── create_spur_gear_part ───────────────────────────────────────
+
+    @tool(
+        name="solidworks_create_spur_gear_part",
+        description=(
+            "Create a spur gear in SolidWorks 2025 — star-polygon gear body "
+            "with a centre bore. All dimensions in mm. "
+            "Uses module (metric gear standard) and tooth count. "
+            "Optionally export STEP."
+        ),
+        cache=False,
+        sanitize=True,
+        trusted=False,
+    )
+    def solidworks_create_spur_gear_part(
+        module_mm: float,
+        teeth: int,
+        face_width_mm: float,
+        bore_dia_mm: float,
+        out_sldprt: str,
+        out_step: str | None = None,
+    ) -> dict:
+        try:
+            out_sldprt_path = ensure_inside_workspace(config.workspace_root, out_sldprt)
+            out_step_path = None
+            if out_step:
+                out_step_path = ensure_inside_workspace(config.workspace_root, out_step)
+
+            if out_sldprt_path.exists() and not config.allow_overwrite:
+                return EngineeringActionResult(
+                    ok=False,
+                    software="solidworks",
+                    action="create_spur_gear_part",
+                    error=f"Output file {out_sldprt_path} already exists.",
+                ).model_dump()
+
+            client = SolidWorksClient(
+                visible=config.solidworks_visible,
+                part_template=config.solidworks_part_template,
+            ).connect()
+
+            model = client.new_part()
+            client.create_spur_gear(
+                model,
+                module_m=module_mm / 1000.0,
+                teeth=teeth,
+                face_width_m=face_width_mm / 1000.0,
+                bore_dia_m=bore_dia_mm / 1000.0,
+            )
+
+            client.save_as(model, out_sldprt_path)
+            files_created = [str(out_sldprt_path)]
+
+            if out_step_path:
+                client.export_step(model, out_step_path)
+                files_created.append(str(out_step_path))
+
+            return EngineeringActionResult(
+                ok=True,
+                software="solidworks",
+                action="create_spur_gear_part",
+                message="SolidWorks spur gear created successfully.",
+                files_created=files_created,
+                metrics={
+                    "module_mm": module_mm,
+                    "teeth": teeth,
+                    "face_width_mm": face_width_mm,
+                    "bore_dia_mm": bore_dia_mm,
+                    "pitch_dia_mm": module_mm * teeth,
+                },
+            ).model_dump()
+
+        except Exception as exc:
+            return EngineeringActionResult(
+                ok=False,
+                software="solidworks",
+                action="create_spur_gear_part",
+                error=str(exc),
+            ).model_dump()
+
+    solidworks_create_spur_gear_part = solidworks_create_spur_gear_part.with_policy(
+        _solidworks_write_policy(config, {"out_sldprt", "out_step"})
+    )
+
+    # ── create_true_involute_gear_part ──────────────────────────────
+
+    @tool(
+        name="solidworks_create_true_involute_gear_part",
+        description=(
+            "Create a standard involute spur gear in SolidWorks 2025 using "
+            "mathematically correct tooth profile (ISO 53 / DIN 867). "
+            "Uses the involute curve equation for true flank geometry. "
+            "All dimensions in mm. Optionally export STEP."
+        ),
+        cache=False,
+        sanitize=True,
+        trusted=False,
+    )
+    def solidworks_create_true_involute_gear_part(
+        module_mm: float,
+        teeth: int,
+        face_width_mm: float,
+        bore_dia_mm: float,
+        pressure_angle_deg: float = 20.0,
+        out_sldprt: str = "",
+        out_step: str | None = None,
+    ) -> dict:
+        try:
+            out_sldprt_path = ensure_inside_workspace(config.workspace_root, out_sldprt)
+            out_step_path = None
+            if out_step:
+                out_step_path = ensure_inside_workspace(config.workspace_root, out_step)
+
+            if out_sldprt_path.exists() and not config.allow_overwrite:
+                return EngineeringActionResult(
+                    ok=False, software="solidworks",
+                    action="create_true_involute_gear_part",
+                    error=f"Output file {out_sldprt_path} already exists.",
+                ).model_dump()
+
+            client = SolidWorksClient(
+                visible=config.solidworks_visible,
+                part_template=config.solidworks_part_template,
+            ).connect()
+
+            model = client.new_part()
+            client.create_spur_gear_true_involute(
+                model,
+                module_m=module_mm / 1000.0,
+                teeth=teeth,
+                face_width_m=face_width_mm / 1000.0,
+                bore_dia_m=bore_dia_mm / 1000.0,
+                pressure_angle_deg=pressure_angle_deg,
+            )
+
+            client.save_as(model, out_sldprt_path)
+            files_created = [str(out_sldprt_path)]
+
+            if out_step_path:
+                client.export_step(model, out_step_path)
+                files_created.append(str(out_step_path))
+
+            return EngineeringActionResult(
+                ok=True,
+                software="solidworks",
+                action="create_true_involute_gear_part",
+                message="SolidWorks true involute gear created successfully.",
+                files_created=files_created,
+                metrics={
+                    "module_mm": module_mm,
+                    "teeth": teeth,
+                    "face_width_mm": face_width_mm,
+                    "bore_dia_mm": bore_dia_mm,
+                    "pressure_angle_deg": pressure_angle_deg,
+                    "pitch_dia_mm": module_mm * teeth,
+                    "base_dia_mm": module_mm * teeth * 0.9396926,  # cos(20°)
+                },
+            ).model_dump()
+
+        except Exception as exc:
+            return EngineeringActionResult(
+                ok=False,
+                software="solidworks",
+                action="create_true_involute_gear_part",
+                error=str(exc),
+            ).model_dump()
+
+    solidworks_create_true_involute_gear_part = solidworks_create_true_involute_gear_part.with_policy(
+        _solidworks_write_policy(config, {"out_sldprt", "out_step"})
+    )
+
     # ── export_step ─────────────────────────────────────────────────
 
     @tool(
@@ -205,6 +471,9 @@ def build_solidworks_tools(config: EngineeringToolsConfig):
     tools.extend([
         solidworks_health_check,
         solidworks_create_box_part,
+        solidworks_create_flanged_hub_part,
+        solidworks_create_spur_gear_part,
+        solidworks_create_true_involute_gear_part,
         solidworks_export_step,
     ])
     return tools
