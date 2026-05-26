@@ -732,114 +732,106 @@ class SolidWorksClient:
         face_width_m=0.020,
         bore_dia_m=0.015,
         pressure_angle_deg=20.0,
-        n_involute_pts=12,
+        n_involute_pts=8,
     ):
-        """Create a standard involute spur gear with mathematically correct
-        tooth profile per ISO 53 / DIN 867.
+        """Create a standard involute spur gear per ISO 53 / DIN 867.
 
-        Uses the involute curve equation:
-            x = rb*(cos(t) + t*sin(t))
-            y = rb*(sin(t) - t*cos(t))
-
-        where rb = pitch_r * cos(pressure_angle) and t goes from 0 to
-        sqrt((addendum_r/rb)^2 - 1).
+        Generates mathematically precise involute tooth flanks using the
+        parametric involute curve equation, with tip arcs and root fillets.
 
         All dimensions in **metres**.
         """
-        import subprocess, os, tempfile, math
+        import math
 
         m, z = module_m, teeth
         alpha = math.radians(pressure_angle_deg)
         pitch_r = m * z / 2.0
         base_r = pitch_r * math.cos(alpha)
-        addendum_r = pitch_r + m          # outer / tip circle
-        dedendum_r = pitch_r - 1.25 * m   # root circle
+        addendum_r = pitch_r + m
+        dedendum_r = pitch_r - 1.25 * m
         bore_r = bore_dia_m / 2.0
 
-        # Max roll angle where involute reaches addendum circle
-        t_max = math.sqrt((addendum_r / base_r) ** 2 - 1.0)
-        # Roll angle at dedendum circle (or use 0 if dedendum_r < base_r)
+        # Involute roll angle range
+        t_max = math.sqrt(max(0, (addendum_r / base_r) ** 2 - 1.0))
         t_min = 0.0 if dedendum_r <= base_r else math.sqrt(
             max(0, (dedendum_r / base_r) ** 2 - 1.0))
 
-        # ── Helper: involute point at roll angle t, rotated by theta ──
-        def involute_pt(t, theta=0.0):
+        def _inv(t, rot=0.0):
+            """Involute point at roll angle t, rotated by rot radians."""
             x = base_r * (math.cos(t) + t * math.sin(t))
             y = base_r * (math.sin(t) - t * math.cos(t))
-            ct, st = math.cos(theta), math.sin(theta)
-            return (x * ct - y * st, x * st + y * ct)
+            if rot:
+                c, s = math.cos(rot), math.sin(rot)
+                x, y = x * c - y * s, x * s + y * c
+            return (x, y)
 
-        # Angular half-tooth at pitch circle = π/(2z)
-        #
-        # At the pitch circle, the involute roll angle is tp where:
-        #   inv(tp) reaches r = pitch_r
-        #   r_inv(tp) = rb * sqrt(1 + tp^2) = pitch_r
-        #   → tp = sqrt((pitch_r/rb)^2 - 1)
-        tp = math.sqrt((pitch_r / base_r) ** 2 - 1.0)
-        # Angular position of involute at pitch circle relative to rb
-        inv_angle = math.atan2(
+        # Angular tooth thickness at pitch circle
+        tp = math.sqrt(max(0, (pitch_r / base_r) ** 2 - 1.0))
+        inv_tp = math.atan2(
             math.sin(tp) - tp * math.cos(tp),
             math.cos(tp) + tp * math.sin(tp),
         )
-        # Half angular tooth thickness at pitch circle
-        half_tooth_angle = math.pi / (2 * z)
-        # Offset from tooth centre-line to involute start
-        tooth_offset = inv_angle + half_tooth_angle
+        half_tooth = math.pi / (2 * z)
+        offset = inv_tp + half_tooth  # from tooth centre to involute start
 
         polygon = []
 
         for i in range(z):
-            centre = 2.0 * math.pi * i / z
+            c = 2.0 * math.pi * i / z
+            rot_l = c - offset
+            rot_r = c + offset
 
-            # Left involute flank (root → tip)
-            left_theta = centre - tooth_offset
+            # Left flank: involute from root to tip
             for j in range(n_involute_pts + 1):
                 t = t_min + (t_max - t_min) * j / n_involute_pts
-                x, y = involute_pt(t, left_theta)
-                r = math.hypot(x, y)
-                if r < dedendum_r:
-                    ang = math.atan2(y, x)
-                    x, y = dedendum_r * math.cos(ang), dedendum_r * math.sin(ang)
+                x, y = _inv(t, rot_l)
+                rr = math.hypot(x, y)
+                if rr < dedendum_r - 1e-10:
+                    a = math.atan2(y, x)
+                    x, y = dedendum_r * math.cos(a), dedendum_r * math.sin(a)
                 polygon.append((x, y))
 
-            # Tip arc
-            pts_start = polygon[-1]
-            start_ang = math.atan2(pts_start[1], pts_start[0])
-            # Right involute (mirrored around tooth centre)
-            right_theta = centre + tooth_offset
-            # End of tip arc = start of right involute at addendum circle
-            end_x, end_y = involute_pt(t_max, right_theta)
-            end_ang = math.atan2(end_y, end_x)
-            # Ensure we go the short way around
-            if end_ang < start_ang:
-                end_ang += 2 * math.pi
-            n_tip = max(2, n_involute_pts // 2)
+            # Tip arc: from left tip to right tip along addendum circle
+            lx, ly = polygon[-1]
+            la = math.atan2(ly, lx)
+            rx, ry = _inv(t_max, rot_r)
+            ra = math.atan2(ry, rx)
+            if ra <= la:
+                ra += 2.0 * math.pi
+            n_tip = max(1, n_involute_pts // 3)
             for j in range(1, n_tip + 1):
-                ang = start_ang + (end_ang - start_ang) * j / (n_tip + 1)
-                polygon.append((addendum_r * math.cos(ang), addendum_r * math.sin(ang)))
+                a = la + (ra - la) * j / (n_tip + 1)
+                polygon.append((addendum_r * math.cos(a), addendum_r * math.sin(a)))
 
-            # Right involute flank (tip → root, reversed)
-            right_pts = []
+            # Right flank: involute from tip to root (reversed)
             for j in range(n_involute_pts, -1, -1):
                 t = t_min + (t_max - t_min) * j / n_involute_pts
-                x, y = involute_pt(t, right_theta)
-                r = math.hypot(x, y)
-                if r < dedendum_r:
-                    ang = math.atan2(y, x)
-                    x, y = dedendum_r * math.cos(ang), dedendum_r * math.sin(ang)
-                right_pts.append((x, y))
-            polygon.extend(right_pts)
+                x, y = _inv(t, rot_r)
+                rr = math.hypot(x, y)
+                if rr < dedendum_r - 1e-10:
+                    a = math.atan2(y, x)
+                    x, y = dedendum_r * math.cos(a), dedendum_r * math.sin(a)
+                polygon.append((x, y))
 
-            # Root arc: connect right flank end of tooth i to left flank start of tooth i+1
+            # Root arc: from right root to next tooth's left root
             if i < z - 1:
-                curr_end = polygon[-1]
-                next_centre = 2.0 * math.pi * (i + 1) / z
-                next_theta = next_centre - tooth_offset
-                next_start_x, next_start_y = involute_pt(t_min, next_theta)
-                # Just add a root fillet point — the next tooth's left flank will close
-                # Actually, we connect continuously
+                ex, ey = polygon[-1]
+                ea = math.atan2(ey, ex)
+                nc = 2.0 * math.pi * (i + 1) / z
+                nr_l = nc - offset
+                sx, sy = _inv(t_min, nr_l)
+                sr = math.hypot(sx, sy)
+                if sr < dedendum_r:
+                    sa_ = math.atan2(sy, sx)
+                    sx, sy = dedendum_r * math.cos(sa_), dedendum_r * math.sin(sa_)
+                sa = math.atan2(sy, sx)
+                if sa <= ea:
+                    sa += 2.0 * math.pi
+                n_root = max(1, n_involute_pts // 3)
+                for j in range(1, n_root + 1):
+                    a = ea + (sa - ea) * j / (n_root + 1)
+                    polygon.append((dedendum_r * math.cos(a), dedendum_r * math.sin(a)))
 
-        # Close the polygon
         polygon.append(polygon[0])
 
         # ── Build VBS ──
@@ -850,32 +842,37 @@ class SolidWorksClient:
         sk2 = 'ChrW(33609) & ChrW(22270) & ChrW(50)'
 
         vbs_lines = [
-            'REM === Standard involute spur gear ===',
+            'REM === Standard involute spur gear (ISO 53) ===',
             'Dim part',
             'Set part = CreateObject("SldWorks.Application").ActiveDoc',
             '',
-            'REM --- Feature 1: Involute gear body ---',
             'part.Extension.SelectByID2 ' + front + ', "PLANE", 0, 0, 0, False, 0, Nothing, 0',
             'part.InsertSketch2 True',
         ]
 
         def _f(v):
-            return '{:.10f}'.format(v)
-        # Simplify polygon to avoid VBS line limit — decimate if too many
-        if len(polygon) > 2000:
-            step = len(polygon) // 1500 + 1
-            polygon = polygon[::step]
-            polygon.append(polygon[0])
+            return '{:.12f}'.format(v)
+
+        # Cap polygon size to avoid VBS limits
+        max_pts = 1800
+        if len(polygon) > max_pts:
+            step = max(1, len(polygon) // max_pts)
+            decimated = polygon[::step]
+            if decimated[-1] != polygon[-1]:
+                decimated.append(polygon[-1])
+            if decimated[0] != polygon[0]:
+                decimated.insert(0, polygon[0])
+            polygon = decimated
 
         for j in range(len(polygon) - 1):
-            x1, y1 = polygon[j]; x2, y2 = polygon[j + 1]
-            if abs(x2 - x1) < 1e-12 and abs(y2 - y1) < 1e-12:
-                continue
-            vbs_lines.append(
-                'part.SketchManager.CreateLine ' +
-                _f(x1) + ', ' + _f(y1) + ', 0, ' +
-                _f(x2) + ', ' + _f(y2) + ', 0'
-            )
+            x1, y1 = polygon[j]
+            x2, y2 = polygon[j + 1]
+            if abs(x2 - x1) > 1e-14 or abs(y2 - y1) > 1e-14:
+                vbs_lines.append(
+                    'part.SketchManager.CreateLine ' +
+                    _f(x1) + ', ' + _f(y1) + ', 0, ' +
+                    _f(x2) + ', ' + _f(y2) + ', 0'
+                )
 
         vbs_lines += [
             'part.InsertSketch2 True',
@@ -885,7 +882,7 @@ class SolidWorksClient:
             str(face_width_m) + ', ' + str(face_width_m) +
             ', False, False, False, False, 1.74533E-02, 1.74533E-02, False, False, False, False, True, True, True, 0, 0, False',
             '',
-            'REM --- Feature 2: Bore ---',
+            'REM --- Bore ---',
             'part.Extension.SelectByID2 "", "FACE", 0, 0, ' + str(face_width_m) + ', False, 0, Nothing, 0',
             'part.InsertSketch2 True',
             'part.SketchManager.CreateCircle 0, 0, 0, ' + str(bore_r) + ', 0, 0',
