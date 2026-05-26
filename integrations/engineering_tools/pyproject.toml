@@ -1,0 +1,58 @@
+[project]
+name = "seekflow-engineering-tools"
+version = "0.1.0"
+description = "SolidWorks 2025, NX 18.0, ANSYS 18.1 bridges for SeekFlow Agent."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "SeekFlow Contributors"},
+]
+keywords = [
+    "seekflow",
+    "solidworks",
+    "nx",
+    "ansys",
+    "cad",
+    "cae",
+    "engineering",
+    "agent",
+    "automation",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "seekflow>=0.3.7",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+solidworks = [
+    "pywin32>=306; platform_system == 'Windows'",
+]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=75.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

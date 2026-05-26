@@ -1,0 +1,1003 @@
+"""Shared tools, prompts, and tasks — IDENTICAL across ALL frameworks.
+
+Core principle: every framework runs the exact same Python functions with the
+exact same system prompts and task descriptions. The only difference is how
+each framework orchestrates tool calling.
+
+v2.1: structured tool contracts (input_echo/formula/data_quality/warnings),
+      search robustness (semaphore/cache/retry/fixture), tool event logging,
+      supply_risk_score, parse_system_prompt helper.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import os
+import random
+import re
+import threading
+import time
+import urllib.parse
+import urllib.request
+from pathlib import Path
+from typing import Any
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Helpers
+# ═══════════════════════════════════════════════════════════════════════════
+
+_SEARCH_BACKEND = os.getenv("BENCH_SEARCH_BACKEND", "fixture")
+
+
+def _json_result(payload: dict[str, Any]) -> str:
+    return json.dumps(payload, ensure_ascii=False)
+
+
+def parse_system_prompt(sys_prompt: str) -> tuple[str, str, str]:
+    """Parse a 2-line system prompt into (role, goal, backstory).
+
+    Uses removeprefix for correctness — strip('你是一名') is a character-set
+    strip, not a prefix removal, and would mangle the role string.
+    """
+    lines = [x.strip() for x in sys_prompt.splitlines() if x.strip()]
+    role_line = lines[0] if lines else "通用分析师"
+    goal_line = lines[1] if len(lines) > 1 else "完成任务"
+
+    role = role_line
+    if role.startswith("你是一名"):
+        role = role.removeprefix("你是一名").strip("。 ")
+    goal = goal_line.strip("。 ")
+    backstory = role_line
+    return role, goal, backstory
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Tool 1: Financial calculator — ROI
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def _logged_call(tool_name: str, fn_body, *args, **kwargs):
+    """Execute fn_body() and record a tool event. Cross-process safe (file-based)."""
+    ev = {
+        "tool": tool_name, "args": args, "kwargs": kwargs,
+        "started_at_perf": time.perf_counter(),
+        "success": True, "latency_seconds": 0.0,
+        "result_preview": "", "error": "",
+    }
+    _start = time.perf_counter()
+    try:
+        result = fn_body()
+        ev["result_preview"] = _safe_preview(result)
+        return result
+    except Exception as e:
+        ev["success"] = False
+        ev["error"] = f"{type(e).__name__}: {str(e)[:200]}"
+        raise
+    finally:
+        ev["latency_seconds"] = round(time.perf_counter() - _start, 3)
+        _append_event(ev)
+
+
+def calculate_roi(investment: float, revenue: float) -> dict:
+    """Calculate Return on Investment. investment=investment cost, revenue=total revenue"""
+    def _body():
+        roi = ((revenue - investment) / investment) * 100
+        return {
+            "roi_percent": round(roi, 2),
+            "net_profit": round(revenue - investment, 2),
+            "profit_margin_percent": round((revenue - investment) / revenue * 100, 2) if revenue else 0,
+            "input_echo": {"investment": investment, "revenue": revenue},
+            "formula": "roi=(revenue-investment)/investment*100",
+            "data_quality": "tool_calculated",
+        }
+    return _logged_call("calculate_roi", _body, investment, revenue)
+
+
+def compound_growth(principal: float, rate_percent: float, years: int) -> dict:
+    """Calculate compound growth. principal=starting amount, rate_percent=annual rate %, years=number of years"""
+    def _body():
+        rate = rate_percent / 100
+        values = [round(principal * (1 + rate) ** y, 2) for y in range(years + 1)]
+        return {
+            "final_value": values[-1],
+            "total_growth_percent": round((values[-1] / principal - 1) * 100, 2),
+            "year_by_year": values,
+            "input_echo": {"principal": principal, "rate_percent": rate_percent, "years": years},
+            "formula": "principal*(1+rate)^year",
+            "data_quality": "tool_calculated",
+        }
+    return _logged_call("compound_growth", _body, principal, rate_percent, years)
+
+
+def risk_score(volatility_percent: float, debt_ratio: float, market_cap_billions: float) -> dict:
+    """Calculate composite financial risk score (1-10, lower=safer).
+
+    market_cap_billions is in BILLION USD.  Example: 850亿美元 = 85.0 billion USD.
+    """
+    def _body():
+        warnings_list = []
+        if market_cap_billions <= 0:
+            warnings_list.append("market_cap_billions must be positive.")
+        if market_cap_billions > 250:
+            warnings_list.append(
+                "market_cap_billions unusually large. "
+                "If the source value is 亿美元, convert 850亿美元 -> 85.0 billion USD."
+            )
+        if debt_ratio > 1:
+            warnings_list.append(
+                "debt_ratio is usually 0-1. Check whether percent was passed accidentally."
+            )
+        v_score = min(10, volatility_percent / 5)
+        d_score = min(10, debt_ratio * 10)
+        m_score = max(0, 5 - market_cap_billions / 50) if market_cap_billions < 250 else 0
+        composite = round((v_score * 0.4 + d_score * 0.35 + m_score * 0.25), 1)
+        return {
+            "risk_score": composite,
+            "rating": "LOW" if composite < 3 else "MEDIUM" if composite < 6 else "HIGH" if composite < 8 else "CRITICAL",
+            "breakdown": {
+                "volatility_component": round(v_score, 1),
+                "debt_component": round(d_score, 1),
+                "size_component": round(m_score, 1),
+            },
+            "input_echo": {
+                "volatility_percent": volatility_percent,
+                "debt_ratio": debt_ratio,
+                "market_cap_billions": market_cap_billions,
+            },
+            "unit_note": "market_cap_billions is billion USD; 850亿美元 = 85.0",
+            "formula": "0.4*volatility_component + 0.35*debt_component + 0.25*size_component",
+            "warnings": warnings_list,
+            "data_quality": "tool_calculated",
+        }
+    return _logged_call("risk_score", _body, volatility_percent, debt_ratio, market_cap_billions)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Tool 1b: Supply-chain risk score
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def supply_risk_score(
+    probability_percent: float,
+    impact_score: float,
+    exposure_percent: float,
+) -> dict:
+    """Calculate supply-chain risk score.
+
+    probability_percent: likelihood of disruption, 0-100
+    impact_score: business impact, 1-10
+    exposure_percent: share of supply/revenue/cost exposed, 0-100
+    """
+    def _body():
+        p = max(0, min(100, probability_percent)) / 100
+        i = max(1, min(10, impact_score)) / 10
+        e = max(0, min(100, exposure_percent)) / 100
+        score = round((p * 0.4 + i * 0.35 + e * 0.25) * 10, 1)
+        return {
+            "risk_score": score,
+            "rating": "LOW" if score < 3 else "MEDIUM" if score < 6 else "HIGH" if score < 8 else "CRITICAL",
+            "input_echo": {
+                "probability_percent": probability_percent,
+                "impact_score": impact_score,
+                "exposure_percent": exposure_percent,
+            },
+            "formula": "risk_score=(probability*0.4 + impact*0.35 + exposure*0.25)*10",
+            "data_quality": "scenario_inputs_or_explicit_proxy",
+        }
+    return _logged_call("supply_risk_score", _body, probability_percent, impact_score, exposure_percent)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Tool 2: Web search
+# ═══════════════════════════════════════════════════════════════════════════
+
+_SEARCH_SEM = threading.Semaphore(2)
+_SEARCH_CACHE: dict[tuple[str, int], dict[str, Any]] = {}
+_SEARCH_CACHE_LOCK = threading.Lock()
+
+_SEARCH_USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Safari/605.1.15",
+]
+
+# Pre-canned search results for fixture mode — reproducible, offline-safe.
+_FIXTURE_SEARCH: dict[str, list[dict[str, str]]] = {
+    "科技行业趋势": [
+        {"title": "AI 基础设施投资持续增长", "snippet": "云计算、AI 芯片和企业智能化仍是科技行业主要增长方向。"},
+        {"title": "软件订阅和算力需求推动科技企业收入", "snippet": "企业数字化预算继续向 AI、数据平台和自动化工具倾斜。"},
+    ],
+    "消费品行业趋势": [
+        {"title": "消费品行业关注品牌韧性和渠道效率", "snippet": "高端化、健康化和线上线下融合成为消费品企业竞争重点。"},
+    ],
+    "新能源行业趋势": [
+        {"title": "新能源需求受电动车和储能市场拉动", "snippet": "电动车、储能、电池材料和电网升级继续支撑新能源产业链增长。"},
+    ],
+    "台海芯片供应风险": [
+        {"title": "芯片供应链高度集中带来地缘风险", "snippet": "先进制程和封装产能集中在东亚，地缘扰动可能影响汽车芯片供应稳定性。"},
+    ],
+    "南美锂矿供应风险": [
+        {"title": "锂资源供应受政策、环保和基础设施影响", "snippet": "南美锂矿开发周期长，政策调整和社区环保要求可能影响供应节奏。"},
+    ],
+    "欧洲碳关税政策": [
+        {"title": "欧洲碳边境调节机制提高出口企业合规成本", "snippet": "高碳排产品进入欧洲市场需要更严格的碳排放核算和成本管理。"},
+    ],
+}
+
+
+def _search_trace_id(query: str) -> str:
+    return hashlib.sha1(query.encode("utf-8")).hexdigest()[:10]
+
+
+def _fixture_search(query: str, max_results: int) -> str:
+    """Offline search: match against pre-canned fixture data."""
+    hits: list[dict[str, Any]] = []
+    for key, rows in _FIXTURE_SEARCH.items():
+        if key in query or query in key:
+            hits = [{"rank": i + 1, **row} for i, row in enumerate(rows[:max_results])]
+            break
+
+    if not hits:
+        hits = [{
+            "rank": 1,
+            "title": f"Fixture fallback for: {query}",
+            "snippet": "No exact fixture key matched. This is a controlled fallback, not live web evidence.",
+        }]
+
+    return _json_result({
+        "status": "ok",
+        "backend": "fixture",
+        "query": query,
+        "trace_id": _search_trace_id(query),
+        "results": hits,
+        "data_quality": "fixture_verified",
+        "instruction": "Use only these fixture snippets as benchmark evidence. Do not invent additional facts, dates, or sources.",
+    })
+
+
+def _live_web_search(query: str, max_results: int) -> str:
+    """Live search via 360 Search (so.com) with concurrency control and retry."""
+    trace_id = _search_trace_id(query)
+    cache_key = (query.strip(), max_results)
+
+    with _SEARCH_CACHE_LOCK:
+        cached = _SEARCH_CACHE.get(cache_key)
+        if cached:
+            payload = dict(cached)
+            payload["cached"] = True
+            return _json_result(payload)
+
+    last_error = ""
+
+    acquired = _SEARCH_SEM.acquire(timeout=15)
+    if not acquired:
+        return _json_result({
+            "status": "unavailable",
+            "query": query,
+            "trace_id": trace_id,
+            "cached": False,
+            "results": [],
+            "error": "search_congested",
+            "data_quality": "search_unavailable",
+            "instruction": (
+                "搜索请求过多暂时无法执行。"
+                "请在报告中写明「web_search 对该主题不可用，未获得可验证搜索结果」，不得编造搜索发现。"
+            ),
+        })
+
+    try:
+        for attempt in range(3):
+            try:
+                if attempt > 0:
+                    time.sleep(0.8 * (2 ** (attempt - 1)) + random.uniform(0.1, 0.4))
+
+                url = "https://www.so.com/s?q=" + urllib.parse.quote(query)
+                req = urllib.request.Request(
+                    url,
+                    headers={
+                        "User-Agent": random.choice(_SEARCH_USER_AGENTS),
+                        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+                    },
+                )
+
+                with urllib.request.urlopen(req, timeout=8) as resp:
+                    html = resp.read().decode("utf-8", errors="replace")
+
+                results: list[dict[str, Any]] = []
+                for m in re.finditer(
+                    r'<h3[^>]*class="res-title"[^>]*>(.*?)</h3>',
+                    html,
+                    re.DOTALL,
+                ):
+                    if len(results) >= max_results:
+                        break
+                    raw_title = m.group(1)
+                    title = re.sub(r"<[^>]+>", "", raw_title).strip()
+                    title = re.sub(r"\s+", " ", title)
+                    if not title:
+                        continue
+
+                    tail = html[m.end(): m.end() + 1000]
+                    desc_m = re.search(
+                        r'class="res-list-summary"[^>]*>(.*?)</[^>]+>',
+                        tail,
+                        re.DOTALL,
+                    )
+                    snippet = ""
+                    if desc_m:
+                        snippet = re.sub(r"<[^>]+>", "", desc_m.group(1)).strip()
+                        snippet = re.sub(r"\s+", " ", snippet)[:240]
+
+                    results.append({
+                        "rank": len(results) + 1,
+                        "title": title[:150],
+                        "snippet": snippet,
+                    })
+
+                if results:
+                    payload = {
+                        "status": "ok",
+                        "backend": "live",
+                        "query": query,
+                        "trace_id": trace_id,
+                        "cached": False,
+                        "results": results,
+                        "data_quality": "live_search_verified",
+                        "instruction": (
+                            "Use only these returned titles/snippets as external-search evidence. "
+                            "Do not invent additional facts, dates, sources, or numeric values."
+                        ),
+                    }
+                    with _SEARCH_CACHE_LOCK:
+                        _SEARCH_CACHE[cache_key] = payload
+                    return _json_result(payload)
+
+                last_error = "empty_or_parse_failed"
+
+            except Exception as e:
+                last_error = f"{type(e).__name__}: {str(e)[:120]}"
+
+        return _json_result({
+            "status": "unavailable",
+            "query": query,
+            "trace_id": trace_id,
+            "cached": False,
+            "results": [],
+            "error": last_error,
+            "data_quality": "search_unavailable",
+            "instruction": (
+                "搜索失败，未获得可验证结果。"
+                "请在报告中写明「web_search 对该主题不可用，未获得可验证搜索结果」，不得编造搜索发现。"
+            ),
+        })
+    finally:
+        _SEARCH_SEM.release()
+
+
+def web_search(query: str, max_results: int = 4) -> str:
+    """Search the web. Backend selected via BENCH_SEARCH_BACKEND env var."""
+    def _body():
+        mr = max(1, min(int(max_results), 6))
+        backend = _SEARCH_BACKEND.lower()
+        if backend == "live":
+            return _live_web_search(query, mr)
+        return _fixture_search(query, mr)
+    return _logged_call("web_search", _body, query, max_results)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Tool 3: Statistical summary
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def statistical_summary(values: str) -> dict:
+    """Compute statistical summary of comma-separated numbers. Example: statistical_summary('10, 20, 30, 40, 50')"""
+    def _body():
+        nums = [float(x.strip()) for x in values.split(",") if x.strip()]
+        if not nums:
+            return {"error": "No valid numbers provided", "data_quality": "invalid_input"}
+        n = len(nums)
+        mean = sum(nums) / n
+        sorted_nums = sorted(nums)
+        median = sorted_nums[n // 2] if n % 2 else (sorted_nums[n // 2 - 1] + sorted_nums[n // 2]) / 2
+        variance = sum((x - mean) ** 2 for x in nums) / n
+        return {
+            "count": n, "mean": round(mean, 4), "median": round(median, 4),
+            "std_dev": round(math.sqrt(variance), 4),
+            "min": min(nums), "max": max(nums), "range": max(nums) - min(nums),
+            "input_echo": {"values": values},
+            "formula": "population_std",
+            "data_quality": "tool_calculated",
+        }
+    return _logged_call("statistical_summary", _body, values)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Tool 4: File reader
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def read_file(path: str, max_chars: int = 5000) -> str:
+    """Read content from a file path. Returns first max_chars characters."""
+    try:
+        p = Path(path)
+        if not p.exists():
+            return json.dumps({"error": f"File not found: {path}", "data_quality": "file_not_found"}, ensure_ascii=False)
+        content = p.read_text(encoding="utf-8", errors="replace")
+        if len(content) > max_chars:
+            content = content[:max_chars] + f"\n...[truncated, {len(content)} total chars]"
+        return content
+    except Exception as e:
+        return json.dumps({"error": str(e), "data_quality": "file_read_error"}, ensure_ascii=False)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Tool 5: Currency converter
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def convert_currency(amount: float, from_currency: str, to_currency: str) -> dict:
+    """Convert between currencies using approximate exchange rates. Supported: USD, CNY, EUR, JPY, GBP, KRW, INR"""
+    def _body():
+        rates = {"USD": 1.0, "CNY": 7.25, "EUR": 0.92, "JPY": 156.0, "GBP": 0.79, "KRW": 1360.0, "INR": 83.5}
+        if from_currency not in rates or to_currency not in rates:
+            return {"error": f"Unsupported currency. Supported: {list(rates.keys())}", "data_quality": "invalid_input"}
+        usd = amount / rates[from_currency]
+        result = usd * rates[to_currency]
+        return {
+            "amount": amount, "from": from_currency, "to": to_currency,
+            "result": round(result, 2),
+            "rate": round(rates[to_currency] / rates[from_currency], 4),
+            "input_echo": {"amount": amount, "from_currency": from_currency, "to_currency": to_currency},
+            "formula": "amount / from_rate * to_rate",
+            "data_quality": "tool_calculated",
+        }
+    return _logged_call("convert_currency", _body, amount, from_currency, to_currency)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Tool 6: Text keyword extractor
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def extract_keywords(text: str, top_k: int = 10) -> dict:
+    """Extract key terms and their frequency from text."""
+    def _body():
+        words = re.findall(r'\b[a-zA-Z一-鿿]{2,}\b', text.lower())
+        freq: dict[str, int] = {}
+        for w in words:
+            freq[w] = freq.get(w, 0) + 1
+        sorted_words = sorted(freq.items(), key=lambda x: x[1], reverse=True)
+        return {
+            "total_words": len(words), "unique_words": len(freq),
+            "top_keywords": [{"word": w, "count": c} for w, c in sorted_words[:top_k]],
+            "input_echo": {"text_length": len(text), "top_k": top_k},
+            "data_quality": "tool_calculated",
+        }
+    return _logged_call("extract_keywords", _body, text, top_k)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Tool event instrumentation — cross-process safe via temp file
+# ═══════════════════════════════════════════════════════════════════════════
+
+import atexit
+import tempfile
+
+_EVENTS_DIR = Path(tempfile.gettempdir()) / "seekflow_bench_events"
+_EVENTS_DIR.mkdir(parents=True, exist_ok=True)
+_EVENTS_FILE: Path | None = None
+_EVENTS_LOCK = threading.Lock()
+
+
+def reset_tool_events() -> None:
+    """Start a new tool-event session. Passes path to child processes via env var."""
+    global _EVENTS_FILE
+    with _EVENTS_LOCK:
+        path = _EVENTS_DIR / f"events_{os.getpid()}_{time.time_ns()}.jsonl"
+        _EVENTS_FILE = path
+        os.environ["_SEEKFLOW_BENCH_EVENTS_FILE"] = str(path)
+
+
+def _get_events_path() -> Path | None:
+    """Resolve the events file path — works in parent and child processes."""
+    global _EVENTS_FILE
+    if _EVENTS_FILE is not None:
+        return _EVENTS_FILE
+    env_path = os.environ.get("_SEEKFLOW_BENCH_EVENTS_FILE")
+    if env_path:
+        _EVENTS_FILE = Path(env_path)
+        return _EVENTS_FILE
+    return None
+
+
+def _append_event(ev: dict) -> None:
+    """Append one event line. Safe to call from any process."""
+    target = _get_events_path()
+    if target is None:
+        return
+    try:
+        with open(target, "a", encoding="utf-8") as f:
+            f.write(json.dumps(ev, ensure_ascii=False, default=str) + "\n")
+    except Exception:
+        pass
+
+
+def get_tool_events() -> list[dict[str, Any]]:
+    """Read back all events from the current session file."""
+    target = _get_events_path()
+    if target is None or not target.exists():
+        return []
+    events: list[dict[str, Any]] = []
+    try:
+        with open(target, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    try:
+                        events.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        pass
+    except Exception:
+        pass
+    return events
+
+
+def _safe_preview(obj: Any, max_chars: int = 800) -> str:
+    try:
+        text = json.dumps(obj, ensure_ascii=False, default=str)
+    except Exception:
+        text = str(obj)
+    return text[:max_chars]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SHARED: All tools — each function logs its own calls via _logged_call
+# ═══════════════════════════════════════════════════════════════════════════
+
+SHARED_TOOLS = [
+    calculate_roi,
+    compound_growth,
+    risk_score,
+    supply_risk_score,
+    web_search,
+    statistical_summary,
+    read_file,
+    convert_currency,
+    extract_keywords,
+]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SHARED: System prompts (IDENTICAL for ALL frameworks)
+# ═══════════════════════════════════════════════════════════════════════════
+
+SYSTEM_PROMPTS = {
+    "financial_analyst": (
+        "你是一名资深金融分析师，拥有15年华尔街经验。\n"
+        "完成投资分析任务。"
+    ),
+    "supply_chain_analyst": (
+        "你是一名全球供应链风险管理专家，拥有20年制造业咨询经验。\n"
+        "完成供应链风险评估任务。"
+    ),
+    "portfolio_rebalance": (
+        "你是一名量化投资组合经理，专精多币种资产配置。\n"
+        "完成投资组合再平衡分析任务。"
+    ),
+    "strategic_conflict": (
+        "你是一名并购顾问和投资委员会独立董事，擅长在矛盾信息中做出判断。\n"
+        "完成战略收购冲突调解任务。"
+    ),
+    "intelligence_synthesis": (
+        "你是一名战略情报分析师，擅长从多源矛盾信息中提取可信结论。\n"
+        "完成多源情报综合分析任务。"
+    ),
+    "compliance_gray_zone": (
+        "你是一名跨国企业合规顾问，专精国际贸易法和反规避调查。\n"
+        "完成合规灰色地带判断任务。"
+    ),
+    "impossible_trilemma": (
+        "你是一名企业战略顾问，擅长在多重约束冲突中找到创造性解决方案。\n"
+        "完成三难困境分析与决策任务。"
+    ),
+    "causal_forensics": (
+        "你是一名产品安全调查员，专精多源信息关联与根因分析。\n"
+        "完成因果链追踪与责任归属任务。"
+    ),
+    "negotiation_deadlock": (
+        "你是一名首席财务官，擅长在预算冲突中设计多方可接受的财务方案。\n"
+        "完成预算谈判僵局调解任务。"
+    ),
+}
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SHARED: Common task rules — prepended to every task
+# ═══════════════════════════════════════════════════════════════════════════
+
+_COMMON_TASK_RULES = """## 执行规则
+
+1. 数值计算必须调用工具。工具成功返回后，报告必须引用工具返回值，并标注「工具：tool_name」。
+2. 搜索类工具若返回 status=ok，只能使用返回的 title/snippet 作为外部证据。
+3. 搜索类工具若返回 status=unavailable 或 results=[]，必须写明「未获得可验证搜索结果」，不得编造搜索结论、来源、日期或数字。
+4. 报告必须包含一个「工具调用摘要」小节，列出工具名、关键输入、关键返回值。
+5. 不强制并行调用；可以并行，但不得超过工具限流。所有必需工具完成或明确失败后，再写最终报告。
+6. 最终报告控制在 4500 中文字符以内，优先保留结论、关键数值、工具来源和建议。
+"""
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SHARED: Task descriptions (IDENTICAL for ALL frameworks)
+# ═══════════════════════════════════════════════════════════════════════════
+
+_FINANCIAL_TASK = """请分析以下三家公司的投资价值，生成中文投资备忘录。
+
+**公司数据（所有参数必须严格使用，不得自行修改）：**
+
+| 参数 | 科技A | 消费品B | 新能源C |
+|------|:-----:|:------:|:------:|
+| volatility_percent | 32 | 18 | 45 |
+| debt_ratio | 0.15 | 0.42 | 0.28 |
+| market_cap_billions | **85.0** | **12.0** | **3.5** |
+| investment (万美元) | 500 | 300 | 800 |
+| revenue (万美元) | 870 | 410 | 1250 |
+| growth_rate_percent | 15 | 8 | 25 |
+
+> 单位注意：market_cap_billions 单位是十亿美元。850亿美元 = 85.0 billion USD，不是 850 或 8.5。
+
+**必须执行的工具调用清单：**
+- web_search：「科技行业趋势」「消费品行业趋势」「新能源行业趋势」
+- calculate_roi：A/B/C 各一次
+- compound_growth：A/B/C 各一次，principal=revenue, rate_percent=growth_rate_percent, years=5
+- risk_score：A/B/C 各一次，严格使用上表 volatility/debt_ratio/market_cap_billions 参数
+- statistical_summary：输入 "85.0,12.0,3.5"
+- convert_currency：将 A/B/C 的 investment 从 USD 分别转 CNY、EUR（共6次）
+
+**输出结构：**
+1. 执行摘要
+2. 工具调用摘要
+3. 三家公司关键指标对比
+4. 风险与增长分析
+5. 投资建议"""
+
+_SUPPLY_TASK = """请分析中国电动汽车制造商供应链风险，生成中文风险评估报告。
+
+**场景数据：**
+- 年产量：50万辆
+- 电池原材料60%来自南美和非洲
+- 芯片供应45%依赖台湾和韩国
+- 欧洲市场需求增长35%，面临碳关税
+- 海运成本12个月数据（美元/40尺柜）：3200,3400,3800,4100,3900,3600,3400,3100,3300,3600,4200,4500
+- 欧洲建厂投资：2亿欧元；年运营成本：3500万欧元
+
+**必须执行的工具调用清单：**
+- web_search：「台海芯片供应风险」「南美锂矿供应风险」「欧洲碳关税政策」
+- statistical_summary：分析海运成本数据（输入上列12个数值，逗号分隔）
+- compound_growth：principal=500000, rate_percent=18, years=3（估算产量/需求增长）
+- convert_currency：amount=200000000, from_currency=EUR, to_currency=CNY
+- extract_keywords：输入三个 web_search 返回的 snippet 拼接文本；若搜索失败则输入失败声明文本
+- supply_risk_score：按以下固定参数调用，不得自行修改参数：
+  1. 台海芯片 risk：probability_percent=35, impact_score=9, exposure_percent=45
+  2. 南美/非洲电池原材料 risk：probability_percent=30, impact_score=8, exposure_percent=60
+  3. 欧洲碳关税 risk：probability_percent=70, impact_score=6, exposure_percent=35
+
+**输出结构：**
+1. 执行摘要
+2. 工具调用摘要
+3. 风险矩阵
+4. 海运成本趋势
+5. 原材料/产量需求增长
+6. 欧洲建厂成本影响
+7. 缓解策略
+8. 总结建议"""
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Reasoning-focused task rules (for scenarios C/D/F)
+# ═══════════════════════════════════════════════════════════════════════════
+
+_REASONING_RULES = """## 执行规则
+
+1. 可用工具验证关键数据，但核心任务是推理而非计算。工具返回数据必须引用，标注「工具：tool_name」。
+2. 搜索类工具若返回 status=unavailable，写明「未获得可验证搜索结果」，不得编造。
+3. 报告核心是展示推理过程：你如何识别矛盾、评估证据、做出判断。
+4. 最终报告控制在 3500 中文字符以内，优先保留推理链和关键判断依据。
+"""
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Scenario E: Multi-currency Portfolio Rebalancing (mechanical — Fast主场)
+# ═══════════════════════════════════════════════════════════════════════════
+
+_PORTFOLIO_TASK = """请对以下多币种投资组合进行全面分析，生成中文资产再平衡报告。
+
+**组合资产（4种资产 × 6种货币）：**
+
+| 资产 | 金额 | 原币种 | 年化波动率 | 负债率 | 市值(十亿USD) | 年增长率 |
+|------|------|--------|:--:|:--:|:--:|:--:|
+| US大盘股ETF | 500,000 | USD | 18 | 0.05 | 120.0 | 10 |
+| 日本国债 | 80,000,000 | JPY | 8 | 0.85 | 45.0 | 2 |
+| 欧洲房地产 | 350,000 | EUR | 22 | 0.45 | 35.0 | 5 |
+| 新兴市场基金 | 45,000,000 | INR | 28 | 0.30 | 15.0 | 12 |
+
+**必须执行的工具调用清单：**
+- convert_currency：将四种资产分别转换为 USD、CNY、EUR、JPY、GBP、KRW（共24次）
+- compound_growth：四种资产各一次，principal=金额(USD), rate_percent=年增长率, years=5
+- risk_score：四种资产各一次，使用上表 volatility/debt_ratio/market_cap 参数
+- statistical_summary：输入四种资产的 risk_score 结果（逗号分隔）
+
+> 注意：market_cap_billions 单位是十亿美元。120.0 = 1200亿美元。
+
+**输出结构：**
+1. 执行摘要
+2. 工具调用摘要
+3. 各资产等值美元对比表
+4. 风险调整后收益分析
+5. 货币敞口分析
+6. 再平衡建议（具体权重和金额）"""
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Scenario C: Strategic Acquisition Conflict Resolution (reasoning — Stable主场)
+# ═══════════════════════════════════════════════════════════════════════════
+
+_CONFLICT_TASK = """你是一家投资委员会的独立顾问。委员会收到了两份关于收购「Alpha Robotics」公司的分析报告，结论完全相反。请分析矛盾并给出最终建议。
+
+**被收购标的**：Alpha Robotics，工业机器人制造商，年收入 1.2 亿美元。
+
+**报告A（建议收购）核心论点：**
+- 工业机器人市场年增长 25%，Alpha 市占率稳定在 8%
+- 收购价 8 亿美元，Alpha 年利润 1500 万美元 → ROI 计算后合理
+- Alpha 所在行业趋势向上，替代人工的长期逻辑成立
+- 波动率 35%，负债率 0.20，市值 8.0 billion → 风险可控
+
+**报告B（反对收购）核心论点：**
+- Alpha 的 25% 增长率不可持续，行业竞争加剧，后年起将降至 12%
+- 收购价 8 亿美元虚高，合理估值应在 5-6 亿美元
+- 关键客户集中度过高（前3客户占收入 65%），隐含风险被低估
+- 波动率应视为 55%（考虑客户集中风险），负债率应调整为 0.55（含表外负债）
+
+**必须执行的工具调用（用于验证双方数据）：**
+- web_search：「工业机器人 行业趋势 2025」「工业机器人 竞争格局 市场集中度」
+- calculate_roi：用报告A的参数验证（investment=800, revenue=15）；用报告B的隐含参数（合理估值600对应的ROI）
+- risk_score：用报告A的参数(35, 0.20, 8.0)；用报告B的参数(55, 0.55, 8.0)
+- compound_growth：principal=120, rate_percent=25(A情景)/12(B情景), years=5
+
+**核心问题（这部分必须在报告中体现推理过程）：**
+1. 两份报告的分歧根源是什么？是事实分歧还是判断分歧？
+2. 哪一方的风险调整更合理？为什么？
+3. 是否存在双方都没提到的隐含风险？
+4. 你的最终建议是收购、放弃、还是有条件收购？条件是什么？
+
+**输出结构：**
+1. 矛盾分析摘要
+2. 双方论据验证（工具结果）
+3. 关键分歧点逐项分析（这是核心，需展示推理链条）
+4. 隐含风险识别
+5. 最终建议及附加条件"""
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Scenario D: Multi-source Intelligence Synthesis (reasoning — Stable主场)
+# ═══════════════════════════════════════════════════════════════════════════
+
+_INTELLIGENCE_TASK = """你是一名战略情报分析师。关于「大洋洲稀土供应链的稳定性」，你收到了三个来源的信息，它们部分一致、部分矛盾。请综合分析并给出一致性判断。
+
+**来源1（行业报告摘要）**：
+大洋洲稀土储量占全球 15%，主要矿区在澳大利亚西部。2024年出口量同比增长 12%，主要买家为中国和日本加工企业。新矿山开发周期 5-7 年，环保审批趋严。
+
+**来源2（智库政策分析摘要）**：
+澳大利亚政府 2025 年将稀土列为"关键矿产"，收紧外资收购审查。日本和韩国通过政府间协议获得优先采购权。中国企业在澳稀土项目的股权面临强制减持风险。
+
+**来源3（媒体报道摘要）**：
+西澳某大型稀土矿因环保抗议停产两个月。国际稀土价格 2025 年 Q1 环比上涨 22%。业内人士称"供应紧张至少持续到 2027 年"。但也有分析师认为非洲新矿将在 2026 年投产，届时价格回落。
+
+**必须执行的工具调用：**
+- web_search：「澳大利亚 稀土 关键矿产 政策 2025」「稀土 价格 供应链 2025」「非洲 稀土 新矿 开发」
+- extract_keywords：输入三个来源文本的拼接，提取关键主题
+
+**核心分析任务（在报告中展示推理链条）：**
+1. 三个来源在哪些事实上一致？哪些存在矛盾？
+2. 对矛盾信息进行可信度排序：哪个来源最可靠？为什么？
+3. 综合判断：大洋洲稀土供应链未来 2-3 年的稳定性如何？
+4. 如果需要做决策，你会建议采取什么行动？
+
+**输出结构：**
+1. 情报一致性概览
+2. 来源可信度评估
+3. 矛盾点逐项分析（包含你的推理过程）
+4. 综合判断（附确定性评级：高/中/低）
+5. 行动建议"""
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Scenario F: Regulatory Compliance Gray Zone (reasoning — Stable主场)
+# ═══════════════════════════════════════════════════════════════════════════
+
+_COMPLIANCE_TASK = """你是一家跨国企业的合规顾问。公司面临以下边际案例，请判断是否合规并给出法律依据。
+
+**案例背景**：
+你的公司（中国电动汽车制造商）计划通过越南子公司向欧洲出口零部件。具体做法是：
+1. 在中国生产电池模组（占整车价值 55%）
+2. 运往越南进行"最终组装"（占整车价值 15%）
+3. 从越南以"越南制造"原产地标识出口欧洲
+4. 越南工厂雇佣当地工人，由中国总部提供技术指导
+
+**相关法规（搜索验证）**：
+- 欧盟 CBAM 碳边境调节机制对原产地认定的规则
+- 欧盟反规避调查的触发条件和历史案例
+- 越南-欧盟自由贸易协定（EVFTA）中的原产地规则
+
+**必须执行的工具调用：**
+- web_search：「欧盟 CBAM 原产地 认定 规则」「欧盟 反规避 调查 案例 汽车」「EVFTA 原产地 规则 越南」
+- read_file：不需要（当前无合规文件可供读取，以搜索为准）
+
+**核心分析任务（在报告中展示推理）：**
+1. 这种做法是否构成"规避"？关键判断标准是什么？
+2. 类比：历史上是否有类似案例？结果如何？
+3. 如果被认定为规避，最严重的后果是什么？
+4. 你的合规建议：可以做、需要有条件地做、还是绝对不要做？
+5. 如果"有条件地做"，需要满足哪些条件才能将风险降至可接受水平？
+
+**输出结构：**
+1. 案例定性摘要
+2. 适用的法规框架（引用搜索证据）
+3. 类比案例分析
+4. 风险逐项评估（法律风险/财务风险/声誉风险）
+5. 最终合规建议及附加条件"""
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SHARED: Task descriptions (IDENTICAL for ALL frameworks)
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Extreme reasoning scenarios (Stable主场 — 需要thinking才能正确处理)
+# ═══════════════════════════════════════════════════════════════════════════
+
+_EXTREME_REASONING_RULES = """## 执行规则
+
+1. 可调用工具获取数据，但核心任务是深度推理。工具数据只是推理的输入，不是答案本身。
+2. 必须在报告中展示完整的推理链条：前提 → 分析 → 中间结论 → 最终判断。每一步的逻辑必须显式写出来。
+3. 如果发现约束之间存在矛盾，必须明确指出矛盾的本质并给出解决逻辑。
+4. 最终报告控制在 4000 中文字符以内，优先保留推理链、关键洞察和最终判断。
+"""
+
+# ── R1: Impossible Trilemma ──
+
+_TRILEMMA_TASK = """你是一家制造企业「Precision Motors」的 CEO 顾问。公司面临三个来自不同利益方的强制性要求，但它们不可能同时实现。请分析矛盾并提出解决方案。
+
+**三个强制要求：**
+
+1. **董事会要求**：12 个月内将运营成本降低 30%。当前年运营成本 1.2 亿美元。不达标 → CEO 下课。
+2. **最大客户要求**：必须维持 ISO 9001 质量认证和零缺陷交付率（当前 99.7%）。任何质量下降 → 客户将转向竞争对手，损失 40% 收入。维持质量标准的最低年度支出为 9500 万美元（含质检人力/设备/供应商审核）。
+3. **战略增长要求**：必须在 18 个月内进入欧洲市场，需要 5000 万欧元的前期投资（建厂/认证/渠道）。不进入 → 国内市场饱和将在 3 年内导致公司衰退。
+
+**财务数据（可以用工具验证）：**
+- 当前年收入：2.2 亿美元，年运营成本：1.2 亿美元，年利润：3500 万美元
+- 欧洲市场预期年收入（第2年起）：8000 万欧元，预期利润率 18%
+- 行业搜索关键词：「制造业 成本削减 质量 平衡」「欧洲 制造业 市场准入 成本」
+
+**关键约束条件（必须用工具计算验证）：**
+- 成本削减 30% 目标：12000万 × 0.7 = 8400万。但维持质量的最低支出是 9500万 → **直接矛盾**
+- 欧洲投资 5000万欧元 → 折算美元（用 convert_currency）
+- 如果失去 40% 收入 → 年收入降至 1.32 亿美元 → 计算新利润（用 calculate_roi）
+
+**必须执行的工具调用：**
+- convert_currency：5000万 EUR → USD
+- calculate_roi：分别计算三种情景下的 ROI（维持现状/削减成本/投资欧洲）
+- web_search：搜索相关行业背景（至少2次）
+
+**核心推理任务（报告中必须逐条展示推理过程）：**
+1. 三个要求为什么不可能同时满足？（给出数学证明）
+2. 如果必须排序，正确的优先级是什么？为什么？
+3. 是否可以通过**分阶段执行**来间接满足三方？设计一个两阶段计划
+4. 这个计划的风险是什么？如果某个假设落空，Plan B 是什么？
+
+**输出结构：**
+1. 三难困境的数学证明
+2. 约束优先级推理
+3. 两阶段解决方案（含时间线和关键指标）
+4. 风险评估与 Plan B"""
+
+# ── R2: Causal Chain Forensics ──
+
+_CAUSAL_TASK = """你是一名产品安全调查员。「NovaTech」公司的家用储能电池在过去 3 个月收到了 47 起膨胀投诉，其中 3 起发生了火灾。你需要找出根本原因。
+
+**你收到的五份独立报告：**
+
+**报告1 — 客户投诉汇总**：
+投诉集中在 2024 年 11 月-2025 年 1 月出货的批次。膨胀发生在安装后 4-7 个月。所有投诉来自美国南部（德克萨斯、佛罗里达、亚利桑那）。
+
+**报告2 — 制造质检记录**：
+所有受影响批次的电芯在出厂时全部通过 QC 检测。内阻、容量、外观均合格。生产环境温度控制在 22±2°C，湿度 45±5%。
+
+**报告3 — 供应商电芯规格**：
+电芯工作温度范围 -20°C ~ 60°C。但规格书附注："持续暴露在 45°C 以上环境超过 72 小时，电解液稳定性将不可逆下降，2-6 个月后可能出现膨胀。"
+
+**报告4 — 第三方物流温度记录**：
+2024 年 7-8 月，三批海运货物（集装箱号 CNT-7821/7822/7990）在巴拿马运河延误 11 天，集装箱内部温度记录峰值 51°C。这三批货物对应了 89% 的投诉批次。
+
+**报告5 — 法律与财务评估**：
+- 如果根因是制造缺陷：公司责任，预计召回成本 3200 万美元 + 品牌损失
+- 如果根因是物流温控失效：物流商的保险公司应承担 70% 召回成本
+- 受影响批次的总货值：1200 万美元
+
+**必须执行的工具调用：**
+- web_search：「锂电池 高温 储存 延迟 膨胀 失效」「锂电储能 产品召回 责任 归属 案例」
+- statistical_summary：输入数据 "51,51,51,38,35,42,40,39,37,41,43,36"（对应批次集装箱温度峰值）
+- calculate_roi：计算三种召回情景的净成本（investment=召回成本，revenue=可追回成本）
+
+**核心推理任务：**
+1. 这五个报告之间的因果关系链是什么？画出从根因到症状的完整链条
+2. 为什么投诉集中在 4-7 个月后而不是立即出现？（需要关联电芯规格书中的"2-6个月延迟"）
+3. 为什么只有美国南部客户投诉？（关联高温环境 + 已受损电芯的叠加效应）
+4. 责任归属：是制造问题还是物流问题？给出法律和财务推理
+
+**输出结构：**
+1. 因果链总览
+2. 时间线重建
+3. 地理分布解释
+4. 责任归属分析
+5. 建议行动"""
+
+# ── R3: Negotiation Deadlock ──
+
+_NEGOTIATION_TASK = """你是一家科技公司「QuantumSoft」的 CFO。公司年度预算 2500 万美元，三个部门提出了总额 3300 万美元的预算需求，且都声称自己的需求是"不可妥协的"。请设计一个三方都能接受的方案。
+
+**三个部门的诉求：**
+
+**研发部（CTO 领衔）**：
+- 要求：1500 万美元用于「QuantumAI」项目
+- 理由：这是公司未来 5 年最核心的技术平台。如果不做，竞争对手将在 18 个月内超越我们
+- 隐含威胁：CTO 和核心 AI 团队（12 人）已收到竞品 offer，项目不批可能集体离职
+- 可验证数据：项目预期 ROI 为 85%（通过工具验证），技术成功率 65%
+
+**销售部（CRO 领衔）**：
+- 要求：1000 万美元用于亚太市场扩张
+- 理由：亚太区去年贡献了 30% 收入，增长率 45%。现在需要本地化团队和渠道建设
+- 隐含威胁：头号销售 VP 已明确表示"预算不够就走人"，他掌握公司前 5 大客户关系
+- 可验证数据：扩张预期第一年增加收入 1800 万美元（通过工具验证），但需要 6-9 个月见效
+
+**运营部（COO 领衔）**：
+- 要求：800 万美元用于安全合规升级
+- 理由：新通过的《数据安全法》要求 12 个月内完成合规改造，否则面临罚款（年收入 5%）和吊销执照风险
+- 隐含威胁：这是法律义务，不是可选项
+- 可验证数据：不合规的最高罚款 = 公司年收入的 5%（通过工具计算）
+
+**公司关键数据：**
+- 年收入：4.5 亿美元，年利润：6200 万美元，现金储备：3800 万美元
+- 如果 CTO 团队离职：预计新产品延迟 12 个月，收入损失约 6000 万美元
+- 如果销售 VP 离职：预计前 2 大客户流失风险 40%，对应收入损失约 3600 万美元
+- 如果合规不达标：罚款 2250 万美元 + 可能的执照吊销
+
+**必须执行的工具调用：**
+- calculate_roi：分别计算三个部门的投资回报
+- compound_growth：计算亚太市场未来 3 年增长（principal=45000000*0.3, rate=45, years=3）
+- convert_currency：如果需要对比跨国成本（USD/CNY/EUR）
+- web_search：「科技公司 预算分配 研发 销售 合规 平衡」「数据安全法 合规 期限 罚款」
+
+**核心推理任务：**
+1. 三个部门诉求的**真实约束力**分别是什么？（区分法律强制/商业必要/战略选择）
+2. 计算每个部门诉求被拒绝的**真实代价**（不仅仅是他们要的钱，而是拒绝后公司损失多少）
+3. 是否存在非金钱的补偿方式？（如股权激励替代现金、分阶段拨款、共享资源池）
+4. 设计一个包含时间维度的方案：不一定每人拿够，但每人都有"可接受的路径"
+
+**输出结构：**
+1. 三方诉求的真实约束力评估
+2. 拒绝各方的真实代价计算
+3. 非金钱补偿选项分析
+4. 分阶段预算方案（附时间线）
+5. 风险缓解措施"""
+
+TASKS = {
+    "financial_analyst": _COMMON_TASK_RULES + "\n\n" + _FINANCIAL_TASK,
+    "supply_chain_analyst": _COMMON_TASK_RULES + "\n\n" + _SUPPLY_TASK,
+    "portfolio_rebalance": _COMMON_TASK_RULES + "\n\n" + _PORTFOLIO_TASK,
+    "impossible_trilemma": _EXTREME_REASONING_RULES + "\n\n" + _TRILEMMA_TASK,
+    "causal_forensics": _EXTREME_REASONING_RULES + "\n\n" + _CAUSAL_TASK,
+    "negotiation_deadlock": _EXTREME_REASONING_RULES + "\n\n" + _NEGOTIATION_TASK,
+}
+
+# Scenario metadata: type and compliance weight
+SCENARIO_META = {
+    "financial_analyst": {"type": "mechanical", "compliance_weight": 0.30},
+    "supply_chain_analyst": {"type": "mechanical", "compliance_weight": 0.30},
+    "portfolio_rebalance": {"type": "mechanical", "compliance_weight": 0.30},
+    "impossible_trilemma": {"type": "extreme_reasoning", "compliance_weight": 0.10},
+    "causal_forensics": {"type": "extreme_reasoning", "compliance_weight": 0.10},
+    "negotiation_deadlock": {"type": "extreme_reasoning", "compliance_weight": 0.10},
+}

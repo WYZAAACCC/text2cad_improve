@@ -1,0 +1,66 @@
+__pycache__/
+*.py[cod]
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.env
+.venv
+env/
+venv/
+ENV/
+.eggs/
+*.manifest
+*.spec
+pip-wheel-metadata/
+.coverage
+.tox/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+apikey.txt
+.env
+# Archive of development artifacts (not published)
+_archive/
+# IDE / Editor
+.vscode/
+.idea/
+# Claude config
+.claude/
+.agents/
+skills-lock.json
+# Benchmark outputs
+output/
+# Trace outputs
+trace_output.json
+# Dev scripts
+integration_test.py
+verify_reliability.py
+# Engineering tools
+.conda/
+demo_output/
+*.swp
+*.swb
+*.vbs
+~$*.sldprt
+~$*.prt
+*_test_*.sldprt
+*_test_*.step
+*_test_*.prt
+*.result.json
+.env.seekflow
+seekflow_workspace/
