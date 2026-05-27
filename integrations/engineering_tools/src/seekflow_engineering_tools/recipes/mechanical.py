@@ -105,9 +105,22 @@ MECHANICAL_RECIPES: list[RecipeDefinition] = [
         },
     ),
     RecipeDefinition(
+        name="spur_gear_visual_legacy",
+        category="legacy_visual",
+        description="[DEPRECATED] Star-polygon visual approximation gear. Use involute_spur_gear primitive for engineering-grade gears.",
+        parameters=[
+            RecipeParameter(name="module_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="teeth", type="int", required=True),
+            RecipeParameter(name="face_width_mm", type="float", unit="mm", required=True),
+            RecipeParameter(name="bore_dia_mm", type="float", unit="mm", required=True),
+        ],
+        supported_backends=["solidworks2025", "cadquery"],
+        validation_defaults={"expected_body_count": 1},
+    ),
+    RecipeDefinition(
         name="spur_gear",
-        category="mechanical",
-        description="Spur gear — star-polygon body with centre bore.",
+        category="deprecated_alias",
+        description="[DEPRECATED] Alias for spur_gear_visual_legacy. Engineering-grade gears MUST use primitive involute_spur_gear.",
         parameters=[
             RecipeParameter(name="module_mm", type="float", unit="mm", required=True),
             RecipeParameter(name="teeth", type="int", required=True),

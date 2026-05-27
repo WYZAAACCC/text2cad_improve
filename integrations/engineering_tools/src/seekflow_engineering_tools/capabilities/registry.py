@@ -15,6 +15,12 @@ CAPABILITIES: dict = {
             "flanged_hub",
             "spur_gear",
         ],
+        "stable_primitives": [
+            "involute_spur_gear",
+        ],
+        "primitive_strategy": {
+            "involute_spur_gear": "cadquery_step_import",
+        },
         "experimental_features": [
             "cut_extrude",
             "fillet",
@@ -26,6 +32,7 @@ CAPABILITIES: dict = {
         "caveats": [
             "Complex features must go through strict VBS recipe wrappers.",
             "Do not call FeatureExtrusion2 directly from LLM-generated Python.",
+            "Gear primitives are imported via canonical STEP (cadquery_step_import strategy).",
         ],
     },
     "nx12": {
@@ -39,6 +46,12 @@ CAPABILITIES: dict = {
             "l_bracket",
             "stepped_block",
         ],
+        "stable_primitives": [
+            "involute_spur_gear",
+        ],
+        "primitive_strategy": {
+            "involute_spur_gear": "cadquery_step_import",
+        },
         "exports": [
             "prt",
             "step",
@@ -46,6 +59,7 @@ CAPABILITIES: dict = {
         "caveats": [
             "NXOpen must run inside NX bridge journal.",
             "External Python submits JSON jobs only.",
+            "Gear primitives are imported via canonical STEP (cadquery_step_import strategy).",
         ],
     },
     "ansys181": {
@@ -79,6 +93,12 @@ CAPABILITIES: dict = {
             "shaft_basic",
             "shaft_with_keyway",
         ],
+        "stable_primitives": [
+            "involute_spur_gear",
+        ],
+        "primitive_strategy": {
+            "involute_spur_gear": "native_cadquery_primitive",
+        },
         "exports": [
             "step",
             "stl",
@@ -108,6 +128,21 @@ def backend_supports_recipe(backend: str, recipe: str) -> bool:
     return recipe in cap.get("stable_recipes", [])
 
 
+def backend_supports_feature(backend: str, feature) -> bool:
+    """Check if a backend supports a given feature (recipe or primitive)."""
+    cap = CAPABILITIES.get(backend, {})
+
+    feat_type = getattr(feature, "type", None)
+
+    if feat_type == "recipe":
+        return feature.recipe_name in cap.get("stable_recipes", [])
+    elif feat_type == "primitive":
+        return feature.primitive_name in cap.get("stable_primitives", [])
+
+    # Non-recipe/non-primitive features (extrude, hole, etc.) are cadquery-only
+    return backend == "cadquery"
+
+
 def get_backend_caveats(backend: str) -> list[str]:
     cap = CAPABILITIES.get(backend, {})
     return cap.get("caveats", [])
@@ -118,11 +153,17 @@ def list_backend_recipes(backend: str) -> list[str]:
     return cap.get("stable_recipes", [])
 
 
+def get_primitive_strategy(backend: str, primitive_name: str) -> str | None:
+    cap = CAPABILITIES.get(backend, {})
+    strategies = cap.get("primitive_strategy", {})
+    return strategies.get(primitive_name)
+
+
 def choose_backend(spec: CADPartSpec, preferred: list[str] | None = None) -> BackendChoice:
     """Select best available backend for a CADPartSpec.
 
     Rules:
-    1. If user-specified backend supports all recipes → return it.
+    1. If user-specified backend supports all features → return it.
     2. If user-specified backend doesn't support → fallback to cadquery with warning.
     3. If no preference → prefer cadquery, then try SolidWorks/NX.
     4. If no backend supports → return "none" (ok=false upstream).
@@ -135,28 +176,26 @@ def choose_backend(spec: CADPartSpec, preferred: list[str] | None = None) -> Bac
     for backend in candidates:
         all_ok = True
         for feat in spec.features:
-            if feat.type == "recipe":
-                if not backend_supports_recipe(backend, feat.recipe_name):
-                    all_ok = False
-                    break
+            if not backend_supports_feature(backend, feat):
+                all_ok = False
+                break
         if all_ok:
             return BackendChoice(backend=backend, warnings=warnings)
 
-    # Preferred backends don't support all recipes — fall back to cadquery
+    # Preferred backends don't support all features — fall back to cadquery
     if candidates and candidates[0] != "cadquery":
         fallback_from = candidates[0]
         warnings.append(
-            f"Backend '{fallback_from}' does not support all recipes. "
+            f"Backend '{fallback_from}' does not support all features. "
             f"Falling back to cadquery."
         )
 
     # Check if cadquery can handle it
     all_cq_ok = True
     for feat in spec.features:
-        if feat.type == "recipe":
-            if not backend_supports_recipe("cadquery", feat.recipe_name):
-                all_cq_ok = False
-                break
+        if not backend_supports_feature("cadquery", feat):
+            all_cq_ok = False
+            break
     if all_cq_ok:
         return BackendChoice(backend="cadquery", fallback_from=fallback_from, warnings=warnings)
 

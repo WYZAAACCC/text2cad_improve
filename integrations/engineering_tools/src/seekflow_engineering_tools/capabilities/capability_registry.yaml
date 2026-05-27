@@ -7,6 +7,10 @@ solidworks2025:
     - box
     - flanged_hub
     - spur_gear
+  stable_primitives:
+    - involute_spur_gear
+  primitive_strategy:
+    involute_spur_gear: cadquery_step_import
   experimental_features:
     - cut_extrude
     - fillet
@@ -16,6 +20,7 @@ solidworks2025:
   caveats:
     - "Complex features must go through strict VBS recipe wrappers."
     - "Do not call FeatureExtrusion2 directly from LLM-generated Python."
+    - "Gear primitives are imported via canonical STEP (cadquery_step_import strategy)."
 
 nx12:
   software: nx
@@ -27,12 +32,17 @@ nx12:
     - block_with_hole
     - l_bracket
     - stepped_block
+  stable_primitives:
+    - involute_spur_gear
+  primitive_strategy:
+    involute_spur_gear: cadquery_step_import
   exports:
     - prt
     - step
   caveats:
     - "NXOpen must run inside NX bridge journal."
     - "External Python submits JSON jobs only."
+    - "Gear primitives are imported via canonical STEP (cadquery_step_import strategy)."
 
 ansys181:
   software: ansys
@@ -62,6 +72,10 @@ cadquery:
     - spur_gear
     - shaft_basic
     - shaft_with_keyway
+  stable_primitives:
+    - involute_spur_gear
+  primitive_strategy:
+    involute_spur_gear: native_cadquery_primitive
   exports:
     - step
     - stl

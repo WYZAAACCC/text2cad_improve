@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -14,8 +15,7 @@ from seekflow_engineering_tools.config import EngineeringToolsConfig
 from seekflow_engineering_tools.inspection.common import ModelInspection
 from seekflow_engineering_tools.inspection.validation import validate_inspection_against_spec
 from seekflow_engineering_tools.ir.cad import CADPartSpec
-from seekflow_engineering_tools.repair.diagnostics import build_repair_prompt
-from seekflow_engineering_tools.repair.loop import classify_failure, make_repair_diagnostics
+from seekflow_engineering_tools.repair.loop import make_repair_diagnostics
 
 
 def assert_file_created(path: Path, label: str = "output", min_size: int = 1) -> None:
@@ -65,6 +65,35 @@ def _run_inspection(step_path: Path, spec: CADPartSpec) -> dict:
     }
 
 
+def _run_mechanical_validation(spec: CADPartSpec, step_path: Path, inspection: dict) -> dict:
+    """Run mechanical validation for primitive features."""
+    try:
+        from seekflow_engineering_tools.mechanical_validation.common import (
+            validate_mechanical_primitives,
+        )
+        return validate_mechanical_primitives(spec, step_path, inspection)
+    except ImportError:
+        return {"ok": True, "results": []}
+
+
+def _load_and_update_metadata(step_path: Path, validation: dict | None = None) -> dict | None:
+    """Load metadata sidecar and write back validation results."""
+    meta_path = step_path.with_suffix(".metadata.json")
+    if not meta_path.exists():
+        return None
+
+    metadata = json.loads(meta_path.read_text(encoding="utf-8"))
+
+    if validation is not None:
+        metadata["validation"] = validation
+        meta_path.write_text(
+            json.dumps(metadata, indent=2, ensure_ascii=False, default=str),
+            encoding="utf-8",
+        )
+
+    return metadata
+
+
 def build_cadquery_from_cad_ir(
     spec: CADPartSpec,
     config: EngineeringToolsConfig,
@@ -73,6 +102,8 @@ def build_cadquery_from_cad_ir(
     script_out: str | Path | None = None,
 ) -> dict:
     """Execute a full CadQuery build: compile → run → verify → inspect → validate.
+
+    For primitive features: also runs mechanical validation and metadata sidecar.
 
     Returns an EngineeringActionResult dict.
     """
@@ -90,8 +121,17 @@ def build_cadquery_from_cad_ir(
             error=f"Output file {step_path} already exists.",
         ).model_dump()
 
+    # Determine metadata path for primitive features
+    meta_path = step_path.with_suffix(".metadata.json")
+
+    has_primitive = any(f.type == "primitive" for f in spec.features)
+
     # Compile script
-    script = compile_cad_ir_to_cadquery_script(spec, out_step=str(step_path))
+    script = compile_cad_ir_to_cadquery_script(
+        spec,
+        out_step=str(step_path),
+        metadata_path=str(meta_path) if has_primitive else None,
+    )
 
     # Script path — always inside workspace
     if script_out:
@@ -126,6 +166,12 @@ def build_cadquery_from_cad_ir(
     stdout_tail = (result.stdout or "")[-2000:]
     stderr_tail = (result.stderr or "")[-2000:]
 
+    # Collect warnings from stdout
+    build_warnings: list[str] = []
+    for line in (result.stdout or "").split("\n"):
+        if line.startswith("CQ_WARNING:"):
+            build_warnings.append(line[len("CQ_WARNING:"):].strip())
+
     if result.returncode != 0:
         repair = make_repair_diagnostics(
             stage="execute",
@@ -141,6 +187,7 @@ def build_cadquery_from_cad_ir(
             error=f"CadQuery script failed (rc={result.returncode}).",
             stdout_tail=stdout_tail,
             stderr_tail=stderr_tail,
+            warnings=build_warnings,
             metrics={
                 "script_path": str(script_path),
                 "script_length": len(script),
@@ -159,8 +206,15 @@ def build_cadquery_from_cad_ir(
             error=str(exc),
             stdout_tail=stdout_tail,
             stderr_tail=stderr_tail,
+            warnings=build_warnings,
             metrics={"script_path": str(script_path)},
         ).model_dump()
+
+    files_created = [str(step_path), str(script_path)]
+
+    # Load metadata sidecar if it exists
+    if has_primitive and meta_path.exists():
+        files_created.append(str(meta_path))
 
     metrics: dict = {
         "script_path": str(script_path),
@@ -169,7 +223,7 @@ def build_cadquery_from_cad_ir(
         "step_size_bytes": step_path.stat().st_size,
         "feature_count": len(spec.features),
     }
-    warnings: list[str] = []
+    warnings: list[str] = list(build_warnings)
 
     if inspect:
         insp_result = _run_inspection(step_path, spec)
@@ -177,9 +231,44 @@ def build_cadquery_from_cad_ir(
         validation = insp_result["validation"]
         metrics["validation"] = validation
 
+        # Mechanical validation for primitives
+        if has_primitive:
+            mv_result = _run_mechanical_validation(spec, step_path, insp_result["inspection"])
+            metrics["mechanical_validation"] = mv_result
+
+            # Write validation back to metadata
+            metadata = _load_and_update_metadata(step_path, validation={
+                "inspection_validation": validation,
+                "mechanical_validation": mv_result,
+            })
+
+            if metadata:
+                for md_warn in metadata.get("build_warnings", []):
+                    if md_warn not in warnings:
+                        warnings.append(md_warn)
+
+            # Mechanical validation failure → fail the build
+            if not mv_result.get("ok", True):
+                mech_errors = []
+                for r in mv_result.get("results", []):
+                    for issue in r.get("issues", []):
+                        if issue.get("severity") == "error":
+                            mech_errors.append(issue["message"])
+                return EngineeringActionResult(
+                    ok=False,
+                    software="cadquery",
+                    action="build_from_cad_ir",
+                    message="STEP file created but mechanical validation failed.",
+                    files_created=files_created,
+                    stdout_tail=stdout_tail,
+                    stderr_tail=stderr_tail,
+                    metrics=metrics,
+                    warnings=warnings,
+                    error="; ".join(mech_errors) if mech_errors else "Mechanical validation failed.",
+                ).model_dump()
+
         if not validation.get("ok", True):
             errors = [i["message"] for i in validation.get("issues", []) if i.get("severity") == "error"]
-            # Wire repair diagnostics into metrics
             repair = make_repair_diagnostics(
                 stage="validate",
                 error_type="validation_failed",
@@ -194,7 +283,7 @@ def build_cadquery_from_cad_ir(
                 software="cadquery",
                 action="build_from_cad_ir",
                 message="STEP file created but validation failed.",
-                files_created=[str(step_path), str(script_path)],
+                files_created=files_created,
                 stdout_tail=stdout_tail,
                 stderr_tail=stderr_tail,
                 metrics=metrics,
@@ -202,12 +291,27 @@ def build_cadquery_from_cad_ir(
                 error="; ".join(errors),
             ).model_dump()
 
+    # Fallback gear must NOT silently succeed — expose warnings
+    has_fallback = any("visual_fallback" in w.lower() or "not certified" in w.lower() for w in warnings)
+    if has_fallback:
+        return EngineeringActionResult(
+            ok=True,
+            software="cadquery",
+            action="build_from_cad_ir",
+            message=f"STEP file created (with fallback warnings): {step_path}",
+            files_created=files_created,
+            stdout_tail=stdout_tail,
+            stderr_tail=stderr_tail,
+            metrics=metrics,
+            warnings=warnings,
+        ).model_dump()
+
     return EngineeringActionResult(
         ok=True,
         software="cadquery",
         action="build_from_cad_ir",
         message=f"STEP file created and validated: {step_path}",
-        files_created=[str(step_path), str(script_path)],
+        files_created=files_created,
         stdout_tail=stdout_tail,
         stderr_tail=stderr_tail,
         metrics=metrics,

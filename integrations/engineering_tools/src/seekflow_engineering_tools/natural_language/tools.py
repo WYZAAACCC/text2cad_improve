@@ -15,7 +15,10 @@ from seekflow_engineering_tools.common.models import EngineeringActionResult
 from seekflow_engineering_tools.common.paths import ensure_extension, ensure_inside_workspace
 from seekflow_engineering_tools.config import EngineeringToolsConfig
 from seekflow_engineering_tools.ir.cad import CADPartSpec
-from seekflow_engineering_tools.natural_language.normalizer import detect_ambiguities
+from seekflow_engineering_tools.natural_language.normalizer import (
+    detect_ambiguities,
+    rewrite_deprecated_recipes_to_primitives,
+)
 from seekflow_engineering_tools.natural_language.prompts import NL_CAD_SYSTEM_PROMPT
 from seekflow_engineering_tools.recipes.registry import normalize_recipe_parameters
 
@@ -211,8 +214,17 @@ def build_natural_language_tools(config: EngineeringToolsConfig):
     )
     def engineering_validate_cad_ir(spec: dict) -> dict:
         try:
+            # Step 0: Rewrite deprecated recipes to primitives
+            rewrite_warnings: list[str] = []
+            try:
+                spec = rewrite_deprecated_recipes_to_primitives(spec)
+                rewrite_warnings = spec.pop("rewrite_warnings", [])
+            except Exception:
+                pass  # If rewriting fails, continue with original spec
+
             normalized = CADPartSpec.model_validate(spec)
             errors: list[str] = []
+            warnings: list[str] = list(rewrite_warnings)
 
             # Detect ambiguities in user intent
             ambiguities = detect_ambiguities({
@@ -263,7 +275,7 @@ def build_natural_language_tools(config: EngineeringToolsConfig):
                     else f"CAD-IR validation found {len(errors)} issue(s)."
                 ),
                 metrics=metrics,
-                warnings=errors if errors else [],
+                warnings=warnings + errors if errors else warnings,
             ).model_dump()
 
         except Exception as exc:

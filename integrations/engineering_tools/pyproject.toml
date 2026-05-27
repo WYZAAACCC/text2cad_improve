@@ -43,6 +43,18 @@ solidworks = [
 cadquery = [
     "cadquery>=2.5",
 ]
+gears = [
+    "numpy>=1.24",
+    "cq-gears @ git+https://github.com/meadiode/cq_gears.git@main",
+]
+build123d = [
+    "build123d>=0.10",
+]
+industrial = [
+    "cadquery>=2.5",
+    "numpy>=1.24",
+    "cq-gears @ git+https://github.com/meadiode/cq_gears.git@main",
+]
 dev = [
     "pytest>=8.0.0",
 ]
@@ -59,3 +71,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "requires_cq_gears: tests that require cq_gears to be installed",
+    "not_requires_cq_gears: tests that work without cq_gears (fallback)",
+]

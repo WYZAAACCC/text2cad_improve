@@ -168,6 +168,126 @@ def ansys_plastic(out_dir: Path) -> dict:
 
 
 # ═══════════════════════════════════════════════════════════════════════
+# CadQuery tests (no commercial CAD needed)
+# ═══════════════════════════════════════════════════════════════════════
+
+def _cq_config(out_dir: Path):
+    from seekflow_engineering_tools.config import EngineeringToolsConfig
+    return EngineeringToolsConfig(workspace_root=out_dir, allow_overwrite=True)
+
+
+def cq_box(out_dir: Path) -> dict:
+    from seekflow_engineering_tools.cadquery_backend.builder import build_cadquery_from_cad_ir
+    from seekflow_engineering_tools.ir.cad import CADPartSpec
+    out_dir.mkdir(parents=True, exist_ok=True)
+    spec = CADPartSpec.model_validate({
+        "name": "box_100x50x25", "units": "mm",
+        "features": [{"id": "f1", "type": "recipe", "recipe_name": "box",
+            "parameters": {"length_mm": 100, "width_mm": 50, "height_mm": 25}}],
+        "validation": {"expected_bbox_mm": [100, 50, 25], "expected_body_count": 1, "tolerance_mm": 2.0},
+    })
+    step = out_dir / "box_100x50x25.step"
+    result = build_cadquery_from_cad_ir(spec=spec, config=_cq_config(out_dir),
+        out_step=str(step), inspect=True)
+    return {"ok": result["ok"], "files": [str(step)],
+            "step_size_kb": round(step.stat().st_size / 1024, 1) if step.exists() else 0,
+            "metrics": result.get("metrics", {}).get("inspection", {})}
+
+
+def cq_cylinder(out_dir: Path) -> dict:
+    from seekflow_engineering_tools.cadquery_backend.builder import build_cadquery_from_cad_ir
+    from seekflow_engineering_tools.ir.cad import CADPartSpec
+    out_dir.mkdir(parents=True, exist_ok=True)
+    spec = CADPartSpec.model_validate({
+        "name": "cylinder_d20xh50", "units": "mm",
+        "features": [{"id": "f1", "type": "recipe", "recipe_name": "cylinder",
+            "parameters": {"diameter_mm": 20, "height_mm": 50}}],
+        "validation": {"expected_bbox_mm": [20, 20, 50], "expected_body_count": 1, "tolerance_mm": 2.0},
+    })
+    step = out_dir / "cylinder_d20xh50.step"
+    result = build_cadquery_from_cad_ir(spec=spec, config=_cq_config(out_dir),
+        out_step=str(step), inspect=True)
+    return {"ok": result["ok"], "files": [str(step)],
+            "step_size_kb": round(step.stat().st_size / 1024, 1) if step.exists() else 0,
+            "metrics": result.get("metrics", {}).get("inspection", {})}
+
+
+def cq_block_with_hole(out_dir: Path) -> dict:
+    from seekflow_engineering_tools.cadquery_backend.builder import build_cadquery_from_cad_ir
+    from seekflow_engineering_tools.ir.cad import CADPartSpec
+    out_dir.mkdir(parents=True, exist_ok=True)
+    spec = CADPartSpec.model_validate({
+        "name": "block_hole", "units": "mm",
+        "features": [{"id": "f1", "type": "recipe", "recipe_name": "block_with_hole",
+            "parameters": {"length_mm": 100, "width_mm": 50, "height_mm": 25, "hole_dia_mm": 16}}],
+        "validation": {"expected_body_count": 1},
+    })
+    step = out_dir / "block_with_hole_d16.step"
+    result = build_cadquery_from_cad_ir(spec=spec, config=_cq_config(out_dir),
+        out_step=str(step), inspect=True)
+    return {"ok": result["ok"], "files": [str(step)],
+            "step_size_kb": round(step.stat().st_size / 1024, 1) if step.exists() else 0,
+            "metrics": result.get("metrics", {}).get("inspection", {})}
+
+
+def cq_l_bracket(out_dir: Path) -> dict:
+    from seekflow_engineering_tools.cadquery_backend.builder import build_cadquery_from_cad_ir
+    from seekflow_engineering_tools.ir.cad import CADPartSpec
+    out_dir.mkdir(parents=True, exist_ok=True)
+    spec = CADPartSpec.model_validate({
+        "name": "l_bracket", "units": "mm",
+        "features": [{"id": "f1", "type": "recipe", "recipe_name": "l_bracket",
+            "parameters": {"base_length_mm": 100, "base_width_mm": 60,
+                "thickness_mm": 15, "leg_height_mm": 60}}],
+        "validation": {"expected_body_count": 1},
+    })
+    step = out_dir / "l_bracket_100x60.step"
+    result = build_cadquery_from_cad_ir(spec=spec, config=_cq_config(out_dir),
+        out_step=str(step), inspect=True)
+    return {"ok": result["ok"], "files": [str(step)],
+            "step_size_kb": round(step.stat().st_size / 1024, 1) if step.exists() else 0,
+            "metrics": result.get("metrics", {}).get("inspection", {})}
+
+
+def cq_flanged_hub(out_dir: Path) -> dict:
+    from seekflow_engineering_tools.cadquery_backend.builder import build_cadquery_from_cad_ir
+    from seekflow_engineering_tools.ir.cad import CADPartSpec
+    out_dir.mkdir(parents=True, exist_ok=True)
+    spec = CADPartSpec.model_validate({
+        "name": "flanged_hub", "units": "mm",
+        "features": [{"id": "f1", "type": "recipe", "recipe_name": "flanged_hub",
+            "parameters": {"flange_dia_mm": 80, "flange_thickness_mm": 10,
+                "hub_dia_mm": 40, "hub_height_mm": 30, "bore_dia_mm": 20,
+                "bolt_pcd_mm": 60, "bolt_dia_mm": 8, "bolt_count": 4}}],
+        "validation": {"expected_body_count": 1},
+    })
+    step = out_dir / "flanged_hub_d80.step"
+    result = build_cadquery_from_cad_ir(spec=spec, config=_cq_config(out_dir),
+        out_step=str(step), inspect=True)
+    return {"ok": result["ok"], "files": [str(step)],
+            "step_size_kb": round(step.stat().st_size / 1024, 1) if step.exists() else 0,
+            "metrics": result.get("metrics", {}).get("inspection", {})}
+
+
+def cq_spur_gear(out_dir: Path) -> dict:
+    from seekflow_engineering_tools.cadquery_backend.builder import build_cadquery_from_cad_ir
+    from seekflow_engineering_tools.ir.cad import CADPartSpec
+    out_dir.mkdir(parents=True, exist_ok=True)
+    spec = CADPartSpec.model_validate({
+        "name": "spur_gear_m3z20", "units": "mm",
+        "features": [{"id": "f1", "type": "recipe", "recipe_name": "spur_gear",
+            "parameters": {"module_mm": 3, "teeth": 20, "face_width_mm": 20, "bore_dia_mm": 15}}],
+        "validation": {"expected_body_count": 1},
+    })
+    step = out_dir / "spur_gear_m3z20.step"
+    result = build_cadquery_from_cad_ir(spec=spec, config=_cq_config(out_dir),
+        out_step=str(step), inspect=True)
+    return {"ok": result["ok"], "files": [str(step)],
+            "step_size_kb": round(step.stat().st_size / 1024, 1) if step.exists() else 0,
+            "metrics": result.get("metrics", {}).get("inspection", {})}
+
+
+# ═══════════════════════════════════════════════════════════════════════
 # SolidWorks tests
 # ═══════════════════════════════════════════════════════════════════════
 
@@ -324,12 +444,13 @@ def main():
                         help="Output directory (default: WORKSPACE/demo_YYYYMMDD_HHMMSS)")
     parser.add_argument("--ansys-only", action="store_true")
     parser.add_argument("--cad-only", action="store_true")
+    parser.add_argument("--skip-cadquery", action="store_true")
     parser.add_argument("--skip-solidworks", action="store_true")
     parser.add_argument("--skip-nx", action="store_true")
     parser.add_argument("--skip-ansys", action="store_true")
     args = parser.parse_args()
 
-    # Resolve output root — all runs go under demo_output/<timestamp>/
+    # Resolve output root
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     if args.output:
         output_root = Path(args.output) / ts
@@ -339,6 +460,7 @@ def main():
 
     reporter = DemoReporter(output_root)
 
+    run_cq = not args.skip_cadquery and not args.ansys_only
     run_sw = not args.skip_solidworks and not args.ansys_only
     run_nx = not args.skip_nx and not args.ansys_only
     run_ansys = not args.skip_ansys and not args.cad_only
@@ -347,13 +469,13 @@ def main():
     print(f"{BOLD}  SeekFlow Engineering Tools — Capability Demo{RESET}")
     print(f"{'='*60}")
     print(f"  Output:  {output_root}")
-    print(f"  ANSYS:   {'ON' if run_ansys else 'OFF'}")
+    print(f"  CadQuery:{'ON' if run_cq else 'OFF'}")
     print(f"  SW:      {'ON' if run_sw else 'OFF'}")
     print(f"  NX:      {'ON' if run_nx else 'OFF'}")
+    print(f"  ANSYS:   {'ON' if run_ansys else 'OFF'}")
 
     if run_nx:
         import subprocess
-        # Start NX bridge
         print(f"\n{CYAN}--- Starting NX Bridge ---{RESET}")
         try:
             subprocess.Popen(
@@ -363,9 +485,23 @@ def main():
                 env={**os.environ, "NX_JOB_ROOT": str(_nx_job_dir())},
             )
             print("  NX Bridge launched")
-            time.sleep(4)  # Let it start
+            time.sleep(4)
         except Exception as e:
             print(f"  {YELLOW}NX Bridge failed to start: {e}{RESET}")
+
+    # ── CadQuery ─────────────────────────────────────────────────────
+    if run_cq:
+        print(f"\n{CYAN}{'='*60}{RESET}")
+        print(f"{CYAN}  CadQuery — CAD Models (no commercial CAD needed){RESET}")
+        print(f"{CYAN}{'='*60}{RESET}")
+
+        cq_dir = output_root / "cadquery"
+        reporter.run("CadQuery", "Box 100x50x25mm (1 feature)", lambda: cq_box(cq_dir))
+        reporter.run("CadQuery", "Cylinder D20xH50mm (1 feature)", lambda: cq_cylinder(cq_dir))
+        reporter.run("CadQuery", "Block with through-hole D16mm (2 feat)", lambda: cq_block_with_hole(cq_dir))
+        reporter.run("CadQuery", "L-Bracket 100x60mm (boolean unite)", lambda: cq_l_bracket(cq_dir))
+        reporter.run("CadQuery", "Flanged Hub D80mm (flange+boss+bore+4 bolts)", lambda: cq_flanged_hub(cq_dir))
+        reporter.run("CadQuery", "Spur Gear M3 Z20 (star polygon)", lambda: cq_spur_gear(cq_dir))
 
     # ── ANSYS ────────────────────────────────────────────────────────
     if run_ansys:

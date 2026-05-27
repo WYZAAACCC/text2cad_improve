@@ -162,6 +162,7 @@ CADQUERY_RECIPE_GENERATORS = {
     "stepped_block": cadquery_stepped_block,
     "flanged_hub": cadquery_flanged_hub,
     "spur_gear": cadquery_spur_gear,
+    "spur_gear_visual_legacy": cadquery_spur_gear,
     "shaft_basic": cadquery_shaft_basic,
     "shaft_with_keyway": cadquery_shaft_with_keyway,
 }
@@ -197,6 +198,10 @@ GOLDEN_DATA: dict[str, dict] = {
         "expected_through_hole_count": 5,
     },
     "spur_gear": {
+        "defaults": {"module_mm": 3, "teeth": 20, "face_width_mm": 20, "bore_dia_mm": 15},
+        "expected_body_count": 1,
+    },
+    "spur_gear_visual_legacy": {
         "defaults": {"module_mm": 3, "teeth": 20, "face_width_mm": 20, "bore_dia_mm": 15},
         "expected_body_count": 1,
     },

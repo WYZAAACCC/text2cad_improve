@@ -24,6 +24,14 @@ def _compile_recipe(feature) -> list[str]:
     return code.strip().split("\n") if code else []
 
 
+def _compile_primitive(feature) -> list[str]:
+    """Generate CadQuery code for a primitive feature."""
+    from seekflow_engineering_tools.cadquery_backend.primitive_compiler import (
+        compile_primitive_to_cadquery_script,
+    )
+    return compile_primitive_to_cadquery_script(feature)
+
+
 def _compile_extrude(feature) -> list[str]:
     """Generate CadQuery code for an extrude feature.
 
@@ -148,22 +156,32 @@ def _compile_chamfer(feature) -> list[str]:
 
 
 def compile_cad_ir_to_cadquery_script(
-    spec: CADPartSpec, out_step: str | None = None
+    spec: CADPartSpec, out_step: str | None = None, metadata_path: str | None = None
 ) -> str:
     """Translate a validated CADPartSpec into a standalone CadQuery Python script.
 
     Returns the script as a string. The caller can write to a `.py` file and run it.
+
+    If out_step is provided, the script will export the result as a STEP file.
+    If metadata_path is not provided, defaults to <out_step>.metadata.json.
     """
     lines = [
         "import cadquery as cq",
         "from cadquery import exporters",
+        "import json",
         "",
+        "BUILD_WARNINGS = []",
+        "PRIMITIVE_METADATA = {}",
         "result = None",
     ]
+
+    has_primitive = any(f.type == "primitive" for f in spec.features)
 
     for feature in spec.features:
         if feature.type == "recipe":
             lines.extend(_compile_recipe(feature))
+        elif feature.type == "primitive":
+            lines.extend(_compile_primitive(feature))
         elif feature.type == "extrude":
             lines.extend(_compile_extrude(feature))
         elif feature.type == "hole":
@@ -181,5 +199,22 @@ def compile_cad_ir_to_cadquery_script(
 
     if out_step:
         lines.append(f'\ncq.exporters.export(result, r"{out_step}")')
+
+    # Write metadata sidecar if any primitive was used
+    if has_primitive:
+        meta_path = metadata_path or str(out_step).replace(".step", ".metadata.json") if out_step else None
+        if meta_path:
+            lines.append(f'\n# Write primitive metadata sidecar')
+            lines.append('_meta_payload = {')
+            lines.append('    "primitive_metadata": PRIMITIVE_METADATA,')
+            lines.append('    "build_warnings": BUILD_WARNINGS,')
+            lines.append('}')
+            lines.append(f'with open(r"{meta_path}", "w", encoding="utf-8") as _f:')
+            lines.append('    json.dump(_meta_payload, _f, indent=2, ensure_ascii=False, default=str)')
+
+    if lines:
+        lines.append('\nif BUILD_WARNINGS:')
+        lines.append('    for w in BUILD_WARNINGS:')
+        lines.append('        print(f"CQ_WARNING: {w}")')
 
     return "\n".join(lines)

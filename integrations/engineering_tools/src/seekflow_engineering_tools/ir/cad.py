@@ -25,6 +25,15 @@ class ValidationSpec(BaseModel):
     expected_through_hole_count: int | None = None
     expected_feature_count_min: int | None = None
     tolerance_mm: float = Field(default=0.1, gt=0)
+    # Mechanical validation fields (primitive gear validation)
+    expected_tooth_count: int | None = None
+    expected_pitch_diameter_mm: float | None = None
+    expected_outer_diameter_mm: float | None = None
+    expected_root_diameter_mm: float | None = None
+    expected_base_diameter_mm: float | None = None
+    expected_bore_diameter_mm: float | None = None
+    expected_face_width_mm: float | None = None
+    expected_kernel: str | None = None
 
     @model_validator(mode="after")
     def validate_bbox(self):
@@ -140,6 +149,8 @@ class RecipeFeature(BaseModel):
         return self
 
 
+from seekflow_engineering_tools.ir.primitive import PrimitiveFeature  # noqa: E402
+
 CADFeature = (
     ExtrudeFeature
     | HoleFeature
@@ -147,6 +158,7 @@ CADFeature = (
     | FilletFeature
     | ChamferFeature
     | RecipeFeature
+    | PrimitiveFeature
 )
 
 
