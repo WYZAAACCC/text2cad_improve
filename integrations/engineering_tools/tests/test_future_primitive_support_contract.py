@@ -48,7 +48,7 @@ def test_metadata_validator_works_for_any_primitive():
     )
 
     # Test with a hypothetical future primitive name
-    result = validate_primitive_metadata_v1("axisymmetric_turbine_disk", {
+    result = validate_primitive_metadata_v1(primitive_name="axisymmetric_turbine_disk", metadata={
         "kernel": "test",
         "primitive": "axisymmetric_turbine_disk",
         "parameters": {"outer_radius_mm": 100},

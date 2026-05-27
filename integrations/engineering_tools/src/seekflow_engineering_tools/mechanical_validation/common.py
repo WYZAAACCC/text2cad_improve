@@ -58,7 +58,7 @@ def _unwrap_primitive_metadata(raw_metadata: dict | None, primitive_name: str) -
 
 # ── Gear mechanical validator adapter ──
 
-def _gear_mechanical_validator(
+def _validate_involute_spur_gear_feature(
     params: dict,
     inspection: dict,
     metadata: dict | None,
@@ -80,7 +80,42 @@ def _gear_mechanical_validator(
     )
 
 
-register_primitive_mechanical_validator("involute_spur_gear", _gear_mechanical_validator)
+register_primitive_mechanical_validator("involute_spur_gear", _validate_involute_spur_gear_feature)
+
+
+# ── Expected values helper ──
+
+def _expected_for_feature(spec, feature) -> dict[str, Any]:
+    """Build expected dict for a specific feature from spec.validation.
+
+    Merges top-level gear expected_* fields (legacy) with
+    spec.validation.primitive_validation[feature.id] (new generic path).
+    """
+    expected: dict[str, Any] = {}
+    if not hasattr(spec, "validation"):
+        return expected
+
+    v = spec.validation
+    for attr in [
+        "expected_kernel", "expected_tooth_count",
+        "expected_bore_diameter_mm", "expected_face_width_mm",
+        "expected_pitch_diameter_mm", "expected_base_diameter_mm",
+        "expected_outer_diameter_mm", "expected_root_diameter_mm",
+        "expected_body_count",
+    ]:
+        val = getattr(v, attr, None)
+        if val is not None:
+            expected[attr] = val
+
+    # Merge per-feature primitive_validation
+    if hasattr(v, "primitive_validation"):
+        pv = v.primitive_validation
+        if isinstance(pv, dict) and feature.id in pv:
+            feat_expected = pv[feature.id]
+            if isinstance(feat_expected, dict):
+                expected.update(feat_expected)
+
+    return expected
 
 
 # ── Main dispatch ──
@@ -110,6 +145,7 @@ def validate_mechanical_primitives(spec, step_path: Path, inspection: dict) -> d
         if handler is None:
             results.append({
                 "ok": False,
+                "primitive": name,
                 "issues": [{
                     "code": "primitive_mechanical_validator_missing",
                     "message": (
@@ -124,28 +160,8 @@ def validate_mechanical_primitives(spec, step_path: Path, inspection: dict) -> d
             overall_ok = False
             continue
 
-        # Build expected dict from spec.validation (top-level + per-feature)
-        expected: dict[str, Any] = {}
-        if hasattr(spec, "validation"):
-            v = spec.validation
-            for attr in [
-                "expected_kernel", "expected_tooth_count",
-                "expected_bore_diameter_mm", "expected_face_width_mm",
-                "expected_pitch_diameter_mm", "expected_base_diameter_mm",
-                "expected_outer_diameter_mm", "expected_root_diameter_mm",
-                "expected_body_count",
-            ]:
-                val = getattr(v, attr, None)
-                if val is not None:
-                    expected[attr] = val
-
-        # Merge per-feature primitive_validation
-        if hasattr(spec, "validation") and hasattr(spec.validation, "primitive_validation"):
-            pv = spec.validation.primitive_validation
-            if isinstance(pv, dict) and feature.id in pv:
-                feat_expected = pv[feature.id]
-                if isinstance(feat_expected, dict):
-                    expected.update(feat_expected)
+        # Build expected dict
+        expected = _expected_for_feature(spec, feature)
 
         # Call handler
         try:
@@ -161,6 +177,7 @@ def validate_mechanical_primitives(spec, step_path: Path, inspection: dict) -> d
         except Exception as exc:
             result = {
                 "ok": False,
+                "primitive": name,
                 "issues": [{
                     "code": "primitive_mechanical_validator_error",
                     "message": f"Mechanical validator for '{name}' raised: {exc}",
@@ -171,7 +188,7 @@ def validate_mechanical_primitives(spec, step_path: Path, inspection: dict) -> d
             }
 
         results.append(result)
-        if not result.get("ok"):
+        if result.get("ok") is not True:
             overall_ok = False
 
     return {"ok": overall_ok, "results": results}

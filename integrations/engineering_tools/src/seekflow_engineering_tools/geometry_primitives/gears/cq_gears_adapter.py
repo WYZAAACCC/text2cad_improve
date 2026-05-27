@@ -57,11 +57,13 @@ def build_involute_spur_gear_cq_gears(params: dict):
 
     dims = spur_gear_reference_dimensions(params)
     metadata = {
+        "metadata_version": "primitive_metadata_v1",
         "kernel": "cq_gears",
         "is_standard_involute": True,
         "primitive": "involute_spur_gear",
         "parameters": {k: v for k, v in params.items()},
         "reference_dimensions": dims,
+        "warnings": [],
     }
 
     return result, metadata

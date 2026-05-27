@@ -8,18 +8,23 @@ metadata contract that EVERY primitive must meet. Per-primitive validators
 from __future__ import annotations
 
 
-def validate_primitive_metadata_v1(primitive_name: str, metadata: dict | None) -> dict:
+def validate_primitive_metadata_v1(
+    *,
+    primitive_name: str,
+    metadata: dict | None,
+) -> dict:
     """Validate primitive metadata against the v1 schema (generic, all primitives).
+
+    Keyword-only signature per contract.
 
     Checks:
       1. metadata exists and is a dict
       2. metadata["primitive"] == primitive_name
-      3. kernel exists and is a non-empty str
-      4. parameters exists and is a dict
-      5. reference_dimensions exists and is a dict
-      6. build_warnings (at sidecar level) if present must be a list — NOT checked here
-         (caller handles top-level keys)
-      7. metadata_version if present must be "primitive_metadata_v1"
+      3. metadata_version if present must be "primitive_metadata_v1"
+      4. kernel exists and is a non-empty str
+      5. parameters exists and is a dict
+      6. reference_dimensions exists and is a dict
+      7. warnings if present must be list[str]; missing → normalized to []
 
     Returns:
       {"ok": bool, "issues": list[dict], "normalized_metadata": dict | None}
@@ -60,7 +65,18 @@ def validate_primitive_metadata_v1(primitive_name: str, metadata: dict | None) -
             "severity": "error",
         })
 
-    # 3. kernel exists and is non-empty str
+    # 3. metadata_version: if present, must be "primitive_metadata_v1"
+    version = metadata.get("metadata_version")
+    if version is not None and version != "primitive_metadata_v1":
+        issues.append({
+            "code": "primitive_metadata_version_unknown",
+            "message": (
+                f"Metadata version '{version}' is not 'primitive_metadata_v1'."
+            ),
+            "severity": "error",
+        })
+
+    # 4. kernel exists and is non-empty str
     kernel = metadata.get("kernel")
     if kernel is None or not isinstance(kernel, str) or not kernel.strip():
         issues.append({
@@ -72,7 +88,7 @@ def validate_primitive_metadata_v1(primitive_name: str, metadata: dict | None) -
             "severity": "error",
         })
 
-    # 4. parameters exists and is dict
+    # 5. parameters exists and is dict
     params = metadata.get("parameters")
     if params is None or not isinstance(params, dict):
         issues.append({
@@ -83,7 +99,7 @@ def validate_primitive_metadata_v1(primitive_name: str, metadata: dict | None) -
             "severity": "error",
         })
 
-    # 5. reference_dimensions exists and is dict
+    # 6. reference_dimensions exists and is dict
     ref_dims = metadata.get("reference_dimensions")
     if ref_dims is None or not isinstance(ref_dims, dict):
         issues.append({
@@ -95,27 +111,19 @@ def validate_primitive_metadata_v1(primitive_name: str, metadata: dict | None) -
             "severity": "error",
         })
 
-    # 6. metadata_version: if present, must be "primitive_metadata_v1"
-    version = metadata.get("metadata_version")
-    if version is not None and version != "primitive_metadata_v1":
-        issues.append({
-            "code": "primitive_metadata_version_unknown",
-            "message": (
-                f"Metadata version '{version}' is not 'primitive_metadata_v1'."
-            ),
-            "severity": "error",
-        })
-
-    # 7. build_warnings at metadata level: normalize to [] if missing
+    # 7. warnings: if present must be list[str]; missing → normalize to []
     normalized = dict(metadata)
-    bw = normalized.get("build_warnings")
-    if bw is not None and not isinstance(bw, list):
-        issues.append({
-            "code": "primitive_build_warnings_not_list",
-            "message": "Metadata 'build_warnings' must be a list.",
-            "severity": "warning",
-        })
-        normalized["build_warnings"] = []
+    bw = normalized.get("warnings")
+    if bw is not None:
+        if not isinstance(bw, list):
+            issues.append({
+                "code": "primitive_warnings_not_list",
+                "message": "Metadata 'warnings' must be a list.",
+                "severity": "warning",
+            })
+            normalized["warnings"] = []
+    else:
+        normalized["warnings"] = []
 
     ok = not any(i["severity"] == "error" for i in issues)
     return {"ok": ok, "issues": issues, "normalized_metadata": normalized if ok else None}

@@ -83,3 +83,38 @@ def test_registry_not_silently_pass_on_import_error():
     assert "except ImportError:" not in source.replace(" ", ""), (
         "_populate_registry must not silently pass on ImportError"
     )
+
+
+def test_non_list_export_fails(monkeypatch):
+    """If a family module exports a non-list, it must be recorded as error."""
+    from seekflow_engineering_tools.geometry_primitives.registry import (
+        _load_definitions_from_module,
+    )
+    # Create a fake module that exports a string instead of a list
+    import sys, types
+    fake_mod = types.ModuleType("_fake_family_non_list")
+    fake_mod.STUFF = "not_a_list"
+    sys.modules["_fake_family_non_list"] = fake_mod
+    try:
+        import pytest
+        with pytest.raises(TypeError, match="not a list"):
+            _load_definitions_from_module("_fake_family_non_list:STUFF")
+    finally:
+        sys.modules.pop("_fake_family_non_list", None)
+
+
+def test_non_primitive_definition_item_fails(monkeypatch):
+    """If a family list contains a non-PrimitiveDefinition item, it must raise."""
+    from seekflow_engineering_tools.geometry_primitives.registry import (
+        _load_definitions_from_module,
+    )
+    import sys, types
+    fake_mod = types.ModuleType("_fake_family_bad_item")
+    fake_mod.STUFF = [{"not": "a primitive definition"}]
+    sys.modules["_fake_family_bad_item"] = fake_mod
+    try:
+        import pytest
+        with pytest.raises(TypeError, match="not a PrimitiveDefinition"):
+            _load_definitions_from_module("_fake_family_bad_item:STUFF")
+    finally:
+        sys.modules.pop("_fake_family_bad_item", None)

@@ -86,3 +86,16 @@ def test_reserved_names_not_in_stable_primitives():
         assert "parametric_turbine_blade" not in stable, (
             f"parametric_turbine_blade in {backend}.stable_primitives — NOT IMPLEMENTED"
         )
+
+
+def test_skill_mentions_reference_geometry_only():
+    text = SKILL_PATH.read_text(encoding="utf-8")
+    assert "CAD-IR ONLY" in text or "reference geometry" in text.lower()
+
+
+def test_skill_requires_missing_parameter_diagnostic():
+    text = SKILL_PATH.read_text(encoding="utf-8")
+    assert "missing-parameter" in text, (
+        "Skill must require missing-parameter diagnostic when required params are absent"
+    )
+    assert "MUST NOT guess" in text or "not guess" in text.lower()

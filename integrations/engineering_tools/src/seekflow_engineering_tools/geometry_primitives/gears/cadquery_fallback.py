@@ -53,6 +53,7 @@ def build_visual_spur_gear_fallback(params: dict):
     ]
 
     metadata = {
+        "metadata_version": "primitive_metadata_v1",
         "kernel": "cadquery_visual_fallback",
         "is_standard_involute": False,
         "primitive": "involute_spur_gear",

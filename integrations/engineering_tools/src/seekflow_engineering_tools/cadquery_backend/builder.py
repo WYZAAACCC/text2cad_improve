@@ -90,15 +90,27 @@ def _run_mechanical_validation(spec: CADPartSpec, step_path: Path, inspection: d
         }
 
 
+def _assert_primitive_specific_metadata(pname: str, primitive_entry: dict) -> None:
+    """Per-primitive metadata checks beyond generic v1 validation.
+
+    Raises ValueError on failure.
+    """
+    if pname == "involute_spur_gear":
+        if "is_standard_involute" not in primitive_entry:
+            raise ValueError("Gear metadata missing 'is_standard_involute'")
+
+
 def _assert_metadata_sidecar(step_path: Path, spec: CADPartSpec) -> dict:
     """Load and validate the metadata sidecar for a primitive build.
 
     Uses the generic validate_primitive_metadata_v1 for all primitives,
-    then applies per-primitive checks (e.g. is_standard_involute for gears).
+    then applies per-primitive checks via _assert_primitive_specific_metadata.
 
     Raises ValueError or FileNotFoundError if:
     - metadata file is missing or empty
-    - primitive_metadata / build_warnings top-level keys are missing
+    - JSON is invalid
+    - primitive_metadata top-level key missing or not dict
+    - build_warnings top-level key missing or not list
     - any PrimitiveFeature has no entry in primitive_metadata
     - any primitive fails generic metadata validation
     - gear primitive is missing is_standard_involute
@@ -117,10 +129,19 @@ def _assert_metadata_sidecar(step_path: Path, spec: CADPartSpec) -> dict:
 
     if "primitive_metadata" not in metadata:
         raise ValueError("Metadata missing 'primitive_metadata' key")
+    pm = metadata.get("primitive_metadata", {})
+    if not isinstance(pm, dict):
+        raise ValueError(
+            f"Metadata 'primitive_metadata' must be a dict, got {type(pm).__name__}"
+        )
+
     if "build_warnings" not in metadata:
         raise ValueError("Metadata missing 'build_warnings' key")
-
-    pm = metadata.get("primitive_metadata", {})
+    bw = metadata.get("build_warnings")
+    if not isinstance(bw, list):
+        raise ValueError(
+            f"Metadata 'build_warnings' must be a list, got {type(bw).__name__}"
+        )
 
     for feat in spec.features:
         if feat.type != "primitive":
@@ -134,7 +155,9 @@ def _assert_metadata_sidecar(step_path: Path, spec: CADPartSpec) -> dict:
             )
 
         # ── Generic metadata validation (v1) ──
-        v_result = validate_primitive_metadata_v1(pname, primitive_entry)
+        v_result = validate_primitive_metadata_v1(
+            primitive_name=pname, metadata=primitive_entry,
+        )
         if not v_result.get("ok"):
             issue_msgs = [i["message"] for i in v_result.get("issues", [])]
             raise ValueError(
@@ -142,12 +165,8 @@ def _assert_metadata_sidecar(step_path: Path, spec: CADPartSpec) -> dict:
                 + "; ".join(issue_msgs)
             )
 
-        # ── Per-primitive checks ──
-        if pname == "involute_spur_gear":
-            if "is_standard_involute" not in primitive_entry:
-                raise ValueError(
-                    "Gear metadata missing 'is_standard_involute'"
-                )
+        # ── Per-primitive specific checks ──
+        _assert_primitive_specific_metadata(pname, primitive_entry)
 
     return metadata
 

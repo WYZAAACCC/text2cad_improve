@@ -146,3 +146,68 @@ def test_sidecar_fails_on_missing_kernel():
         ])
         with pytest.raises(ValueError, match="kernel"):
             _assert_metadata_sidecar(step, spec)
+
+
+def test_build_warnings_non_list_fails():
+    from seekflow_engineering_tools.cadquery_backend.builder import _assert_metadata_sidecar
+    from seekflow_engineering_tools.ir.cad import CADPartSpec
+
+    with tempfile.TemporaryDirectory() as tmp:
+        step = Path(tmp) / "test.step"
+        step.write_text("x")
+        data = {
+            "primitive_metadata": {},
+            "build_warnings": "not_a_list",  # must be list
+        }
+        _write_sidecar(step, data)
+        spec = CADPartSpec(name="test", features=[])
+        with pytest.raises(ValueError, match="build_warnings.*list"):
+            _assert_metadata_sidecar(step, spec)
+
+
+def test_primitive_metadata_not_dict_fails():
+    from seekflow_engineering_tools.cadquery_backend.builder import _assert_metadata_sidecar
+    from seekflow_engineering_tools.ir.cad import CADPartSpec
+
+    with tempfile.TemporaryDirectory() as tmp:
+        step = Path(tmp) / "test.step"
+        step.write_text("x")
+        data = {
+            "primitive_metadata": "not_a_dict",  # must be dict
+            "build_warnings": [],
+        }
+        _write_sidecar(step, data)
+        spec = CADPartSpec(name="test", features=[])
+        with pytest.raises(ValueError, match="primitive_metadata.*dict"):
+            _assert_metadata_sidecar(step, spec)
+
+
+def test_future_fake_primitive_passes_generic_sidecar():
+    """A hypothetical future primitive with valid generic metadata passes."""
+    from seekflow_engineering_tools.cadquery_backend.builder import _assert_metadata_sidecar
+    from seekflow_engineering_tools.ir.cad import CADPartSpec
+    from seekflow_engineering_tools.ir.primitive import PrimitiveFeature
+
+    with tempfile.TemporaryDirectory() as tmp:
+        step = Path(tmp) / "test.step"
+        step.write_text("x")
+        data = {
+            "primitive_metadata": {
+                "future_primitive_xyz": {
+                    "metadata_version": "primitive_metadata_v1",
+                    "kernel": "test_kernel_v2",
+                    "primitive": "future_primitive_xyz",
+                    "parameters": {"radius_mm": 100.0},
+                    "reference_dimensions": {"outer_diameter_mm": 200.0},
+                    "warnings": [],
+                },
+            },
+            "build_warnings": [],
+        }
+        _write_sidecar(step, data)
+        spec = CADPartSpec(name="test", features=[
+            PrimitiveFeature(id="f1", primitive_name="future_primitive_xyz",
+                             parameters={"radius_mm": 100.0})
+        ])
+        loaded = _assert_metadata_sidecar(step, spec)
+        assert loaded["primitive_metadata"]["future_primitive_xyz"]["kernel"] == "test_kernel_v2"
