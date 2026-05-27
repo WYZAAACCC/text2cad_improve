@@ -5,24 +5,63 @@ from seekflow_engineering_tools.geometry_primitives.base import PrimitiveDefinit
 PRIMITIVE_REGISTRY: dict[str, PrimitiveDefinition] = {}
 _REGISTRY_LOAD_ERRORS: list[str] = []
 
+PRIMITIVE_FAMILY_MODULES: list[str] = [
+    "seekflow_engineering_tools.geometry_primitives.gears.models:GEAR_PRIMITIVES",
+    "seekflow_engineering_tools.geometry_primitives.turbomachinery.models:TURBOMACHINERY_PRIMITIVES",
+]
+
+
+def _load_definitions_from_module(path: str) -> list[PrimitiveDefinition]:
+    """Import a ``module_path:attr_name`` string and return a list of PrimitiveDefinition.
+
+    Raises ImportError/AttributeError/TypeError on failure — caller collects into
+    _REGISTRY_LOAD_ERRORS.
+    """
+    module_path, attr_name = path.rsplit(":", 1)
+    import importlib
+    mod = importlib.import_module(module_path)
+    definitions = getattr(mod, attr_name)
+    if not isinstance(definitions, list):
+        raise TypeError(
+            f"{module_path}:{attr_name} is not a list, got {type(definitions).__name__}"
+        )
+    validated: list[PrimitiveDefinition] = []
+    for i, item in enumerate(definitions):
+        if not isinstance(item, PrimitiveDefinition):
+            raise TypeError(
+                f"{module_path}:{attr_name}[{i}] is not a PrimitiveDefinition, "
+                f"got {type(item).__name__}"
+            )
+        validated.append(item)
+    return validated
+
 
 def _populate_registry():
     PRIMITIVE_REGISTRY.clear()
     _REGISTRY_LOAD_ERRORS.clear()
 
-    try:
-        from seekflow_engineering_tools.geometry_primitives.gears.models import GEAR_PRIMITIVES
-    except ImportError as exc:
-        _REGISTRY_LOAD_ERRORS.append(
-            f"Failed to import gear primitives registry: {type(exc).__name__}: {exc}"
-        )
-        return
-
-    for p in GEAR_PRIMITIVES:
-        if p.name in PRIMITIVE_REGISTRY:
-            _REGISTRY_LOAD_ERRORS.append(f"Duplicate primitive registered: {p.name}")
+    for path in PRIMITIVE_FAMILY_MODULES:
+        try:
+            definitions = _load_definitions_from_module(path)
+        except ImportError as exc:
+            _REGISTRY_LOAD_ERRORS.append(
+                f"Failed to import primitive family '{path}': {type(exc).__name__}: {exc}"
+            )
             continue
-        PRIMITIVE_REGISTRY[p.name] = p
+        except (AttributeError, TypeError, ValueError) as exc:
+            _REGISTRY_LOAD_ERRORS.append(
+                f"Invalid primitive family '{path}': {type(exc).__name__}: {exc}"
+            )
+            continue
+
+        for p in definitions:
+            if p.name in PRIMITIVE_REGISTRY:
+                _REGISTRY_LOAD_ERRORS.append(
+                    f"Duplicate primitive registered: '{p.name}' "
+                    f"(from '{path}', already in registry)"
+                )
+                continue
+            PRIMITIVE_REGISTRY[p.name] = p
 
 
 def _raise_if_registry_unhealthy():

@@ -93,12 +93,20 @@ def _run_mechanical_validation(spec: CADPartSpec, step_path: Path, inspection: d
 def _assert_metadata_sidecar(step_path: Path, spec: CADPartSpec) -> dict:
     """Load and validate the metadata sidecar for a primitive build.
 
+    Uses the generic validate_primitive_metadata_v1 for all primitives,
+    then applies per-primitive checks (e.g. is_standard_involute for gears).
+
     Raises ValueError or FileNotFoundError if:
     - metadata file is missing or empty
-    - primitive_metadata key is missing
-    - build_warnings key is missing
-    - gear primitive: kernel, reference_dimensions, is_standard_involute missing
+    - primitive_metadata / build_warnings top-level keys are missing
+    - any PrimitiveFeature has no entry in primitive_metadata
+    - any primitive fails generic metadata validation
+    - gear primitive is missing is_standard_involute
     """
+    from seekflow_engineering_tools.mechanical_validation.primitive_metadata import (
+        validate_primitive_metadata_v1,
+    )
+
     meta_path = step_path.with_suffix(".metadata.json")
     assert_file_created(meta_path, "metadata")
 
@@ -117,18 +125,29 @@ def _assert_metadata_sidecar(step_path: Path, spec: CADPartSpec) -> dict:
     for feat in spec.features:
         if feat.type != "primitive":
             continue
-        if feat.primitive_name == "involute_spur_gear":
-            gear_meta = pm.get("involute_spur_gear")
-            if gear_meta is None:
-                raise ValueError("Metadata missing primitive entry for 'involute_spur_gear'")
-            if "kernel" not in gear_meta:
-                raise ValueError("Gear metadata missing 'kernel'")
-            if "reference_dimensions" not in gear_meta:
-                raise ValueError("Gear metadata missing 'reference_dimensions'")
-            if "parameters" not in gear_meta:
-                raise ValueError("Gear metadata missing 'parameters'")
-            if "is_standard_involute" not in gear_meta:
-                raise ValueError("Gear metadata missing 'is_standard_involute'")
+
+        pname = feat.primitive_name
+        primitive_entry = pm.get(pname)
+        if primitive_entry is None:
+            raise ValueError(
+                f"Metadata missing primitive entry for '{pname}'"
+            )
+
+        # ── Generic metadata validation (v1) ──
+        v_result = validate_primitive_metadata_v1(pname, primitive_entry)
+        if not v_result.get("ok"):
+            issue_msgs = [i["message"] for i in v_result.get("issues", [])]
+            raise ValueError(
+                f"Primitive metadata validation failed for '{pname}': "
+                + "; ".join(issue_msgs)
+            )
+
+        # ── Per-primitive checks ──
+        if pname == "involute_spur_gear":
+            if "is_standard_involute" not in primitive_entry:
+                raise ValueError(
+                    "Gear metadata missing 'is_standard_involute'"
+                )
 
     return metadata
 

@@ -320,6 +320,146 @@ GEAR_REQUIRED_METRICS = [
     "reference_dimensions.root_diameter_mm",
 ]
 
+PRIMITIVE_REQUIRED_STAGES = [
+    "validate_cad_ir", "normalize_primitives", "choose_backend",
+    "build", "inspect", "mechanical_validate", "metadata",
+]
+
+
+def _run_primitive_case(
+    case_name: str, backend: str, output_root: Path,
+    primitive_name: str, params: dict, step_filename: str,
+    *,
+    extra_validation: dict | None = None,
+    required_metrics: list[str] | None = None,
+    required_stages: list[str] | None = None,
+    allow_skipped_stages: set[str] | None = None,
+    allow_step_import: bool = False,
+) -> dict:
+    """Generic primitive case runner for any registered primitive.
+
+    Must go through engineering_validate_cad_ir and engineering_build_cad_model.
+    Each primitive provides its own required_metrics and extra_validation.
+    """
+    from seekflow_engineering_tools.config import EngineeringToolsConfig
+    from seekflow_engineering_tools.capabilities.registry import get_primitive_strategy
+
+    required_stages = required_stages or PRIMITIVE_REQUIRED_STAGES
+    required_metrics = required_metrics or []
+    extra_validation = extra_validation or {}
+
+    report = _make_report_skeleton(case_name, backend)
+    config = EngineeringToolsConfig(workspace_root=output_root, allow_overwrite=True)
+
+    spec_dict: dict = {
+        "name": case_name, "units": "mm", "target_backend": [backend],
+        "features": [{"id": "feat1", "type": "primitive",
+                       "primitive_name": primitive_name,
+                       "parameters": params}],
+        "validation": {
+            "expected_body_count": 1,
+            "tolerance_mm": 0.1,
+            **extra_validation,
+        },
+    }
+
+    validate_fn, build_fn = _get_unified_tools(config)
+
+    # Stage 1: validate_cad_ir
+    val_result = validate_fn(spec_dict)
+    norm_params = val_result.get("metrics", {}).get("normalized_parameters", {})
+    _stage(report, "validate_cad_ir", ok=val_result.get("ok", False),
+           error=val_result.get("error"))
+    _stage(report, "normalize_primitives", ok=val_result.get("ok", False),
+           normalized_params=norm_params.get("feat1"))
+
+    if not val_result.get("ok"):
+        return _finalize_case_report(report, required_stages=required_stages,
+                                     required_metrics=required_metrics,
+                                     allow_skipped_stages=allow_skipped_stages)
+
+    # Stage 2: choose_backend
+    if backend in ("solidworks2025", "nx12") and not allow_step_import:
+        _fail(report, "choose_backend",
+              f"Backend '{backend}' requires --allow-step-import for primitives.")
+        return _finalize_case_report(report, required_stages=required_stages,
+                                     required_metrics=required_metrics)
+
+    strategy = get_primitive_strategy(backend, primitive_name) or "native_cadquery_primitive"
+    _stage(report, "choose_backend", ok=True, backend=backend, strategy=strategy)
+
+    # Stage 3: build
+    step_path = output_root / "models" / step_filename
+    step_path.parent.mkdir(parents=True, exist_ok=True)
+
+    allow_fb = backend not in ("solidworks2025", "nx12")
+    build_result = build_fn(spec_dict, backend=backend, out_step=str(step_path),
+                            inspect=True, allow_backend_fallback=allow_fb)
+    _stage(report, "build", ok=build_result.get("ok", False),
+           error=build_result.get("error"))
+    report["files_created"] = build_result.get("files_created", [])
+    report["warnings"] = build_result.get("warnings", [])
+
+    # Stage 4-5: inspect + mechanical_validate
+    metrics = build_result.get("metrics", {})
+    validation_result = metrics.get("validation")
+    mech_val_result = metrics.get("mechanical_validation")
+
+    _stage(report, "inspect",
+           ok=validation_result.get("ok") is True if validation_result else False,
+           error=None if validation_result else "Validation result missing.")
+
+    _stage(report, "mechanical_validate",
+           ok=mech_val_result.get("ok") is True if mech_val_result else False,
+           error=None if mech_val_result else "Mechanical validation result missing.")
+
+    # Stage 6: metadata (generic, keyed by primitive_name)
+    meta_path = step_path.with_suffix(".metadata.json")
+    kernel_used = "unknown"
+    ref_dims = {}
+    if not meta_path.exists() or meta_path.stat().st_size < 1:
+        _stage(report, "metadata", ok=False, error="Primitive metadata sidecar missing or empty.")
+    else:
+        try:
+            sidecar = json.loads(meta_path.read_text(encoding="utf-8"))
+            pm = sidecar.get("primitive_metadata", {}).get(primitive_name)
+            if not isinstance(pm, dict):
+                _stage(report, "metadata", ok=False,
+                       error=f"primitive_metadata.{primitive_name} missing.")
+            else:
+                _stage(report, "metadata", ok=True, path=str(meta_path))
+                if pm.get("kernel"):
+                    kernel_used = pm["kernel"]
+                if pm.get("reference_dimensions"):
+                    ref_dims = pm["reference_dimensions"]
+        except (json.JSONDecodeError, OSError) as exc:
+            _stage(report, "metadata", ok=False, error=f"Failed to read metadata: {exc}")
+
+    # Fallback from mech val
+    if kernel_used == "unknown" and mech_val_result:
+        for r in mech_val_result.get("results", []):
+            if r.get("kernel"):
+                kernel_used = r["kernel"]
+            if r.get("reference_dimensions") and not ref_dims:
+                ref_dims = r["reference_dimensions"]
+
+    report["metrics"] = {
+        "kernel_used": kernel_used,
+        "reference_dimensions": {k: ref_dims.get(k) for k in [
+            "pitch_diameter_mm", "base_diameter_mm",
+            "outer_diameter_mm", "root_diameter_mm",
+        ]},
+        "strategy": strategy,
+    }
+
+    build_ok = build_result.get("ok", False)
+    if not build_ok:
+        report["overall_ok"] = False
+
+    return _finalize_case_report(report, required_stages=required_stages,
+                                 required_metrics=required_metrics,
+                                 allow_skipped_stages=allow_skipped_stages)
+
 
 def _run_gear_case(
     case_name: str, backend: str, output_root: Path,

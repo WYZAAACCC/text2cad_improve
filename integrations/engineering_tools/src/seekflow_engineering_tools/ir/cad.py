@@ -25,7 +25,7 @@ class ValidationSpec(BaseModel):
     expected_through_hole_count: int | None = None
     expected_feature_count_min: int | None = None
     tolerance_mm: float = Field(default=0.1, gt=0)
-    # Mechanical validation fields (primitive gear validation)
+    # Mechanical validation fields (primitive gear validation — retained for compatibility)
     expected_tooth_count: int | None = None
     expected_pitch_diameter_mm: float | None = None
     expected_outer_diameter_mm: float | None = None
@@ -34,11 +34,26 @@ class ValidationSpec(BaseModel):
     expected_bore_diameter_mm: float | None = None
     expected_face_width_mm: float | None = None
     expected_kernel: str | None = None
+    # Generic per-primitive validation: keyed by feature.id, value is dict of expected values
+    primitive_validation: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def validate_bbox(self):
         if self.expected_bbox_mm is not None and len(self.expected_bbox_mm) != 3:
             raise ValueError("expected_bbox_mm must be length 3 [x, y, z]")
+        return self
+
+    @model_validator(mode="after")
+    def validate_primitive_validation_keys(self):
+        for key, value in self.primitive_validation.items():
+            if not key or not isinstance(key, str) or not key.strip():
+                raise ValueError(
+                    f"primitive_validation key must be a non-empty feature id, got: {key!r}"
+                )
+            if not isinstance(value, dict):
+                raise ValueError(
+                    f"primitive_validation['{key}'] must be a dict, got: {type(value).__name__}"
+                )
         return self
 
 
