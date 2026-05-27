@@ -12,12 +12,14 @@ class TestSolidWorksRecipeTools:
         tools = build_solidworks_tools(config)
         tool_names = [t.name for t in tools]
         assert "solidworks_create_flanged_hub_part" in tool_names
-        assert "solidworks_create_spur_gear_part" in tool_names
         assert "solidworks_create_box_part" in tool_names
         assert "solidworks_health_check" in tool_names
         assert "solidworks_export_step" in tool_names
-        assert "solidworks_create_true_involute_gear_part" in tool_names
-        assert len(tools) == 6
+        assert "solidworks_import_step_as_part" in tool_names
+        # Legacy gear tools must NOT be registered
+        assert "solidworks_create_spur_gear_part" not in tool_names
+        assert "solidworks_create_true_involute_gear_part" not in tool_names
+        assert len(tools) == 5
 
     def test_build_sw_tools_all_have_policies(self):
         from seekflow_engineering_tools.config import EngineeringToolsConfig
@@ -41,15 +43,17 @@ class TestSolidWorksRecipeTools:
         assert hasattr(hub_tool, "func")
 
     def test_spur_gear_tool_has_expected_description(self):
+        """Legacy spur_gear tool is removed; verify import_step_as_part exists instead."""
         from seekflow_engineering_tools.config import EngineeringToolsConfig
         from seekflow_engineering_tools.solidworks.tools import build_solidworks_tools
 
         tools = build_solidworks_tools(EngineeringToolsConfig())
-        gear_tool = next(
-            t for t in tools if t.name == "solidworks_create_spur_gear_part"
-        )
-        assert "spur gear" in gear_tool.description.lower()
-        assert hasattr(gear_tool, "func")
+        tool_names = {t.name for t in tools}
+        # Legacy gear tools must NOT be present
+        assert "solidworks_create_spur_gear_part" not in tool_names
+        assert "solidworks_create_true_involute_gear_part" not in tool_names
+        # STEP import tool must be present
+        assert "solidworks_import_step_as_part" in tool_names
 
     def test_all_sw_tools_return_engineering_action_result(self):
         from seekflow_engineering_tools.common.models import EngineeringActionResult

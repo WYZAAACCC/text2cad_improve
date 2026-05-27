@@ -374,12 +374,92 @@ def _save_part(work_part, out_prt):
     work_part.SaveAs(str(p))
 
 
+def import_step_as_prt(session, params):
+    # type: (object, dict) -> dict
+    """Import a canonical STEP file and save as native NX PRT.
+
+    This is the canonical path for engineering primitives on NX.
+    NEVER generate involute curves in NXOpen — only import STEP.
+    """
+    input_step = params["input_step"]
+    out_prt = params["out_prt"]
+    out_step = params.get("out_step")
+
+    step_path = Path(input_step)
+    if not step_path.exists() or step_path.stat().st_size == 0:
+        return {
+            "ok": False,
+            "files_created": [],
+            "metrics": {},
+            "error": "Canonical STEP not found or empty: {}".format(input_step),
+        }
+
+    # NXOpen: import STEP via DexManager Importer
+    work_part = session.Parts.Work
+    if work_part is None:
+        work_part = session.Parts.NewDisplay("Millimeters", NXOpen.Part.Units.Millimeters)
+
+    try:
+        dex_mgr = NXOpen.DexManager(session)
+        importer = dex_mgr.CreateStep214Importer()
+        importer.InputFile = str(step_path)
+        importer.OutputFile = str(out_prt) if out_prt else None
+        importer.Commit()
+        importer.Destroy()
+    except Exception as exc:
+        return {
+            "ok": False,
+            "files_created": [],
+            "metrics": {},
+            "error": "NX STEP import failed: {}".format(exc),
+        }
+
+    out_prt_path = Path(out_prt)
+    out_prt_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Remove existing file if any to avoid SaveAs conflict
+    try:
+        __import__("os").remove(str(out_prt_path))
+    except Exception:
+        pass
+
+    work_part.SaveAs(str(out_prt_path))
+
+    if not out_prt_path.exists() or out_prt_path.stat().st_size == 0:
+        return {
+            "ok": False,
+            "files_created": [],
+            "metrics": {},
+            "error": "NX PRT was not created after STEP import: {}".format(out_prt),
+        }
+
+    files_created = [str(out_prt_path)]
+
+    warnings = [
+        "Native PRT created by importing canonical STEP; "
+        "NX feature tree is not regenerated."
+    ]
+
+    return {
+        "ok": True,
+        "message": "NX PRT created by importing canonical STEP.",
+        "files_created": files_created,
+        "metrics": {
+            "strategy": "cadquery_step_import",
+            "source_step": str(input_step),
+            "native_path": str(out_prt_path),
+        },
+        "warnings": warnings,
+    }
+
+
 ACTION_HANDLERS = {
     "create_block_part": create_block_part,
     "create_block_with_hole": create_block_with_hole,
     "create_l_bracket": create_l_bracket,
     "create_stepped_block": create_stepped_block,
     "export_step": export_step,
+    "import_step_as_prt": import_step_as_prt,
 }
 
 

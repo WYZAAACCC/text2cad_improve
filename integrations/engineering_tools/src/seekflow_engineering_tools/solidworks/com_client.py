@@ -451,9 +451,11 @@ class SolidWorksClient:
         face_width_m=0.020,
         bore_dia_m=0.015,
     ):
-        """Simplified spur gear — star polygon approximation.
+        """[LEGACY/DEMO ONLY] Simplified spur gear — star polygon approximation.
 
-        Kept alongside create_spur_gear_involute for demo comparison.
+        NOT engineering-grade. NOT used by unified build pipeline.
+        Use involute_spur_gear primitive + STEP import instead.
+        Kept for internal demo comparison only.
         """
         return self.create_spur_gear_involute(model, module_m, teeth, face_width_m, bore_dia_m)
 
@@ -465,13 +467,11 @@ class SolidWorksClient:
         face_width_m=0.020,
         bore_dia_m=0.015,
     ):
-        """Create a spur gear with smoothed tooth flanks.
+        """[LEGACY/DEMO ONLY] Spur gear with approximate involute via smoothed flanks.
 
-        Generates a closed star polygon with interpolated points along
-        each flank to approximate the involute curve shape.  Polygon is
-        guaranteed closed because adjacent teeth meet at the root circle.
-
-        One sketch → one extrude → one bore.  2 features total.
+        NOT engineering-grade. NOT certified involute geometry.
+        NOT used by unified build pipeline.
+        Use involute_spur_gear primitive + CQ_Gears + STEP import instead.
         """
         import subprocess, os, tempfile, math
 
@@ -574,7 +574,8 @@ class SolidWorksClient:
         face_width_m=0.020,
         bore_dia_m=0.015,
     ):
-        """Star-polygon spur gear — simpler variant kept for demo comparison."""
+        """[LEGACY/DEMO ONLY] Star-polygon spur gear — NOT engineering-grade.
+        Use involute_spur_gear primitive + STEP import instead."""
         import subprocess, os, tempfile, math
 
         def _chr(s):
@@ -917,6 +918,38 @@ class SolidWorksClient:
         self._run_vbs(vbs)
         # Note: rib, holes, fillets need face selection which requires
         # the feature tree to be stable.  Added as available.
+
+    # ── STEP import ──────────────────────────────────────────────────
+
+    def import_step_as_part(self, step_path: str | Path, out_sldprt: str | Path) -> bool:
+        """Import a STEP file and save as native SLDPRT.
+
+        Uses LoadFile2 to auto-detect STEP format.
+        Returns True only if out_sldprt exists and size > 0.
+
+        This is the canonical entry point for gear primitives on SolidWorks:
+        LLM MUST NOT generate involute curves here. Only import STEP.
+        """
+        step = Path(step_path)
+        out = Path(out_sldprt)
+        out.parent.mkdir(parents=True, exist_ok=True)
+
+        if not step.exists() or step.stat().st_size < 1:
+            raise FileNotFoundError(f"Canonical STEP not found or empty: {step}")
+
+        if not self.is_connected:
+            self.connect()
+
+        # LoadFile2 auto-detects format by file extension
+        self.sw.LoadFile2(str(step), "")
+        model = self.sw.ActiveDoc
+
+        if model is None:
+            raise RuntimeError(f"SolidWorks failed to load STEP file: {step}")
+
+        # Save as native SLDPRT
+        status = model.SaveAs3(str(out), 0, 2)
+        return out.exists() and out.stat().st_size > 0
 
     # ── cleanup ─────────────────────────────────────────────────────
 

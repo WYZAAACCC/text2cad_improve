@@ -66,14 +66,108 @@ def _run_inspection(step_path: Path, spec: CADPartSpec) -> dict:
 
 
 def _run_mechanical_validation(spec: CADPartSpec, step_path: Path, inspection: dict) -> dict:
-    """Run mechanical validation for primitive features."""
+    """Run mechanical validation for primitive features.
+
+    FAIL-CLOSED: if the mechanical validation module cannot be imported,
+    that is a hard error — we cannot validate the model.
+    """
     try:
         from seekflow_engineering_tools.mechanical_validation.common import (
             validate_mechanical_primitives,
         )
         return validate_mechanical_primitives(spec, step_path, inspection)
-    except ImportError:
-        return {"ok": True, "results": []}
+    except ImportError as exc:
+        return {
+            "ok": False,
+            "results": [],
+            "issues": [
+                {
+                    "code": "mechanical_validation_unavailable",
+                    "message": f"Mechanical validation module could not be imported: {exc}",
+                    "severity": "error",
+                }
+            ],
+        }
+
+
+def _assert_metadata_sidecar(step_path: Path, spec: CADPartSpec) -> dict:
+    """Load and validate the metadata sidecar for a primitive build.
+
+    Raises ValueError or FileNotFoundError if:
+    - metadata file is missing or empty
+    - primitive_metadata key is missing
+    - build_warnings key is missing
+    - gear primitive: kernel, reference_dimensions, is_standard_involute missing
+    """
+    meta_path = step_path.with_suffix(".metadata.json")
+    assert_file_created(meta_path, "metadata")
+
+    try:
+        metadata = json.loads(meta_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        raise ValueError(f"Metadata JSON is invalid: {exc}")
+
+    if "primitive_metadata" not in metadata:
+        raise ValueError("Metadata missing 'primitive_metadata' key")
+    if "build_warnings" not in metadata:
+        raise ValueError("Metadata missing 'build_warnings' key")
+
+    pm = metadata.get("primitive_metadata", {})
+
+    for feat in spec.features:
+        if feat.type != "primitive":
+            continue
+        if feat.primitive_name == "involute_spur_gear":
+            gear_meta = pm.get("involute_spur_gear")
+            if gear_meta is None:
+                raise ValueError("Metadata missing primitive entry for 'involute_spur_gear'")
+            if "kernel" not in gear_meta:
+                raise ValueError("Gear metadata missing 'kernel'")
+            if "reference_dimensions" not in gear_meta:
+                raise ValueError("Gear metadata missing 'reference_dimensions'")
+            if "parameters" not in gear_meta:
+                raise ValueError("Gear metadata missing 'parameters'")
+
+    return metadata
+
+
+def _check_fallback_policy(spec: CADPartSpec, metadata: dict) -> tuple[bool, list[str]]:
+    """Check if visual fallback is allowed for the given spec.
+
+    Returns (is_hard_fail, warnings).
+
+    Rules:
+    - quality_grade="industrial_brep" or "validated" with cadquery_visual_fallback → HARD FAIL
+    - quality_grade="visual_fallback" or allow_visual_fallback=True → warning only
+    """
+    pm = metadata.get("primitive_metadata", {})
+    gear_meta = pm.get("involute_spur_gear", {})
+    kernel = gear_meta.get("kernel", "")
+    is_standard = gear_meta.get("is_standard_involute", True)
+
+    if kernel != "cadquery_visual_fallback" and is_standard:
+        return False, []  # Not a fallback, no issue
+
+    # Check each primitive feature for quality_grade
+    for feat in spec.features:
+        if feat.type != "primitive" or feat.primitive_name != "involute_spur_gear":
+            continue
+
+        quality = feat.parameters.get("quality_grade", "industrial_brep")
+        allow_fallback = feat.parameters.get("allow_visual_fallback", False)
+
+        if quality in ("industrial_brep", "validated") and not allow_fallback:
+            return True, [
+                "Visual fallback gear (cadquery_visual_fallback) is not acceptable "
+                f"for quality_grade='{quality}'. Install cq_gears for industrial-grade "
+                "involute profiles.",
+                "This fallback is NOT certified involute geometry.",
+            ]
+
+    return False, [
+        "Visual fallback gear used; this is NOT certified involute geometry. "
+        "Ensure this is acceptable for your use case.",
+    ]
 
 
 def _load_and_update_metadata(step_path: Path, validation: dict | None = None) -> dict | None:
@@ -212,9 +306,51 @@ def build_cadquery_from_cad_ir(
 
     files_created = [str(step_path), str(script_path)]
 
-    # Load metadata sidecar if it exists
-    if has_primitive and meta_path.exists():
+    # ── Primitive metadata sidecar requirement ──
+    if has_primitive:
+        try:
+            metadata = _assert_metadata_sidecar(step_path, spec)
+        except (FileNotFoundError, ValueError) as exc:
+            return EngineeringActionResult(
+                ok=False,
+                software="cadquery",
+                action="build_from_cad_ir",
+                error=f"Metadata sidecar validation failed: {exc}",
+                stdout_tail=stdout_tail,
+                stderr_tail=stderr_tail,
+                warnings=build_warnings,
+                metrics={"script_path": str(script_path)},
+            ).model_dump()
+
         files_created.append(str(meta_path))
+
+        # ── Fallback gear hard-fail for industrial_brep ──
+        is_hard_fail, fallback_warnings = _check_fallback_policy(spec, metadata)
+        if is_hard_fail:
+            for w in fallback_warnings:
+                if w not in build_warnings:
+                    build_warnings.append(w)
+            return EngineeringActionResult(
+                ok=False,
+                software="cadquery",
+                action="build_from_cad_ir",
+                message="STEP created but fallback gear is not engineering-grade.",
+                files_created=files_created,
+                stdout_tail=stdout_tail,
+                stderr_tail=stderr_tail,
+                metrics={
+                    "script_path": str(script_path),
+                    "script_length": len(script),
+                    "step_path": str(step_path),
+                    "step_size_bytes": step_path.stat().st_size,
+                    "feature_count": len(spec.features),
+                },
+                warnings=build_warnings,
+                error="Visual fallback is not certified involute geometry.",
+            ).model_dump()
+        for w in fallback_warnings:
+            if w not in build_warnings:
+                build_warnings.append(w)
 
     metrics: dict = {
         "script_path": str(script_path),

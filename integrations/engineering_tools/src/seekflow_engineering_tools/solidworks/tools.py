@@ -525,12 +525,71 @@ def build_solidworks_tools(config: EngineeringToolsConfig):
         _solidworks_write_policy(config, {"input_sldprt", "out_step"})
     )
 
+    # ── import_step_as_part ───────────────────────────────────────────
+
+    @tool(
+        name="solidworks_import_step_as_part",
+        description=(
+            "Import a STEP file into SolidWorks and save as native SLDPRT. "
+            "This is the canonical path for engineering primitives: CadQuery/CQ_Gears "
+            "generates STEP, SolidWorks imports it. Do NOT generate involute curves here."
+        ),
+        cache=False,
+        sanitize=True,
+        trusted=False,
+    )
+    def solidworks_import_step_as_part(input_step: str, out_sldprt: str) -> dict:
+        try:
+            in_path = ensure_inside_workspace(config.workspace_root, input_step)
+            out_path = ensure_inside_workspace(config.workspace_root, out_sldprt)
+
+            if not in_path.exists() or in_path.stat().st_size < 1:
+                raise FileNotFoundError(f"Input STEP not found or empty: {in_path}")
+
+            client = SolidWorksClient(
+                visible=config.solidworks_visible,
+                part_template=config.solidworks_part_template,
+            ).connect()
+
+            ok = client.import_step_as_part(str(in_path), str(out_path))
+
+            if not ok:
+                raise RuntimeError(f"SolidWorks STEP import failed for {out_path}")
+
+            return EngineeringActionResult(
+                ok=True,
+                software="solidworks",
+                action="import_step_as_part",
+                message=f"STEP imported and saved as SLDPRT: {out_path}",
+                files_created=[str(out_path)],
+                warnings=[
+                    "Native SLDPRT created by importing canonical STEP; "
+                    "feature tree is not regenerated."
+                ],
+                metrics={
+                    "source_step": str(in_path),
+                    "native_path": str(out_path),
+                    "strategy": "cadquery_step_import",
+                },
+            ).model_dump()
+
+        except Exception as exc:
+            return EngineeringActionResult(
+                ok=False,
+                software="solidworks",
+                action="import_step_as_part",
+                error=str(exc),
+            ).model_dump()
+
+    solidworks_import_step_as_part = solidworks_import_step_as_part.with_policy(
+        _solidworks_write_policy(config, {"input_step", "out_sldprt"})
+    )
+
     tools.extend([
         solidworks_health_check,
         solidworks_create_box_part,
         solidworks_create_flanged_hub_part,
-        solidworks_create_spur_gear_part,
-        solidworks_create_true_involute_gear_part,
         solidworks_export_step,
+        solidworks_import_step_as_part,
     ])
     return tools

@@ -23,6 +23,7 @@ ALLOWED_ACTIONS: set[str] = {
     "create_l_bracket",
     "create_stepped_block",
     "export_step",
+    "import_step_as_prt",
 }
 
 

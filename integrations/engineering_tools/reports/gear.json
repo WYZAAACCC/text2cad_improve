@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-05-27T15:42:04.036160",
+  "timestamp": "2026-05-27T17:04:33.020444",
   "overall_ok": true,
   "cases": [
     {
-      "ok": true,
+      "overall_ok": true,
       "case": "involute_spur_gear",
       "backend": "cadquery",
       "stages": {
@@ -11,14 +11,29 @@
           "ok": true
         },
         "normalize_primitives": {
-          "ok": true
+          "ok": true,
+          "normalized_params": {
+            "module_mm": 2.0,
+            "teeth": 24,
+            "pressure_angle_deg": 20.0,
+            "face_width_mm": 15.0,
+            "bore_dia_mm": 10.0,
+            "addendum_coefficient": 1.0,
+            "clearance_coefficient": 0.25,
+            "profile_shift_coefficient": 0.0,
+            "backlash_mm": 0.0,
+            "root_fillet_radius_mm": 0.0,
+            "quality_grade": "industrial_brep"
+          }
         },
         "choose_backend": {
           "ok": true,
-          "backend": "cadquery"
+          "backend": "cadquery",
+          "strategy": "native_cadquery_primitive"
         },
         "build": {
-          "ok": true
+          "ok": true,
+          "error": null
         },
         "inspect": {
           "ok": true
@@ -28,9 +43,9 @@
         }
       },
       "files_created": [
-        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260527_154203\\involute_spur_gear\\models\\involute_spur_gear.step",
-        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260527_154203\\involute_spur_gear\\.cadquery_scripts\\build_e47f1294f407.py",
-        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260527_154203\\involute_spur_gear\\models\\involute_spur_gear.metadata.json"
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260527_170432\\models\\involute_spur_gear.step",
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260527_170432\\.cadquery_scripts\\build_6e8938d64c82.py",
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260527_170432\\models\\involute_spur_gear.metadata.json"
       ],
       "metrics": {
         "kernel_used": "cq_gears",
@@ -42,7 +57,7 @@
         }
       },
       "warnings": [],
-      "_elapsed_s": 9.64
+      "errors": []
     }
   ]
 }

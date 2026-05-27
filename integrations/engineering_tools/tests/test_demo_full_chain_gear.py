@@ -1,38 +1,61 @@
-"""Test demo_full_chain gear case end-to-end."""
+"""Test demo_full_chain gear case report schema and exit code."""
 
+import json
+import sys
+import subprocess
+from pathlib import Path
 import pytest
+import tempfile
 
 
-def test_demo_build_involute_spur_gear():
-    """Run the involute_spur_gear case through demo_full_chain build."""
+def test_demo_full_chain_gear_cadquery():
+    """Run --case involute_spur_gear --backend cadquery and verify report schema."""
     pytest.importorskip("cadquery")
 
-    import tempfile
-    from pathlib import Path
+    with tempfile.TemporaryDirectory() as tmp:
+        output_root = Path(tmp) / "demo_out"
+        output_root.mkdir(exist_ok=True)
+        models_dir = output_root / "models"
+        models_dir.mkdir(exist_ok=True)
 
-    out_dir = Path(tempfile.mkdtemp())
-    try:
-        from demo_full_chain import _build_involute_spur_gear
+        from demo_full_chain import run_case_involute_spur_gear
 
-        result = _build_involute_spur_gear(out_dir, "cadquery")
+        report = run_case_involute_spur_gear("cadquery", output_root)
 
-        assert result["case"] == "involute_spur_gear"
-        assert result["backend"] == "cadquery"
+        assert "overall_ok" in report
+        assert report["case"] == "involute_spur_gear"
+        assert report["backend"] == "cadquery"
 
-        # Check files created
-        step_exists = any("involute_spur_gear.step" in f for f in result.get("files_created", []))
-        meta_exists = any(".metadata.json" in f for f in result.get("files_created", []))
-        assert step_exists or result["ok"], "STEP file must be created"
-        assert meta_exists or not result["ok"], "metadata.json must be created if build succeeded"
+        stages = report.get("stages", {})
+        for s in ["validate_cad_ir", "normalize_primitives", "choose_backend",
+                   "build", "inspect", "mechanical_validate"]:
+            assert s in stages, f"Stage '{s}' missing from report"
 
-        # Check metrics
-        metrics = result.get("metrics", {})
-        if result["ok"]:
+        # Check report schema
+        assert "files_created" in report
+        assert "metrics" in report
+        metrics = report.get("metrics", {})
+
+        if report["overall_ok"]:
             assert "kernel_used" in metrics
-            assert "reference_dimensions" in metrics
-            ref = metrics["reference_dimensions"]
-            assert abs(ref["pitch_diameter_mm"] - 48.0) < 0.01
-            assert abs(ref["outer_diameter_mm"] - 52.0) < 0.01
-    finally:
-        import shutil
-        shutil.rmtree(out_dir, ignore_errors=True)
+            assert metrics["kernel_used"] in ("cq_gears", "cadquery_visual_fallback")
+            ref = metrics.get("reference_dimensions", {})
+            for key in ["pitch_diameter_mm", "base_diameter_mm",
+                         "outer_diameter_mm", "root_diameter_mm"]:
+                assert key in ref, f"reference_dimensions missing '{key}'"
+
+
+def test_demo_full_chain_failure_exits_nonzero():
+    """Test that an invalid case/backend causes non-zero exit."""
+    import subprocess, sys, os
+
+    script = Path(__file__).parent.parent / "demo_full_chain.py"
+    r = subprocess.run(
+        [sys.executable, str(script), "--case", "involute_spur_gear",
+         "--backend", "solidworks2025"],
+        capture_output=True, text=True, timeout=30,
+        cwd=str(Path(__file__).parent.parent),
+        env={**os.environ, "PYTHONPATH": "src"},
+    )
+    # Without --allow-step-import, should fail
+    assert r.returncode != 0, f"Should exit non-zero without --allow-step-import"

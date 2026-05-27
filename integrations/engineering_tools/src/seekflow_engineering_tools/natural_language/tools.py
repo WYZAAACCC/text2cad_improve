@@ -9,7 +9,9 @@ from seekflow.types import ToolPolicy
 
 from seekflow_engineering_tools.capabilities.registry import (
     BackendChoice,
+    backend_supports_feature,
     choose_backend,
+    get_primitive_strategy,
 )
 from seekflow_engineering_tools.common.models import EngineeringActionResult
 from seekflow_engineering_tools.common.paths import ensure_extension, ensure_inside_workspace
@@ -19,181 +21,7 @@ from seekflow_engineering_tools.natural_language.normalizer import (
     detect_ambiguities,
     rewrite_deprecated_recipes_to_primitives,
 )
-from seekflow_engineering_tools.natural_language.prompts import NL_CAD_SYSTEM_PROMPT
 from seekflow_engineering_tools.recipes.registry import normalize_recipe_parameters
-
-
-def _build_solidworks_from_spec(spec: CADPartSpec, config: EngineeringToolsConfig, out_step: str) -> dict:
-    """Execute a single-recipe build via SolidWorks COM."""
-    recipe_feat = next(f for f in spec.features if f.type == "recipe")
-    params = normalize_recipe_parameters(recipe_feat.recipe_name, recipe_feat.parameters)
-
-    workspace = config.workspace_root
-    step_path = ensure_inside_workspace(workspace, out_step)
-    ensure_extension(step_path, {".step", ".stp"})
-    step_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # Generate SLDPRT path
-    sldprt_path = step_path.with_suffix(".sldprt")
-    ensure_extension(sldprt_path, {".sldprt"})
-
-    if sldprt_path.exists() and not config.allow_overwrite:
-        return EngineeringActionResult(
-            ok=False, software="solidworks", action="build_cad_model",
-            error=f"Output file {sldprt_path} already exists.",
-        ).model_dump()
-
-    from seekflow_engineering_tools.solidworks.com_client import SolidWorksClient
-
-    client = SolidWorksClient(
-        visible=config.solidworks_visible,
-        part_template=config.solidworks_part_template,
-    ).connect()
-    model = client.new_part()
-
-    name = recipe_feat.recipe_name
-    if name == "box":
-        client.create_extruded_box(
-            model,
-            length_m=params["length_mm"] / 1000.0,
-            width_m=params["width_mm"] / 1000.0,
-            height_m=params["height_mm"] / 1000.0,
-        )
-    elif name == "flanged_hub":
-        client.create_flanged_hub(
-            model,
-            flange_dia_m=params["flange_dia_mm"] / 1000.0,
-            flange_h_m=params["flange_thickness_mm"] / 1000.0,
-            hub_dia_m=params["hub_dia_mm"] / 1000.0,
-            hub_h_m=params["hub_height_mm"] / 1000.0,
-            bore_dia_m=params["bore_dia_mm"] / 1000.0,
-            bolt_pcd_m=params["bolt_pcd_mm"] / 1000.0,
-            bolt_dia_m=params["bolt_dia_mm"] / 1000.0,
-            bolt_count=int(params["bolt_count"]),
-        )
-    elif name == "spur_gear":
-        client.create_spur_gear(
-            model,
-            module_m=params["module_mm"] / 1000.0,
-            teeth=int(params["teeth"]),
-            face_width_m=params["face_width_mm"] / 1000.0,
-            bore_dia_m=params["bore_dia_mm"] / 1000.0,
-        )
-    else:
-        return EngineeringActionResult(
-            ok=False, software="solidworks", action="build_cad_model",
-            error=f"SolidWorks backend does not support recipe '{name}' for direct build.",
-        ).model_dump()
-
-    if not client.save_as(model, sldprt_path):
-        return EngineeringActionResult(
-            ok=False, software="solidworks", action="build_cad_model",
-            error=f"SolidWorks SaveAs failed for {sldprt_path}",
-        ).model_dump()
-
-    files_created = [str(sldprt_path)]
-
-    if not client.export_step(model, step_path):
-        return EngineeringActionResult(
-            ok=False, software="solidworks", action="build_cad_model",
-            error=f"SolidWorks STEP export failed for {step_path}",
-        ).model_dump()
-    files_created.append(str(step_path))
-
-    return EngineeringActionResult(
-        ok=True, software="solidworks", action="build_cad_model",
-        message=f"SolidWorks part built: {sldprt_path}",
-        files_created=files_created,
-        metrics={"recipe": name, "backend": "solidworks2025"},
-    ).model_dump()
-
-
-def _build_nx_from_spec(spec: CADPartSpec, config: EngineeringToolsConfig, out_step: str) -> dict:
-    """Execute a single-recipe build via NX job queue."""
-    recipe_feat = next(f for f in spec.features if f.type == "recipe")
-    params = normalize_recipe_parameters(recipe_feat.recipe_name, recipe_feat.parameters)
-
-    workspace = config.workspace_root
-    step_path = ensure_inside_workspace(workspace, out_step)
-    ensure_extension(step_path, {".step", ".stp"})
-    step_path.parent.mkdir(parents=True, exist_ok=True)
-
-    prt_path = step_path.with_suffix(".prt")
-    ensure_extension(prt_path, {".prt"})
-
-    job_root = config.nx_job_root or (workspace / "nx_jobs")
-
-    from seekflow_engineering_tools.nx.job_queue import NXJobQueue
-
-    name = recipe_feat.recipe_name
-    action_map = {
-        "box": "create_block_part",
-        "block_with_hole": "create_block_with_hole",
-        "l_bracket": "create_l_bracket",
-        "stepped_block": "create_stepped_block",
-    }
-    action = action_map.get(name)
-    if action is None:
-        return EngineeringActionResult(
-            ok=False, software="nx", action="build_cad_model",
-            error=f"NX backend does not support recipe '{name}' for direct build.",
-        ).model_dump()
-
-    # Map recipe params to NX action params
-    nx_params: dict = {"out_prt": str(prt_path), "out_step": str(step_path)}
-    if name == "box":
-        nx_params.update({
-            "length_mm": params["length_mm"],
-            "width_mm": params["width_mm"],
-            "height_mm": params["height_mm"],
-        })
-    elif name == "block_with_hole":
-        nx_params.update({
-            "length_mm": params["length_mm"],
-            "width_mm": params["width_mm"],
-            "height_mm": params["height_mm"],
-            "hole_dia_mm": params["hole_dia_mm"],
-        })
-        if "hole_x_mm" in params:
-            nx_params["hole_x"] = params["hole_x_mm"]
-        if "hole_z_mm" in params:
-            nx_params["hole_z"] = params["hole_z_mm"]
-    elif name == "l_bracket":
-        nx_params.update({
-            "base_length": params["base_length_mm"],
-            "base_width": params["base_width_mm"],
-            "thickness": params["thickness_mm"],
-            "leg_height": params["leg_height_mm"],
-        })
-    elif name == "stepped_block":
-        nx_params.update({
-            "base_length": params["base_length_mm"],
-            "base_width": params["base_width_mm"],
-            "base_height": params["base_height_mm"],
-            "top_length": params["top_length_mm"],
-            "top_width": params["top_width_mm"],
-            "top_height": params["top_height_mm"],
-        })
-
-    q = NXJobQueue(job_root)
-    job_id = q.submit(action, nx_params)
-    try:
-        result = q.wait(job_id, timeout_s=config.nx_default_timeout_s)
-    except TimeoutError:
-        return EngineeringActionResult(
-            ok=False, software="nx", action="build_cad_model",
-            error=f"NX job {job_id} timed out after {config.nx_default_timeout_s}s.",
-        ).model_dump()
-
-    return EngineeringActionResult(
-        ok=bool(result.get("ok")),
-        software="nx",
-        action="build_cad_model",
-        message=result.get("message", ""),
-        files_created=result.get("files_created", []),
-        metrics={**result.get("metrics", {}), "backend": "nx12", "recipe": name},
-        error=result.get("error"),
-    ).model_dump()
 
 
 def build_natural_language_tools(config: EngineeringToolsConfig):
@@ -204,9 +32,9 @@ def build_natural_language_tools(config: EngineeringToolsConfig):
         name="engineering_validate_cad_ir",
         description=(
             "Validate a CAD-IR specification against the schema, recipe "
-            "registry, and capability registry. Returns normalized spec "
-            "or detailed error list. Always call before engineering_build_cad_model. "
-            "System prompt: " + NL_CAD_SYSTEM_PROMPT[:200] + "..."
+            "registry, primitive registry, and capability registry. "
+            "Returns normalized spec or detailed error list. "
+            "Always call before engineering_build_cad_model."
         ),
         cache=False,
         sanitize=True,
@@ -214,19 +42,25 @@ def build_natural_language_tools(config: EngineeringToolsConfig):
     )
     def engineering_validate_cad_ir(spec: dict) -> dict:
         try:
-            # Step 0: Rewrite deprecated recipes to primitives
+            # Step 0: Rewrite deprecated recipes to primitives — must NOT swallow errors
             rewrite_warnings: list[str] = []
             try:
                 spec = rewrite_deprecated_recipes_to_primitives(spec)
                 rewrite_warnings = spec.pop("rewrite_warnings", [])
-            except Exception:
-                pass  # If rewriting fails, continue with original spec
+            except Exception as exc:
+                return EngineeringActionResult(
+                    ok=False,
+                    software="generic",
+                    action="validate_cad_ir",
+                    error=f"Deprecated recipe rewrite failed: {exc}",
+                ).model_dump()
 
+            # Step 1: Schema validation
             normalized = CADPartSpec.model_validate(spec)
             errors: list[str] = []
             warnings: list[str] = list(rewrite_warnings)
 
-            # Detect ambiguities in user intent
+            # Step 2: Detect ambiguities in user intent
             ambiguities = detect_ambiguities({
                 "parameters": normalized.parameters,
                 "suggested_template": next(
@@ -234,27 +68,33 @@ def build_natural_language_tools(config: EngineeringToolsConfig):
                 ),
             })
 
-            # Normalize recipe parameters
+            # Step 3: Normalize recipe AND primitive parameters
+            from seekflow_engineering_tools.geometry_primitives.registry import (
+                normalize_primitive_parameters,
+            )
             normalized_params: dict = {}
-            for feat in normalized.features:
-                if feat.type == "recipe":
-                    try:
-                        n = normalize_recipe_parameters(feat.recipe_name, feat.parameters)
-                        normalized_params[feat.id] = n
-                    except ValueError as e:
-                        errors.append(f"Feature '{feat.id}': {e}")
-
-            # Check for unsupported recipes on target backends
-            for backend in normalized.target_backend:
-                from seekflow_engineering_tools.capabilities.registry import (
-                    backend_supports_recipe,
-                )
-                for feat in normalized.features:
+            for idx, feat in enumerate(normalized.features):
+                try:
                     if feat.type == "recipe":
-                        if not backend_supports_recipe(backend, feat.recipe_name):
-                            errors.append(
-                                f"Recipe '{feat.recipe_name}' not available for backend '{backend}'"
-                            )
+                        n = normalize_recipe_parameters(feat.recipe_name, feat.parameters)
+                        feat.parameters = n
+                    elif feat.type == "primitive":
+                        n = normalize_primitive_parameters(feat.primitive_name, feat.parameters)
+                        feat.parameters = n
+                    else:
+                        continue
+                    normalized_params[feat.id] = n
+                except ValueError as exc:
+                    errors.append(f"Feature '{feat.id}': {exc}")
+
+            # Step 4: Check backend support for ALL features (recipe + primitive)
+            for backend in normalized.target_backend:
+                for feat in normalized.features:
+                    if not backend_supports_feature(backend, feat):
+                        errors.append(
+                            f"Feature '{feat.id}' (type={feat.type}) "
+                            f"not supported by backend '{backend}'"
+                        )
 
             metrics: dict = {
                 "feature_count": len(normalized.features),
@@ -264,6 +104,11 @@ def build_natural_language_tools(config: EngineeringToolsConfig):
             }
             if normalized_params:
                 metrics["normalized_parameters"] = normalized_params
+            # Include full normalized spec in metrics
+            try:
+                metrics["normalized_spec"] = normalized.model_dump()
+            except Exception:
+                pass
 
             return EngineeringActionResult(
                 ok=len(errors) == 0,
@@ -299,9 +144,9 @@ def build_natural_language_tools(config: EngineeringToolsConfig):
         name="engineering_build_cad_model",
         description=(
             "Build a CAD model from a validated CAD-IR specification. "
-            "Routes to the appropriate backend (cadquery, solidworks2025, nx12) "
-            "and executes real geometry generation. Generates real STEP files. "
-            "Validates output against spec expectations (bbox, body count, etc.)."
+            "Routes to the appropriate backend based on feature types "
+            "and primitive strategies. For gear primitives on SW/NX, "
+            "first builds canonical STEP via CadQuery/CQ_Gears, then imports."
         ),
         cache=False,
         sanitize=True,
@@ -318,6 +163,7 @@ def build_natural_language_tools(config: EngineeringToolsConfig):
             cad_spec = CADPartSpec.model_validate(spec)
             choice: BackendChoice = choose_backend(cad_spec, preferred=[backend])
 
+            # ── cadquery: always native build ──
             if choice.backend == "cadquery":
                 from seekflow_engineering_tools.cadquery_backend.builder import (
                     build_cadquery_from_cad_ir,
@@ -332,20 +178,55 @@ def build_natural_language_tools(config: EngineeringToolsConfig):
                     result.setdefault("warnings", []).extend(choice.warnings)
                 return result
 
-            elif choice.backend == "solidworks2025":
-                return _build_solidworks_from_spec(cad_spec, config, out_step)
+            # ── solidworks2025 / nx12: check for primitives ──
+            if choice.backend in {"solidworks2025", "nx12"}:
+                primitive_features = [f for f in cad_spec.features if f.type == "primitive"]
 
-            elif choice.backend == "nx12":
-                return _build_nx_from_spec(cad_spec, config, out_step)
+                if primitive_features:
+                    # Verify all primitives use cadquery_step_import strategy
+                    for f in primitive_features:
+                        strategy = get_primitive_strategy(choice.backend, f.primitive_name)
+                        if strategy != "cadquery_step_import":
+                            return EngineeringActionResult(
+                                ok=False, software=choice.backend,
+                                action="build_cad_model",
+                                error=(
+                                    f"Primitive '{f.primitive_name}' has strategy "
+                                    f"'{strategy}' on '{choice.backend}', "
+                                    f"expected 'cadquery_step_import'."
+                                ),
+                            ).model_dump()
 
-            else:
-                return EngineeringActionResult(
-                    ok=False,
-                    software="generic",
-                    action="build_cad_model",
-                    error=f"No suitable backend found. Tried: {backend}, got: {choice.backend}",
-                    warnings=choice.warnings,
-                ).model_dump()
+                    # Route through canonical STEP import
+                    from seekflow_engineering_tools.natural_language.backend_builders import (
+                        build_solidworks_from_canonical_step,
+                        build_nx_from_canonical_step,
+                    )
+                    if choice.backend == "solidworks2025":
+                        return build_solidworks_from_canonical_step(
+                            cad_spec, config, out_step, out_native, inspect)
+                    elif choice.backend == "nx12":
+                        return build_nx_from_canonical_step(
+                            cad_spec, config, out_step, out_native, inspect)
+
+                # No primitives: use legacy recipe-only path
+                from seekflow_engineering_tools.natural_language.backend_builders import (
+                    build_solidworks_direct_recipe,
+                    build_nx_direct_recipe,
+                )
+                if choice.backend == "solidworks2025":
+                    return build_solidworks_direct_recipe(cad_spec, config, out_step)
+                elif choice.backend == "nx12":
+                    return build_nx_direct_recipe(cad_spec, config, out_step)
+
+            # ── No backend ──
+            return EngineeringActionResult(
+                ok=False,
+                software="generic",
+                action="build_cad_model",
+                error=f"No suitable backend found. Tried: {backend}, got: {choice.backend}",
+                warnings=choice.warnings,
+            ).model_dump()
 
         except Exception as exc:
             return EngineeringActionResult(
@@ -357,7 +238,8 @@ def build_natural_language_tools(config: EngineeringToolsConfig):
 
     engineering_build_cad_model = engineering_build_cad_model.with_policy(
         ToolPolicy(
-            capabilities={"cad.ir.write", "cad.cadquery.write", "filesystem.write", "cad.solidworks.write", "cad.nx.write"},
+            capabilities={"cad.ir.write", "cad.cadquery.write", "filesystem.write",
+                         "cad.solidworks.write", "cad.nx.write"},
             risk="write",
             timeout_s=300,
             workspace_root=config.workspace_root,
