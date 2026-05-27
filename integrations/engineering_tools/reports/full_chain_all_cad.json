@@ -1,0 +1,449 @@
+{
+  "timestamp": "2026-05-28T02:42:27.967208",
+  "overall_ok": true,
+  "backend": "cadquery",
+  "cases": [
+    {
+      "overall_ok": true,
+      "case": "box",
+      "backend": "cadquery",
+      "stages": {
+        "validate_cad_ir": {
+          "ok": true,
+          "error": null
+        },
+        "normalize_primitives": {
+          "ok": true,
+          "skipped": true,
+          "reason": "No mechanical primitive features."
+        },
+        "choose_backend": {
+          "ok": true,
+          "backend": "cadquery"
+        },
+        "build": {
+          "ok": true,
+          "error": null
+        },
+        "inspect": {
+          "ok": true
+        },
+        "mechanical_validate": {
+          "ok": true,
+          "skipped": true,
+          "reason": "No mechanical primitive features."
+        }
+      },
+      "files_created": [
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\models\\box.step",
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\.cadquery_scripts\\build_a10c30cdc3f5.py"
+      ],
+      "metrics": {},
+      "warnings": [],
+      "errors": []
+    },
+    {
+      "overall_ok": true,
+      "case": "cylinder",
+      "backend": "cadquery",
+      "stages": {
+        "validate_cad_ir": {
+          "ok": true,
+          "error": null
+        },
+        "normalize_primitives": {
+          "ok": true,
+          "skipped": true,
+          "reason": "No mechanical primitive features."
+        },
+        "choose_backend": {
+          "ok": true,
+          "backend": "cadquery"
+        },
+        "build": {
+          "ok": true,
+          "error": null
+        },
+        "inspect": {
+          "ok": true
+        },
+        "mechanical_validate": {
+          "ok": true,
+          "skipped": true,
+          "reason": "No mechanical primitive features."
+        }
+      },
+      "files_created": [
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\models\\cylinder.step",
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\.cadquery_scripts\\build_70e21d5d10c2.py"
+      ],
+      "metrics": {},
+      "warnings": [],
+      "errors": []
+    },
+    {
+      "overall_ok": true,
+      "case": "flanged_hub",
+      "backend": "cadquery",
+      "stages": {
+        "validate_cad_ir": {
+          "ok": true,
+          "error": null
+        },
+        "normalize_primitives": {
+          "ok": true,
+          "skipped": true,
+          "reason": "No mechanical primitive features."
+        },
+        "choose_backend": {
+          "ok": true,
+          "backend": "cadquery"
+        },
+        "build": {
+          "ok": true,
+          "error": null
+        },
+        "inspect": {
+          "ok": true
+        },
+        "mechanical_validate": {
+          "ok": true,
+          "skipped": true,
+          "reason": "No mechanical primitive features."
+        }
+      },
+      "files_created": [
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\models\\flanged_hub.step",
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\.cadquery_scripts\\build_dc9a1f808f64.py"
+      ],
+      "metrics": {},
+      "warnings": [],
+      "errors": []
+    },
+    {
+      "overall_ok": true,
+      "case": "shaft_basic",
+      "backend": "cadquery",
+      "stages": {
+        "validate_cad_ir": {
+          "ok": true,
+          "error": null
+        },
+        "normalize_primitives": {
+          "ok": true,
+          "skipped": true,
+          "reason": "No mechanical primitive features."
+        },
+        "choose_backend": {
+          "ok": true,
+          "backend": "cadquery"
+        },
+        "build": {
+          "ok": true,
+          "error": null
+        },
+        "inspect": {
+          "ok": true
+        },
+        "mechanical_validate": {
+          "ok": true,
+          "skipped": true,
+          "reason": "No mechanical primitive features."
+        }
+      },
+      "files_created": [
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\models\\shaft_basic.step",
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\.cadquery_scripts\\build_afc60f5cb5bb.py"
+      ],
+      "metrics": {},
+      "warnings": [],
+      "errors": []
+    },
+    {
+      "overall_ok": true,
+      "case": "shaft_with_keyway",
+      "backend": "cadquery",
+      "stages": {
+        "validate_cad_ir": {
+          "ok": true,
+          "error": null
+        },
+        "normalize_primitives": {
+          "ok": true,
+          "skipped": true,
+          "reason": "No mechanical primitive features."
+        },
+        "choose_backend": {
+          "ok": true,
+          "backend": "cadquery"
+        },
+        "build": {
+          "ok": true,
+          "error": null
+        },
+        "inspect": {
+          "ok": true
+        },
+        "mechanical_validate": {
+          "ok": true,
+          "skipped": true,
+          "reason": "No mechanical primitive features."
+        }
+      },
+      "files_created": [
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\models\\shaft_with_keyway.step",
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\.cadquery_scripts\\build_4aabae32204f.py"
+      ],
+      "metrics": {},
+      "warnings": [],
+      "errors": []
+    },
+    {
+      "overall_ok": true,
+      "case": "block_with_hole",
+      "backend": "cadquery",
+      "stages": {
+        "validate_cad_ir": {
+          "ok": true,
+          "error": null
+        },
+        "normalize_primitives": {
+          "ok": true,
+          "skipped": true,
+          "reason": "No mechanical primitive features."
+        },
+        "choose_backend": {
+          "ok": true,
+          "backend": "cadquery"
+        },
+        "build": {
+          "ok": true,
+          "error": null
+        },
+        "inspect": {
+          "ok": true
+        },
+        "mechanical_validate": {
+          "ok": true,
+          "skipped": true,
+          "reason": "No mechanical primitive features."
+        }
+      },
+      "files_created": [
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\models\\block_with_hole.step",
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\.cadquery_scripts\\build_2249a55d7615.py"
+      ],
+      "metrics": {},
+      "warnings": [],
+      "errors": []
+    },
+    {
+      "overall_ok": true,
+      "case": "l_bracket",
+      "backend": "cadquery",
+      "stages": {
+        "validate_cad_ir": {
+          "ok": true,
+          "error": null
+        },
+        "normalize_primitives": {
+          "ok": true,
+          "skipped": true,
+          "reason": "No mechanical primitive features."
+        },
+        "choose_backend": {
+          "ok": true,
+          "backend": "cadquery"
+        },
+        "build": {
+          "ok": true,
+          "error": null
+        },
+        "inspect": {
+          "ok": true
+        },
+        "mechanical_validate": {
+          "ok": true,
+          "skipped": true,
+          "reason": "No mechanical primitive features."
+        }
+      },
+      "files_created": [
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\models\\l_bracket.step",
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\.cadquery_scripts\\build_8801d871de8c.py"
+      ],
+      "metrics": {},
+      "warnings": [],
+      "errors": []
+    },
+    {
+      "overall_ok": true,
+      "case": "stepped_block",
+      "backend": "cadquery",
+      "stages": {
+        "validate_cad_ir": {
+          "ok": true,
+          "error": null
+        },
+        "normalize_primitives": {
+          "ok": true,
+          "skipped": true,
+          "reason": "No mechanical primitive features."
+        },
+        "choose_backend": {
+          "ok": true,
+          "backend": "cadquery"
+        },
+        "build": {
+          "ok": true,
+          "error": null
+        },
+        "inspect": {
+          "ok": true
+        },
+        "mechanical_validate": {
+          "ok": true,
+          "skipped": true,
+          "reason": "No mechanical primitive features."
+        }
+      },
+      "files_created": [
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\models\\stepped_block.step",
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\.cadquery_scripts\\build_f11b8429d01b.py"
+      ],
+      "metrics": {},
+      "warnings": [],
+      "errors": []
+    },
+    {
+      "overall_ok": true,
+      "case": "involute_spur_gear",
+      "backend": "cadquery",
+      "stages": {
+        "validate_cad_ir": {
+          "ok": true,
+          "error": null
+        },
+        "normalize_primitives": {
+          "ok": true,
+          "normalized_params": {
+            "module_mm": 2.0,
+            "teeth": 24,
+            "pressure_angle_deg": 20.0,
+            "face_width_mm": 15.0,
+            "bore_dia_mm": 10.0,
+            "addendum_coefficient": 1.0,
+            "clearance_coefficient": 0.25,
+            "profile_shift_coefficient": 0.0,
+            "backlash_mm": 0.0,
+            "root_fillet_radius_mm": 0.0,
+            "quality_grade": "industrial_brep"
+          }
+        },
+        "choose_backend": {
+          "ok": true,
+          "backend": "cadquery",
+          "strategy": "native_cadquery_primitive"
+        },
+        "build": {
+          "ok": true,
+          "error": null
+        },
+        "inspect": {
+          "ok": true,
+          "error": null
+        },
+        "mechanical_validate": {
+          "ok": true,
+          "error": null
+        },
+        "metadata": {
+          "ok": true,
+          "path": "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\models\\involute_spur_gear.metadata.json"
+        }
+      },
+      "files_created": [
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\models\\involute_spur_gear.step",
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\.cadquery_scripts\\build_83abf180d320.py",
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\models\\involute_spur_gear.metadata.json"
+      ],
+      "metrics": {
+        "kernel_used": "cq_gears",
+        "reference_dimensions": {
+          "pitch_diameter_mm": 48.0,
+          "base_diameter_mm": 45.105245797723605,
+          "outer_diameter_mm": 52.0,
+          "root_diameter_mm": 43.0
+        },
+        "strategy": "native_cadquery_primitive"
+      },
+      "warnings": [],
+      "errors": []
+    },
+    {
+      "overall_ok": true,
+      "case": "involute_spur_gear_m3z20",
+      "backend": "cadquery",
+      "stages": {
+        "validate_cad_ir": {
+          "ok": true,
+          "error": null
+        },
+        "normalize_primitives": {
+          "ok": true,
+          "normalized_params": {
+            "module_mm": 3.0,
+            "teeth": 20,
+            "pressure_angle_deg": 20.0,
+            "face_width_mm": 20.0,
+            "bore_dia_mm": 15.0,
+            "addendum_coefficient": 1.0,
+            "clearance_coefficient": 0.25,
+            "profile_shift_coefficient": 0.0,
+            "backlash_mm": 0.0,
+            "root_fillet_radius_mm": 0.0,
+            "quality_grade": "industrial_brep"
+          }
+        },
+        "choose_backend": {
+          "ok": true,
+          "backend": "cadquery",
+          "strategy": "native_cadquery_primitive"
+        },
+        "build": {
+          "ok": true,
+          "error": null
+        },
+        "inspect": {
+          "ok": true,
+          "error": null
+        },
+        "mechanical_validate": {
+          "ok": true,
+          "error": null
+        },
+        "metadata": {
+          "ok": true,
+          "path": "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\models\\involute_spur_gear_m3z20.metadata.json"
+        }
+      },
+      "files_created": [
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\models\\involute_spur_gear_m3z20.step",
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\.cadquery_scripts\\build_423c82dddd78.py",
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_024227\\models\\involute_spur_gear_m3z20.metadata.json"
+      ],
+      "metrics": {
+        "kernel_used": "cq_gears",
+        "reference_dimensions": {
+          "pitch_diameter_mm": 60.0,
+          "base_diameter_mm": 56.381557247154504,
+          "outer_diameter_mm": 66.0,
+          "root_diameter_mm": 52.5
+        },
+        "strategy": "native_cadquery_primitive"
+      },
+      "warnings": [],
+      "errors": []
+    }
+  ]
+}

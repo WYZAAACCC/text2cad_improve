@@ -57,11 +57,26 @@ def validate_mechanical_primitives(spec, step_path: Path, inspection: dict) -> d
             from seekflow_engineering_tools.mechanical_validation.gear_validation import (
                 validate_involute_spur_gear_result,
             )
+            # Build expected dict from spec.validation
+            expected = {
+                "expected_kernel": getattr(spec.validation, "expected_kernel", None),
+                "expected_tooth_count": getattr(spec.validation, "expected_tooth_count", None),
+                "expected_bore_diameter_mm": getattr(spec.validation, "expected_bore_diameter_mm", None),
+                "expected_face_width_mm": getattr(spec.validation, "expected_face_width_mm", None),
+                "expected_pitch_diameter_mm": getattr(spec.validation, "expected_pitch_diameter_mm", None),
+                "expected_base_diameter_mm": getattr(spec.validation, "expected_base_diameter_mm", None),
+                "expected_outer_diameter_mm": getattr(spec.validation, "expected_outer_diameter_mm", None),
+                "expected_root_diameter_mm": getattr(spec.validation, "expected_root_diameter_mm", None),
+                "expected_body_count": getattr(spec.validation, "expected_body_count", None),
+            }
+
             result = validate_involute_spur_gear_result(
                 params=feature.parameters,
                 inspection=inspection,
                 metadata=metadata,
                 tolerance_mm=spec.validation.tolerance_mm,
+                expected=expected,
+                raw_metadata=raw_metadata,
             )
             results.append(result)
             if not result.get("ok"):  # fail-closed: missing ok → fail

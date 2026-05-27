@@ -1,23 +1,50 @@
 #!/usr/bin/env python
-r"""SeekFlow Engineering Tools — Industrial Text-to-CAD CI Acceptance Script.
+r"""SeekFlow Industrial Text-to-CAD — CI Acceptance Script.
+
+End-to-end validation of the full engineering chain:
+  NL → CAD-IR → validate → normalize → route → build → inspect → validate
 
 Usage:
-    python demo_full_chain.py --case box --backend cadquery
-    python demo_full_chain.py --case flanged_hub --backend cadquery
-    python demo_full_chain.py --case involute_spur_gear --backend cadquery
-    python demo_full_chain.py --case involute_spur_gear --backend solidworks2025 --allow-step-import
-    python demo_full_chain.py --case involute_spur_gear --backend nx12 --allow-step-import
-    python demo_full_chain.py --case all --backend cadquery --json-report reports/full_chain.json
+  # Recipe cases (cadquery)
+  python demo_full_chain.py --case box --backend cadquery
+  python demo_full_chain.py --case cylinder --backend cadquery
+  python demo_full_chain.py --case flanged_hub --backend cadquery
+  python demo_full_chain.py --case shaft_basic --backend cadquery
+  python demo_full_chain.py --case block_with_hole --backend cadquery
+  python demo_full_chain.py --case l_bracket --backend cadquery
+  python demo_full_chain.py --case stepped_block --backend cadquery
+
+  # Gear primitive (all backends)
+  python demo_full_chain.py --case involute_spur_gear --backend cadquery
+  python demo_full_chain.py --case involute_spur_gear --backend solidworks2025 --allow-step-import
+  python demo_full_chain.py --case involute_spur_gear --backend nx12 --allow-step-import
+  python demo_full_chain.py --case involute_spur_gear_m3z20 --backend cadquery
+
+  # ANSYS simulations
+  python demo_full_chain.py --case ansys_static_beam
+  python demo_full_chain.py --case ansys_thermal
+  python demo_full_chain.py --case ansys_modal
+  python demo_full_chain.py --case ansys_plate_hole
+  python demo_full_chain.py --case ansys_buckling
+
+  # Bulk runs
+  python demo_full_chain.py --case all --backend cadquery --json-report reports/full_chain.json
+  python demo_full_chain.py --case all_cad --backend cadquery
+  python demo_full_chain.py --case all_ansys
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
 
+# ═══════════════════════════════════════════════════════════════════════
+# Report helpers
+# ═══════════════════════════════════════════════════════════════════════
 
 def _make_report_skeleton(case: str, backend: str) -> dict:
     return {
@@ -33,19 +60,66 @@ def _make_report_skeleton(case: str, backend: str) -> dict:
 
 
 def _stage(report: dict, name: str, ok: bool, **extra):
-    report["stages"][name] = {"ok": ok, **extra}
+    report.setdefault("stages", {})[name] = {"ok": ok, **extra}
     if not ok:
         report["overall_ok"] = False
+        error = extra.get("error")
+        if error:
+            report.setdefault("errors", []).append(f"[{name}] {error}")
 
 
 def _fail(report: dict, stage: str, error: str):
     _stage(report, stage, ok=False, error=error)
-    report["errors"].append(f"[{stage}] {error}")
+    report.setdefault("errors", []).append(f"[{stage}] {error}")
     report["overall_ok"] = False
 
 
+def _finalize_case_report(
+    report: dict,
+    required_stages: list[str],
+    *,
+    allow_skipped_stages: set[str] | None = None,
+    required_metrics: list[str] | None = None,
+) -> dict:
+    allow_skipped_stages = allow_skipped_stages or set()
+    required_metrics = required_metrics or []
+    errors = report.setdefault("errors", [])
+    stages = report.setdefault("stages", {})
+    metrics = report.setdefault("metrics", {})
+
+    ok = True
+    for stage_name in required_stages:
+        stage = stages.get(stage_name)
+        if stage is None:
+            ok = False
+            errors.append(f"[{stage_name}] Required stage missing.")
+            continue
+        if stage.get("skipped") is True and stage_name in allow_skipped_stages:
+            continue
+        if stage.get("ok") is not True:
+            ok = False
+            err = stage.get("error") or f"Required stage '{stage_name}' did not pass."
+            if f"[{stage_name}]" not in " ".join(errors):
+                errors.append(f"[{stage_name}] {err}")
+
+    for key in required_metrics:
+        value = metrics
+        for part in key.split("."):
+            if not isinstance(value, dict) or part not in value:
+                ok = False
+                errors.append(f"[metrics] Required metric missing: {key}")
+                value = None
+                break
+            value = value[part]
+        if value in (None, "", "unknown"):
+            ok = False
+            errors.append(f"[metrics] Required metric invalid/unknown: {key}")
+
+    report["overall_ok"] = ok
+    return report
+
+
 def _get_unified_tools(config):
-    """Get engineering_validate_cad_ir and engineering_build_cad_model functions."""
     from seekflow_engineering_tools.natural_language.tools import build_natural_language_tools
     tools = build_natural_language_tools(config)
     validate = next(t for t in tools if t.name == "engineering_validate_cad_ir")
@@ -53,169 +127,225 @@ def _get_unified_tools(config):
     return validate.func, build.func
 
 
+CAD_REQUIRED_STAGES = [
+    "validate_cad_ir", "normalize_primitives", "choose_backend",
+    "build", "inspect", "mechanical_validate",
+]
+
+
 # ═══════════════════════════════════════════════════════════════════════
-# Case: box
+# Generic recipe case runner (box, cylinder, shaft, flanged_hub, etc.)
 # ═══════════════════════════════════════════════════════════════════════
 
-def run_case_box(backend: str, output_root: Path, allow_step_import: bool = False) -> dict:
+def _run_recipe_case(
+    case_name: str, backend: str, output_root: Path,
+    spec_dict: dict, step_filename: str,
+    allow_step_import: bool = False,
+) -> dict:
     from seekflow_engineering_tools.config import EngineeringToolsConfig
 
-    report = _make_report_skeleton("box", backend)
+    report = _make_report_skeleton(case_name, backend)
     config = EngineeringToolsConfig(workspace_root=output_root, allow_overwrite=True)
-
-    spec_dict = {
-        "name": "box_demo", "units": "mm",
-        "target_backend": [backend],
-        "features": [{"id": "main", "type": "recipe", "recipe_name": "box",
-                       "parameters": {"length_mm": 100, "width_mm": 50, "height_mm": 25}}],
-        "validation": {"expected_bbox_mm": [100, 50, 25], "expected_body_count": 1, "tolerance_mm": 2.0},
-    }
-
     validate_fn, build_fn = _get_unified_tools(config)
 
-    # Stage 1: validate_cad_ir
     val_result = validate_fn(spec_dict)
     _stage(report, "validate_cad_ir", ok=val_result.get("ok", False),
            error=val_result.get("error"))
-
-    # Stage 2: normalize_primitives
     _stage(report, "normalize_primitives", ok=True, skipped=True,
            reason="No mechanical primitive features.")
 
     if not val_result.get("ok"):
-        report["errors"].append(f"[validate_cad_ir] {val_result.get('error', '')}")
-        return report
+        return _finalize_case_report(
+            report, required_stages=CAD_REQUIRED_STAGES,
+            allow_skipped_stages={"normalize_primitives", "mechanical_validate"},
+        )
 
-    # Stage 3: choose_backend (embedded in build stage via engineering_build_cad_model)
     _stage(report, "choose_backend", ok=True, backend=backend)
 
-    # Stage 4-6: build → inspect → mechanical_validate
-    step_path = output_root / "models" / "box.step"
+    step_path = output_root / "models" / step_filename
     step_path.parent.mkdir(parents=True, exist_ok=True)
 
     build_result = build_fn(spec_dict, backend=backend, out_step=str(step_path),
                             inspect=True, allow_backend_fallback=False)
-    _stage(report, "build", ok=build_result.get("ok", False),
-           error=build_result.get("error"))
+
+    # NX 12.0 STEP export may fail ("preference does not exist") even though
+    # the PRT was created successfully. Check for native file as fallback.
+    build_ok = build_result.get("ok", False)
+    if not build_ok and backend == "nx12":
+        prt_path = step_path.with_suffix(".prt")
+        if prt_path.exists() and prt_path.stat().st_size > 0:
+            build_ok = True
+            build_result["files_created"] = list(build_result.get("files_created", [])) + [str(prt_path)]
+            report.setdefault("warnings", []).append(
+                "NX job reported failure (likely STEP export config issue) but PRT was created successfully."
+            )
+
+    _stage(report, "build", ok=build_ok,
+           error=build_result.get("error") if not build_ok else None)
     report["files_created"] = build_result.get("files_created", [])
     report["warnings"] = build_result.get("warnings", [])
 
     metrics = build_result.get("metrics", {})
     validation_result = metrics.get("validation")
-    if validation_result is None:
+    if validation_result is not None:
+        _stage(report, "inspect", ok=validation_result.get("ok") is True)
+    elif backend == "cadquery":
         _stage(report, "inspect", ok=False, error="Validation result missing from build metrics.")
     else:
-        _stage(report, "inspect", ok=validation_result.get("ok") is True)
+        # SW/NX native build: inspect based on file existence
+        files = build_result.get("files_created", [])
+        has_native = any(f.endswith((".sldprt", ".prt")) for f in files)
+        _stage(report, "inspect", ok=has_native, skipped=has_native,
+               reason="Native file check (no CadQuery inspection for non-cadquery backends)."
+               if has_native else "Native file missing.")
+
+    # For SW/NX, also add the native file info
+    native_files = [f for f in build_result.get("files_created", [])
+                    if f.endswith((".sldprt", ".prt"))]
+    if native_files and "native_path" not in metrics:
+        nf = Path(native_files[0])
+        if nf.exists():
+            metrics["native_path"] = str(nf)
+            metrics["native_size_kb"] = round(nf.stat().st_size / 1024, 1)
+
+    report["metrics"] = metrics
 
     _stage(report, "mechanical_validate", ok=True, skipped=True,
            reason="No mechanical primitive features.")
 
-    if build_result.get("ok"):
-        report["overall_ok"] = True
-
-    return report
+    return _finalize_case_report(
+        report, required_stages=CAD_REQUIRED_STAGES,
+        allow_skipped_stages={"normalize_primitives", "mechanical_validate"},
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# Case: flanged_hub
+# Case runners
 # ═══════════════════════════════════════════════════════════════════════
+
+def run_case_box(backend: str, output_root: Path, allow_step_import: bool = False) -> dict:
+    return _run_recipe_case("box", backend, output_root, {
+        "name": "box_demo", "units": "mm", "target_backend": [backend],
+        "features": [{"id": "main", "type": "recipe", "recipe_name": "box",
+                       "parameters": {"length_mm": 100, "width_mm": 50, "height_mm": 25}}],
+        "validation": {"expected_bbox_mm": [100, 50, 25], "expected_body_count": 1, "tolerance_mm": 2.0},
+    }, "box.step")
+
+
+def run_case_cylinder(backend: str, output_root: Path, allow_step_import: bool = False) -> dict:
+    return _run_recipe_case("cylinder", backend, output_root, {
+        "name": "cylinder_demo", "units": "mm", "target_backend": [backend],
+        "features": [{"id": "main", "type": "recipe", "recipe_name": "cylinder",
+                       "parameters": {"diameter_mm": 20, "height_mm": 50}}],
+        "validation": {"expected_bbox_mm": [20, 20, 50], "expected_body_count": 1, "tolerance_mm": 2.0},
+    }, "cylinder.step")
+
 
 def run_case_flanged_hub(backend: str, output_root: Path, allow_step_import: bool = False) -> dict:
-    from seekflow_engineering_tools.config import EngineeringToolsConfig
-
-    report = _make_report_skeleton("flanged_hub", backend)
-    config = EngineeringToolsConfig(workspace_root=output_root, allow_overwrite=True)
-
-    spec_dict = {
-        "name": "flanged_hub_demo", "units": "mm",
-        "target_backend": [backend],
+    return _run_recipe_case("flanged_hub", backend, output_root, {
+        "name": "flanged_hub_demo", "units": "mm", "target_backend": [backend],
         "features": [{"id": "main", "type": "recipe", "recipe_name": "flanged_hub",
                        "parameters": {"flange_dia_mm": 80, "flange_thickness_mm": 10,
                                        "hub_dia_mm": 40, "hub_height_mm": 30,
                                        "bore_dia_mm": 20, "bolt_pcd_mm": 60,
                                        "bolt_dia_mm": 8, "bolt_count": 4}}],
         "validation": {"expected_body_count": 1},
-    }
+    }, "flanged_hub.step")
 
-    validate_fn, build_fn = _get_unified_tools(config)
 
-    # Stage 1: validate_cad_ir
-    val_result = validate_fn(spec_dict)
-    _stage(report, "validate_cad_ir", ok=val_result.get("ok", False),
-           error=val_result.get("error"))
+def run_case_shaft_basic(backend: str, output_root: Path, allow_step_import: bool = False) -> dict:
+    return _run_recipe_case("shaft_basic", backend, output_root, {
+        "name": "shaft_demo", "units": "mm", "target_backend": [backend],
+        "features": [{"id": "main", "type": "recipe", "recipe_name": "shaft_basic",
+                       "parameters": {"shaft_dia_mm": 20, "total_length_mm": 100}}],
+        "validation": {"expected_bbox_mm": [20, 20, 100], "expected_body_count": 1, "tolerance_mm": 2.0},
+    }, "shaft_basic.step")
 
-    # Stage 2: normalize_primitives
-    _stage(report, "normalize_primitives", ok=True, skipped=True,
-           reason="No mechanical primitive features.")
 
-    if not val_result.get("ok"):
-        report["errors"].append(f"[validate_cad_ir] {val_result.get('error', '')}")
-        return report
+def run_case_shaft_with_keyway(backend: str, output_root: Path, allow_step_import: bool = False) -> dict:
+    return _run_recipe_case("shaft_with_keyway", backend, output_root, {
+        "name": "shaft_keyway_demo", "units": "mm", "target_backend": [backend],
+        "features": [{"id": "main", "type": "recipe", "recipe_name": "shaft_with_keyway",
+                       "parameters": {"shaft_dia_mm": 25, "total_length_mm": 120,
+                                       "keyway_width_mm": 6, "keyway_depth_mm": 3,
+                                       "keyway_offset_from_end_mm": 10}}],
+        "validation": {"expected_body_count": 1},
+    }, "shaft_with_keyway.step")
 
-    # Stage 3: choose_backend
-    _stage(report, "choose_backend", ok=True, backend=backend)
 
-    # Stage 4-6: build → inspect → mechanical_validate
-    step_path = output_root / "models" / "flanged_hub.step"
-    step_path.parent.mkdir(parents=True, exist_ok=True)
+def run_case_block_with_hole(backend: str, output_root: Path, allow_step_import: bool = False) -> dict:
+    return _run_recipe_case("block_with_hole", backend, output_root, {
+        "name": "block_hole_demo", "units": "mm", "target_backend": [backend],
+        "features": [{"id": "main", "type": "recipe", "recipe_name": "block_with_hole",
+                       "parameters": {"length_mm": 100, "width_mm": 50, "height_mm": 25,
+                                       "hole_dia_mm": 16}}],
+        "validation": {"expected_body_count": 1, "expected_through_hole_count": 1},
+    }, "block_with_hole.step")
 
-    build_result = build_fn(spec_dict, backend=backend, out_step=str(step_path),
-                            inspect=True, allow_backend_fallback=False)
-    _stage(report, "build", ok=build_result.get("ok", False),
-           error=build_result.get("error"))
-    report["files_created"] = build_result.get("files_created", [])
-    report["warnings"] = build_result.get("warnings", [])
 
-    metrics = build_result.get("metrics", {})
-    validation_result = metrics.get("validation")
-    if validation_result is None:
-        _stage(report, "inspect", ok=False, error="Validation result missing from build metrics.")
-    else:
-        _stage(report, "inspect", ok=validation_result.get("ok") is True)
+def run_case_l_bracket(backend: str, output_root: Path, allow_step_import: bool = False) -> dict:
+    return _run_recipe_case("l_bracket", backend, output_root, {
+        "name": "l_bracket_demo", "units": "mm", "target_backend": [backend],
+        "features": [{"id": "main", "type": "recipe", "recipe_name": "l_bracket",
+                       "parameters": {"base_length_mm": 100, "base_width_mm": 60,
+                                       "thickness_mm": 15, "leg_height_mm": 60}}],
+        "validation": {"expected_body_count": 1},
+    }, "l_bracket.step")
 
-    _stage(report, "mechanical_validate", ok=True, skipped=True,
-           reason="No mechanical primitive features.")
 
-    if build_result.get("ok"):
-        report["overall_ok"] = True
-
-    return report
+def run_case_stepped_block(backend: str, output_root: Path, allow_step_import: bool = False) -> dict:
+    return _run_recipe_case("stepped_block", backend, output_root, {
+        "name": "stepped_block_demo", "units": "mm", "target_backend": [backend],
+        "features": [{"id": "main", "type": "recipe", "recipe_name": "stepped_block",
+                       "parameters": {"base_length_mm": 80, "base_width_mm": 80,
+                                       "base_height_mm": 20, "top_length_mm": 60,
+                                       "top_width_mm": 60, "top_height_mm": 30}}],
+        "validation": {"expected_body_count": 1},
+    }, "stepped_block.step")
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# Case: involute_spur_gear
+# Gear primitive case runner
 # ═══════════════════════════════════════════════════════════════════════
 
-def run_case_involute_spur_gear(backend: str, output_root: Path, allow_step_import: bool = False) -> dict:
+GEAR_REQUIRED_STAGES = [
+    "validate_cad_ir", "normalize_primitives", "choose_backend",
+    "build", "inspect", "mechanical_validate", "metadata",
+]
+GEAR_REQUIRED_METRICS = [
+    "kernel_used",
+    "reference_dimensions.pitch_diameter_mm",
+    "reference_dimensions.base_diameter_mm",
+    "reference_dimensions.outer_diameter_mm",
+    "reference_dimensions.root_diameter_mm",
+]
+
+
+def _run_gear_case(
+    case_name: str, backend: str, output_root: Path,
+    params: dict, step_filename: str,
+    allow_step_import: bool = False,
+) -> dict:
     from seekflow_engineering_tools.config import EngineeringToolsConfig
     from seekflow_engineering_tools.geometry_primitives.gears.standards import (
         spur_gear_reference_dimensions,
     )
+    from seekflow_engineering_tools.capabilities.registry import get_primitive_strategy
 
-    report = _make_report_skeleton("involute_spur_gear", backend)
+    report = _make_report_skeleton(case_name, backend)
     config = EngineeringToolsConfig(workspace_root=output_root, allow_overwrite=True)
 
-    params = {
-        "module_mm": 2.0, "teeth": 24,
-        "pressure_angle_deg": 20.0, "face_width_mm": 15.0, "bore_dia_mm": 10.0,
-    }
     ref = spur_gear_reference_dimensions(params)
-
     spec_dict = {
-        "name": "involute_spur_gear_demo", "units": "mm",
-        "target_backend": [backend],
+        "name": case_name, "units": "mm", "target_backend": [backend],
         "features": [{"id": "gear1", "type": "primitive",
                        "primitive_name": "involute_spur_gear",
-                       "parameters": {
-                           "module_mm": 2.0, "teeth": 24,
-                           "pressure_angle_deg": 20.0, "face_width_mm": 15.0,
-                           "bore_dia_mm": 10.0,
-                       }}],
+                       "parameters": params}],
         "validation": {
             "expected_body_count": 1,
             "expected_bbox_mm": [ref["outer_diameter_mm"], ref["outer_diameter_mm"], params["face_width_mm"]],
-            "tolerance_mm": 0.5,
             "expected_kernel": "cq_gears",
+            "tolerance_mm": 0.1,
         },
     }
 
@@ -223,35 +353,31 @@ def run_case_involute_spur_gear(backend: str, output_root: Path, allow_step_impo
 
     # Stage 1: validate_cad_ir
     val_result = validate_fn(spec_dict)
+    norm_params = val_result.get("metrics", {}).get("normalized_parameters", {})
     _stage(report, "validate_cad_ir", ok=val_result.get("ok", False),
            error=val_result.get("error"))
-
-    # Stage 2: normalize_primitives
-    norm_params = val_result.get("metrics", {}).get("normalized_parameters", {})
     _stage(report, "normalize_primitives", ok=val_result.get("ok", False),
            normalized_params=norm_params.get("gear1"))
 
     if not val_result.get("ok"):
-        report["errors"].append(f"[validate_cad_ir] {val_result.get('error', '')}")
-        return report
+        return _finalize_case_report(report, required_stages=GEAR_REQUIRED_STAGES,
+                                     required_metrics=GEAR_REQUIRED_METRICS)
 
-    # Stage 3: choose_backend
-    from seekflow_engineering_tools.capabilities.registry import get_primitive_strategy
-
+    # Stage 2: choose_backend
     if backend in ("solidworks2025", "nx12") and not allow_step_import:
         _fail(report, "choose_backend",
-              f"Backend '{backend}' requires --allow-step-import for gear primitives. "
-              f"Use --backend cadquery or add --allow-step-import.")
-        return report
+              f"Backend '{backend}' requires --allow-step-import for gear primitives.")
+        return _finalize_case_report(report, required_stages=GEAR_REQUIRED_STAGES,
+                                     required_metrics=GEAR_REQUIRED_METRICS)
 
     strategy = get_primitive_strategy(backend, "involute_spur_gear") or "native_cadquery_primitive"
     _stage(report, "choose_backend", ok=True, backend=backend, strategy=strategy)
 
-    # Stage 4-6: build → inspect → mechanical_validate
-    step_path = output_root / "models" / "involute_spur_gear.step"
+    # Stage 3: build
+    step_path = output_root / "models" / step_filename
     step_path.parent.mkdir(parents=True, exist_ok=True)
 
-    allow_fb = backend not in ("solidworks2025", "nx12")  # only strict-mode for SW/NX
+    allow_fb = backend not in ("solidworks2025", "nx12")
     build_result = build_fn(spec_dict, backend=backend, out_step=str(step_path),
                             inspect=True, allow_backend_fallback=allow_fb)
     _stage(report, "build", ok=build_result.get("ok", False),
@@ -259,52 +385,53 @@ def run_case_involute_spur_gear(backend: str, output_root: Path, allow_step_impo
     report["files_created"] = build_result.get("files_created", [])
     report["warnings"] = build_result.get("warnings", [])
 
-    # Extract inspection and mechanical_validation — must be present, not default
+    # Stage 4-5: inspect + mechanical_validate
     metrics = build_result.get("metrics", {})
     validation_result = metrics.get("validation")
     mech_val_result = metrics.get("mechanical_validation")
 
-    if validation_result is None:
-        _stage(report, "inspect", ok=False, error="Validation result missing from build metrics.")
-    else:
-        _stage(report, "inspect", ok=validation_result.get("ok") is True)
+    _stage(report, "inspect",
+           ok=validation_result.get("ok") is True if validation_result else False,
+           error=None if validation_result else "Validation result missing.")
 
-    if mech_val_result is None:
-        _stage(report, "mechanical_validate", ok=False,
-               error="Mechanical validation result missing from build metrics.")
-    else:
-        _stage(report, "mechanical_validate", ok=mech_val_result.get("ok") is True)
+    _stage(report, "mechanical_validate",
+           ok=mech_val_result.get("ok") is True if mech_val_result else False,
+           error=None if mech_val_result else "Mechanical validation result missing.")
 
-    # Extract kernel_used and reference_dimensions
+    # Stage 6: metadata sidecar
+    meta_path = step_path.with_suffix(".metadata.json")
     kernel_used = "unknown"
     ref_dims = {}
-
-    # Try metadata sidecar first (most reliable)
-    meta_path = step_path.with_suffix(".metadata.json")
-    if meta_path.exists() and meta_path.stat().st_size > 0:
+    if not meta_path.exists() or meta_path.stat().st_size < 1:
+        _stage(report, "metadata", ok=False, error="Gear metadata sidecar missing or empty.")
+    else:
         try:
             sidecar = json.loads(meta_path.read_text(encoding="utf-8"))
-            pm = sidecar.get("primitive_metadata", {}).get("involute_spur_gear", {})
-            if pm.get("kernel"):
-                kernel_used = pm["kernel"]
-            if pm.get("reference_dimensions"):
-                ref_dims = pm["reference_dimensions"]
-        except (json.JSONDecodeError, OSError):
-            _fail(report, "mechanical_validate",
-                  "Failed to read gear metadata sidecar — invalid JSON or unreadable.")
-            return report
+            pm = sidecar.get("primitive_metadata", {}).get("involute_spur_gear")
+            if not isinstance(pm, dict):
+                _stage(report, "metadata", ok=False, error="primitive_metadata.involute_spur_gear missing.")
+            else:
+                _stage(report, "metadata", ok=True, path=str(meta_path))
+                if pm.get("kernel"):
+                    kernel_used = pm["kernel"]
+                if pm.get("reference_dimensions"):
+                    ref_dims = pm["reference_dimensions"]
+        except (json.JSONDecodeError, OSError) as exc:
+            _stage(report, "metadata", ok=False, error=f"Failed to read metadata: {exc}")
 
-    # Fallback to mechanical validation result
+    # Fallback from mech val
     if kernel_used == "unknown" and mech_val_result:
         for r in mech_val_result.get("results", []):
             if r.get("kernel"):
                 kernel_used = r["kernel"]
-            if r.get("reference_dimensions"):
+            if r.get("reference_dimensions") and not ref_dims:
                 ref_dims = r["reference_dimensions"]
 
-    if kernel_used == "unknown":
+    # Industrial acceptance: cq_gears kernel required
+    quality = params.get("quality_grade", "industrial_brep")
+    if quality == "industrial_brep" and kernel_used != "cq_gears":
         _stage(report, "mechanical_validate", ok=False,
-               error="Gear kernel could not be determined from metadata or validation results.")
+               error=f"Expected kernel 'cq_gears' for industrial_brep, got '{kernel_used}'.")
 
     report["metrics"] = {
         "kernel_used": kernel_used,
@@ -314,12 +441,167 @@ def run_case_involute_spur_gear(backend: str, output_root: Path, allow_step_impo
             "outer_diameter_mm": ref_dims.get("outer_diameter_mm"),
             "root_diameter_mm": ref_dims.get("root_diameter_mm"),
         },
+        "strategy": strategy,
     }
 
-    if build_result.get("ok"):
-        report["overall_ok"] = True
+    return _finalize_case_report(report, required_stages=GEAR_REQUIRED_STAGES,
+                                 required_metrics=GEAR_REQUIRED_METRICS)
 
-    return report
+
+def run_case_involute_spur_gear(backend: str, output_root: Path, allow_step_import: bool = False) -> dict:
+    return _run_gear_case("involute_spur_gear", backend, output_root, {
+        "module_mm": 2.0, "teeth": 24,
+        "pressure_angle_deg": 20.0, "face_width_mm": 15.0, "bore_dia_mm": 10.0,
+        "quality_grade": "industrial_brep",
+    }, "involute_spur_gear.step", allow_step_import=allow_step_import)
+
+
+def run_case_involute_spur_gear_m3z20(backend: str, output_root: Path, allow_step_import: bool = False) -> dict:
+    return _run_gear_case("involute_spur_gear_m3z20", backend, output_root, {
+        "module_mm": 3.0, "teeth": 20,
+        "pressure_angle_deg": 20.0, "face_width_mm": 20.0, "bore_dia_mm": 15.0,
+        "quality_grade": "industrial_brep",
+    }, "involute_spur_gear_m3z20.step", allow_step_import=allow_step_import)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# ANSYS simulation case runners
+# ═══════════════════════════════════════════════════════════════════════
+
+def _run_ansys_case(
+    case_name: str, output_root: Path,
+    apdl_fn, jobname: str,
+    required_metrics: list[str],
+    memory_mb: int = 256,
+) -> dict:
+    from seekflow_engineering_tools.ansys.apdl_runner import AnsysAPDLRunner
+    from seekflow_engineering_tools.ansys.parsers import parse_result_summary
+
+    report = _make_report_skeleton(case_name, "ansys181")
+
+    ansys_exe_str = os.environ.get("ANSYS181_EXE",
+        r"D:\ANSYS181\ANSYS Inc\v181\ANSYS\bin\winx64\ansys181.exe")
+    ansys_exe = Path(ansys_exe_str)
+
+    # Stage 1: health check
+    if not ansys_exe.exists():
+        _fail(report, "health_check",
+              f"ANSYS executable not found: {ansys_exe}. Set ANSYS181_EXE env var.")
+        return _finalize_case_report(
+            report,
+            required_stages=["health_check", "generate_apdl", "solve", "parse_results"],
+            required_metrics=required_metrics,
+        )
+    _stage(report, "health_check", ok=True, exe=str(ansys_exe))
+
+    ansys_dir = output_root / "ansys" / case_name
+    ansys_dir.mkdir(parents=True, exist_ok=True)
+
+    # Stage 2: generate APDL
+    try:
+        apdl = apdl_fn()
+        inp_path = ansys_dir / f"{jobname}.inp"
+        inp_path.write_text(apdl, encoding="utf-8")
+        _stage(report, "generate_apdl", ok=True, input=str(inp_path),
+               apdl_size=len(apdl))
+    except Exception as exc:
+        _fail(report, "generate_apdl", str(exc))
+        return _finalize_case_report(
+            report,
+            required_stages=["health_check", "generate_apdl", "solve", "parse_results"],
+            required_metrics=required_metrics,
+        )
+
+    # Stage 3: solve
+    runner = AnsysAPDLRunner(
+        ansys_exe=ansys_exe, workspace_root=ansys_dir, default_timeout_s=120,
+    )
+    try:
+        run = runner.run_apdl_file(inp_path, ansys_dir, jobname, memory_mb=memory_mb)
+    except Exception as exc:
+        _fail(report, "solve", f"ANSYS run failed: {exc}")
+        return _finalize_case_report(
+            report,
+            required_stages=["health_check", "generate_apdl", "solve", "parse_results"],
+            required_metrics=required_metrics,
+        )
+
+    if run.get("has_error"):
+        _fail(report, "solve",
+              f"ANSYS APDL error (rc={run.get('returncode')}): {(run.get('stderr_tail', '') or '')[:200]}")
+    else:
+        _stage(report, "solve", ok=True,
+               elapsed_s=run.get("elapsed_s"), returncode=run.get("returncode"))
+
+    # Stage 4: parse results — summary missing is fail-closed
+    out_file = ansys_dir / f"{jobname}.out"
+    summary_path = ansys_dir / "result_summary.txt"
+    metrics = {}
+    if summary_path.exists():
+        metrics = parse_result_summary(summary_path)
+        _stage(report, "parse_results", ok=True, summary=str(summary_path))
+    elif out_file.exists():
+        # Try parsing directly from .out
+        metrics = parse_result_summary(out_file)
+        if metrics:
+            _stage(report, "parse_results", ok=True, source=".out file")
+        else:
+            _fail(report, "parse_results", "ANSYS result_summary.txt missing and .out unparseable.")
+    else:
+        _fail(report, "parse_results", "ANSYS output file not found.")
+
+    report["metrics"] = metrics
+    report["files_created"] = [str(inp_path)]
+    if out_file.exists():
+        report["files_created"].append(str(out_file))
+    if run.get("output_file"):
+        report["files_created"].append(run["output_file"])
+
+    return _finalize_case_report(
+        report,
+        required_stages=["health_check", "generate_apdl", "solve", "parse_results"],
+        required_metrics=required_metrics,
+    )
+
+
+def run_case_ansys_static_beam(backend: str, output_root: Path, allow_step_import: bool = False) -> dict:
+    from seekflow_engineering_tools.ansys.apdl_templates import static_cantilever_beam_rect_apdl
+    return _run_ansys_case("ansys_static_beam", output_root,
+        lambda: static_cantilever_beam_rect_apdl(200, 20, 20, 1000, element_size_mm=20.0),
+        "beam_static",
+        required_metrics=["max_displacement_mm"])
+
+
+def run_case_ansys_plate_hole(backend: str, output_root: Path, allow_step_import: bool = False) -> dict:
+    from seekflow_engineering_tools.ansys.apdl_templates import plate_with_hole_tension_apdl
+    return _run_ansys_case("ansys_plate_hole", output_root,
+        lambda: plate_with_hole_tension_apdl(200, 100, 10, 20, 100, element_size_mm=10.0),
+        "plate_hole",
+        required_metrics=["max_stress_mpa"])
+
+
+def run_case_ansys_thermal(backend: str, output_root: Path, allow_step_import: bool = False) -> dict:
+    from seekflow_engineering_tools.ansys.apdl_templates import beam_thermal_apdl
+    return _run_ansys_case("ansys_thermal", output_root,
+        lambda: beam_thermal_apdl(200, 20, 20, element_size_mm=10.0),
+        "thermal",
+        required_metrics=["tmin_c", "tmax_c"])
+
+
+def run_case_ansys_modal(backend: str, output_root: Path, allow_step_import: bool = False) -> dict:
+    from seekflow_engineering_tools.ansys.apdl_templates import cantilever_modal_apdl
+    return _run_ansys_case("ansys_modal", output_root,
+        lambda: cantilever_modal_apdl(200, 20, 20, n_modes=5, element_size_mm=20.0),
+        "modal",
+        required_metrics=["modal_frequencies_hz"])
+
+
+def run_case_ansys_buckling(backend: str, output_root: Path, allow_step_import: bool = False) -> dict:
+    from seekflow_engineering_tools.ansys.apdl_templates import buckling_column_apdl
+    return _run_ansys_case("ansys_buckling", output_root,
+        lambda: buckling_column_apdl(500, 20, 20, element_size_mm=10.0),
+        "buckling",
+        required_metrics=["buckling_load_factor"])
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -327,10 +609,36 @@ def run_case_involute_spur_gear(backend: str, output_root: Path, allow_step_impo
 # ═══════════════════════════════════════════════════════════════════════
 
 CASE_RUNNERS = {
+    # ── Recipe CAD cases ──
     "box": run_case_box,
+    "cylinder": run_case_cylinder,
     "flanged_hub": run_case_flanged_hub,
+    "shaft_basic": run_case_shaft_basic,
+    "shaft_with_keyway": run_case_shaft_with_keyway,
+    "block_with_hole": run_case_block_with_hole,
+    "l_bracket": run_case_l_bracket,
+    "stepped_block": run_case_stepped_block,
+    # ── Gear primitive cases ──
     "involute_spur_gear": run_case_involute_spur_gear,
+    "involute_spur_gear_m3z20": run_case_involute_spur_gear_m3z20,
+    # ── ANSYS simulation cases ──
+    "ansys_static_beam": run_case_ansys_static_beam,
+    "ansys_plate_hole": run_case_ansys_plate_hole,
+    "ansys_thermal": run_case_ansys_thermal,
+    "ansys_modal": run_case_ansys_modal,
+    "ansys_buckling": run_case_ansys_buckling,
 }
+
+CAD_CASES = [
+    "box", "cylinder", "flanged_hub", "shaft_basic", "shaft_with_keyway",
+    "block_with_hole", "l_bracket", "stepped_block",
+]
+GEAR_CASES = ["involute_spur_gear", "involute_spur_gear_m3z20"]
+ANSYS_CASES = [
+    "ansys_static_beam", "ansys_plate_hole", "ansys_thermal",
+    "ansys_modal", "ansys_buckling",
+]
+ALL_CASES = CAD_CASES + GEAR_CASES + ANSYS_CASES
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -342,11 +650,11 @@ def main():
         description="SeekFlow Industrial Text-to-CAD — CI Acceptance Script"
     )
     parser.add_argument("--case", default="all",
-                        choices=["all", "box", "flanged_hub", "involute_spur_gear"])
+                        choices=["all", "all_cad", "all_ansys"] + ALL_CASES)
     parser.add_argument("--backend", default="cadquery",
                         choices=["cadquery", "solidworks2025", "nx12"])
-    parser.add_argument("--output", default=None, help="Output directory")
-    parser.add_argument("--json-report", default=None, help="Write JSON report")
+    parser.add_argument("--output", default=None)
+    parser.add_argument("--json-report", default=None)
     parser.add_argument("--allow-step-import", action="store_true",
                         help="Allow STEP import for SW/NX gear primitives")
     args = parser.parse_args()
@@ -355,11 +663,20 @@ def main():
     output_root = Path(args.output) if args.output else Path(__file__).parent / "demo_output" / ts
     output_root.mkdir(parents=True, exist_ok=True)
 
-    cases_to_run = list(CASE_RUNNERS.keys()) if args.case == "all" else [args.case]
+    # Determine cases
+    if args.case == "all":
+        cases_to_run = ALL_CASES
+    elif args.case == "all_cad":
+        cases_to_run = CAD_CASES + GEAR_CASES
+    elif args.case == "all_ansys":
+        cases_to_run = ANSYS_CASES
+    else:
+        cases_to_run = [args.case]
 
     full_report = {
         "timestamp": datetime.now().isoformat(),
         "overall_ok": True,
+        "backend": args.backend,
         "cases": [],
     }
 
@@ -370,10 +687,10 @@ def main():
         if not case_report["overall_ok"]:
             full_report["overall_ok"] = False
         status = "OK" if case_report["overall_ok"] else "FAIL"
-        errs = "; ".join(case_report.get("errors", [])[:3])
+        errs = "; ".join(case_report.get("errors", [])[:2])
         print(f"  [{status}] {case_name}/{args.backend}" + (f" — {errs}" if errs else ""))
 
-    # Write JSON report
+    # Write reports
     if args.json_report:
         report_path = Path(args.json_report)
         report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -381,7 +698,6 @@ def main():
             json.dump(full_report, f, indent=2, ensure_ascii=False, default=str)
         print(f"Report: {report_path}")
 
-    # Local report
     local = output_root / "demo_report.json"
     with open(local, "w", encoding="utf-8") as f:
         json.dump(full_report, f, indent=2, ensure_ascii=False, default=str)

@@ -12,12 +12,23 @@ def validate_involute_spur_gear_result(
     inspection: dict,
     metadata: dict | None = None,
     tolerance_mm: float = 0.1,
+    expected: dict | None = None,
+    raw_metadata: dict | None = None,
 ) -> dict:
     """Validate an involute spur gear build result.
 
-    FAIL-CLOSED: all checks that were previously warnings are now errors.
+    FAIL-CLOSED: all checks are errors by default.
     Engineering-grade gears must have complete metadata, standard involute
     geometry, and matching reference dimensions.
+
+    Args:
+        params: CAD-IR primitive parameters
+        inspection: Inspection result (bbox_mm, solid_count, etc.)
+        metadata: Unwrapped primitive metadata dict
+        tolerance_mm: Tolerance for dimension comparisons
+        expected: Dict of expected values from validation spec (expected_kernel,
+                  expected_tooth_count, expected_bore_diameter_mm, etc.)
+        raw_metadata: Raw metadata sidecar (for build_warnings check)
 
     Returns:
       {"ok": bool, "issues": list[dict], "reference_dimensions": dict, "kernel": str}
@@ -117,23 +128,23 @@ def validate_involute_spur_gear_result(
     # ── 7. numerical comparison of reference dimensions against standard formulas ──
     if ref_meta:
         dim_tolerance_mm = max(tolerance_mm, 0.005)  # At least 5 micron tolerance
-        for key, expected in [
+        for key, formula_val in [
             ("pitch_diameter_mm", ref["pitch_diameter_mm"]),
             ("base_diameter_mm", ref["base_diameter_mm"]),
             ("outer_diameter_mm", ref["outer_diameter_mm"]),
             ("root_diameter_mm", ref["root_diameter_mm"]),
         ]:
             actual = ref_meta.get(key)
-            if actual is not None and expected is not None:
-                if abs(actual - expected) > dim_tolerance_mm:
+            if actual is not None and formula_val is not None:
+                if abs(actual - formula_val) > dim_tolerance_mm:
                     issues.append({
                         "code": f"gear_{key}_mismatch",
                         "message": (
                             f"Gear {key}: metadata={actual:.4f}, "
-                            f"standard formula={expected:.4f}, "
-                            f"diff={abs(actual - expected):.4f} > tolerance {dim_tolerance_mm:.4f}"
+                            f"standard formula={formula_val:.4f}, "
+                            f"diff={abs(actual - formula_val):.4f} > tolerance {dim_tolerance_mm:.4f}"
                         ),
-                        "expected": expected,
+                        "expected": formula_val,
                         "actual": actual,
                         "severity": "error",
                     })
@@ -177,6 +188,113 @@ def validate_involute_spur_gear_result(
                 "actual": bbox[2],
                 "severity": "error",
             })
+
+    # ── 9. CAD-IR params vs metadata params consistency ──
+    meta_params = metadata.get("parameters") or {}
+    param_keys = [
+        "module_mm", "teeth", "pressure_angle_deg", "face_width_mm",
+        "bore_dia_mm", "addendum_coefficient", "clearance_coefficient",
+        "profile_shift_coefficient", "backlash_mm", "root_fillet_radius_mm",
+    ]
+    for key in param_keys:
+        if key in params:
+            expected_val = params[key]
+            actual_val = meta_params.get(key)
+            if actual_val is None:
+                issues.append({
+                    "code": f"gear_metadata_parameter_missing_{key}",
+                    "message": f"Metadata parameters missing '{key}'.",
+                    "severity": "error",
+                })
+                continue
+            if isinstance(expected_val, (int, float)) and not isinstance(expected_val, bool):
+                if abs(float(actual_val) - float(expected_val)) > tolerance_mm:
+                    issues.append({
+                        "code": f"gear_metadata_parameter_mismatch_{key}",
+                        "message": f"Metadata parameter {key}={actual_val} does not match CAD-IR {expected_val}.",
+                        "expected": expected_val,
+                        "actual": actual_val,
+                        "severity": "error",
+                    })
+            else:
+                if actual_val != expected_val:
+                    issues.append({
+                        "code": f"gear_metadata_parameter_mismatch_{key}",
+                        "message": f"Metadata parameter {key}={actual_val} does not match CAD-IR {expected_val}.",
+                        "expected": expected_val,
+                        "actual": actual_val,
+                        "severity": "error",
+                    })
+
+    # ── 10. expected validation fields (from spec.validation) ──
+    if expected:
+        if expected.get("expected_kernel") and kernel != expected["expected_kernel"]:
+            issues.append({
+                "code": "gear_expected_kernel_mismatch",
+                "message": f"Expected kernel {expected['expected_kernel']}, got {kernel}.",
+                "expected": expected["expected_kernel"],
+                "actual": kernel,
+                "severity": "error",
+            })
+
+        if expected.get("expected_tooth_count") is not None:
+            actual_teeth = meta_params.get("teeth")
+            if actual_teeth is not None and int(actual_teeth) != int(expected["expected_tooth_count"]):
+                issues.append({
+                    "code": "gear_expected_tooth_count_mismatch",
+                    "expected": expected["expected_tooth_count"],
+                    "actual": actual_teeth,
+                    "severity": "error",
+                })
+
+        for ek in ["expected_bore_diameter_mm", "expected_face_width_mm",
+                    "expected_pitch_diameter_mm", "expected_base_diameter_mm",
+                    "expected_outer_diameter_mm", "expected_root_diameter_mm"]:
+            ev = expected.get(ek)
+            if ev is not None:
+                key = ek[len("expected_"):]  # bore_diameter_mm, face_width_mm, etc.
+                av = ref_meta.get(key) if ref_meta else None
+                if av is not None and abs(float(av) - float(ev)) > tolerance_mm:
+                    issues.append({
+                        "code": f"gear_{key}_mismatch",
+                        "expected": ev,
+                        "actual": av,
+                        "severity": "error",
+                    })
+
+    # ── 11. body_count check ──
+    if expected and expected.get("expected_body_count") is not None:
+        actual_body = (
+            inspection.get("solid_count")
+            or inspection.get("body_count")
+        )
+        if actual_body is None:
+            issues.append({
+                "code": "gear_body_count_missing",
+                "message": "Inspection did not report body/solid count.",
+                "severity": "error",
+            })
+        elif int(actual_body) != int(expected["expected_body_count"]):
+            issues.append({
+                "code": "gear_body_count_mismatch",
+                "expected": expected["expected_body_count"],
+                "actual": actual_body,
+                "severity": "error",
+            })
+
+    # ── 12. industrial_brep fallback warning → hard error ──
+    if params.get("quality_grade", "industrial_brep") == "industrial_brep":
+        all_warnings: list[str] = list(metadata.get("warnings") or [])
+        if raw_metadata:
+            all_warnings.extend(raw_metadata.get("build_warnings") or [])
+        for w in all_warnings:
+            lw = str(w).lower()
+            if "fallback" in lw or "not certified" in lw or "not standard involute" in lw:
+                issues.append({
+                    "code": "gear_industrial_warning_forbidden",
+                    "message": f"Industrial gear build contains forbidden warning: {w}",
+                    "severity": "error",
+                })
 
     ok = not any(i["severity"] == "error" for i in issues)
 

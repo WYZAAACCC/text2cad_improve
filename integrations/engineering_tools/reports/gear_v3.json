@@ -1,0 +1,69 @@
+{
+  "timestamp": "2026-05-28T02:29:43.091488",
+  "overall_ok": true,
+  "cases": [
+    {
+      "overall_ok": true,
+      "case": "involute_spur_gear",
+      "backend": "cadquery",
+      "stages": {
+        "validate_cad_ir": {
+          "ok": true,
+          "error": null
+        },
+        "normalize_primitives": {
+          "ok": true,
+          "normalized_params": {
+            "module_mm": 2.0,
+            "teeth": 24,
+            "pressure_angle_deg": 20.0,
+            "face_width_mm": 15.0,
+            "bore_dia_mm": 10.0,
+            "addendum_coefficient": 1.0,
+            "clearance_coefficient": 0.25,
+            "profile_shift_coefficient": 0.0,
+            "backlash_mm": 0.0,
+            "root_fillet_radius_mm": 0.0,
+            "quality_grade": "industrial_brep"
+          }
+        },
+        "choose_backend": {
+          "ok": true,
+          "backend": "cadquery",
+          "strategy": "native_cadquery_primitive"
+        },
+        "build": {
+          "ok": true,
+          "error": null
+        },
+        "inspect": {
+          "ok": true
+        },
+        "mechanical_validate": {
+          "ok": true
+        },
+        "metadata": {
+          "ok": true,
+          "path": "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_022943\\models\\involute_spur_gear.metadata.json"
+        }
+      },
+      "files_created": [
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_022943\\models\\involute_spur_gear.step",
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_022943\\.cadquery_scripts\\build_0998cab9e48f.py",
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_022943\\models\\involute_spur_gear.metadata.json"
+      ],
+      "metrics": {
+        "kernel_used": "cq_gears",
+        "reference_dimensions": {
+          "pitch_diameter_mm": 48.0,
+          "base_diameter_mm": 45.105245797723605,
+          "outer_diameter_mm": 52.0,
+          "root_diameter_mm": 43.0
+        },
+        "strategy": "native_cadquery_primitive"
+      },
+      "warnings": [],
+      "errors": []
+    }
+  ]
+}

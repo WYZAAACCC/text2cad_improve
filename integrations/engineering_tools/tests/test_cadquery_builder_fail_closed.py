@@ -5,14 +5,42 @@ import pytest
 
 
 def test_mechanical_validation_import_error_fails(monkeypatch):
-    from seekflow_engineering_tools.cadquery_backend.builder import _run_mechanical_validation
+    import builtins
     from seekflow_engineering_tools.ir.cad import CADPartSpec
+    from seekflow_engineering_tools.ir.primitive import PrimitiveFeature
 
-    spec = CADPartSpec(name="test", features=[])
-    result = _run_mechanical_validation(spec, Path("test.step"), {})
-    # This should not be ok=True when import fails
-    # The _run_mechanical_validation now returns ok=False on ImportError
-    assert result["ok"] is False or "import" not in str(result).lower()
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        targeting = "seekflow_engineering_tools.mechanical_validation.common"
+        if name == targeting:
+            raise ImportError("simulated mechanical validation import failure")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+
+    # Re-import to get fresh function with monkeypatched import
+    import importlib
+    from seekflow_engineering_tools.cadquery_backend import builder
+    importlib.reload(builder)
+
+    spec = CADPartSpec(
+        name="test",
+        features=[
+            PrimitiveFeature(
+                id="g1",
+                primitive_name="involute_spur_gear",
+                parameters={"module_mm": 2.0, "teeth": 24, "face_width_mm": 15.0},
+            )
+        ],
+    )
+
+    result = builder._run_mechanical_validation(spec, Path("test.step"), {})
+    assert result["ok"] is False
+    assert any(
+        i.get("code") == "mechanical_validation_unavailable"
+        for i in result.get("issues", [])
+    )
 
 
 def test_assert_metadata_sidecar_missing_file():

@@ -38,7 +38,10 @@ def test_demo_full_chain_gear_cadquery():
 
         if report["overall_ok"]:
             assert "kernel_used" in metrics
-            assert metrics["kernel_used"] in ("cq_gears", "cadquery_visual_fallback")
+            assert metrics["kernel_used"] == "cq_gears", (
+                f"Industrial gear success requires cq_gears kernel, "
+                f"got '{metrics['kernel_used']}'"
+            )
             ref = metrics.get("reference_dimensions", {})
             for key in ["pitch_diameter_mm", "base_diameter_mm",
                          "outer_diameter_mm", "root_diameter_mm"]:

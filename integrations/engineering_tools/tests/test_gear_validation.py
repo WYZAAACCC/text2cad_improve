@@ -14,6 +14,9 @@ def test_validation_with_cq_gears_metadata():
         "kernel": "cq_gears",
         "primitive": "involute_spur_gear",
         "is_standard_involute": True,
+        "parameters": {
+            "module_mm": 2.0, "teeth": 24, "face_width_mm": 15.0,
+        },
         "reference_dimensions": {
             "pitch_diameter_mm": 48.0,
             "base_diameter_mm": 45.105,

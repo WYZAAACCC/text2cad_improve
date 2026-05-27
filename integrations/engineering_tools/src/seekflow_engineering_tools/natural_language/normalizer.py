@@ -88,8 +88,11 @@ def should_use_primitive(intent: dict) -> str | None:
 def rewrite_deprecated_recipes_to_primitives(spec: dict) -> dict:
     """Rewrite deprecated spur_gear recipe features to primitive involute_spur_gear.
 
-    Returns the modified spec dict, with 'rewrite_warnings' added.
+    Returns a NEW spec dict with 'rewrite_warnings' added.
+    Does not mutate the input spec.
     """
+    import copy
+    spec = copy.deepcopy(spec)
     warnings: list[str] = []
     features = spec.get("features", [])
 

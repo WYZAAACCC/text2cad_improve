@@ -3,22 +3,40 @@ from __future__ import annotations
 from seekflow_engineering_tools.geometry_primitives.base import PrimitiveDefinition
 
 PRIMITIVE_REGISTRY: dict[str, PrimitiveDefinition] = {}
+_REGISTRY_LOAD_ERRORS: list[str] = []
 
 
 def _populate_registry():
+    PRIMITIVE_REGISTRY.clear()
+    _REGISTRY_LOAD_ERRORS.clear()
+
     try:
         from seekflow_engineering_tools.geometry_primitives.gears.models import GEAR_PRIMITIVES
-        for p in GEAR_PRIMITIVES:
-            PRIMITIVE_REGISTRY[p.name] = p
-    except ImportError:
-        pass
+    except ImportError as exc:
+        _REGISTRY_LOAD_ERRORS.append(
+            f"Failed to import gear primitives registry: {type(exc).__name__}: {exc}"
+        )
+        return
+
+    for p in GEAR_PRIMITIVES:
+        if p.name in PRIMITIVE_REGISTRY:
+            _REGISTRY_LOAD_ERRORS.append(f"Duplicate primitive registered: {p.name}")
+            continue
+        PRIMITIVE_REGISTRY[p.name] = p
+
+
+def _raise_if_registry_unhealthy():
+    if _REGISTRY_LOAD_ERRORS:
+        raise RuntimeError("Primitive registry load errors: " + "; ".join(_REGISTRY_LOAD_ERRORS))
 
 
 def list_primitive_names() -> list[str]:
+    _raise_if_registry_unhealthy()
     return sorted(PRIMITIVE_REGISTRY.keys())
 
 
 def get_primitive(name: str) -> PrimitiveDefinition | None:
+    _raise_if_registry_unhealthy()
     return PRIMITIVE_REGISTRY.get(name)
 
 

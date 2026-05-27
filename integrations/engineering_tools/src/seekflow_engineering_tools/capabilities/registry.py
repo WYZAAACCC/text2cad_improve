@@ -135,7 +135,7 @@ def backend_supports_feature(backend: str, feature) -> bool:
     if feat_type == "recipe":
         return feature.recipe_name in cap.get("stable_recipes", [])
     elif feat_type == "primitive":
-        return feature.primitive_name in cap.get("stable_primitives", [])
+        return backend_supports_primitive(backend, feature.primitive_name)
 
     # Non-recipe/non-primitive features (extrude, hole, etc.) are cadquery-only
     return backend == "cadquery"
@@ -149,6 +149,11 @@ def get_backend_caveats(backend: str) -> list[str]:
 def list_backend_recipes(backend: str) -> list[str]:
     cap = CAPABILITIES.get(backend, {})
     return cap.get("stable_recipes", [])
+
+
+def backend_supports_primitive(backend: str, primitive_name: str) -> bool:
+    cap = CAPABILITIES.get(backend, {})
+    return primitive_name in cap.get("stable_primitives", [])
 
 
 def get_primitive_strategy(backend: str, primitive_name: str) -> str | None:
