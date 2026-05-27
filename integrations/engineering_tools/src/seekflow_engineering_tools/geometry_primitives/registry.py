@@ -79,6 +79,22 @@ def get_primitive(name: str) -> PrimitiveDefinition | None:
     return PRIMITIVE_REGISTRY.get(name)
 
 
+def _parse_bool_strict(value):
+    """Parse a bool safely.  ``bool("False")`` is ``True`` in Python,
+    so strings must be explicitly checked."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        s = value.strip().lower()
+        if s in ("true", "1", "yes"):
+            return True
+        if s in ("false", "0", "no"):
+            return False
+    raise ValueError(
+        f"Cannot parse as bool: {value!r} (type={type(value).__name__})"
+    )
+
+
 def normalize_primitive_parameters(primitive_name: str, parameters: dict) -> dict:
     pd = get_primitive(primitive_name)
     if pd is None:
@@ -116,7 +132,7 @@ def normalize_primitive_parameters(primitive_name: str, parameters: dict) -> dic
                 elif expected_type == "str":
                     normalized[pname] = str(value)
                 elif expected_type == "bool":
-                    normalized[pname] = bool(value)
+                    normalized[pname] = _parse_bool_strict(value)
             except (TypeError, ValueError):
                 errors.append(
                     f"Parameter '{pname}' must be {expected_type}, "

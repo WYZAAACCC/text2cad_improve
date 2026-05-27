@@ -119,7 +119,7 @@ def validate_primitive_metadata_v1(
             issues.append({
                 "code": "primitive_warnings_not_list",
                 "message": "Metadata 'warnings' must be a list.",
-                "severity": "warning",
+                "severity": "error",
             })
             normalized["warnings"] = []
     else:

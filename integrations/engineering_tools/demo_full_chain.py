@@ -385,7 +385,12 @@ def _run_primitive_case(
         return _finalize_case_report(report, required_stages=required_stages,
                                      required_metrics=required_metrics)
 
-    strategy = get_primitive_strategy(backend, primitive_name) or "native_cadquery_primitive"
+    strategy = get_primitive_strategy(backend, primitive_name)
+    if strategy is None:
+        _fail(report, "choose_backend",
+              f"No primitive strategy for '{primitive_name}' on backend '{backend}'.")
+        return _finalize_case_report(report, required_stages=required_stages,
+                                     required_metrics=required_metrics)
     _stage(report, "choose_backend", ok=True, backend=backend, strategy=strategy)
 
     # Stage 3: build
@@ -445,10 +450,7 @@ def _run_primitive_case(
 
     report["metrics"] = {
         "kernel_used": kernel_used,
-        "reference_dimensions": {k: ref_dims.get(k) for k in [
-            "pitch_diameter_mm", "base_diameter_mm",
-            "outer_diameter_mm", "root_diameter_mm",
-        ]},
+        "reference_dimensions": ref_dims,
         "strategy": strategy,
     }
 
