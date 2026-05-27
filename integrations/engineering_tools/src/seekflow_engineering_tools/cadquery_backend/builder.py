@@ -140,6 +140,7 @@ def _check_fallback_policy(spec: CADPartSpec, metadata: dict) -> tuple[bool, lis
 
     Rules:
     - quality_grade="industrial_brep" or "validated" with cadquery_visual_fallback → HARD FAIL
+    - expected_kernel="cq_gears" with cadquery_visual_fallback → HARD FAIL (regardless of quality_grade)
     - quality_grade="visual_fallback" or allow_visual_fallback=True → warning only
     """
     pm = metadata.get("primitive_metadata", {})
@@ -149,6 +150,16 @@ def _check_fallback_policy(spec: CADPartSpec, metadata: dict) -> tuple[bool, lis
 
     if kernel != "cadquery_visual_fallback" and is_standard:
         return False, []  # Not a fallback, no issue
+
+    # Check expected_kernel from validation spec (if set, must match)
+    expected_kernel = spec.validation.expected_kernel if spec.validation else None
+    if expected_kernel == "cq_gears" and kernel == "cadquery_visual_fallback":
+        return True, [
+            f"Expected kernel 'cq_gears' but got 'cadquery_visual_fallback'. "
+            "Visual fallback is not acceptable when cq_gears is explicitly required. "
+            "Install cq_gears for industrial-grade involute profiles.",
+            "This fallback is NOT certified involute geometry.",
+        ]
 
     # Check each primitive feature for quality_grade
     for feat in spec.features:
@@ -386,7 +397,7 @@ def build_cadquery_from_cad_ir(
                         warnings.append(md_warn)
 
             # Mechanical validation failure → fail the build
-            if not mv_result.get("ok", True):
+            if not mv_result.get("ok"):  # fail-closed: missing ok → fail
                 mech_errors = []
                 for r in mv_result.get("results", []):
                     for issue in r.get("issues", []):
@@ -405,7 +416,7 @@ def build_cadquery_from_cad_ir(
                     error="; ".join(mech_errors) if mech_errors else "Mechanical validation failed.",
                 ).model_dump()
 
-        if not validation.get("ok", True):
+        if not validation.get("ok"):  # fail-closed: missing ok → fail
             errors = [i["message"] for i in validation.get("issues", []) if i.get("severity") == "error"]
             repair = make_repair_diagnostics(
                 stage="validate",

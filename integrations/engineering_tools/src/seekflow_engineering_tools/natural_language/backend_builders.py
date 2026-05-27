@@ -214,6 +214,29 @@ def build_solidworks_from_canonical_step(
             metrics=cq_result.get("metrics", {}),
         ).model_dump()
 
+    # Check validation passed
+    validation = cq_result.get("metrics", {}).get("validation", {})
+    if not validation.get("ok"):
+        return EngineeringActionResult(
+            ok=False, software="solidworks",
+            action="build_from_canonical_step",
+            error="CadQuery inspection validation failed — refusing to import invalid STEP into SolidWorks.",
+            files_created=cq_result.get("files_created", []),
+            metrics=cq_result.get("metrics", {}),
+        ).model_dump()
+
+    # Check mechanical validation for primitive features
+    if spec_has_primitives(spec):
+        mech_val = cq_result.get("metrics", {}).get("mechanical_validation", {})
+        if not mech_val.get("ok"):
+            return EngineeringActionResult(
+                ok=False, software="solidworks",
+                action="build_from_canonical_step",
+                error="Mechanical validation failed — refusing to import non-compliant STEP into SolidWorks.",
+                files_created=cq_result.get("files_created", []),
+                metrics=cq_result.get("metrics", {}),
+            ).model_dump()
+
     # Step 2: SolidWorks imports STEP → saves native SLDPRT
     from seekflow_engineering_tools.solidworks.com_client import SolidWorksClient
 
@@ -416,6 +439,29 @@ def build_nx_from_canonical_step(
             files_created=cq_result.get("files_created", []),
             metrics=cq_result.get("metrics", {}),
         ).model_dump()
+
+    # Check validation passed
+    validation = cq_result.get("metrics", {}).get("validation", {})
+    if not validation.get("ok"):
+        return EngineeringActionResult(
+            ok=False, software="nx",
+            action="build_from_canonical_step",
+            error="CadQuery inspection validation failed — refusing to import invalid STEP into NX.",
+            files_created=cq_result.get("files_created", []),
+            metrics=cq_result.get("metrics", {}),
+        ).model_dump()
+
+    # Check mechanical validation for primitive features
+    if spec_has_primitives(spec):
+        mech_val = cq_result.get("metrics", {}).get("mechanical_validation", {})
+        if not mech_val.get("ok"):
+            return EngineeringActionResult(
+                ok=False, software="nx",
+                action="build_from_canonical_step",
+                error="Mechanical validation failed — refusing to import non-compliant STEP into NX.",
+                files_created=cq_result.get("files_created", []),
+                metrics=cq_result.get("metrics", {}),
+            ).model_dump()
 
     # Step 2: NX imports STEP via job queue
     from seekflow_engineering_tools.nx.job_queue import NXJobQueue

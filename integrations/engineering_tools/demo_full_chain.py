@@ -44,19 +44,25 @@ def _fail(report: dict, stage: str, error: str):
     report["overall_ok"] = False
 
 
+def _get_unified_tools(config):
+    """Get engineering_validate_cad_ir and engineering_build_cad_model functions."""
+    from seekflow_engineering_tools.natural_language.tools import build_natural_language_tools
+    tools = build_natural_language_tools(config)
+    validate = next(t for t in tools if t.name == "engineering_validate_cad_ir")
+    build = next(t for t in tools if t.name == "engineering_build_cad_model")
+    return validate.func, build.func
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # Case: box
 # ═══════════════════════════════════════════════════════════════════════
 
 def run_case_box(backend: str, output_root: Path, allow_step_import: bool = False) -> dict:
     from seekflow_engineering_tools.config import EngineeringToolsConfig
-    from seekflow_engineering_tools.cadquery_backend.builder import build_cadquery_from_cad_ir
-    from seekflow_engineering_tools.ir.cad import CADPartSpec
 
     report = _make_report_skeleton("box", backend)
     config = EngineeringToolsConfig(workspace_root=output_root, allow_overwrite=True)
 
-    # Stage 1: validate_cad_ir
     spec_dict = {
         "name": "box_demo", "units": "mm",
         "target_backend": [backend],
@@ -64,36 +70,48 @@ def run_case_box(backend: str, output_root: Path, allow_step_import: bool = Fals
                        "parameters": {"length_mm": 100, "width_mm": 50, "height_mm": 25}}],
         "validation": {"expected_bbox_mm": [100, 50, 25], "expected_body_count": 1, "tolerance_mm": 2.0},
     }
-    try:
-        spec = CADPartSpec.model_validate(spec_dict)
-        _stage(report, "validate_cad_ir", ok=True)
-    except Exception as exc:
-        _fail(report, "validate_cad_ir", str(exc))
-        return report
+
+    validate_fn, build_fn = _get_unified_tools(config)
+
+    # Stage 1: validate_cad_ir
+    val_result = validate_fn(spec_dict)
+    _stage(report, "validate_cad_ir", ok=val_result.get("ok", False),
+           error=val_result.get("error"))
 
     # Stage 2: normalize_primitives
-    _stage(report, "normalize_primitives", ok=True)
+    _stage(report, "normalize_primitives", ok=True, skipped=True,
+           reason="No mechanical primitive features.")
 
-    # Stage 3: choose_backend
-    from seekflow_engineering_tools.capabilities.registry import choose_backend
-    choice = choose_backend(spec, preferred=[backend])
-    _stage(report, "choose_backend", ok=choice.backend != "none", backend=choice.backend)
+    if not val_result.get("ok"):
+        report["errors"].append(f"[validate_cad_ir] {val_result.get('error', '')}")
+        return report
 
-    # Stage 4-6: build + inspect + validate
-    if choice.backend == "cadquery":
-        step_path = output_root / "models" / "box.step"
-        step_path.parent.mkdir(parents=True, exist_ok=True)
-        result = build_cadquery_from_cad_ir(spec=spec, config=config, out_step=str(step_path))
-        _stage(report, "build", ok=result.get("ok", False),
-               error=result.get("error"))
-        report["files_created"] = result.get("files_created", [])
-        validation = result.get("metrics", {}).get("validation", {})
-        _stage(report, "inspect", ok=validation.get("ok", True))
-        _stage(report, "mechanical_validate", ok=True)
-        if result.get("ok"):
-            report["overall_ok"] = True
+    # Stage 3: choose_backend (embedded in build stage via engineering_build_cad_model)
+    _stage(report, "choose_backend", ok=True, backend=backend)
+
+    # Stage 4-6: build → inspect → mechanical_validate
+    step_path = output_root / "models" / "box.step"
+    step_path.parent.mkdir(parents=True, exist_ok=True)
+
+    build_result = build_fn(spec_dict, backend=backend, out_step=str(step_path),
+                            inspect=True, allow_backend_fallback=False)
+    _stage(report, "build", ok=build_result.get("ok", False),
+           error=build_result.get("error"))
+    report["files_created"] = build_result.get("files_created", [])
+    report["warnings"] = build_result.get("warnings", [])
+
+    metrics = build_result.get("metrics", {})
+    validation_result = metrics.get("validation")
+    if validation_result is None:
+        _stage(report, "inspect", ok=False, error="Validation result missing from build metrics.")
     else:
-        _fail(report, "build", f"Backend {backend} not supported for box case")
+        _stage(report, "inspect", ok=validation_result.get("ok") is True)
+
+    _stage(report, "mechanical_validate", ok=True, skipped=True,
+           reason="No mechanical primitive features.")
+
+    if build_result.get("ok"):
+        report["overall_ok"] = True
 
     return report
 
@@ -104,8 +122,6 @@ def run_case_box(backend: str, output_root: Path, allow_step_import: bool = Fals
 
 def run_case_flanged_hub(backend: str, output_root: Path, allow_step_import: bool = False) -> dict:
     from seekflow_engineering_tools.config import EngineeringToolsConfig
-    from seekflow_engineering_tools.cadquery_backend.builder import build_cadquery_from_cad_ir
-    from seekflow_engineering_tools.ir.cad import CADPartSpec
 
     report = _make_report_skeleton("flanged_hub", backend)
     config = EngineeringToolsConfig(workspace_root=output_root, allow_overwrite=True)
@@ -120,32 +136,48 @@ def run_case_flanged_hub(backend: str, output_root: Path, allow_step_import: boo
                                        "bolt_dia_mm": 8, "bolt_count": 4}}],
         "validation": {"expected_body_count": 1},
     }
-    try:
-        spec = CADPartSpec.model_validate(spec_dict)
-        _stage(report, "validate_cad_ir", ok=True)
-    except Exception as exc:
-        _fail(report, "validate_cad_ir", str(exc))
+
+    validate_fn, build_fn = _get_unified_tools(config)
+
+    # Stage 1: validate_cad_ir
+    val_result = validate_fn(spec_dict)
+    _stage(report, "validate_cad_ir", ok=val_result.get("ok", False),
+           error=val_result.get("error"))
+
+    # Stage 2: normalize_primitives
+    _stage(report, "normalize_primitives", ok=True, skipped=True,
+           reason="No mechanical primitive features.")
+
+    if not val_result.get("ok"):
+        report["errors"].append(f"[validate_cad_ir] {val_result.get('error', '')}")
         return report
 
-    _stage(report, "normalize_primitives", ok=True)
+    # Stage 3: choose_backend
+    _stage(report, "choose_backend", ok=True, backend=backend)
 
-    from seekflow_engineering_tools.capabilities.registry import choose_backend
-    choice = choose_backend(spec, preferred=[backend])
-    _stage(report, "choose_backend", ok=choice.backend != "none", backend=choice.backend)
+    # Stage 4-6: build → inspect → mechanical_validate
+    step_path = output_root / "models" / "flanged_hub.step"
+    step_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if choice.backend == "cadquery":
-        step_path = output_root / "models" / "flanged_hub.step"
-        step_path.parent.mkdir(parents=True, exist_ok=True)
-        result = build_cadquery_from_cad_ir(spec=spec, config=config, out_step=str(step_path))
-        _stage(report, "build", ok=result.get("ok", False), error=result.get("error"))
-        report["files_created"] = result.get("files_created", [])
-        validation = result.get("metrics", {}).get("validation", {})
-        _stage(report, "inspect", ok=validation.get("ok", True))
-        _stage(report, "mechanical_validate", ok=True)
-        if result.get("ok"):
-            report["overall_ok"] = True
+    build_result = build_fn(spec_dict, backend=backend, out_step=str(step_path),
+                            inspect=True, allow_backend_fallback=False)
+    _stage(report, "build", ok=build_result.get("ok", False),
+           error=build_result.get("error"))
+    report["files_created"] = build_result.get("files_created", [])
+    report["warnings"] = build_result.get("warnings", [])
+
+    metrics = build_result.get("metrics", {})
+    validation_result = metrics.get("validation")
+    if validation_result is None:
+        _stage(report, "inspect", ok=False, error="Validation result missing from build metrics.")
     else:
-        _fail(report, "build", f"Backend {backend} not supported for flanged_hub case")
+        _stage(report, "inspect", ok=validation_result.get("ok") is True)
+
+    _stage(report, "mechanical_validate", ok=True, skipped=True,
+           reason="No mechanical primitive features.")
+
+    if build_result.get("ok"):
+        report["overall_ok"] = True
 
     return report
 
@@ -156,8 +188,6 @@ def run_case_flanged_hub(backend: str, output_root: Path, allow_step_import: boo
 
 def run_case_involute_spur_gear(backend: str, output_root: Path, allow_step_import: bool = False) -> dict:
     from seekflow_engineering_tools.config import EngineeringToolsConfig
-    from seekflow_engineering_tools.cadquery_backend.builder import build_cadquery_from_cad_ir
-    from seekflow_engineering_tools.ir.cad import CADPartSpec
     from seekflow_engineering_tools.geometry_primitives.gears.standards import (
         spur_gear_reference_dimensions,
     )
@@ -176,7 +206,11 @@ def run_case_involute_spur_gear(backend: str, output_root: Path, allow_step_impo
         "target_backend": [backend],
         "features": [{"id": "gear1", "type": "primitive",
                        "primitive_name": "involute_spur_gear",
-                       "parameters": params}],
+                       "parameters": {
+                           "module_mm": 2.0, "teeth": 24,
+                           "pressure_angle_deg": 20.0, "face_width_mm": 15.0,
+                           "bore_dia_mm": 10.0,
+                       }}],
         "validation": {
             "expected_body_count": 1,
             "expected_bbox_mm": [ref["outer_diameter_mm"], ref["outer_diameter_mm"], params["face_width_mm"]],
@@ -185,25 +219,24 @@ def run_case_involute_spur_gear(backend: str, output_root: Path, allow_step_impo
         },
     }
 
-    # Stage 1: validate_cad_ir
-    try:
-        spec = CADPartSpec.model_validate(spec_dict)
-        _stage(report, "validate_cad_ir", ok=True)
-    except Exception as exc:
-        _fail(report, "validate_cad_ir", str(exc))
-        return report
+    validate_fn, build_fn = _get_unified_tools(config)
 
-    # Stage 2: normalize_primitives (primitive params)
-    try:
-        from seekflow_engineering_tools.geometry_primitives.registry import normalize_primitive_parameters
-        norm = normalize_primitive_parameters("involute_spur_gear", params)
-        _stage(report, "normalize_primitives", ok=True, normalized_params=norm)
-    except Exception as exc:
-        _fail(report, "normalize_primitives", str(exc))
+    # Stage 1: validate_cad_ir
+    val_result = validate_fn(spec_dict)
+    _stage(report, "validate_cad_ir", ok=val_result.get("ok", False),
+           error=val_result.get("error"))
+
+    # Stage 2: normalize_primitives
+    norm_params = val_result.get("metrics", {}).get("normalized_parameters", {})
+    _stage(report, "normalize_primitives", ok=val_result.get("ok", False),
+           normalized_params=norm_params.get("gear1"))
+
+    if not val_result.get("ok"):
+        report["errors"].append(f"[validate_cad_ir] {val_result.get('error', '')}")
         return report
 
     # Stage 3: choose_backend
-    from seekflow_engineering_tools.capabilities.registry import choose_backend
+    from seekflow_engineering_tools.capabilities.registry import get_primitive_strategy
 
     if backend in ("solidworks2025", "nx12") and not allow_step_import:
         _fail(report, "choose_backend",
@@ -211,103 +244,80 @@ def run_case_involute_spur_gear(backend: str, output_root: Path, allow_step_impo
               f"Use --backend cadquery or add --allow-step-import.")
         return report
 
-    choice = choose_backend(spec, preferred=[backend])
-    _stage(report, "choose_backend", ok=choice.backend != "none", backend=choice.backend,
-           strategy="cadquery_step_import" if backend in ("solidworks2025", "nx12") else "native_cadquery_primitive")
+    strategy = get_primitive_strategy(backend, "involute_spur_gear") or "native_cadquery_primitive"
+    _stage(report, "choose_backend", ok=True, backend=backend, strategy=strategy)
 
     # Stage 4-6: build → inspect → mechanical_validate
     step_path = output_root / "models" / "involute_spur_gear.step"
     step_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if choice.backend == "cadquery":
-        result = build_cadquery_from_cad_ir(spec=spec, config=config, out_step=str(step_path))
-        _stage(report, "build", ok=result.get("ok", False), error=result.get("error"))
-        report["files_created"] = result.get("files_created", [])
+    allow_fb = backend not in ("solidworks2025", "nx12")  # only strict-mode for SW/NX
+    build_result = build_fn(spec_dict, backend=backend, out_step=str(step_path),
+                            inspect=True, allow_backend_fallback=allow_fb)
+    _stage(report, "build", ok=build_result.get("ok", False),
+           error=build_result.get("error"))
+    report["files_created"] = build_result.get("files_created", [])
+    report["warnings"] = build_result.get("warnings", [])
 
-        mv = result.get("metrics", {}).get("mechanical_validation", {})
-        validation = result.get("metrics", {}).get("validation", {})
-        _stage(report, "inspect", ok=validation.get("ok", True))
-        _stage(report, "mechanical_validate", ok=mv.get("ok", True))
+    # Extract inspection and mechanical_validation — must be present, not default
+    metrics = build_result.get("metrics", {})
+    validation_result = metrics.get("validation")
+    mech_val_result = metrics.get("mechanical_validation")
 
-        # Extract kernel_used and reference_dimensions
-        kernel_used = "unknown"
-        for r in mv.get("results", []):
-            if "kernel" in r:
-                kernel_used = r["kernel"]
-            if "reference_dimensions" in r:
-                ref = r["reference_dimensions"]
+    if validation_result is None:
+        _stage(report, "inspect", ok=False, error="Validation result missing from build metrics.")
+    else:
+        _stage(report, "inspect", ok=validation_result.get("ok") is True)
 
-        # Try reading from metadata sidecar
-        meta_path = step_path.with_suffix(".metadata.json")
-        if meta_path.exists():
+    if mech_val_result is None:
+        _stage(report, "mechanical_validate", ok=False,
+               error="Mechanical validation result missing from build metrics.")
+    else:
+        _stage(report, "mechanical_validate", ok=mech_val_result.get("ok") is True)
+
+    # Extract kernel_used and reference_dimensions
+    kernel_used = "unknown"
+    ref_dims = {}
+
+    # Try metadata sidecar first (most reliable)
+    meta_path = step_path.with_suffix(".metadata.json")
+    if meta_path.exists() and meta_path.stat().st_size > 0:
+        try:
             sidecar = json.loads(meta_path.read_text(encoding="utf-8"))
             pm = sidecar.get("primitive_metadata", {}).get("involute_spur_gear", {})
             if pm.get("kernel"):
                 kernel_used = pm["kernel"]
             if pm.get("reference_dimensions"):
-                ref = pm["reference_dimensions"]
+                ref_dims = pm["reference_dimensions"]
+        except (json.JSONDecodeError, OSError):
+            _fail(report, "mechanical_validate",
+                  "Failed to read gear metadata sidecar — invalid JSON or unreadable.")
+            return report
 
-        report["metrics"] = {
-            "kernel_used": kernel_used,
-            "reference_dimensions": {
-                "pitch_diameter_mm": ref["pitch_diameter_mm"],
-                "base_diameter_mm": ref["base_diameter_mm"],
-                "outer_diameter_mm": ref["outer_diameter_mm"],
-                "root_diameter_mm": ref["root_diameter_mm"],
-            },
-        }
-        report["warnings"] = result.get("warnings", [])
+    # Fallback to mechanical validation result
+    if kernel_used == "unknown" and mech_val_result:
+        for r in mech_val_result.get("results", []):
+            if r.get("kernel"):
+                kernel_used = r["kernel"]
+            if r.get("reference_dimensions"):
+                ref_dims = r["reference_dimensions"]
 
-        if result.get("ok"):
-            report["overall_ok"] = True
+    if kernel_used == "unknown":
+        _stage(report, "mechanical_validate", ok=False,
+               error="Gear kernel could not be determined from metadata or validation results.")
 
-    elif choice.backend in ("solidworks2025", "nx12"):
-        from seekflow_engineering_tools.natural_language.backend_builders import (
-            build_solidworks_from_canonical_step,
-            build_nx_from_canonical_step,
-        )
-        if choice.backend == "solidworks2025":
-            result = build_solidworks_from_canonical_step(spec, config, str(step_path))
-        else:
-            result = build_nx_from_canonical_step(spec, config, str(step_path))
+    report["metrics"] = {
+        "kernel_used": kernel_used,
+        "reference_dimensions": {
+            "pitch_diameter_mm": ref_dims.get("pitch_diameter_mm"),
+            "base_diameter_mm": ref_dims.get("base_diameter_mm"),
+            "outer_diameter_mm": ref_dims.get("outer_diameter_mm"),
+            "root_diameter_mm": ref_dims.get("root_diameter_mm"),
+        },
+    }
 
-        _stage(report, "build", ok=result.get("ok", False), error=result.get("error"))
-        report["files_created"] = result.get("files_created", [])
-
-        # Extract inspection and mechanical_validation from cq_result metrics
-        metrics = result.get("metrics", {})
-        validation = metrics.get("validation", {})
-        mech_val = metrics.get("mechanical_validation", {})
-        _stage(report, "inspect", ok=validation.get("ok", True))
-        _stage(report, "mechanical_validate", ok=mech_val.get("ok", True))
-
-        # Extract kernel_used and reference_dimensions from metadata sidecar
-        kernel_used = mech_val.get("kernel", "unknown")
-        ref = {}
-        meta_path = step_path.with_suffix(".metadata.json")
-        if meta_path.exists():
-            try:
-                sidecar = json.loads(meta_path.read_text(encoding="utf-8"))
-                pm = sidecar.get("primitive_metadata", {}).get("involute_spur_gear", {})
-                if pm.get("kernel"):
-                    kernel_used = pm["kernel"]
-                if pm.get("reference_dimensions"):
-                    ref = pm["reference_dimensions"]
-            except (json.JSONDecodeError, OSError):
-                pass
-
-        report["metrics"] = {
-            "kernel_used": kernel_used,
-            "reference_dimensions": {
-                "pitch_diameter_mm": ref.get("pitch_diameter_mm"),
-                "base_diameter_mm": ref.get("base_diameter_mm"),
-                "outer_diameter_mm": ref.get("outer_diameter_mm"),
-                "root_diameter_mm": ref.get("root_diameter_mm"),
-            },
-        }
-        report["warnings"] = result.get("warnings", [])
-        if result.get("ok"):
-            report["overall_ok"] = True
+    if build_result.get("ok"):
+        report["overall_ok"] = True
 
     return report
 

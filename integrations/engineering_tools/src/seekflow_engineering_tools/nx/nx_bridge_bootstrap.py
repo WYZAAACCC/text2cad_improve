@@ -130,6 +130,7 @@ def create_block_part(session, params):
             }
 
     return {
+        "ok": True,
         "files_created": files_created,
         "metrics": {
             "length_mm": length_mm,
@@ -162,6 +163,7 @@ def export_step(session, params):
         }
 
     return {
+        "ok": True,
         "files_created": [out_step],
         "metrics": {},
     }
@@ -247,6 +249,7 @@ def create_block_with_hole(session, params):
             }
 
     return {
+        "ok": True,
         "files_created": files_created,
         "metrics": {
             "length_mm": length_mm, "width_mm": width_mm,
@@ -305,7 +308,7 @@ def create_l_bracket(session, params):
                 "error": "STEP export failed: {}".format(exc),
             }
 
-    return {"files_created": files_created, "metrics": {"type": "l_bracket"}}
+    return {"ok": True, "files_created": files_created, "metrics": {"type": "l_bracket"}}
 
 
 def create_stepped_block(session, params):
@@ -362,7 +365,7 @@ def create_stepped_block(session, params):
                 "error": "STEP export failed: {}".format(exc),
             }
 
-    return {"files_created": files_created, "metrics": {"type": "stepped_block"}}
+    return {"ok": True, "files_created": files_created, "metrics": {"type": "stepped_block"}}
 
 
 def _save_part(work_part, out_prt):
@@ -486,12 +489,14 @@ def process_one_job(session, job_file):
 
         result_payload = ACTION_HANDLERS[action](session, params)
 
-        handler_ok = result_payload.get("ok", True)
+        handler_ok = result_payload.get("ok")
+        if handler_ok is None:
+            handler_ok = False  # fail-closed: handler must explicitly return ok=True
         error_msg = result_payload.get("error")
 
         result = {
             "job_id": job_id,
-            "ok": handler_ok and error_msg is None,
+            "ok": bool(handler_ok) and error_msg is None,
             "message": "NX job finished." if handler_ok else error_msg or "NX job reported failure.",
             "files_created": result_payload.get("files_created", []),
             "metrics": result_payload.get("metrics", {}),

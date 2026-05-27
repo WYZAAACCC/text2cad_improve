@@ -64,7 +64,7 @@ def validate_mechanical_primitives(spec, step_path: Path, inspection: dict) -> d
                 tolerance_mm=spec.validation.tolerance_mm,
             )
             results.append(result)
-            if not result.get("ok", True):
+            if not result.get("ok"):  # fail-closed: missing ok → fail
                 overall_ok = False
 
     return {"ok": overall_ok, "results": results}
