@@ -183,11 +183,33 @@ def build_solidworks_from_canonical_step(
         spec=spec, config=config, out_step=str(step_path), inspect=inspect,
     )
 
+    # Fail if CadQuery build itself failed, even if STEP exists
+    if not cq_result.get("ok", False):
+        return EngineeringActionResult(
+            ok=False, software="solidworks",
+            action="build_from_canonical_step",
+            error="Canonical CadQuery build failed; refusing to import invalid STEP into SolidWorks.",
+            files_created=cq_result.get("files_created", []),
+            metrics=cq_result.get("metrics", {}),
+            warnings=cq_result.get("warnings", []),
+        ).model_dump()
+
     if not step_path.exists() or step_path.stat().st_size < 1:
         return EngineeringActionResult(
             ok=False, software="solidworks",
             action="build_from_canonical_step",
             error="Canonical STEP was not created by CadQuery.",
+            files_created=cq_result.get("files_created", []),
+            metrics=cq_result.get("metrics", {}),
+        ).model_dump()
+
+    # Check metadata sidecar exists and is non-empty
+    meta_path = step_path.with_suffix(".metadata.json")
+    if not meta_path.exists() or meta_path.stat().st_size < 1:
+        return EngineeringActionResult(
+            ok=False, software="solidworks",
+            action="build_from_canonical_step",
+            error="Canonical metadata.json missing or empty — refusing to import into SolidWorks.",
             files_created=cq_result.get("files_created", []),
             metrics=cq_result.get("metrics", {}),
         ).model_dump()
@@ -211,7 +233,20 @@ def build_solidworks_from_canonical_step(
             metrics=cq_result.get("metrics", {}),
         ).model_dump()
 
+    # Verify native SLDPRT exists and is non-empty
+    if not sldprt_path.exists() or sldprt_path.stat().st_size < 1:
+        return EngineeringActionResult(
+            ok=False, software="solidworks",
+            action="build_from_canonical_step",
+            error=f"SolidWorks import reported success but SLDPRT not found or empty: {sldprt_path}",
+            files_created=cq_result.get("files_created", []),
+            metrics=cq_result.get("metrics", {}),
+        ).model_dump()
+
     files_created = cq_result.get("files_created", []) + [str(sldprt_path)]
+    # Ensure metadata path is in files_created
+    if str(meta_path) not in files_created:
+        files_created.append(str(meta_path))
     warnings = cq_result.get("warnings", [])
     warnings.append(
         "Native SLDPRT created by importing canonical STEP; "
@@ -351,11 +386,33 @@ def build_nx_from_canonical_step(
         spec=spec, config=config, out_step=str(step_path), inspect=inspect,
     )
 
+    # Fail if CadQuery build itself failed, even if STEP exists
+    if not cq_result.get("ok", False):
+        return EngineeringActionResult(
+            ok=False, software="nx",
+            action="build_from_canonical_step",
+            error="Canonical CadQuery build failed; refusing to import invalid STEP into NX.",
+            files_created=cq_result.get("files_created", []),
+            metrics=cq_result.get("metrics", {}),
+            warnings=cq_result.get("warnings", []),
+        ).model_dump()
+
     if not step_path.exists() or step_path.stat().st_size < 1:
         return EngineeringActionResult(
             ok=False, software="nx",
             action="build_from_canonical_step",
             error="Canonical STEP was not created by CadQuery.",
+            files_created=cq_result.get("files_created", []),
+            metrics=cq_result.get("metrics", {}),
+        ).model_dump()
+
+    # Check metadata sidecar exists and is non-empty
+    meta_path = step_path.with_suffix(".metadata.json")
+    if not meta_path.exists() or meta_path.stat().st_size < 1:
+        return EngineeringActionResult(
+            ok=False, software="nx",
+            action="build_from_canonical_step",
+            error="Canonical metadata.json missing or empty — refusing to import into NX.",
             files_created=cq_result.get("files_created", []),
             metrics=cq_result.get("metrics", {}),
         ).model_dump()
@@ -389,7 +446,19 @@ def build_nx_from_canonical_step(
             files_created=cq_result.get("files_created", []),
         ).model_dump()
 
+    # Verify native PRT exists and is non-empty (don't trust job result alone)
+    if not prt_path.exists() or prt_path.stat().st_size < 1:
+        return EngineeringActionResult(
+            ok=False, software="nx",
+            action="build_from_canonical_step",
+            error=f"NX import reported success but PRT not found or empty: {prt_path}",
+            files_created=cq_result.get("files_created", []),
+        ).model_dump()
+
     files_created = cq_result.get("files_created", []) + result.get("files_created", [])
+    # Ensure metadata path is in files_created
+    if str(meta_path) not in files_created:
+        files_created.append(str(meta_path))
     warnings = cq_result.get("warnings", [])
     warnings.append(
         "Native PRT created by importing canonical STEP; "

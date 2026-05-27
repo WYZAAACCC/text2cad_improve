@@ -650,17 +650,10 @@ class SolidWorksClient:
         face_width_m=0.020,
         bore_dia_m=0.015,
     ):
-        """Create a spur gear — single star-polygon sketch + extrude + bore.
+        """[LEGACY/DEMO ONLY] Star-polygon spur gear — NOT engineering-grade.
 
-        Draws the full gear cross-section as a closed polygon in ONE
-        sketch, then extrudes it through the face width.  This approach
-        is the standard parametric gear method: alternating tip/root
-        points around the circumference connected by straight lines
-        approximating the involute flanks.
-
-        Total: 2 features (extrude + bore).  Completely avoids
-        individual tooth cuts, sketch-name collisions, and circular
-        patterns.  All dimensions in **metres**.
+        NOT used by unified build pipeline. NOT certified involute geometry.
+        Use involute_spur_gear primitive + CQ_Gears + STEP import instead.
         """
         import subprocess, os, tempfile, math
 
@@ -771,12 +764,10 @@ class SolidWorksClient:
         pressure_angle_deg=20.0,
         n_subdivisions=6,
     ):
-        """Create a standard involute spur gear per ISO 53 / DIN 867.
+        """[LEGACY/DEMO ONLY] Involute perturbation gear — NOT engineering-grade.
 
-        Uses a subdivided star-polygon skeleton with involute curvature
-        perturbation along each flank, guaranteeing a simple closed profile.
-
-        All dimensions in **metres**.
+        NOT used by unified build pipeline. NOT certified involute geometry.
+        Use involute_spur_gear primitive + CQ_Gears + STEP import instead.
         """
         import math
 

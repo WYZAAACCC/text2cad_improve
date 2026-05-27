@@ -17,7 +17,8 @@ class TestNXToolsRegistration:
         assert "nx_create_l_bracket" in tool_names
         assert "nx_create_stepped_block" in tool_names
         assert "nx_export_step" in tool_names
-        assert len(tools) == 6
+        assert "nx_import_step_as_prt" in tool_names
+        assert len(tools) == 7
 
     def test_build_nx_tools_all_have_policies(self):
         from seekflow_engineering_tools.config import EngineeringToolsConfig

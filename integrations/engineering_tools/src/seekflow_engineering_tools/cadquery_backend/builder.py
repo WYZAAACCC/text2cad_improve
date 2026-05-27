@@ -127,6 +127,8 @@ def _assert_metadata_sidecar(step_path: Path, spec: CADPartSpec) -> dict:
                 raise ValueError("Gear metadata missing 'reference_dimensions'")
             if "parameters" not in gear_meta:
                 raise ValueError("Gear metadata missing 'parameters'")
+            if "is_standard_involute" not in gear_meta:
+                raise ValueError("Gear metadata missing 'is_standard_involute'")
 
     return metadata
 
@@ -427,14 +429,37 @@ def build_cadquery_from_cad_ir(
                 error="; ".join(errors),
             ).model_dump()
 
-    # Fallback gear must NOT silently succeed — expose warnings
+    # Fallback gear must NOT silently succeed — check explicit allow
     has_fallback = any("visual_fallback" in w.lower() or "not certified" in w.lower() for w in warnings)
     if has_fallback:
+        # Determine if visual fallback is explicitly allowed
+        fallback_allowed = False
+        for feat in spec.features:
+            if feat.type == "primitive" and feat.primitive_name == "involute_spur_gear":
+                quality = feat.parameters.get("quality_grade", "industrial_brep")
+                allow = feat.parameters.get("allow_visual_fallback", False)
+                if quality == "visual_fallback" or allow:
+                    fallback_allowed = True
+                    break
+        if not fallback_allowed:
+            return EngineeringActionResult(
+                ok=False,
+                software="cadquery",
+                action="build_from_cad_ir",
+                message="STEP file created but fallback gear is not engineering-grade.",
+                files_created=files_created,
+                stdout_tail=stdout_tail,
+                stderr_tail=stderr_tail,
+                metrics=metrics,
+                warnings=warnings,
+                error="Visual fallback is not certified involute geometry.",
+            ).model_dump()
+        # Explicitly allowed fallback — ok but with strong warnings
         return EngineeringActionResult(
             ok=True,
             software="cadquery",
             action="build_from_cad_ir",
-            message=f"STEP file created (with fallback warnings): {step_path}",
+            message=f"STEP file created (with explicitly allowed fallback): {step_path}",
             files_created=files_created,
             stdout_tail=stdout_tail,
             stderr_tail=stderr_tail,

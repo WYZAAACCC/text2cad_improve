@@ -13,7 +13,6 @@ CAPABILITIES: dict = {
         "stable_recipes": [
             "box",
             "flanged_hub",
-            "spur_gear",
         ],
         "stable_primitives": [
             "involute_spur_gear",
@@ -89,7 +88,6 @@ CAPABILITIES: dict = {
             "l_bracket",
             "stepped_block",
             "flanged_hub",
-            "spur_gear",
             "shaft_basic",
             "shaft_with_keyway",
         ],

@@ -273,10 +273,39 @@ def run_case_involute_spur_gear(backend: str, output_root: Path, allow_step_impo
 
         _stage(report, "build", ok=result.get("ok", False), error=result.get("error"))
         report["files_created"] = result.get("files_created", [])
-        _stage(report, "inspect", ok=result.get("ok", False))
-        _stage(report, "mechanical_validate", ok=result.get("ok", False))
+
+        # Extract inspection and mechanical_validation from cq_result metrics
+        metrics = result.get("metrics", {})
+        validation = metrics.get("validation", {})
+        mech_val = metrics.get("mechanical_validation", {})
+        _stage(report, "inspect", ok=validation.get("ok", True))
+        _stage(report, "mechanical_validate", ok=mech_val.get("ok", True))
+
+        # Extract kernel_used and reference_dimensions from metadata sidecar
+        kernel_used = mech_val.get("kernel", "unknown")
+        ref = {}
+        meta_path = step_path.with_suffix(".metadata.json")
+        if meta_path.exists():
+            try:
+                sidecar = json.loads(meta_path.read_text(encoding="utf-8"))
+                pm = sidecar.get("primitive_metadata", {}).get("involute_spur_gear", {})
+                if pm.get("kernel"):
+                    kernel_used = pm["kernel"]
+                if pm.get("reference_dimensions"):
+                    ref = pm["reference_dimensions"]
+            except (json.JSONDecodeError, OSError):
+                pass
+
+        report["metrics"] = {
+            "kernel_used": kernel_used,
+            "reference_dimensions": {
+                "pitch_diameter_mm": ref.get("pitch_diameter_mm"),
+                "base_diameter_mm": ref.get("base_diameter_mm"),
+                "outer_diameter_mm": ref.get("outer_diameter_mm"),
+                "root_diameter_mm": ref.get("root_diameter_mm"),
+            },
+        }
         report["warnings"] = result.get("warnings", [])
-        report["metrics"] = result.get("metrics", {})
         if result.get("ok"):
             report["overall_ok"] = True
 

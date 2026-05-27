@@ -4,12 +4,20 @@ import pytest
 
 
 def test_spur_gear_not_in_cadquery_stable_recipes():
-    """spur_gear should NOT be in cadquery's stable_recipes for engineering use."""
-    # Note: spur_gear is still in stable_recipes in the old registry by design
-    # because the deprecated alias needs to stay registered under that name
-    # for the cadquery_backend/recipes.py to pick it up. The normalizer
-    # rewrites it to primitive involute_spur_gear before it hits the backend.
-    pass  # The rewrite handles this — see test below
+    """spur_gear must NOT be in any backend's stable_recipes for engineering use."""
+    from seekflow_engineering_tools.capabilities.registry import (
+        backend_supports_recipe,
+        CAPABILITIES,
+    )
+
+    for backend in ["solidworks2025", "cadquery", "nx12"]:
+        stable = CAPABILITIES.get(backend, {}).get("stable_recipes", [])
+        assert "spur_gear" not in stable, (
+            f"spur_gear found in {backend}.stable_recipes — must use involute_spur_gear primitive"
+        )
+        assert backend_supports_recipe(backend, "spur_gear") is False, (
+            f"backend_supports_recipe({backend}, 'spur_gear') should be False"
+        )
 
 
 def test_spur_gear_recipe_rewrites_to_involute_primitive():

@@ -267,37 +267,67 @@ def build_ansys_tools(config: EngineeringToolsConfig):
                 timeout_s=config.ansys_default_timeout_s,
             )
 
-            # Parse results
+            # APDL process nonzero exit → fail
+            if run["has_error"]:
+                return EngineeringActionResult(
+                    ok=False,
+                    software="ansys",
+                    action="static_cantilever_beam_rect",
+                    message="ANSYS APDL run reported an error.",
+                    files_created=[str(inp_path), run["output_file"]],
+                    log_path=run["output_file"],
+                    stdout_tail=run.get("stdout_tail"),
+                    stderr_tail=run.get("stderr_tail"),
+                    error="ANSYS APDL process reported an error.",
+                ).model_dump()
+
+            # Parse results — summary missing is error
             summary_path = job_dir / "result_summary.txt"
-            metrics = {}
-            warnings: list[str] = []
-            if summary_path.exists():
-                metrics = parse_result_summary(summary_path)
-            else:
-                warnings.append("result_summary.txt was not generated.")
+            if not summary_path.exists():
+                return EngineeringActionResult(
+                    ok=False,
+                    software="ansys",
+                    action="static_cantilever_beam_rect",
+                    message="ANSYS APDL batch job finished but result_summary.txt was not generated.",
+                    files_created=[str(inp_path), run["output_file"]],
+                    log_path=run["output_file"],
+                    error="ANSYS result_summary.txt missing — required for static_cantilever_beam_rect.",
+                ).model_dump()
 
-            files_created = [
-                str(inp_path),
-                run["output_file"],
+            metrics = parse_result_summary(summary_path)
+
+            # Check required metrics are present
+            required_metrics = [
+                "max_displacement_mm", "max_von_mises_mpa",
             ]
-            if summary_path.exists():
-                files_created.append(str(summary_path))
+            missing_metrics = [m for m in required_metrics if m not in metrics]
+            if missing_metrics:
+                return EngineeringActionResult(
+                    ok=False,
+                    software="ansys",
+                    action="static_cantilever_beam_rect",
+                    message="ANSYS APDL batch job finished but required metrics missing.",
+                    files_created=[str(inp_path), run["output_file"], str(summary_path)],
+                    log_path=run["output_file"],
+                    metrics=metrics,
+                    error=f"Required metrics missing: {', '.join(missing_metrics)}",
+                ).model_dump()
 
-            if run["has_warning"]:
+            files_created = [str(inp_path), run["output_file"], str(summary_path)]
+            warnings: list[str] = []
+            if run.get("has_warning"):
                 warnings.append("ANSYS output contains WARNING messages.")
 
             return EngineeringActionResult(
-                ok=not run["has_error"],
+                ok=True,
                 software="ansys",
                 action="static_cantilever_beam_rect",
                 message="ANSYS APDL batch job finished.",
                 files_created=files_created,
                 log_path=run["output_file"],
-                stdout_tail=run["stdout_tail"],
-                stderr_tail=run["stderr_tail"],
+                stdout_tail=run.get("stdout_tail"),
                 metrics=metrics,
                 warnings=warnings,
-                error=None if not run["has_error"] else "ANSYS reported an error.",
             ).model_dump()
 
         except Exception as exc:
@@ -350,7 +380,16 @@ def build_ansys_tools(config: EngineeringToolsConfig):
                 validate_template_parameters,
             )
 
-            validated_params = validate_template_parameters(template_name, parameters)
+            # Validate parameters — unknown/missing/type error → fail
+            try:
+                validated_params = validate_template_parameters(template_name, parameters)
+            except (ValueError, KeyError, TypeError) as exc:
+                return EngineeringActionResult(
+                    ok=False,
+                    software="ansys",
+                    action="run_apdl_template",
+                    error=f"Template parameter validation failed: {exc}",
+                ).model_dump()
 
             safe_jobname = sanitise_jobname(jobname)
             job_dir = ensure_inside_workspace(
@@ -375,26 +414,76 @@ def build_ansys_tools(config: EngineeringToolsConfig):
                 timeout_s=config.ansys_default_timeout_s,
             )
 
+            # APDL process nonzero exit → fail
+            if run["has_error"]:
+                return EngineeringActionResult(
+                    ok=False,
+                    software="ansys",
+                    action="run_apdl_template",
+                    message="ANSYS APDL run reported an error.",
+                    files_created=[str(inp_path), run["output_file"]],
+                    log_path=run["output_file"],
+                    stdout_tail=run.get("stdout_tail"),
+                    stderr_tail=run.get("stderr_tail"),
+                    error="ANSYS APDL process reported an error.",
+                ).model_dump()
+
+            # Check template schema for required metrics
+            schema = _ANSYS_TEMPLATE_SCHEMAS.get(template_name)
+            required_metrics = schema.get("metrics", []) if schema else []
+
+            # For templates with expected metrics, summary is mandatory
             summary_path = job_dir / "result_summary.txt"
+            if required_metrics and not summary_path.exists():
+                return EngineeringActionResult(
+                    ok=False,
+                    software="ansys",
+                    action="run_apdl_template",
+                    message=(
+                        f"ANSYS APDL batch job finished but result_summary.txt "
+                        f"was not generated for template '{template_name}'."
+                    ),
+                    files_created=[str(inp_path), run["output_file"]],
+                    log_path=run["output_file"],
+                    error=f"ANSYS result_summary.txt missing — required for template '{template_name}'.",
+                ).model_dump()
+
             metrics = {}
-            warnings: list[str] = []
             if summary_path.exists():
                 metrics = parse_result_summary(summary_path)
-            else:
-                warnings.append("result_summary.txt was not generated.")
+
+            # Check required metrics are present
+            if required_metrics:
+                missing_metrics = [m for m in required_metrics if m not in metrics]
+                if missing_metrics:
+                    return EngineeringActionResult(
+                        ok=False,
+                        software="ansys",
+                        action="run_apdl_template",
+                        message="ANSYS APDL batch job finished but required metrics missing.",
+                        files_created=[str(inp_path), run["output_file"]],
+                        log_path=run["output_file"],
+                        metrics=metrics,
+                        error=f"Required metrics missing for '{template_name}': {', '.join(missing_metrics)}",
+                    ).model_dump()
+
+            files_created = [str(inp_path), run["output_file"]]
+            if summary_path.exists():
+                files_created.append(str(summary_path))
+            warnings: list[str] = []
+            if run.get("has_warning"):
+                warnings.append("ANSYS output contains WARNING messages.")
 
             return EngineeringActionResult(
-                ok=not run["has_error"],
+                ok=True,
                 software="ansys",
                 action="run_apdl_template",
                 message="ANSYS APDL template job finished.",
-                files_created=[str(inp_path), run["output_file"]],
+                files_created=files_created,
                 log_path=run["output_file"],
                 stdout_tail=run.get("stdout_tail"),
-                stderr_tail=run.get("stderr_tail"),
                 metrics=metrics,
                 warnings=warnings,
-                error=None if not run["has_error"] else "ANSYS reported an error.",
             ).model_dump()
 
         except Exception as exc:

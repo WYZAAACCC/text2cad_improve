@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-05-28T00:07:29.160571",
+  "timestamp": "2026-05-28T01:20:39.368749",
   "overall_ok": true,
   "cases": [
     {
@@ -43,9 +43,9 @@
         }
       },
       "files_created": [
-        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_000729\\models\\involute_spur_gear.step",
-        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_000729\\.cadquery_scripts\\build_9e3a3362b2eb.py",
-        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_000729\\models\\involute_spur_gear.metadata.json"
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_012039\\models\\involute_spur_gear.step",
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_012039\\.cadquery_scripts\\build_6e4a4dd036e2.py",
+        "E:\\auto_detection_process\\integrations\\engineering_tools\\demo_output\\20260528_012039\\models\\involute_spur_gear.metadata.json"
       ],
       "metrics": {
         "kernel_used": "cq_gears",

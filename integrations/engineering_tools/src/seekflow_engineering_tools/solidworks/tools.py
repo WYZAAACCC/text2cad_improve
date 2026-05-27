@@ -283,28 +283,22 @@ def build_solidworks_tools(config: EngineeringToolsConfig):
         _solidworks_write_policy(config, {"out_sldprt", "out_step"})
     )
 
-    # ── create_spur_gear_part ───────────────────────────────────────
+    # ── _legacy_visual_demo_create_spur_gear_part ─────────────────────
+    # LEGACY DEMO ONLY — NOT registered as SeekFlow tool.
+    # Not engineering-grade. Do not use for Text-to-CAD production.
+    # Use involute_spur_gear primitive + CadQuery/CQ_Gears + STEP import instead.
 
-    @tool(
-        name="solidworks_create_spur_gear_part",
-        description=(
-            "Create a spur gear in SolidWorks 2025 — star-polygon gear body "
-            "with a centre bore. All dimensions in mm. "
-            "Uses module (metric gear standard) and tooth count. "
-            "Optionally export STEP."
-        ),
-        cache=False,
-        sanitize=True,
-        trusted=False,
-    )
-    def solidworks_create_spur_gear_part(
+    def _legacy_visual_demo_create_spur_gear_part(
         module_mm: float,
         teeth: int,
         face_width_mm: float,
         bore_dia_mm: float,
         out_sldprt: str,
         out_step: str | None = None,
+        config: EngineeringToolsConfig = None,
     ) -> dict:
+        """LEGACY DEMO ONLY. Not engineering-grade. Not registered as tool.
+        Use involute_spur_gear primitive + CadQuery/CQ_Gears + STEP import."""
         try:
             # Geometry constraints
             if module_mm <= 0:
@@ -379,25 +373,14 @@ def build_solidworks_tools(config: EngineeringToolsConfig):
                 error=str(exc),
             ).model_dump()
 
-    solidworks_create_spur_gear_part = solidworks_create_spur_gear_part.with_policy(
-        _solidworks_write_policy(config, {"out_sldprt", "out_step"})
-    )
+    # LEGACY DEMO ONLY — no @tool, no tools.extend, no routing from unified build
 
     # ── create_true_involute_gear_part ──────────────────────────────
+    # LEGACY DEMO ONLY — NOT registered as SeekFlow tool.
+    # Not engineering-grade. Do not route from engineering_build_cad_model.
+    # Canonical engineering path is CadQuery/CQ_Gears STEP import.
 
-    @tool(
-        name="solidworks_create_true_involute_gear_part",
-        description=(
-            "Create a standard involute spur gear in SolidWorks 2025 using "
-            "mathematically correct tooth profile (ISO 53 / DIN 867). "
-            "Uses the involute curve equation for true flank geometry. "
-            "All dimensions in mm. Optionally export STEP."
-        ),
-        cache=False,
-        sanitize=True,
-        trusted=False,
-    )
-    def solidworks_create_true_involute_gear_part(
+    def _legacy_demo_create_true_involute_gear_part(
         module_mm: float,
         teeth: int,
         face_width_mm: float,
@@ -405,7 +388,10 @@ def build_solidworks_tools(config: EngineeringToolsConfig):
         pressure_angle_deg: float = 20.0,
         out_sldprt: str = "",
         out_step: str | None = None,
+        config: EngineeringToolsConfig = None,
     ) -> dict:
+        """LEGACY DEMO ONLY. Do not expose as tool. Not engineering-grade.
+        Canonical engineering path is CadQuery/CQ_Gears STEP import."""
         try:
             out_sldprt_path = ensure_inside_workspace(config.workspace_root, out_sldprt)
             out_step_path = None
@@ -466,9 +452,7 @@ def build_solidworks_tools(config: EngineeringToolsConfig):
                 error=str(exc),
             ).model_dump()
 
-    solidworks_create_true_involute_gear_part = solidworks_create_true_involute_gear_part.with_policy(
-        _solidworks_write_policy(config, {"out_sldprt", "out_step"})
-    )
+    # LEGACY DEMO ONLY — no @tool, no tools.extend, no routing from unified build
 
     # ── export_step ─────────────────────────────────────────────────
 
@@ -546,6 +530,14 @@ def build_solidworks_tools(config: EngineeringToolsConfig):
             if not in_path.exists() or in_path.stat().st_size < 1:
                 raise FileNotFoundError(f"Input STEP not found or empty: {in_path}")
 
+            if out_path.exists() and not config.allow_overwrite:
+                return EngineeringActionResult(
+                    ok=False,
+                    software="solidworks",
+                    action="import_step_as_part",
+                    error=f"Output file {out_path} already exists.",
+                ).model_dump()
+
             client = SolidWorksClient(
                 visible=config.solidworks_visible,
                 part_template=config.solidworks_part_template,
@@ -555,6 +547,11 @@ def build_solidworks_tools(config: EngineeringToolsConfig):
 
             if not ok:
                 raise RuntimeError(f"SolidWorks STEP import failed for {out_path}")
+
+            if not out_path.exists() or out_path.stat().st_size < 1:
+                raise RuntimeError(
+                    f"SolidWorks import reported success but SLDPRT not found or empty: {out_path}"
+                )
 
             return EngineeringActionResult(
                 ok=True,

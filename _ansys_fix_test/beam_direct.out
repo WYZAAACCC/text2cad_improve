@@ -1,0 +1,542 @@
+
+ ANSYS Mechanical Enterprise                       
+
+
+ *------------------------------------------------------------------*
+ |                                                                  |
+ |   W E L C O M E   T O   T H E   A N S Y S (R)  P R O G R A M     |
+ |                                                                  |
+ *------------------------------------------------------------------*
+
+
+
+
+ ***************************************************************
+ *            ANSYS Release 18.1     LEGAL NOTICES             *
+ ***************************************************************
+ *                                                             *
+ * Copyright 2017 SAS IP, Inc.  All rights reserved.           *
+ * Unauthorized use, distribution or duplication is            *
+ * prohibited.                                                 *
+ *                                                             *
+ * Ansys is a registered trademark of ANSYS, Inc. or its       *
+ * subsidiaries in the United States or other countries.       *
+ * See the ANSYS, Inc. online documentation or the ANSYS, Inc. *
+ * documentation CD or online help for the complete Legal      *
+ * Notice.                                                     *
+ *                                                             *
+ ***************************************************************
+ *                                                             *
+ * THIS ANSYS SOFTWARE PRODUCT AND PROGRAM DOCUMENTATION       *
+ * INCLUDE TRADE SECRETS AND CONFIDENTIAL AND PROPRIETARY      *
+ * PRODUCTS OF ANSYS, INC., ITS SUBSIDIARIES, OR LICENSORS.    *
+ * The software products and documentation are furnished by    *
+ * ANSYS, Inc. or its subsidiaries under a software license    *
+ * agreement that contains provisions concerning               *
+ * non-disclosure, copying, length and nature of use,          *
+ * compliance with exporting laws, warranties, disclaimers,    *
+ * limitations of liability, and remedies, and other           *
+ * provisions.  The software products and documentation may be *
+ * used, disclosed, transferred, or copied only in accordance  *
+ * with the terms and conditions of that software license      *
+ * agreement.                                                  *
+ *                                                             *
+ * ANSYS, Inc. is a UL registered                              *
+ * ISO 9001:2008 company.                                      *
+ *                                                             *
+ ***************************************************************
+ *                                                             *
+ * This product is subject to U.S. laws governing export and   *
+ * re-export.                                                  *
+ *                                                             *
+ * For U.S. Government users, except as specifically granted   *
+ * by the ANSYS, Inc. software license agreement, the use,     *
+ * duplication, or disclosure by the United States Government  *
+ * is subject to restrictions stated in the ANSYS, Inc.        *
+ * software license agreement and FAR 12.212 (for non-DOD      *
+ * licenses).                                                  *
+ *                                                             *
+ ***************************************************************
+
+ Release 18.1
+     
+ Point Releases and Patches installed:   
+     
+ ANSYS, Inc. Products Release 18.1   
+ ANSYS Mechanical Products Release 18.1  
+ ANSYS Autodyn Release 18.1  
+ ANSYS LS-DYNA Release 18.1  
+ ANSYS AIM Release 18.1  
+ ANSYS CFX (includes ANSYS CFD-Post) Release 18.1
+ ANSYS Fluent (includes ANSYS CFD-Post) Release 18.1 
+ ANSYS TurboGrid Release 18.1
+ ANSYS FENSAP-ICE Release 18.1   
+ ANSYS Polyflow (includes ANSYS CFD-Post) Release 18.1   
+ ANSYS Forte Release 18.1
+ ANSYS Chemkin Release 18.1  
+ ANSYS ICEM CFD Release 18.1 
+ ANSYS Aqwa Release 18.1 
+ ANSYS Icepak (includes ANSYS CFD-Post) Release 18.1 
+ AutoCAD Release 18.1
+ ACIS Release 18.1   
+ Catia, Version 4 Release 18.1   
+ Catia, Version 6 Release 18.1   
+ Creo Elements/Direct Modeling Release 18.1  
+ Inventor Release 18.1   
+ JTOpen Release 18.1 
+ NX Release 18.1 
+ Parasolid Release 18.1  
+ Creo Parametric Release 18.1
+ Solid Edge Release 18.1 
+ SolidWorks Release 18.1 
+ ANSYS, Inc. License Manager Release 18.1
+
+
+          *****  ANSYS COMMAND LINE ARGUMENTS  *****
+  INITIAL JOBNAME              = beam_direct                                                                                                                                                                                                                                             
+  BATCH MODE REQUESTED (-b)    = LIST
+  INPUT FILE COPY MODE (-c)    = COPY
+  MEMORY REQUESTED (MB)        = 256         
+
+ RELEASE= Release 18.1         BUILD= 18.1      UP20170403   VERSION=WINDOWS x64 
+ CURRENT JOBNAME=beam_direct  16:08:30  MAY 27, 2026 CP=      0.062
+
+     1  /CLEAR  
+     2  /FILNAME,beam_job   
+     3  /PREP7  
+     4      
+     5  ! Units: N, mm, MPa 
+     6      
+     7  ET,1,SOLID185   
+     8  MP,EX,1,210000.0
+     9  MP,PRXY,1,0.3   
+    10      
+    11  BLOCK,0,200,0,20,0,20   
+    12      
+    13  ESIZE,20.0  
+    14  VMESH,ALL   
+    15      
+    16  /SOLU   
+    17  ANTYPE,STATIC   
+    18      
+    19  ! Fix x=0 face  
+    20  NSEL,S,LOC,X,0  
+    21  D,ALL,ALL,0 
+    22      
+    23  ! Apply force on x=L face in negative Z direction   
+    24  NSEL,S,LOC,X,200
+    25  *GET,NCOUNT,NODE,0,COUNT
+    26  F,ALL,FZ,-1000/NCOUNT   
+    27      
+    28  ALLSEL,ALL  
+    29  SOLVE   
+    30  FINISH  
+    31      
+    32  /POST1  
+    33  SET,LAST
+    34      
+    35  ! Maximum displacement magnitude
+    36  NSORT,U,SUM 
+    37  *GET,MAXU,SORT,0,MAX
+    38      
+    39  PRNSOL,U
+    40  PRNSOL,S,EQV
+    41      
+    42  /OUTPUT,result_summary,txt  
+    43  *VWRITE,MAXU
+    44  ('MAX_DISPLACEMENT_MM=',E16.8)  
+    45  /OUTPUT 
+    46      
+    47  FINISH  
+
+ RUN SETUP PROCEDURE FROM FILE= D:\ANSYS181\ANSYS Inc\v181\ANSYS\apdl\start.ans
+
+ /INPUT FILE= D:\ANSYS181\ANSYS Inc\v181\ANSYS\apdl\start.ans  LINE=       0
+
+ CLEAR DATABASE AND RERUN START.ANS
+
+ RUN SETUP PROCEDURE FROM FILE= D:\ANSYS181\ANSYS Inc\v181\ANSYS\apdl\start.ans
+
+ ANSYS Mechanical Enterprise                       
+
+ /INPUT FILE= D:\ANSYS181\ANSYS Inc\v181\ANSYS\apdl\start.ans  LINE=       0
+
+ CURRENT JOBNAME REDEFINED AS beam_job
+
+ *** ANSYS - ENGINEERING ANALYSIS SYSTEM  RELEASE Release 18.1     18.1     ***
+ ANSYS Mechanical Enterprise                       
+ 00000000  VERSION=WINDOWS x64   16:08:30  MAY 27, 2026 CP=      0.062
+
+                                                                               
+
+
+
+          ***** ANSYS ANALYSIS DEFINITION (PREP7) *****
+
+ ELEMENT TYPE       1 IS SOLID185     3-D 8-NODE STRUCTURAL SOLID 
+  KEYOPT( 1- 6)=        0      0      0        0      0      0
+  KEYOPT( 7-12)=        0      0      0        0      0      0
+  KEYOPT(13-18)=        0      0      0        0      0      0
+
+ CURRENT NODAL DOF SET IS  UX    UY    UZ  
+  THREE-DIMENSIONAL MODEL
+
+ MATERIAL         1     EX   =   210000.0      
+
+ MATERIAL         1     PRXY =  0.3000000      
+
+ CREATE A HEXAHEDRAL VOLUME WITH
+ X-DISTANCES FROM      0.000000000     TO      200.0000000    
+ Y-DISTANCES FROM      0.000000000     TO      20.00000000    
+ Z-DISTANCES FROM      0.000000000     TO      20.00000000    
+
+      OUTPUT VOLUME =     1
+
+ DEFAULT ELEMENT DIVISIONS PER LINE BASED ON ELEMENT SIZE =   20.0    
+
+ GENERATE NODES AND ELEMENTS   IN  ALL  SELECTED VOLUMES  
+
+ NUMBER OF VOLUMES MESHED   =         1
+ MAXIMUM NODE NUMBER        =        44
+ MAXIMUM ELEMENT NUMBER     =        10
+
+
+ ***** ROUTINE COMPLETED *****  CP =         0.062
+
+
+
+ *****  ANSYS SOLUTION ROUTINE  *****
+
+
+ PERFORM A STATIC ANALYSIS
+  THIS WILL BE A NEW ANALYSIS
+
+ SELECT       FOR ITEM=LOC  COMPONENT=X     BETWEEN  0.0000     AND   0.0000    
+   KABS=  0.  TOLERANCE= 0.100000E-05
+
+          4  NODES (OF         44  DEFINED) SELECTED BY  NSEL  COMMAND.
+
+ SPECIFIED CONSTRAINT UX   FOR SELECTED NODES            1 TO          44 BY           1
+ REAL=  0.00000000       IMAG=  0.00000000    
+ ADDITIONAL DOFS=  UY    UZ  
+
+ SELECT       FOR ITEM=LOC  COMPONENT=X     BETWEEN  200.00     AND   200.00    
+   KABS=  0.  TOLERANCE=  1.00000    
+
+          4  NODES (OF         44  DEFINED) SELECTED BY  NSEL  COMMAND.
+
+ *GET  NCOUNT    FROM  NODE  ITEM=COUN       VALUE=  4.00000000     
+
+ SPECIFIED NODAL LOAD FZ   FOR SELECTED NODES         1 TO       44 BY        1
+  REAL= -250.000000       IMAG=  0.00000000    
+
+ SELECT ALL ENTITIES OF TYPE= ALL  AND BELOW
+
+ *****  ANSYS SOLVE    COMMAND  *****
+
+ *** NOTE ***                            CP =       0.062   TIME= 16:08:30
+ There is no title defined for this analysis.                            
+
+ *** SELECTION OF ELEMENT TECHNOLOGIES FOR APPLICABLE ELEMENTS ***
+                ---GIVE SUGGESTIONS ONLY---
+
+ ELEMENT TYPE    1 IS SOLID185. IT IS ASSOCIATED WITH LINEAR MATERIALS ONLY
+ AND POISSON'S RATIO IS NOT GREATER THAN 0.49. KEYOPT(2)=3 IS SUGGESTED.
+
+
+
+ *** ANSYS - ENGINEERING ANALYSIS SYSTEM  RELEASE Release 18.1     18.1     ***
+ ANSYS Mechanical Enterprise                       
+ 00000000  VERSION=WINDOWS x64   16:08:30  MAY 27, 2026 CP=      0.062
+
+                                                                               
+
+
+
+                       S O L U T I O N   O P T I O N S
+
+   PROBLEM DIMENSIONALITY. . . . . . . . . . . . .3-D                  
+   DEGREES OF FREEDOM. . . . . . UX   UY   UZ  
+   ANALYSIS TYPE . . . . . . . . . . . . . . . . .STATIC (STEADY-STATE)
+   GLOBALLY ASSEMBLED MATRIX . . . . . . . . . . .SYMMETRIC  
+
+ *** NOTE ***                            CP =       0.062   TIME= 16:08:30
+ Present time 0 is less than or equal to the previous time.  Time will   
+ default to 1.                                                           
+
+ *** NOTE ***                            CP =       0.062   TIME= 16:08:30
+ The conditions for direct assembly have been met.  No .emat or .erot    
+ files will be produced.                                                 
+
+                      L O A D   S T E P   O P T I O N S
+
+   LOAD STEP NUMBER. . . . . . . . . . . . . . . .     1
+   TIME AT END OF THE LOAD STEP. . . . . . . . . .  1.0000    
+   NUMBER OF SUBSTEPS. . . . . . . . . . . . . . .     1
+   STEP CHANGE BOUNDARY CONDITIONS . . . . . . . .    NO
+   PRINT OUTPUT CONTROLS . . . . . . . . . . . . .NO PRINTOUT
+   DATABASE OUTPUT CONTROLS. . . . . . . . . . . .ALL DATA WRITTEN
+                                                  FOR THE LAST SUBSTEP
+
+
+ SOLUTION MONITORING INFO IS WRITTEN TO FILE= beam_job.mntr                                                                                                                                                                                                                                                       
+
+
+ Range of element maximum matrix coefficients in global coordinates
+ Maximum = 817040.598 at element 7.                                      
+ Minimum = 817040.598 at element 4.                                      
+
+   *** ELEMENT MATRIX FORMULATION TIMES
+     TYPE    NUMBER   ENAME      TOTAL CP  AVE CP
+
+        1        10  SOLID185      0.000   0.000000
+ Time at end of element matrix formulation CP = 6.25E-02.                
+
+ SPARSE MATRIX DIRECT SOLVER.
+  Number of equations =         120,    Maximum wavefront =     24
+
+ *** NOTE ***                            CP =       0.062   TIME= 16:08:31
+ The initial memory allocation (-m) has been exceeded.                   
+  Supplemental memory allocations are being used.                        
+  Memory allocated for solver              =     0.166 MB
+  Memory required for in-core solution     =     0.160 MB
+  Memory required for out-of-core solution =     0.132 MB
+
+ *** NOTE ***                            CP =       0.062   TIME= 16:08:31
+ The Sparse Matrix Solver is currently running in the in-core memory     
+ mode.  This memory mode uses the most amount of memory in order to      
+ avoid using the hard drive as much as possible, which most often        
+ results in the fastest solution time.  This mode is recommended if      
+ enough physical memory is present to accommodate all of the solver      
+ data.                                                                   
+ Sparse solver maximum pivot= 1634081.2 at node 18 UX.                   
+ Sparse solver minimum pivot= 3934.25639 at node 39 UZ.                  
+ Sparse solver minimum pivot in absolute value= 3934.25639 at node 39    
+ UZ.                                                                     
+
+   *** ELEMENT RESULT CALCULATION TIMES
+     TYPE    NUMBER   ENAME      TOTAL CP  AVE CP
+
+        1        10  SOLID185      0.000   0.000000
+
+   *** NODAL LOAD CALCULATION TIMES
+     TYPE    NUMBER   ENAME      TOTAL CP  AVE CP
+
+        1        10  SOLID185      0.000   0.000000
+ *** LOAD STEP     1   SUBSTEP     1  COMPLETED.    CUM ITER =      1
+ *** TIME =   1.00000         TIME INC =   1.00000      NEW TRIANG MATRIX
+
+
+ *** ANSYS BINARY FILE STATISTICS
+  BUFFER SIZE USED= 16384
+        0.062 MB WRITTEN ON ASSEMBLED MATRIX FILE: beam_job.full
+        0.312 MB WRITTEN ON RESULTS FILE: beam_job.rst
+
+ FINISH SOLUTION PROCESSING
+
+
+ ***** ROUTINE COMPLETED *****  CP =         0.109
+
+
+
+ *** ANSYS - ENGINEERING ANALYSIS SYSTEM  RELEASE Release 18.1     18.1     ***
+ ANSYS Mechanical Enterprise                       
+ 00000000  VERSION=WINDOWS x64   16:08:31  MAY 27, 2026 CP=      0.125
+
+                                                                               
+
+
+
+          ***** ANSYS RESULTS INTERPRETATION (POST1) *****
+
+ *** NOTE ***                            CP =       0.125   TIME= 16:08:31
+ Reading results into the database (SET command) will update the current 
+ displacement and force boundary conditions in the database with the     
+ values from the results file for that load set.  Note that any          
+ subsequent solutions will use these values unless action is taken to    
+ either SAVE the current values or not overwrite them (/EXIT,NOSAVE).    
+
+
+ USE LAST SUBSTEP ON RESULT FILE  FOR LOAD CASE 0 
+
+ SET COMMAND GOT LOAD STEP=     1  SUBSTEP=     1  CUMULATIVE ITERATION=     1
+   TIME/FREQUENCY=  1.0000    
+ TITLE=                                                                         
+
+ SORT ON ITEM=U     COMPONENT=SUM   ORDER= 0  KABS= 0  NMAX=      44
+
+ SORT COMPLETED FOR      44 VALUES.
+
+ *GET  MAXU      FROM  SORT  ITEM=MAX        VALUE=  1.15227522    
+
+ PRINT U    NODAL SOLUTION PER NODE
+
+ *** ANSYS - ENGINEERING ANALYSIS SYSTEM  RELEASE Release 18.1     18.1     ***
+ ANSYS Mechanical Enterprise                       
+ 00000000  VERSION=WINDOWS x64   16:08:31  MAY 27, 2026 CP=      0.125
+
+                                                                               
+
+
+ 
+  ***** POST1 NODAL DEGREE OF FREEDOM LISTING *****                            
+ 
+  LOAD STEP=     1  SUBSTEP=     1                                             
+   TIME=    1.0000      LOAD CASE=   0                                         
+ 
+  THE FOLLOWING DEGREE OF FREEDOM RESULTS ARE IN THE GLOBAL COORDINATE SYSTEM  
+ 
+    NODE       UX           UY           UZ           USUM  
+      24  0.86176E-001-0.89153E-004 -1.1490       1.1523     
+      13 -0.86176E-001 0.89153E-004 -1.1490       1.1523     
+       3 -0.86176E-001-0.89153E-004 -1.1490       1.1523     
+      34  0.86176E-001 0.89153E-004 -1.1490       1.1523     
+      33  0.85288E-001-0.23311E-003-0.97697      0.98068     
+      22 -0.85288E-001 0.23311E-003-0.97697      0.98068     
+       4 -0.85288E-001-0.23311E-003-0.97697      0.98068     
+      36  0.85288E-001 0.23311E-003-0.97697      0.98068     
+       5 -0.82691E-001-0.49760E-003-0.80837      0.81259     
+      21 -0.82691E-001 0.49760E-003-0.80837      0.81259     
+      32  0.82691E-001-0.49760E-003-0.80837      0.81259     
+      37  0.82691E-001 0.49760E-003-0.80837      0.81259     
+      31  0.78357E-001-0.74248E-003-0.64670      0.65143     
+      20 -0.78357E-001 0.74248E-003-0.64670      0.65143     
+       6 -0.78357E-001-0.74248E-003-0.64670      0.65143     
+      38  0.78357E-001 0.74248E-003-0.64670      0.65143     
+      30  0.72291E-001-0.99049E-003-0.49543      0.50068     
+      19 -0.72291E-001 0.99049E-003-0.49543      0.50068     
+       7 -0.72291E-001-0.99049E-003-0.49543      0.50068     
+      39  0.72291E-001 0.99049E-003-0.49543      0.50068     
+      29  0.64490E-001-0.12384E-002-0.35803      0.36380     
+       8 -0.64490E-001-0.12384E-002-0.35803      0.36380     
+      18 -0.64490E-001 0.12384E-002-0.35803      0.36380     
+      40  0.64490E-001 0.12384E-002-0.35803      0.36380     
+      28  0.54958E-001-0.14840E-002-0.23797      0.24424     
+       9 -0.54958E-001-0.14840E-002-0.23797      0.24424     
+      17 -0.54958E-001 0.14840E-002-0.23797      0.24424     
+      41  0.54958E-001 0.14840E-002-0.23797      0.24424     
+      27  0.43688E-001-0.17440E-002-0.13870      0.14543     
+      10 -0.43688E-001-0.17440E-002-0.13870      0.14543     
+      16 -0.43688E-001 0.17440E-002-0.13870      0.14543     
+      42  0.43688E-001 0.17440E-002-0.13870      0.14543     
+      26  0.30704E-001-0.19154E-002-0.63691E-001 0.70731E-001
+      11 -0.30704E-001-0.19154E-002-0.63691E-001 0.70731E-001
+      15 -0.30704E-001 0.19154E-002-0.63691E-001 0.70731E-001
+      43  0.30704E-001 0.19154E-002-0.63691E-001 0.70731E-001
+      12 -0.15874E-001-0.26315E-002-0.16493E-001 0.23042E-001
+
+ *** ANSYS - ENGINEERING ANALYSIS SYSTEM  RELEASE Release 18.1     18.1     ***
+ ANSYS Mechanical Enterprise                       
+ 00000000  VERSION=WINDOWS x64   16:08:31  MAY 27, 2026 CP=      0.125
+
+                                                                               
+
+
+ 
+  ***** POST1 NODAL DEGREE OF FREEDOM LISTING *****                            
+ 
+  LOAD STEP=     1  SUBSTEP=     1                                             
+   TIME=    1.0000      LOAD CASE=   0                                         
+ 
+  THE FOLLOWING DEGREE OF FREEDOM RESULTS ARE IN THE GLOBAL COORDINATE SYSTEM  
+ 
+    NODE       UX           UY           UZ           USUM  
+      25  0.15874E-001-0.26315E-002-0.16493E-001 0.23042E-001
+      14 -0.15874E-001 0.26315E-002-0.16493E-001 0.23042E-001
+      44  0.15874E-001 0.26315E-002-0.16493E-001 0.23042E-001
+       1   0.0000       0.0000       0.0000       0.0000     
+       2   0.0000       0.0000       0.0000       0.0000     
+      23   0.0000       0.0000       0.0000       0.0000     
+      35   0.0000       0.0000       0.0000       0.0000     
+
+ MAXIMUM ABSOLUTE VALUES
+ NODE          3           14           13           24
+ VALUE  -0.86176E-001 0.26315E-002 -1.1490       1.1523     
+
+ PRINT S    NODAL SOLUTION PER NODE
+
+ *** WARNING ***                         CP =       0.125   TIME= 16:08:31
+ The third argument EQV on the PRNSOL command is not recognized.         
+
+ /OUTPUT FILE= result_summary.txt
+
+ EXIT THE ANSYS POST1 DATABASE PROCESSOR
+
+
+ ***** ROUTINE COMPLETED *****  CP =         0.125
+
+
+
+ ***** END OF INPUT ENCOUNTERED *****
+
+ PURGE ALL SOLUTION AND POST DATA
+ SAVE ALL MODEL DATA
+
+ ALL CURRENT ANSYS DATA WRITTEN TO FILE NAME= beam_job.db
+  FOR POSSIBLE RESUME FROM THIS POINT
+
+
+ NUMBER OF WARNING MESSAGES ENCOUNTERED=          1
+ NUMBER OF ERROR   MESSAGES ENCOUNTERED=          0
+
++--------------------- A N S Y S   S T A T I S T I C S ------------------------+
+
+Release: Release 18.1       Build: 18.1       Update: UP20170403   Platform: WINDOWS x64 
+Date Run: 05/27/2026   Time: 16:08     Process ID: 27536
+Operating System: Windows 10  (Build: 22631)
+
+Processor Model: Intel(R) Core(TM) i7-14700HX
+
+Compiler: Intel(R) FORTRAN Compiler Version 15.0.7  (Build: 20160518)
+          Intel(R) C/C++ Compiler Version 15.0.7  (Build: 20160518)
+          Intel(R) Math Kernel Library Version 11.3.3 Product Build 20160413
+
+Number of machines requested            :    1
+Total number of cores available         :    0
+Number of physical cores available      :    0
+Number of processes requested           :    1
+Number of threads per process requested :    2
+Total number of cores requested         :    2 (Shared Memory Parallel)                    
+
+GPU Acceleration: Not Requested
+
+Job Name: beam_job
+Working Directory: E:\auto_detection_process
+
+Total CPU time for main thread                    :        0.2 seconds
+Total CPU time summed for all threads             :        0.1 seconds
+
+Elapsed time spent pre-processing model (/PREP7)  :        0.0 seconds
+Elapsed time spent solution - preprocessing       :        0.0 seconds
+Elapsed time spent computing solution             :        0.2 seconds
+Elapsed time spent solution - postprocessing      :        0.0 seconds
+Elapsed time spent post-processing model (/POST1) :        0.0 seconds
+ 
+Equation solver used                              :            Sparse (symmetric)
+
+Maximum total memory used                         :       10.0 MB
+Maximum total memory allocated                    :     1100.0 MB
+Total physical memory available                   :         16 GB
+
++------------------ E N D   A N S Y S   S T A T I S T I C S -------------------+
+
+
+ *---------------------------------------------------------------------------*
+ |                                                                           |
+ |                            ANSYS RUN COMPLETED                            |
+ |                                                                           |
+ |---------------------------------------------------------------------------|
+ |                                                                           |
+ | Ansys Release 18.1          Build 18.1         UP20170403     WINDOWS x64 |
+ |                                                                           |
+ |---------------------------------------------------------------------------|
+ |                                                                           |
+ | Database Requested(-db)  1024 MB    Scratch Memory Requested         8 MB |
+ | Maximum Database Used       1 MB    Maximum Scratch Memory Used      9 MB |
+ |                                                                           |
+ |---------------------------------------------------------------------------|
+ |                                                                           |
+ |        CP Time      (sec) =          0.125       Time  =  16:08:31        |
+ |        Elapsed Time (sec) =         10.000       Date  =  05/27/2026      |
+ |                                                                           |
+ *---------------------------------------------------------------------------*

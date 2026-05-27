@@ -158,10 +158,52 @@ def build_natural_language_tools(config: EngineeringToolsConfig):
         out_step: str,
         inspect: bool = True,
         out_native: str | None = None,
+        allow_backend_fallback: bool = False,
     ) -> dict:
         try:
+            # Step 0: Internal normalize — rewrite deprecated, normalize params
+            spec = rewrite_deprecated_recipes_to_primitives(spec)
+            spec.pop("rewrite_warnings", None)
+
             cad_spec = CADPartSpec.model_validate(spec)
+
+            from seekflow_engineering_tools.geometry_primitives.registry import (
+                normalize_primitive_parameters,
+            )
+            for feat in cad_spec.features:
+                if feat.type == "recipe":
+                    feat.parameters = normalize_recipe_parameters(feat.recipe_name, feat.parameters)
+                elif feat.type == "primitive":
+                    feat.parameters = normalize_primitive_parameters(feat.primitive_name, feat.parameters)
+
+            # Reject legacy spur_gear recipe in engineering builds
+            for feat in cad_spec.features:
+                if feat.type == "recipe" and feat.recipe_name == "spur_gear":
+                    return EngineeringActionResult(
+                        ok=False,
+                        software="generic",
+                        action="build_cad_model",
+                        error=(
+                            "Recipe 'spur_gear' is deprecated for engineering builds. "
+                            "Use primitive 'involute_spur_gear' instead."
+                        ),
+                    ).model_dump()
+
             choice: BackendChoice = choose_backend(cad_spec, preferred=[backend])
+
+            # Disallow silent fallback from solidworks2025/nx12 to cadquery
+            if backend in {"solidworks2025", "nx12"} and choice.backend == "cadquery" and not allow_backend_fallback:
+                return EngineeringActionResult(
+                    ok=False,
+                    software="generic",
+                    action="build_cad_model",
+                    error=(
+                        f"Requested backend '{backend}' does not support this spec "
+                        f"and fallback is not allowed. Use allow_backend_fallback=True "
+                        f"or switch to cadquery explicitly."
+                    ),
+                    warnings=choice.warnings,
+                ).model_dump()
 
             # ── cadquery: always native build ──
             if choice.backend == "cadquery":

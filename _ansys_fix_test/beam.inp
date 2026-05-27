@@ -1,0 +1,47 @@
+/CLEAR
+/FILNAME,beam_job
+/PREP7
+
+! Units: N, mm, MPa
+
+ET,1,SOLID185
+MP,EX,1,210000.0
+MP,PRXY,1,0.3
+
+BLOCK,0,200,0,20,0,20
+
+ESIZE,20.0
+VMESH,ALL
+
+/SOLU
+ANTYPE,STATIC
+
+! Fix x=0 face
+NSEL,S,LOC,X,0
+D,ALL,ALL,0
+
+! Apply force on x=L face in negative Z direction
+NSEL,S,LOC,X,200
+*GET,NCOUNT,NODE,0,COUNT
+F,ALL,FZ,-1000/NCOUNT
+
+ALLSEL,ALL
+SOLVE
+FINISH
+
+/POST1
+SET,LAST
+
+! Maximum displacement magnitude
+NSORT,U,SUM
+*GET,MAXU,SORT,0,MAX
+
+PRNSOL,U
+PRNSOL,S,EQV
+
+/OUTPUT,result_summary,txt
+*VWRITE,MAXU
+('MAX_DISPLACEMENT_MM=',E16.8)
+/OUTPUT
+
+FINISH

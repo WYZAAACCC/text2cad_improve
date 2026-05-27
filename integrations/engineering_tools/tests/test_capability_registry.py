@@ -51,8 +51,9 @@ class TestCapabilityRegistry:
     def test_cadquery_supports_flanged_hub(self):
         assert backend_supports_recipe("cadquery", "flanged_hub") is True
 
-    def test_cadquery_supports_spur_gear(self):
-        assert backend_supports_recipe("cadquery", "spur_gear") is True
+    def test_cadquery_no_longer_supports_spur_gear_recipe(self):
+        # spur_gear is deprecated; must use involute_spur_gear primitive
+        assert backend_supports_recipe("cadquery", "spur_gear") is False
 
     def test_solidworks_does_not_support_l_bracket(self):
         assert backend_supports_recipe("solidworks2025", "l_bracket") is False
