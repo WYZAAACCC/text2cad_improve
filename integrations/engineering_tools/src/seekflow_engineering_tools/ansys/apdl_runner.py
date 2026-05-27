@@ -36,9 +36,10 @@ class AnsysAPDLRunner:
         jobname: str,
         timeout_s: int | None = None,
         nproc: int | None = None,
+        memory_mb: int = 512,
     ) -> dict:
-        input_file = Path(input_file)
-        job_dir = Path(job_dir)
+        input_file = Path(input_file).resolve()
+        job_dir = Path(job_dir).resolve()
         job_dir.mkdir(parents=True, exist_ok=True)
 
         output_file = job_dir / f"{jobname}.out"
@@ -52,6 +53,7 @@ class AnsysAPDLRunner:
         cmd = [
             str(self.ansys_exe),
             "-b",
+            "-m", str(memory_mb),
             "-i", str(input_file),
             "-o", str(output_file),
             "-j", jobname,

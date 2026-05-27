@@ -21,15 +21,21 @@ _STRESS_FACTOR_RE = re.compile(r"STRESS_CONCENTRATION_FACTOR\s*=\s*([\d.+\-Ee.]+
 
 
 def parse_result_summary(path: Path) -> dict:
-    """Extract key metrics from ``result_summary.txt``.
+    """Extract key metrics from the output file or ``result_summary.txt``.
 
     Supports: static, thermal, modal, buckling, and bilinear plastic analysis types.
+    If *path* points to a .out file, also checks for ``result_summary.txt`` in the same directory.
     """
     metrics: dict = {}
     if not path.exists():
         return metrics
 
     text = path.read_text(errors="ignore")
+
+    # Also check result_summary.txt in the same directory (APDL /OUTPUT creates separate file)
+    summary_path = path.parent / "result_summary.txt"
+    if summary_path.exists():
+        text = text + "\n" + summary_path.read_text(errors="ignore")
 
     # Static structural metrics
     for pat, key in [
