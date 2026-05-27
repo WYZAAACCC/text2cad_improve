@@ -66,12 +66,13 @@ class TestCapabilityRegistry:
     def test_choose_backend_returns_cadquery_when_preferred_unsupported(self):
         spec = _make_spec("l_bracket", "solidworks2025")
         result = choose_backend(spec, preferred=["solidworks2025"])
-        assert result == "cadquery"  # fallback
+        assert result.backend == "cadquery"  # fallback
+        assert len(result.warnings) > 0
 
     def test_choose_backend_returns_preferred_when_supported(self):
         spec = _make_spec("block_with_hole", "nx12")
         result = choose_backend(spec, preferred=["nx12"])
-        assert result == "nx12"
+        assert result.backend == "nx12"
 
     def test_choose_backend_returns_none_when_no_backend_supports(self):
         spec = CADPartSpec(
@@ -87,7 +88,7 @@ class TestCapabilityRegistry:
             ],
         )
         result = choose_backend(spec, preferred=["cadquery"])
-        assert result == "none"
+        assert result.backend == "none"
 
     def test_list_backend_recipes_nx(self):
         recipes = list_backend_recipes("nx12")

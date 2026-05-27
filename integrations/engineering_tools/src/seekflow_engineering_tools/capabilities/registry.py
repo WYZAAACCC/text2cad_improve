@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+
 from seekflow_engineering_tools.ir.cad import CADPartSpec
 
 CAPABILITIES: dict = {
@@ -88,6 +90,14 @@ CAPABILITIES: dict = {
 }
 
 
+@dataclass
+class BackendChoice:
+    """Result of backend selection with fallback information."""
+    backend: str
+    fallback_from: str | None = None
+    warnings: list[str] = field(default_factory=list)
+
+
 def load_capability_registry() -> dict:
     """Return the full capability catalog."""
     return dict(CAPABILITIES)
@@ -108,7 +118,7 @@ def list_backend_recipes(backend: str) -> list[str]:
     return cap.get("stable_recipes", [])
 
 
-def choose_backend(spec: CADPartSpec, preferred: list[str] | None = None) -> str:
+def choose_backend(spec: CADPartSpec, preferred: list[str] | None = None) -> BackendChoice:
     """Select best available backend for a CADPartSpec.
 
     Rules:
@@ -118,6 +128,8 @@ def choose_backend(spec: CADPartSpec, preferred: list[str] | None = None) -> str
     4. If no backend supports → return "none" (ok=false upstream).
     """
     candidates = preferred or [b for b in spec.target_backend]
+    fallback_from: str | None = None
+    warnings: list[str] = []
 
     # Try preferred backends first
     for backend in candidates:
@@ -128,12 +140,15 @@ def choose_backend(spec: CADPartSpec, preferred: list[str] | None = None) -> str
                     all_ok = False
                     break
         if all_ok:
-            return backend
+            return BackendChoice(backend=backend, warnings=warnings)
 
     # Preferred backends don't support all recipes — fall back to cadquery
-    for backend in candidates:
-        if backend == "cadquery":
-            continue  # already evaluated above or will be last resort
+    if candidates and candidates[0] != "cadquery":
+        fallback_from = candidates[0]
+        warnings.append(
+            f"Backend '{fallback_from}' does not support all recipes. "
+            f"Falling back to cadquery."
+        )
 
     # Check if cadquery can handle it
     all_cq_ok = True
@@ -143,6 +158,6 @@ def choose_backend(spec: CADPartSpec, preferred: list[str] | None = None) -> str
                 all_cq_ok = False
                 break
     if all_cq_ok:
-        return "cadquery"
+        return BackendChoice(backend="cadquery", fallback_from=fallback_from, warnings=warnings)
 
-    return "none"
+    return BackendChoice(backend="none", fallback_from=fallback_from, warnings=warnings)

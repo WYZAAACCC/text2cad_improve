@@ -223,3 +223,46 @@ class TestCadQueryCompiler:
             result = gen(params)
             assert isinstance(result, str), f"Recipe '{name}' returned non-string"
             assert len(result) > 0, f"Recipe '{name}' returned empty string"
+
+
+class TestCadQueryGoldenData:
+    """Verify golden test data (bbox/body_count) for key recipes."""
+
+    def test_golden_data_exists_for_key_recipes(self):
+        from seekflow_engineering_tools.cadquery_backend.recipes import GOLDEN_DATA
+        key = ["l_bracket", "stepped_block", "flanged_hub", "box", "cylinder"]
+        for name in key:
+            assert name in GOLDEN_DATA, f"Missing GOLDEN_DATA for '{name}'"
+
+    def test_l_bracket_golden_uses_union(self):
+        from seekflow_engineering_tools.cadquery_backend.recipes import (
+            CADQUERY_RECIPE_GENERATORS, GOLDEN_DATA
+        )
+        golden = GOLDEN_DATA["l_bracket"]
+        defaults = golden["defaults"]
+        script = CADQUERY_RECIPE_GENERATORS["l_bracket"](defaults)
+        assert "union" in script, "l_bracket must use base.union(leg)"
+        assert "base =" in script
+        assert "leg =" in script
+
+    def test_stepped_block_golden_body_count(self):
+        from seekflow_engineering_tools.cadquery_backend.recipes import GOLDEN_DATA
+        assert GOLDEN_DATA["stepped_block"]["expected_body_count"] == 1
+
+    def test_flanged_hub_golden_values(self):
+        from seekflow_engineering_tools.cadquery_backend.recipes import GOLDEN_DATA
+        golden = GOLDEN_DATA["flanged_hub"]
+        assert golden["expected_body_count"] == 1
+        assert golden["expected_through_hole_count"] == 5
+        assert "bolt_count" in golden["defaults"]
+
+    def test_l_bracket_golden_body_count(self):
+        from seekflow_engineering_tools.cadquery_backend.recipes import GOLDEN_DATA
+        assert GOLDEN_DATA["l_bracket"]["expected_body_count"] == 1
+
+    def test_golden_defaults_are_valid_recipe_params(self):
+        from seekflow_engineering_tools.cadquery_backend.recipes import GOLDEN_DATA
+        from seekflow_engineering_tools.recipes.registry import validate_recipe_parameters
+        for name, golden in GOLDEN_DATA.items():
+            errors = validate_recipe_parameters(name, golden["defaults"])
+            assert not errors, f"Golden defaults for '{name}' fail validation: {errors}"

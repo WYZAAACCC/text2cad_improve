@@ -31,13 +31,21 @@ def cadquery_block_with_hole(params: dict) -> str:
 
 
 def cadquery_l_bracket(params: dict) -> str:
-    return f"""result = (
+    """L-bracket: horizontal base + vertical leg, united via union()."""
+    bl = params["base_length_mm"]
+    bw = params["base_width_mm"]
+    t = params["thickness_mm"]
+    lh = params["leg_height_mm"]
+    return f"""base = (
     cq.Workplane("XY")
-    .box({params["base_length_mm"]}, {params["base_width_mm"]}, {params["thickness_mm"]})
-    .faces(">Y").workplane()
-    .rect({params["thickness_mm"]}, {params["base_width_mm"]})
-    .extrude({params["leg_height_mm"]})
-)"""
+    .box({bl}, {bw}, {t})
+)
+leg = (
+    cq.Workplane("XY")
+    .transformed(offset=(0, 0, 0))
+    .box({t}, {bw}, {lh})
+)
+result = base.union(leg)"""
 
 
 def cadquery_stepped_block(params: dict) -> str:
@@ -156,4 +164,49 @@ CADQUERY_RECIPE_GENERATORS = {
     "spur_gear": cadquery_spur_gear,
     "shaft_basic": cadquery_shaft_basic,
     "shaft_with_keyway": cadquery_shaft_with_keyway,
+}
+
+# ── Golden test data: expected bbox and body_count per recipe (default params) ──
+
+GOLDEN_DATA: dict[str, dict] = {
+    "box": {
+        "defaults": {"length_mm": 100, "width_mm": 50, "height_mm": 25},
+        "expected_bbox_mm": [100, 50, 25],
+        "expected_body_count": 1,
+    },
+    "cylinder": {
+        "defaults": {"diameter_mm": 20, "height_mm": 50},
+        "expected_bbox_mm": [20, 20, 50],
+        "expected_body_count": 1,
+    },
+    "block_with_hole": {
+        "defaults": {"length_mm": 100, "width_mm": 50, "height_mm": 25, "hole_dia_mm": 16},
+        "expected_body_count": 1,
+    },
+    "l_bracket": {
+        "defaults": {"base_length_mm": 100, "base_width_mm": 60, "thickness_mm": 15, "leg_height_mm": 60},
+        "expected_body_count": 1,
+    },
+    "stepped_block": {
+        "defaults": {"base_length_mm": 80, "base_width_mm": 80, "base_height_mm": 20, "top_length_mm": 60, "top_width_mm": 60, "top_height_mm": 30},
+        "expected_body_count": 1,
+    },
+    "flanged_hub": {
+        "defaults": {"flange_dia_mm": 80, "flange_thickness_mm": 10, "hub_dia_mm": 40, "hub_height_mm": 30, "bore_dia_mm": 20, "bolt_pcd_mm": 60, "bolt_dia_mm": 8, "bolt_count": 4},
+        "expected_body_count": 1,
+        "expected_through_hole_count": 5,
+    },
+    "spur_gear": {
+        "defaults": {"module_mm": 3, "teeth": 20, "face_width_mm": 20, "bore_dia_mm": 15},
+        "expected_body_count": 1,
+    },
+    "shaft_basic": {
+        "defaults": {"shaft_dia_mm": 20, "total_length_mm": 100},
+        "expected_bbox_mm": [20, 20, 100],
+        "expected_body_count": 1,
+    },
+    "shaft_with_keyway": {
+        "defaults": {"shaft_dia_mm": 20, "total_length_mm": 100, "keyway_width_mm": 6, "keyway_depth_mm": 4},
+        "expected_body_count": 1,
+    },
 }

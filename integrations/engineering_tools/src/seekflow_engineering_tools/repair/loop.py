@@ -49,20 +49,48 @@ def classify_failure(result: EngineeringActionResult | dict) -> dict:
     }
 
 
-def run_build_once(
-    spec: CADPartSpec, backend: str, **kwargs: Any
+def make_repair_diagnostics(
+    stage: str,
+    error_type: str,
+    message: str,
+    spec: CADPartSpec | None = None,
+    feature_id: str | None = None,
+    validation_report: dict | None = None,
+    suggested_fix: str | None = None,
 ) -> dict:
-    """Run a single build attempt and return the raw result.
+    """Generate structured repair diagnostics for failure returns.
 
-    This is a pass-through for the actual backend-specific build logic.
-    The caller (agent loop) uses classify_failure to interpret results.
+    This is wired into build failure returns to provide actionable diagnostics
+    for automated repair loops.
     """
-    from seekflow_engineering_tools.natural_language.tools import (
-        engineering_build_cad_model,
-    )
+    return {
+        "stage": stage,
+        "error_type": error_type,
+        "message": message,
+        "feature_id": feature_id,
+        "spec_name": spec.name if spec else None,
+        "validation": validation_report,
+        "suggested_fix": suggested_fix or "Check error details and retry with corrected parameters.",
+    }
 
-    return engineering_build_cad_model(
-        spec=spec.model_dump(),
-        backend=backend,
-        **kwargs,
-    )
+
+def run_build_once(
+    spec: CADPartSpec, backend: str, out_step: str, inspect: bool = True
+) -> dict:
+    """Run a single build attempt via the natural language build tool.
+
+    Uses the build_natural_language_tools builder to create a fresh tool
+    instance with the correct config, then executes the build.
+    """
+    from pathlib import Path
+    from seekflow_engineering_tools.config import EngineeringToolsConfig
+    from seekflow_engineering_tools.natural_language.tools import build_natural_language_tools
+
+    # Create minimal config for a single build attempt
+    config = EngineeringToolsConfig(workspace_root=Path("."))
+    tools = build_natural_language_tools(config)
+    build_tool = next(t for t in tools if t.name == "engineering_build_cad_model")
+
+    # The tool is decorated, so we call the underlying function via the __wrapped__ or directly
+    # Since tools store the original function, call through the tool's execution path
+    return build_tool(spec=spec.model_dump(), backend=backend, out_step=out_step, inspect=inspect)

@@ -107,10 +107,12 @@ def build_solidworks_tools(config: EngineeringToolsConfig):
     ) -> dict:
         try:
             out_sldprt_path = ensure_inside_workspace(config.workspace_root, out_sldprt)
+            ensure_extension(out_sldprt_path, {".sldprt"})
 
             out_step_path = None
             if out_step:
                 out_step_path = ensure_inside_workspace(config.workspace_root, out_step)
+                ensure_extension(out_step_path, {".step", ".stp"})
 
             # Overwrite check
             if out_sldprt_path.exists() and not config.allow_overwrite:
@@ -194,10 +196,24 @@ def build_solidworks_tools(config: EngineeringToolsConfig):
         out_step: str | None = None,
     ) -> dict:
         try:
+            # Geometry constraints
+            if flange_dia_mm <= hub_dia_mm:
+                raise ValueError(f"flange_dia_mm ({flange_dia_mm}) must be > hub_dia_mm ({hub_dia_mm})")
+            if hub_dia_mm <= bore_dia_mm:
+                raise ValueError(f"hub_dia_mm ({hub_dia_mm}) must be > bore_dia_mm ({bore_dia_mm})")
+            if bolt_count < 3:
+                raise ValueError(f"bolt_count ({bolt_count}) must be >= 3")
+            if bolt_pcd_mm >= flange_dia_mm:
+                raise ValueError(f"bolt_pcd_mm ({bolt_pcd_mm}) must be < flange_dia_mm ({flange_dia_mm})")
+            if bolt_pcd_mm <= hub_dia_mm:
+                raise ValueError(f"bolt_pcd_mm ({bolt_pcd_mm}) must be > hub_dia_mm ({hub_dia_mm})")
+
             out_sldprt_path = ensure_inside_workspace(config.workspace_root, out_sldprt)
+            ensure_extension(out_sldprt_path, {".sldprt"})
             out_step_path = None
             if out_step:
                 out_step_path = ensure_inside_workspace(config.workspace_root, out_step)
+                ensure_extension(out_step_path, {".step", ".stp"})
 
             if out_sldprt_path.exists() and not config.allow_overwrite:
                 return EngineeringActionResult(
@@ -225,11 +241,15 @@ def build_solidworks_tools(config: EngineeringToolsConfig):
                 bolt_count=bolt_count,
             )
 
-            client.save_as(model, out_sldprt_path)
+            if not client.save_as(model, out_sldprt_path):
+                raise RuntimeError(f"SolidWorks SaveAs failed for {out_sldprt_path}")
+            _assert_file_created(out_sldprt_path, "SLDPRT")
             files_created = [str(out_sldprt_path)]
 
             if out_step_path:
-                client.export_step(model, out_step_path)
+                if not client.export_step(model, out_step_path):
+                    raise RuntimeError(f"SolidWorks STEP export failed for {out_step_path}")
+                _assert_file_created(out_step_path, "STEP")
                 files_created.append(str(out_step_path))
 
             return EngineeringActionResult(
@@ -286,10 +306,22 @@ def build_solidworks_tools(config: EngineeringToolsConfig):
         out_step: str | None = None,
     ) -> dict:
         try:
+            # Geometry constraints
+            if module_mm <= 0:
+                raise ValueError(f"module_mm ({module_mm}) must be > 0")
+            if teeth < 6:
+                raise ValueError(f"teeth ({teeth}) must be >= 6")
+            if face_width_mm <= 0:
+                raise ValueError(f"face_width_mm ({face_width_mm}) must be > 0")
+            if bore_dia_mm <= 0:
+                raise ValueError(f"bore_dia_mm ({bore_dia_mm}) must be > 0")
+
             out_sldprt_path = ensure_inside_workspace(config.workspace_root, out_sldprt)
+            ensure_extension(out_sldprt_path, {".sldprt"})
             out_step_path = None
             if out_step:
                 out_step_path = ensure_inside_workspace(config.workspace_root, out_step)
+                ensure_extension(out_step_path, {".step", ".stp"})
 
             if out_sldprt_path.exists() and not config.allow_overwrite:
                 return EngineeringActionResult(
@@ -313,11 +345,15 @@ def build_solidworks_tools(config: EngineeringToolsConfig):
                 bore_dia_m=bore_dia_mm / 1000.0,
             )
 
-            client.save_as(model, out_sldprt_path)
+            if not client.save_as(model, out_sldprt_path):
+                raise RuntimeError(f"SolidWorks SaveAs failed for {out_sldprt_path}")
+            _assert_file_created(out_sldprt_path, "SLDPRT")
             files_created = [str(out_sldprt_path)]
 
             if out_step_path:
-                client.export_step(model, out_step_path)
+                if not client.export_step(model, out_step_path):
+                    raise RuntimeError(f"SolidWorks STEP export failed for {out_step_path}")
+                _assert_file_created(out_step_path, "STEP")
                 files_created.append(str(out_step_path))
 
             return EngineeringActionResult(

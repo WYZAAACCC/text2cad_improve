@@ -65,7 +65,7 @@ class TestInspectionValidation:
             },
         )
         assert result["validation"]["ok"] is False
-        assert any("bbox" in e.lower() for e in result["validation"]["errors"])
+        assert any("bbox" in e.get("code", "") for e in result["validation"]["issues"])
 
     def test_bbox_match_passes(self):
         spec = CADPartSpec(
@@ -121,7 +121,7 @@ class TestInspectionValidation:
             },
         )
         assert result["validation"]["ok"] is False
-        assert any("body_count" in e for e in result["validation"]["errors"])
+        assert any("body_count" in e.get("code", "") for e in result["validation"]["issues"])
 
     def test_validation_with_no_expectations_passes(self):
         spec = CADPartSpec(

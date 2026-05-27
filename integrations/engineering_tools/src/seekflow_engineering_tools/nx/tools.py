@@ -10,7 +10,7 @@ from seekflow import tool
 from seekflow.types import ToolPolicy
 
 from seekflow_engineering_tools.common.models import EngineeringActionResult
-from seekflow_engineering_tools.common.paths import ensure_inside_workspace
+from seekflow_engineering_tools.common.paths import ensure_extension, ensure_inside_workspace
 from seekflow_engineering_tools.config import EngineeringToolsConfig
 from seekflow_engineering_tools.nx.job_queue import NXJobQueue
 
@@ -36,6 +36,7 @@ def _submit_job_and_wait(
 ) -> dict:
     """Submit a job to NX bridge, wait for completion, return EngineeringActionResult dict."""
     out_prt_path = ensure_inside_workspace(config.workspace_root, out_prt)
+    ensure_extension(out_prt_path, {".prt"})
 
     if out_prt_path.exists() and not config.allow_overwrite:
         return EngineeringActionResult(
@@ -49,6 +50,7 @@ def _submit_job_and_wait(
 
     if out_step:
         out_step_path = ensure_inside_workspace(config.workspace_root, out_step)
+        ensure_extension(out_step_path, {".step", ".stp"})
         full_params["out_step"] = str(out_step_path)
 
     q = NXJobQueue(job_root)
@@ -209,6 +211,13 @@ def build_nx_tools(config: EngineeringToolsConfig):
         out_step: str | None = None,
     ) -> dict:
         try:
+            if length_mm <= 0 or width_mm <= 0 or height_mm <= 0:
+                raise ValueError("length_mm, width_mm, height_mm must be > 0")
+            if hole_dia_mm <= 0:
+                raise ValueError("hole_dia_mm must be > 0")
+            if hole_dia_mm >= min(length_mm, width_mm):
+                raise ValueError(f"hole_dia_mm ({hole_dia_mm}) must be < min(length_mm, width_mm) = {min(length_mm, width_mm)}")
+
             params: dict = {
                 "length_mm": length_mm,
                 "width_mm": width_mm,
@@ -277,6 +286,8 @@ def build_nx_tools(config: EngineeringToolsConfig):
         out_step: str | None = None,
     ) -> dict:
         try:
+            if base_length_mm <= 0 or base_width_mm <= 0 or thickness_mm <= 0 or leg_height_mm <= 0:
+                raise ValueError("All dimensions must be > 0")
             return _submit_job_and_wait(
                 config=config,
                 job_root=job_root,
@@ -341,6 +352,14 @@ def build_nx_tools(config: EngineeringToolsConfig):
         out_step: str | None = None,
     ) -> dict:
         try:
+            if base_length_mm <= 0 or base_width_mm <= 0 or base_height_mm <= 0:
+                raise ValueError("Base dimensions must be > 0")
+            if top_length_mm <= 0 or top_width_mm <= 0 or top_height_mm <= 0:
+                raise ValueError("Top dimensions must be > 0")
+            if top_length_mm > base_length_mm:
+                raise ValueError(f"top_length_mm ({top_length_mm}) must be <= base_length_mm ({base_length_mm})")
+            if top_width_mm > base_width_mm:
+                raise ValueError(f"top_width_mm ({top_width_mm}) must be <= base_width_mm ({base_width_mm})")
             return _submit_job_and_wait(
                 config=config,
                 job_root=job_root,

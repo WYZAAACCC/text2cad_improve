@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 from seekflow_engineering_tools.cadquery_backend.compiler import compile_cad_ir_to_cadquery_script
@@ -12,7 +11,11 @@ from seekflow_engineering_tools.cadquery_backend.inspector import inspect_step_w
 from seekflow_engineering_tools.common.models import EngineeringActionResult
 from seekflow_engineering_tools.common.paths import ensure_extension, ensure_inside_workspace
 from seekflow_engineering_tools.config import EngineeringToolsConfig
+from seekflow_engineering_tools.inspection.common import ModelInspection
+from seekflow_engineering_tools.inspection.validation import validate_inspection_against_spec
 from seekflow_engineering_tools.ir.cad import CADPartSpec
+from seekflow_engineering_tools.repair.diagnostics import build_repair_prompt
+from seekflow_engineering_tools.repair.loop import classify_failure, make_repair_diagnostics
 
 
 def assert_file_created(path: Path, label: str = "output", min_size: int = 1) -> None:
@@ -23,61 +26,41 @@ def assert_file_created(path: Path, label: str = "output", min_size: int = 1) ->
         raise ValueError(f"{label} file is empty or too small: {path} ({path.stat().st_size} bytes)")
 
 
+def _inspection_info_to_model(info: dict) -> ModelInspection:
+    """Convert raw inspector dict to ModelInspection."""
+    return ModelInspection(
+        bbox_mm=info.get("bbox_mm"),
+        volume_mm3=info.get("volume_mm3"),
+        body_count=info.get("solid_count"),
+        hole_count_estimate=info.get("hole_count_estimate"),
+        through_hole_count_estimate=info.get("through_hole_count_estimate"),
+        warnings=[],
+    )
+
+
 def _run_inspection(step_path: Path, spec: CADPartSpec) -> dict:
-    """Run CadQuery inspection on a STEP file and validate against spec."""
+    """Run CadQuery inspection on a STEP file and validate against spec.
+
+    Uses unified ModelInspection and validate_inspection_against_spec.
+    """
     info = inspect_step_with_cadquery(step_path)
     if info.get("error"):
-        return {"inspection": info, "validation": {"ok": False, "error": info["error"]}}
+        return {
+            "inspection": info,
+            "validation": {
+                "ok": False,
+                "issues": [{"code": "inspect_error", "message": info["error"], "severity": "error"}],
+            },
+        }
 
-    errors: list[str] = []
-    warnings: list[str] = []
-    vs = spec.validation
+    model = _inspection_info_to_model(info)
+    report = validate_inspection_against_spec(model, spec)
 
-    if vs.expected_bbox_mm is not None:
-        actual = info.get("bbox_mm")
-        if actual is None:
-            errors.append("Cannot inspect bbox (cadquery may not be installed)")
-        elif actual is not None:
-            for i, (exp, act) in enumerate(zip(vs.expected_bbox_mm, actual)):
-                dim = ["x", "y", "z"][i]
-                if abs(exp - act) > vs.tolerance_mm:
-                    errors.append(
-                        f"bbox {dim}: expected {exp} mm, got {act:.1f} mm "
-                        f"(delta={abs(exp - act):.1f} > tolerance {vs.tolerance_mm})"
-                    )
-
-    if vs.expected_body_count is not None:
-        actual = info.get("solid_count")
-        if actual is not None and actual != vs.expected_body_count:
-            errors.append(
-                f"body_count: expected {vs.expected_body_count}, got {actual}"
-            )
-
-    if vs.expected_hole_count is not None:
-        actual = info.get("hole_count_estimate")
-        if actual is None:
-            warnings.append("Cannot estimate hole count for validation")
-        elif actual != vs.expected_hole_count:
-            errors.append(
-                f"hole_count: expected {vs.expected_hole_count}, got {actual}"
-            )
-
-    if vs.expected_through_hole_count is not None:
-        actual = info.get("through_hole_count_estimate")
-        if actual is None:
-            warnings.append("Cannot estimate through hole count for validation")
-        elif actual != vs.expected_through_hole_count:
-            errors.append(
-                f"through_hole_count: expected {vs.expected_through_hole_count}, got {actual}"
-            )
-
-    validation_ok = len(errors) == 0
     return {
         "inspection": info,
         "validation": {
-            "ok": validation_ok,
-            "errors": errors,
-            "warnings": warnings,
+            "ok": report.ok,
+            "issues": [i.model_dump() for i in report.issues],
         },
     }
 
@@ -110,12 +93,15 @@ def build_cadquery_from_cad_ir(
     # Compile script
     script = compile_cad_ir_to_cadquery_script(spec, out_step=str(step_path))
 
-    # Write script
+    # Script path — always inside workspace
     if script_out:
         script_path = ensure_inside_workspace(workspace, script_out)
         ensure_extension(script_path, {".py"})
     else:
-        script_path = Path(tempfile.mktemp(suffix="_cq_build.py"))
+        script_dir = ensure_inside_workspace(workspace, ".cadquery_scripts")
+        script_dir.mkdir(parents=True, exist_ok=True)
+        import uuid
+        script_path = script_dir / f"build_{uuid.uuid4().hex[:12]}.py"
 
     script_path.parent.mkdir(parents=True, exist_ok=True)
     script_path.write_text(script, encoding="utf-8")
@@ -141,6 +127,13 @@ def build_cadquery_from_cad_ir(
     stderr_tail = (result.stderr or "")[-2000:]
 
     if result.returncode != 0:
+        repair = make_repair_diagnostics(
+            stage="execute",
+            error_type="script_execution_failed",
+            message=f"CadQuery script failed (rc={result.returncode}). Stderr: {(result.stderr or '')[:200]}",
+            spec=spec,
+            suggested_fix="Check CadQuery API usage and geometry constraints in the generated script.",
+        )
         return EngineeringActionResult(
             ok=False,
             software="cadquery",
@@ -151,6 +144,7 @@ def build_cadquery_from_cad_ir(
             metrics={
                 "script_path": str(script_path),
                 "script_length": len(script),
+                "repair_diagnostics": repair,
             },
         ).model_dump()
 
@@ -176,16 +170,25 @@ def build_cadquery_from_cad_ir(
         "feature_count": len(spec.features),
     }
     warnings: list[str] = []
-    validation_report = None
 
     if inspect:
         insp_result = _run_inspection(step_path, spec)
         metrics["inspection"] = insp_result["inspection"]
-        validation_report = insp_result["validation"]
-        metrics["validation"] = validation_report
-        warnings.extend(validation_report.get("warnings", []))
+        validation = insp_result["validation"]
+        metrics["validation"] = validation
 
-        if not validation_report.get("ok", True):
+        if not validation.get("ok", True):
+            errors = [i["message"] for i in validation.get("issues", []) if i.get("severity") == "error"]
+            # Wire repair diagnostics into metrics
+            repair = make_repair_diagnostics(
+                stage="validate",
+                error_type="validation_failed",
+                message="; ".join(errors),
+                spec=spec,
+                validation_report=validation,
+                suggested_fix="Check CAD-IR dimensions and body count expectations.",
+            )
+            metrics["repair_diagnostics"] = repair
             return EngineeringActionResult(
                 ok=False,
                 software="cadquery",
@@ -196,7 +199,7 @@ def build_cadquery_from_cad_ir(
                 stderr_tail=stderr_tail,
                 metrics=metrics,
                 warnings=warnings,
-                error="; ".join(validation_report.get("errors", [])),
+                error="; ".join(errors),
             ).model_dump()
 
     return EngineeringActionResult(

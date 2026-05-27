@@ -140,24 +140,26 @@ class SolidWorksClient:
         half_l = length_m / 2.0
         half_w = width_m / 2.0
 
-        vbs = (
-            'On Error Resume Next\r\n'
-            'Dim part\r\n'
-            'Set part = CreateObject("SldWorks.Application").ActiveDoc\r\n'
-            '\r\n'
-            'part.Extension.SelectByID2 ' + code + ', "PLANE", 0, 0, 0, False, 0, Nothing, 0\r\n'
-            'part.InsertSketch2 True\r\n'
+        vbs_lines = [
+            'REM === Box extrude ===',
+            'part.Extension.SelectByID2 ' + code + ', "PLANE", 0, 0, 0, False, 0, Nothing, 0',
+            'CheckErr "select_plane"',
+            'part.InsertSketch2 True',
+            'CheckErr "insert_sketch"',
             'part.SketchManager.CreateCenterRectangle 0, 0, 0, ' +
-            str(half_l) + ', ' + str(half_w) + ', 0\r\n'
-            'part.InsertSketch2 True\r\n'
-            'part.ClearSelection2 True\r\n'
-            'part.Extension.SelectByID2 ChrW(33609) & ChrW(22270) & ChrW(49), "SKETCH", 0, 0, 0, False, 0, Nothing, 0\r\n'
+            str(half_l) + ', ' + str(half_w) + ', 0',
+            'CheckErr "create_rectangle"',
+            'part.InsertSketch2 True',
+            'part.ClearSelection2 True',
+            'part.Extension.SelectByID2 ChrW(33609) & ChrW(22270) & ChrW(49), "SKETCH", 0, 0, 0, False, 0, Nothing, 0',
+            'CheckErr "select_sketch"',
             'part.FeatureManager.FeatureExtrusion2 True, False, False, 0, 0, ' +
             str(height_m) + ', ' + str(height_m) +
-            ', False, False, False, False, 1.74533E-02, 1.74533E-02, False, False, False, False, True, True, True, 0, 0, False\r\n'
-            'If Err.Number <> 0 Then WScript.StdErr.WriteLine "VBS_ERR:" & Err.Number & ":" & Err.Description : WScript.Quit 1 : End If\r\n'
-        )
-        self._run_vbs(vbs, timeout=60)
+            ', False, False, False, False, 1.74533E-02, 1.74533E-02, False, False, False, False, True, True, True, 0, 0, False',
+            'CheckErr "feature_extrusion"',
+        ]
+        vbs = '\r\n'.join(vbs_lines)
+        self._run_vbs_strict(vbs, timeout=60, label="box")
 
     # ── export helpers ──────────────────────────────────────────────
 
@@ -429,7 +431,14 @@ class SolidWorksClient:
                 '',
             ]
 
-        vbs = '\r\n'.join(vbs_lines)
+        # Inject CheckErr after each feature block
+        checked_lines = []
+        for line in vbs_lines:
+            checked_lines.append(line)
+            if line.startswith("'REM ==="):
+                feat_name = line.replace("'REM ===", "").replace("===", "").strip()
+                checked_lines.append(f"CheckErr \"{feat_name}\"")
+        vbs = '\r\n'.join(checked_lines)
         self._run_vbs_strict(vbs, timeout=120, label="flanged_hub")
 
     def create_spur_gear_star(
@@ -726,7 +735,14 @@ class SolidWorksClient:
             ', False, False, 0.0, 0.0, False, False, False, True',
         ]
 
-        vbs = '\r\n'.join(vbs_lines)
+        # Inject CheckErr after each feature block
+        checked_lines = []
+        for line in vbs_lines:
+            checked_lines.append(line)
+            if line.startswith("'REM ==="):
+                feat_name = line.replace("'REM ===", "").replace("===", "").strip()
+                checked_lines.append(f"CheckErr \"{feat_name}\"")
+        vbs = '\r\n'.join(checked_lines)
         self._run_vbs_strict(vbs, timeout=120, label="spur_gear")
 
     def create_spur_gear_true_involute(

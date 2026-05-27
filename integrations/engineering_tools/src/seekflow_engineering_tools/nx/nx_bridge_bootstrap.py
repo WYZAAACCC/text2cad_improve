@@ -113,9 +113,10 @@ def create_block_part(session, params):
             step_creator = dex_mgr.CreateStep214Creator()
             step_creator.ExportFrom = NXOpen.Step214CreatorExportFromOption.DisplayPart
             step_creator.OutputFile = str(out_step_path)
-            step_creator.InputFile = str(out_step_path)
             step_creator.Commit()
             step_creator.Destroy()
+            if not out_step_path.exists() or out_step_path.stat().st_size == 0:
+                raise RuntimeError("STEP export produced empty or missing file: {}".format(out_step_path))
             files_created.append(str(out_step_path))
         except Exception as exc:
             return {
@@ -149,9 +150,16 @@ def export_step(session, params):
     step_creator = dex_mgr.CreateStep214Creator()
     step_creator.ExportFrom = NXOpen.Step214CreatorExportFromOption.DisplayPart
     step_creator.OutputFile = out_step
-    step_creator.InputFile = out_step
     step_creator.Commit()
     step_creator.Destroy()
+    out_step_path = Path(out_step)
+    if not out_step_path.exists() or out_step_path.stat().st_size == 0:
+        return {
+            "ok": False,
+            "files_created": [],
+            "metrics": {},
+            "error": "STEP export produced empty or missing file: {}".format(out_step),
+        }
 
     return {
         "files_created": [out_step],
@@ -222,9 +230,10 @@ def create_block_with_hole(session, params):
             step_creator = dex_mgr.CreateStep214Creator()
             step_creator.ExportFrom = NXOpen.Step214CreatorExportFromOption.DisplayPart
             step_creator.OutputFile = str(out_step_path)
-            step_creator.InputFile = str(out_step_path)
             step_creator.Commit()
             step_creator.Destroy()
+            if not out_step_path.exists() or out_step_path.stat().st_size == 0:
+                raise RuntimeError("STEP export produced empty or missing file: {}".format(out_step_path))
             files_created.append(str(out_step_path))
         except Exception as exc:
             return {
@@ -283,9 +292,10 @@ def create_l_bracket(session, params):
             step_creator = dex_mgr.CreateStep214Creator()
             step_creator.ExportFrom = NXOpen.Step214CreatorExportFromOption.DisplayPart
             step_creator.OutputFile = str(out_step_path)
-            step_creator.InputFile = str(out_step_path)
             step_creator.Commit()
             step_creator.Destroy()
+            if not out_step_path.exists() or out_step_path.stat().st_size == 0:
+                raise RuntimeError("STEP export produced empty or missing file: {}".format(out_step_path))
             files_created.append(str(out_step_path))
         except Exception as exc:
             return {
@@ -339,9 +349,10 @@ def create_stepped_block(session, params):
             step_creator = dex_mgr.CreateStep214Creator()
             step_creator.ExportFrom = NXOpen.Step214CreatorExportFromOption.DisplayPart
             step_creator.OutputFile = str(out_step_path)
-            step_creator.InputFile = str(out_step_path)
             step_creator.Commit()
             step_creator.Destroy()
+            if not out_step_path.exists() or out_step_path.stat().st_size == 0:
+                raise RuntimeError("STEP export produced empty or missing file: {}".format(out_step_path))
             files_created.append(str(out_step_path))
         except Exception as exc:
             return {
@@ -395,15 +406,21 @@ def process_one_job(session, job_file):
 
         result_payload = ACTION_HANDLERS[action](session, params)
 
+        handler_ok = result_payload.get("ok", True)
+        error_msg = result_payload.get("error")
+
         result = {
             "job_id": job_id,
-            "ok": True,
-            "message": "NX job finished.",
+            "ok": handler_ok and error_msg is None,
+            "message": "NX job finished." if handler_ok else error_msg or "NX job reported failure.",
             "files_created": result_payload.get("files_created", []),
             "metrics": result_payload.get("metrics", {}),
-            "error": None,
+            "error": error_msg,
         }
-        write_result(DONE, job_id, result)
+        if result["ok"]:
+            write_result(DONE, job_id, result)
+        else:
+            write_result(FAILED, job_id, result)
 
     except Exception as exc:
         result = {
