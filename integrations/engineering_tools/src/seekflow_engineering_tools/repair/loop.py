@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from pathlib import Path
 
 from seekflow_engineering_tools.common.models import EngineeringActionResult
 from seekflow_engineering_tools.ir.cad import CADPartSpec
@@ -60,7 +60,7 @@ def make_repair_diagnostics(
 ) -> dict:
     """Generate structured repair diagnostics for failure returns.
 
-    This is wired into build failure returns to provide actionable diagnostics
+    Wired into build failure returns to provide actionable diagnostics
     for automated repair loops.
     """
     return {
@@ -77,20 +77,14 @@ def make_repair_diagnostics(
 def run_build_once(
     spec: CADPartSpec, backend: str, out_step: str, inspect: bool = True
 ) -> dict:
-    """Run a single build attempt via the natural language build tool.
+    """Run a single build attempt directly via the cadquery builder.
 
-    Uses the build_natural_language_tools builder to create a fresh tool
-    instance with the correct config, then executes the build.
+    This bypasses the SeekFlow tool layer for direct programmatic access.
     """
-    from pathlib import Path
     from seekflow_engineering_tools.config import EngineeringToolsConfig
-    from seekflow_engineering_tools.natural_language.tools import build_natural_language_tools
+    from seekflow_engineering_tools.cadquery_backend.builder import build_cadquery_from_cad_ir
 
-    # Create minimal config for a single build attempt
-    config = EngineeringToolsConfig(workspace_root=Path("."))
-    tools = build_natural_language_tools(config)
-    build_tool = next(t for t in tools if t.name == "engineering_build_cad_model")
-
-    # The tool is decorated, so we call the underlying function via the __wrapped__ or directly
-    # Since tools store the original function, call through the tool's execution path
-    return build_tool(spec=spec.model_dump(), backend=backend, out_step=out_step, inspect=inspect)
+    config = EngineeringToolsConfig(workspace_root=Path(out_step).parent)
+    return build_cadquery_from_cad_ir(
+        spec=spec, config=config, out_step=out_step, inspect=inspect,
+    )

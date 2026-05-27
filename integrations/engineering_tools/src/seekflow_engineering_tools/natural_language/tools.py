@@ -15,6 +15,8 @@ from seekflow_engineering_tools.common.models import EngineeringActionResult
 from seekflow_engineering_tools.common.paths import ensure_extension, ensure_inside_workspace
 from seekflow_engineering_tools.config import EngineeringToolsConfig
 from seekflow_engineering_tools.ir.cad import CADPartSpec
+from seekflow_engineering_tools.natural_language.normalizer import detect_ambiguities
+from seekflow_engineering_tools.natural_language.prompts import NL_CAD_SYSTEM_PROMPT
 from seekflow_engineering_tools.recipes.registry import normalize_recipe_parameters
 
 
@@ -200,7 +202,8 @@ def build_natural_language_tools(config: EngineeringToolsConfig):
         description=(
             "Validate a CAD-IR specification against the schema, recipe "
             "registry, and capability registry. Returns normalized spec "
-            "or detailed error list. Always call before engineering_build_cad_model."
+            "or detailed error list. Always call before engineering_build_cad_model. "
+            "System prompt: " + NL_CAD_SYSTEM_PROMPT[:200] + "..."
         ),
         cache=False,
         sanitize=True,
@@ -210,6 +213,14 @@ def build_natural_language_tools(config: EngineeringToolsConfig):
         try:
             normalized = CADPartSpec.model_validate(spec)
             errors: list[str] = []
+
+            # Detect ambiguities in user intent
+            ambiguities = detect_ambiguities({
+                "parameters": normalized.parameters,
+                "suggested_template": next(
+                    (f.recipe_name for f in normalized.features if f.type == "recipe"), None
+                ),
+            })
 
             # Normalize recipe parameters
             normalized_params: dict = {}
@@ -236,6 +247,8 @@ def build_natural_language_tools(config: EngineeringToolsConfig):
             metrics: dict = {
                 "feature_count": len(normalized.features),
                 "target_backend": normalized.target_backend,
+                "ambiguities": ambiguities["ambiguities"],
+                "suggested_template": ambiguities["suggested_template"],
             }
             if normalized_params:
                 metrics["normalized_parameters"] = normalized_params

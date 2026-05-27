@@ -141,6 +141,8 @@ class SolidWorksClient:
         half_w = width_m / 2.0
 
         vbs_lines = [
+            'Dim part',
+            'Set part = CreateObject("SldWorks.Application").ActiveDoc',
             'REM === Box extrude ===',
             'part.Extension.SelectByID2 ' + code + ', "PLANE", 0, 0, 0, False, 0, Nothing, 0',
             'CheckErr "select_plane"',
@@ -546,7 +548,14 @@ class SolidWorksClient:
             'part.Extension.SelectByID2 ' + sk2 + ', "SKETCH", 0,0,0, False, 0, Nothing, 0',
             'part.FeatureCut True, False, False, False, False, ' + str(face_width_m * 2) + ', ' + str(face_width_m * 2) + ', False, False, 0.0, 0.0, False, False, False, True',
         ]
-        vbs = '\r\n'.join(vbs_lines)
+        # Inject CheckErr after each feature block
+        checked_lines = []
+        for line in vbs_lines:
+            checked_lines.append(line)
+            if line.startswith("'REM ==="):
+                feat_name = line.replace("'REM ===", "").replace("===", "").strip()
+                checked_lines.append(f"CheckErr \"{feat_name}\"")
+        vbs = '\r\n'.join(checked_lines)
         self._run_vbs_strict(vbs, timeout=300, label="spur_gear_involute")
 
     def _PLACEHOLDER_REMOVED(
@@ -623,7 +632,13 @@ class SolidWorksClient:
             str(face_width_m * 2) + ', ' + str(face_width_m * 2) +
             ', False, False, 0.0, 0.0, False, False, False, True',
         ]
-        vbs = '\r\n'.join(vbs_lines)
+        checked_lines = []
+        for line in vbs_lines:
+            checked_lines.append(line)
+            if line.startswith("'REM ==="):
+                feat_name = line.replace("'REM ===", "").replace("===", "").strip()
+                checked_lines.append(f"CheckErr \"{feat_name}\"")
+        vbs = '\r\n'.join(checked_lines)
         self._run_vbs_strict(vbs, timeout=120, label="spur_gear_star_demo")
 
     def create_spur_gear(
@@ -880,7 +895,13 @@ class SolidWorksClient:
             ', False, False, 0.0, 0.0, False, False, False, True',
         ]
 
-        vbs = '\r\n'.join(vbs_lines)
+        checked_lines = []
+        for line in vbs_lines:
+            checked_lines.append(line)
+            if line.startswith("'REM ===") or line.startswith("'REM ---"):
+                feat_name = line.replace("'REM ===", "").replace("'REM ---", "").replace("===", "").strip()
+                checked_lines.append(f"CheckErr \"{feat_name}\"")
+        vbs = '\r\n'.join(checked_lines)
         self._run_vbs_strict(vbs, timeout=300, label="true_involute_gear")
 
     def create_stepped_shaft(
