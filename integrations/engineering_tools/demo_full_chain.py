@@ -768,6 +768,8 @@ TURBINE_DISK_REQUIRED_METRICS = [
     "reference_dimensions.web_outer_dia_mm",
     "reference_dimensions.rim_inner_dia_mm",
     "reference_dimensions.expected_through_hole_count",
+    "reference_dimensions.rim_slot_count",
+    "reference_dimensions.front_hub_sleeve_height_mm",
 ]
 
 
@@ -777,43 +779,92 @@ def run_case_axisymmetric_turbine_disk(
     allow_step_import: bool = False,
 ) -> dict:
     params = {
-        "outer_dia_mm": 480.0,
-        "bore_dia_mm": 80.0,
-        "axial_width_mm": 60.0,
+        "outer_dia_mm": 520.0,
+        "bore_dia_mm": 86.0,
+        "axial_width_mm": 62.0,
 
-        "hub_outer_dia_mm": 200.0,
-        "web_outer_dia_mm": 340.0,
-        "rim_inner_dia_mm": 400.0,
+        "hub_outer_dia_mm": 210.0,
+        "web_outer_dia_mm": 360.0,
+        "rim_inner_dia_mm": 420.0,
 
-        "hub_width_mm": 60.0,
-        "web_width_mm": 32.0,
-        "rim_width_mm": 56.0,
+        "hub_width_mm": 62.0,
+        "web_width_mm": 30.0,
+        "rim_width_mm": 58.0,
 
-        "hub_fillet_radius_mm": 0.0,
-        "web_fillet_radius_mm": 0.0,
-        "rim_fillet_radius_mm": 0.0,
-        "edge_chamfer_mm": 0.0,
+        "hub_fillet_radius_mm": 1.5,
+        "web_fillet_radius_mm": 1.0,
+        "rim_fillet_radius_mm": 1.0,
+        "edge_chamfer_mm": 0.5,
 
-        "bolt_hole_count": 12,
-        "bolt_pcd_mm": 140.0,
-        "bolt_hole_dia_mm": 10.0,
+        "bolt_hole_count": 0,
+        "bolt_pcd_mm": 0.0,
+        "bolt_hole_dia_mm": 0.0,
         "bolt_hole_axis": "Z",
 
-        "lightening_hole_count": 8,
-        "lightening_hole_pcd_mm": 280.0,
-        "lightening_hole_dia_mm": 24.0,
+        "lightening_hole_count": 10,
+        "lightening_hole_pcd_mm": 310.0,
+        "lightening_hole_dia_mm": 20.0,
         "lightening_hole_axis": "Z",
 
-        "cooling_hole_count": 24,
-        "cooling_hole_pcd_mm": 430.0,
-        "cooling_hole_dia_mm": 5.0,
+        "cooling_hole_count": 36,
+        "cooling_hole_pcd_mm": 455.0,
+        "cooling_hole_dia_mm": 4.0,
         "cooling_hole_axis": "Z",
 
-        "quality_grade": "concept_geometry",
+        "rim_slot_count": 60,
+        "rim_slot_style": "fir_tree_like",
+        "rim_slot_depth_mm": 38.0,
+        "rim_slot_width_mm": 7.0,
+        "rim_slot_neck_width_mm": 4.5,
+        "rim_slot_lobe_width_mm": 8.5,
+        "rim_slot_lobe_depth_mm": 7.0,
+        "rim_slot_axial_margin_mm": 5.0,
+        "rim_slot_root_fillet_mm": 0.0,
+        "rim_slot_tip_chamfer_mm": 0.0,
+
+        "front_hub_sleeve_outer_dia_mm": 155.0,
+        "front_hub_sleeve_inner_dia_mm": 86.0,
+        "front_hub_sleeve_height_mm": 58.0,
+        "front_hub_sleeve_wall_mm": 8.0,
+        "front_hub_sleeve_chamfer_mm": 1.5,
+
+        "rear_hub_sleeve_outer_dia_mm": 0.0,
+        "rear_hub_sleeve_inner_dia_mm": 0.0,
+        "rear_hub_sleeve_height_mm": 0.0,
+
+        "enable_annular_details": True,
+
+        "inner_hub_step_outer_dia_mm": 190.0,
+        "inner_hub_step_height_mm": 8.0,
+
+        "mid_web_recess_inner_dia_mm": 225.0,
+        "mid_web_recess_outer_dia_mm": 365.0,
+        "mid_web_recess_depth_mm": 3.0,
+
+        "outer_rim_recess_inner_dia_mm": 395.0,
+        "outer_rim_recess_outer_dia_mm": 485.0,
+        "outer_rim_recess_depth_mm": 2.0,
+
+        "seal_land_count": 2,
+        "seal_land_height_mm": 2.0,
+        "seal_land_width_mm": 3.0,
+        "seal_land_start_dia_mm": 160.0,
+        "seal_land_pitch_mm": 8.0,
+
+        "coverplate_bolt_count": 18,
+        "coverplate_bolt_pcd_mm": 175.0,
+        "coverplate_bolt_dia_mm": 4.0,
+
+        "balance_hole_count": 0,
+        "balance_hole_pcd_mm": 0.0,
+        "balance_hole_dia_mm": 0.0,
+
+        "quality_grade": "engineering_reference",
         "non_flight_reference_only": True,
     }
 
-    expected_through_hole_count = 1 + 12 + 8 + 24
+    total_holes = 1 + 10 + 36 + 18
+    expected_z = 62.0 + 58.0 + 0.0  # axial + front + rear sleeves
 
     return _run_primitive_case(
         "axisymmetric_turbine_disk",
@@ -823,14 +874,14 @@ def run_case_axisymmetric_turbine_disk(
         params,
         "axisymmetric_turbine_disk.step",
         extra_validation={
-            "expected_bbox_mm": [480.0, 480.0, 60.0],
+            "expected_bbox_mm": [520.0, 520.0, expected_z],
             "expected_body_count": 1,
-            "expected_through_hole_count": expected_through_hole_count,
-            "tolerance_mm": 0.75,
+            "expected_through_hole_count": total_holes,
+            "tolerance_mm": 1.5,
             "primitive_validation": {
                 "feat1": {
-                    "expected_kernel": "cadquery_axisymmetric_revolve_v0",
-                    "expected_through_hole_count": expected_through_hole_count,
+                    "expected_kernel": "cadquery_turbine_disk_reference_v2",
+                    "expected_through_hole_count": total_holes,
                 }
             },
         },

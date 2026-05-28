@@ -6,7 +6,7 @@ import pytest
 VALID_TURBINE_METADATA = {
     "primitive": "axisymmetric_turbine_disk",
     "metadata_version": "primitive_metadata_v1",
-    "kernel": "cadquery_axisymmetric_revolve_v0",
+    "kernel": "cadquery_turbine_disk_reference_v2",
     "parameters": {"outer_dia_mm": 480.0},
     "reference_dimensions": {"outer_dia_mm": 480.0},
     "warnings": ["test warning"],
@@ -28,6 +28,35 @@ VALID_TURBINE_METADATA = {
         "not_for_manufacturing": True,
         "not_airworthy": True,
         "not_certified": True,
+    },
+    "geometry_family": "axisymmetric_base_with_cyclic_rim_features",
+    "visual_fidelity": {
+        "target": "reference_turbine_rotor_disk",
+        "contains_cyclic_rim_slots": True,
+        "contains_hub_sleeve": True,
+        "contains_annular_details": True,
+        "contains_coverplate_interface": True,
+        "contains_real_blade_attachment": False,
+    },
+    "rim_features": {
+        "slot_count": 60,
+        "slot_style": "fir_tree_like",
+        "slot_depth_mm": 35.0,
+        "slot_width_mm": 7.0,
+        "reference_only": True,
+    },
+    "hub_sleeve": {
+        "front_enabled": True,
+        "rear_enabled": False,
+        "front_outer_dia_mm": 150.0,
+        "front_inner_dia_mm": 80.0,
+        "front_height_mm": 55.0,
+    },
+    "annular_details": {
+        "enabled": True,
+        "mid_web_recess": True,
+        "outer_rim_recess": True,
+        "seal_lands": 2,
     },
 }
 

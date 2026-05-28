@@ -31,6 +31,8 @@ VALID_PARAMS = {
     "cooling_hole_axis": "Z",
     "quality_grade": "concept_geometry",
     "non_flight_reference_only": True,
+    "rim_slot_style": "none",
+    "rim_slot_count": 0,
 }
 
 

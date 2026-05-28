@@ -30,11 +30,15 @@ VALID_PARAMS = {
     "cooling_hole_axis": "Z",
     "quality_grade": "concept_geometry",
     "non_flight_reference_only": True,
+    "rim_slot_count": 0,
+    "rim_slot_style": "none",
+    "front_hub_sleeve_height_mm": 0.0,
+    "rear_hub_sleeve_height_mm": 0.0,
 }
 
 VALID_METADATA = {
     "primitive": "axisymmetric_turbine_disk",
-    "kernel": "cadquery_axisymmetric_revolve_v0",
+    "kernel": "cadquery_turbine_disk_reference_v2",
     "parameters": dict(VALID_PARAMS),
     "reference_dimensions": {
         "outer_dia_mm": 480.0,
@@ -49,7 +53,46 @@ VALID_METADATA = {
         "bolt_hole_count": 12,
         "lightening_hole_count": 8,
         "cooling_hole_count": 24,
+        "coverplate_bolt_count": 0,
+        "balance_hole_count": 0,
+        "rim_slot_count": 0,
+        "rim_slot_style": "none",
+        "rim_slot_depth_mm": 0.0,
+        "rim_slot_width_mm": 0.0,
+        "front_hub_sleeve_height_mm": 0.0,
+        "front_hub_sleeve_outer_dia_mm": 0.0,
+        "front_hub_sleeve_inner_dia_mm": 0.0,
+        "expected_periodic_slot_count": 0,
         "expected_through_hole_count": 45,
+    },
+    "geometry_family": "axisymmetric_base_with_cyclic_rim_features",
+    "visual_fidelity": {
+        "target": "reference_turbine_rotor_disk",
+        "contains_cyclic_rim_slots": False,
+        "contains_hub_sleeve": False,
+        "contains_annular_details": False,
+        "contains_coverplate_interface": False,
+        "contains_real_blade_attachment": False,
+    },
+    "rim_features": {
+        "slot_count": 0,
+        "slot_style": "none",
+        "slot_depth_mm": 0.0,
+        "slot_width_mm": 0.0,
+        "reference_only": True,
+    },
+    "hub_sleeve": {
+        "front_enabled": False,
+        "rear_enabled": False,
+        "front_outer_dia_mm": 0.0,
+        "front_inner_dia_mm": 0.0,
+        "front_height_mm": 0.0,
+    },
+    "annular_details": {
+        "enabled": False,
+        "mid_web_recess": False,
+        "outer_rim_recess": False,
+        "seal_lands": 0,
     },
     "safety": {
         "non_flight_reference_only": True,
@@ -77,7 +120,7 @@ def test_happy_path_ok():
     )
     assert result["ok"] is True
     assert result["primitive"] == "axisymmetric_turbine_disk"
-    assert result["kernel"] == "cadquery_axisymmetric_revolve_v0"
+    assert result["kernel"] == "cadquery_turbine_disk_reference_v2"
 
 
 def test_metadata_missing_fails():
@@ -203,7 +246,7 @@ def test_params_mismatch_fails():
     from seekflow_engineering_tools.mechanical_validation.turbomachinery_validation import (
         validate_axisymmetric_turbine_disk_result,
     )
-    md = dict(VALID_METADATA, parameters=dict(VALID_PARAMS, outer_dia_mm=999.0))
+    md = dict(VALID_METADATA, parameters=dict(VALID_PARAMS, rim_slot_count=999))
     result = validate_axisymmetric_turbine_disk_result(
         params=VALID_PARAMS,
         inspection=VALID_INSPECTION,
