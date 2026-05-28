@@ -2,6 +2,7 @@
 
 Axisymmetric turbine disk — non-flight reference geometry only.
 v0.2 adds cyclic rim slots, hub sleeve, annular details, coverplate/balance holes.
+v0.3 adds axial_through rim slot orientation, rear hub sleeve chamfer, bolt/balance hole axis params.
 """
 
 from seekflow_engineering_tools.geometry_primitives.base import (
@@ -56,19 +57,36 @@ AXISYMMETRIC_TURBINE_DISK = PrimitiveDefinition(
         PrimitiveParameter(name="quality_grade", type="str", required=False, default="concept_geometry"),
         PrimitiveParameter(name="non_flight_reference_only", type="bool", required=False, default=True),
 
-        # ── v0.2 rim slot parameters ──
+        # ── v0.3 rim slot parameters ──
         PrimitiveParameter(name="rim_slot_count", type="int", required=False, default=60, min_value=0),
         PrimitiveParameter(name="rim_slot_style", type="str", required=False, default="fir_tree_like"),
+        PrimitiveParameter(name="rim_slot_orientation", type="str", required=False, default="axial_through"),
         PrimitiveParameter(name="rim_slot_depth_mm", type="float", unit="mm", required=False, default=35.0, min_value=0.0),
         PrimitiveParameter(name="rim_slot_width_mm", type="float", unit="mm", required=False, default=7.0, min_value=0.0),
         PrimitiveParameter(name="rim_slot_neck_width_mm", type="float", unit="mm", required=False, default=4.5, min_value=0.0),
         PrimitiveParameter(name="rim_slot_lobe_width_mm", type="float", unit="mm", required=False, default=8.5, min_value=0.0),
         PrimitiveParameter(name="rim_slot_lobe_depth_mm", type="float", unit="mm", required=False, default=7.0, min_value=0.0),
-        PrimitiveParameter(name="rim_slot_axial_margin_mm", type="float", unit="mm", required=False, default=4.0, min_value=0.0),
+        PrimitiveParameter(name="rim_slot_mouth_width_mm", type="float", unit="mm", required=False, default=5.2, min_value=0.0),
+        PrimitiveParameter(name="rim_slot_throat_width_mm", type="float", unit="mm", required=False, default=4.5, min_value=0.0),
+        PrimitiveParameter(name="rim_slot_root_width_mm", type="float", unit="mm", required=False, default=5.5, min_value=0.0),
+        PrimitiveParameter(name="rim_slot_socket_mode", type="str", required=False, default="internal_lobes"),
+        PrimitiveParameter(name="rim_slot_expose_lobes_on_od", type="bool", required=False, default=False),
+        PrimitiveParameter(name="rim_slot_stage_count", type="int", required=False, default=3, min_value=0),
+        PrimitiveParameter(name="rim_slot_stage_pitch_mm", type="float", unit="mm", required=False, default=7.0, min_value=0.0),
+        PrimitiveParameter(name="rim_slot_stage_neck_width_mm", type="float", unit="mm", required=False, default=4.6, min_value=0.0),
+        PrimitiveParameter(name="rim_slot_stage_lobe_width_mm", type="float", unit="mm", required=False, default=9.0, min_value=0.0),
+        PrimitiveParameter(name="rim_slot_stage_lobe_height_mm", type="float", unit="mm", required=False, default=2.1, min_value=0.0),
+        PrimitiveParameter(name="rim_slot_stage_width_growth", type="float", unit="mm", required=False, default=0.08, min_value=0.0),
+        PrimitiveParameter(name="rim_slot_stage_depth_distribution", type="str", required=False, default="uniform"),
+        PrimitiveParameter(name="rim_slot_profile_symmetry", type="str", required=False, default="mirror_y"),
+        PrimitiveParameter(name="rim_slot_require_multiple_stages", type="bool", required=False, default=True),
+        PrimitiveParameter(name="rim_slot_axial_margin_mm", type="float", unit="mm", required=False, default=0.0, min_value=0.0),
+        PrimitiveParameter(name="rim_slot_through_clearance_mm", type="float", unit="mm", required=False, default=2.0, min_value=0.0),
+        PrimitiveParameter(name="rim_slot_outer_clearance_mm", type="float", unit="mm", required=False, default=4.0, min_value=0.0),
         PrimitiveParameter(name="rim_slot_root_fillet_mm", type="float", unit="mm", required=False, default=0.5, min_value=0.0),
         PrimitiveParameter(name="rim_slot_tip_chamfer_mm", type="float", unit="mm", required=False, default=0.3, min_value=0.0),
 
-        # ── v0.2 hub sleeve parameters ──
+        # ── hub sleeve parameters ──
         PrimitiveParameter(name="front_hub_sleeve_outer_dia_mm", type="float", unit="mm", required=False, default=150.0, min_value=0.0),
         PrimitiveParameter(name="front_hub_sleeve_inner_dia_mm", type="float", unit="mm", required=False, default=80.0, min_value=0.0),
         PrimitiveParameter(name="front_hub_sleeve_height_mm", type="float", unit="mm", required=False, default=55.0, min_value=0.0),
@@ -78,8 +96,9 @@ AXISYMMETRIC_TURBINE_DISK = PrimitiveDefinition(
         PrimitiveParameter(name="rear_hub_sleeve_outer_dia_mm", type="float", unit="mm", required=False, default=0.0, min_value=0.0),
         PrimitiveParameter(name="rear_hub_sleeve_inner_dia_mm", type="float", unit="mm", required=False, default=0.0, min_value=0.0),
         PrimitiveParameter(name="rear_hub_sleeve_height_mm", type="float", unit="mm", required=False, default=0.0, min_value=0.0),
+        PrimitiveParameter(name="rear_hub_sleeve_chamfer_mm", type="float", unit="mm", required=False, default=0.0, min_value=0.0),
 
-        # ── v0.2 annular details parameters ──
+        # ── annular details parameters ──
         PrimitiveParameter(name="enable_annular_details", type="bool", required=False, default=True),
         PrimitiveParameter(name="inner_hub_step_outer_dia_mm", type="float", unit="mm", required=False, default=180.0, min_value=0.0),
         PrimitiveParameter(name="inner_hub_step_height_mm", type="float", unit="mm", required=False, default=8.0, min_value=0.0),
@@ -99,14 +118,19 @@ AXISYMMETRIC_TURBINE_DISK = PrimitiveDefinition(
         PrimitiveParameter(name="coverplate_bolt_count", type="int", required=False, default=18, min_value=0),
         PrimitiveParameter(name="coverplate_bolt_pcd_mm", type="float", unit="mm", required=False, default=170.0, min_value=0.0),
         PrimitiveParameter(name="coverplate_bolt_dia_mm", type="float", unit="mm", required=False, default=4.0, min_value=0.0),
+        PrimitiveParameter(name="coverplate_bolt_axis", type="str", required=False, default="Z"),
 
         PrimitiveParameter(name="balance_hole_count", type="int", required=False, default=10, min_value=0),
         PrimitiveParameter(name="balance_hole_pcd_mm", type="float", unit="mm", required=False, default=310.0, min_value=0.0),
         PrimitiveParameter(name="balance_hole_dia_mm", type="float", unit="mm", required=False, default=18.0, min_value=0.0),
+        PrimitiveParameter(name="balance_hole_axis", type="str", required=False, default="Z"),
     ],
     supported_kernels=[
         "cadquery_axisymmetric_revolve_v0",
         "cadquery_turbine_disk_reference_v2",
+        "cadquery_turbine_disk_reference_v3",
+        "cadquery_turbine_disk_reference_v4",
+        "cadquery_turbine_disk_reference_v5",
     ],
     supported_backends=["cadquery", "solidworks2025", "nx12"],
     standards=[],

@@ -38,7 +38,7 @@ VALID_PARAMS = {
 
 VALID_METADATA = {
     "primitive": "axisymmetric_turbine_disk",
-    "kernel": "cadquery_turbine_disk_reference_v2",
+    "kernel": "cadquery_turbine_disk_reference_v5",
     "parameters": dict(VALID_PARAMS),
     "reference_dimensions": {
         "outer_dia_mm": 480.0,
@@ -57,18 +57,58 @@ VALID_METADATA = {
         "balance_hole_count": 0,
         "rim_slot_count": 0,
         "rim_slot_style": "none",
+        "rim_slot_orientation": "axial_through",
         "rim_slot_depth_mm": 0.0,
         "rim_slot_width_mm": 0.0,
+        "rim_slot_opens_front_face": False,
+        "rim_slot_opens_back_face": False,
+        "rim_slot_opens_outer_diameter": False,
+        "rim_slot_z_min_mm": 0.0,
+        "rim_slot_z_max_mm": 0.0,
+        "rim_slot_profile_max_x_mm": 0.0,
+        "rim_slot_profile_min_x_mm": 0.0,
         "front_hub_sleeve_height_mm": 0.0,
         "front_hub_sleeve_outer_dia_mm": 0.0,
         "front_hub_sleeve_inner_dia_mm": 0.0,
         "expected_periodic_slot_count": 0,
         "expected_through_hole_count": 45,
+        "expected_bbox_mm": [480.0, 480.0, 60.0],
     },
-    "geometry_family": "axisymmetric_base_with_cyclic_rim_features",
+    "geometry_family": "axisymmetric_base_with_symmetric_multistage_fir_tree_slots",
+    "axial_zones": {
+        "rim_z_min_mm": -28.0, "rim_z_max_mm": 28.0,
+        "hub_z_min_mm": -30.0, "hub_z_max_mm": 30.0,
+        "web_z_min_mm": -16.0, "web_z_max_mm": 16.0,
+        "base_z_min_mm": -30.0, "base_z_max_mm": 30.0,
+    },
+    "slot_generation": {
+        "version": "rim_slot_v5_symmetric_multistage",
+        "orientation": "axial_through",
+        "profile_symmetry": "mirror_y",
+        "is_mirror_symmetric": True,
+        "stage_count": 0,
+        "stage_stations": [],
+        "socket_mode": "internal_lobes",
+        "exposes_lobes_on_od": False,
+        "opens_front_face": False,
+        "opens_back_face": False,
+        "opens_outer_diameter": False,
+        "z_min_mm": 0.0,
+        "z_max_mm": 0.0,
+        "rim_z_min_mm": -28.0,
+        "rim_z_max_mm": 28.0,
+        "profile_max_x_mm": 0.0,
+        "profile_min_x_mm": 0.0,
+        "outer_radius_mm": 240.0,
+        "through_clearance_mm": 2.0,
+        "outer_clearance_mm": 4.0,
+    },
     "visual_fidelity": {
         "target": "reference_turbine_rotor_disk",
         "contains_cyclic_rim_slots": False,
+        "contains_axial_through_rim_slots": False,
+        "contains_symmetric_fir_tree_slots": False,
+        "contains_multistage_sidewall_grooves": False,
         "contains_hub_sleeve": False,
         "contains_annular_details": False,
         "contains_coverplate_interface": False,
@@ -77,8 +117,10 @@ VALID_METADATA = {
     "rim_features": {
         "slot_count": 0,
         "slot_style": "none",
+        "slot_orientation": "axial_through",
         "slot_depth_mm": 0.0,
         "slot_width_mm": 0.0,
+        "slot_profile_points_xy": [],
         "reference_only": True,
     },
     "hub_sleeve": {
@@ -99,6 +141,9 @@ VALID_METADATA = {
         "not_for_manufacturing": True,
         "not_airworthy": True,
         "not_certified": True,
+        "not_for_installation": True,
+        "no_structural_validation": True,
+        "no_life_prediction": True,
     },
 }
 
@@ -120,7 +165,7 @@ def test_happy_path_ok():
     )
     assert result["ok"] is True
     assert result["primitive"] == "axisymmetric_turbine_disk"
-    assert result["kernel"] == "cadquery_turbine_disk_reference_v2"
+    assert result["kernel"] == "cadquery_turbine_disk_reference_v5"
 
 
 def test_metadata_missing_fails():

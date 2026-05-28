@@ -2,15 +2,9 @@ from __future__ import annotations
 
 
 REQUIRED_TURBINE_METADATA_KEYS = [
-    "radial_zones",
-    "profile_points",
-    "hole_patterns",
-    "safety",
-    "geometry_family",
-    "visual_fidelity",
-    "rim_features",
-    "hub_sleeve",
-    "annular_details",
+    "radial_zones", "profile_points", "hole_patterns", "safety",
+    "geometry_family", "visual_fidelity", "rim_features",
+    "hub_sleeve", "annular_details", "slot_generation", "axial_zones",
 ]
 
 
@@ -67,33 +61,78 @@ def validate_axisymmetric_turbine_disk_metadata(metadata: dict) -> list[str]:
         if safety.get("not_for_manufacturing") is not True:
             errors.append("safety.not_for_manufacturing must be True")
 
-    # ── v0.2: geometry_family ──
+    # ── v0.3: geometry_family ──
     gf = metadata.get("geometry_family")
-    if gf != "axisymmetric_base_with_cyclic_rim_features":
+    if gf != "axisymmetric_base_with_symmetric_multistage_fir_tree_slots":
         errors.append(
-            "metadata.geometry_family must be 'axisymmetric_base_with_cyclic_rim_features', "
+            "metadata.geometry_family must be 'axisymmetric_base_with_symmetric_multistage_fir_tree_slots', "
             f"got {gf!r}"
         )
 
-    # ── v0.2: visual_fidelity ──
-    visual = metadata.get("visual_fidelity")
-    if not isinstance(visual, dict):
-        errors.append("metadata.visual_fidelity must be a dict")
+    # ── v0.4: slot_generation ──
+    slot_gen = metadata.get("slot_generation")
+    if not isinstance(slot_gen, dict):
+        errors.append("metadata.slot_generation must be a dict")
     else:
-        if visual.get("contains_real_blade_attachment") is not False:
-            errors.append("visual_fidelity.contains_real_blade_attachment must be False")
+        if slot_gen.get("version") != "rim_slot_v5_symmetric_multistage":
+            errors.append(f"slot_generation.version must be 'rim_slot_v5_symmetric_multistage', got {slot_gen.get('version')!r}")
+        if slot_gen.get("orientation") != "axial_through":
+            errors.append("slot_generation.orientation must be axial_through")
+        if slot_gen.get("socket_mode") != "internal_lobes":
+            errors.append("slot_generation.socket_mode must be internal_lobes")
+        if slot_gen.get("exposes_lobes_on_od") is not False:
+            errors.append("slot_generation.exposes_lobes_on_od must be False")
+        if slot_gen.get("opens_front_face") is not True:
+            errors.append("slot_generation.opens_front_face must be True")
+        if slot_gen.get("opens_back_face") is not True:
+            errors.append("slot_generation.opens_back_face must be True")
+        if slot_gen.get("opens_outer_diameter") is not True:
+            errors.append("slot_generation.opens_outer_diameter must be True")
+        # z_range
+        z_min = float(slot_gen.get("z_min_mm", 0))
+        rim_z_min = float(slot_gen.get("rim_z_min_mm", 0))
+        z_max = float(slot_gen.get("z_max_mm", 0))
+        rim_z_max = float(slot_gen.get("rim_z_max_mm", 0))
+        if z_min >= rim_z_min:
+            errors.append(f"slot_generation.z_min_mm ({z_min}) must be < rim_z_min_mm ({rim_z_min})")
+        if z_max <= rim_z_max:
+            errors.append(f"slot_generation.z_max_mm ({z_max}) must be > rim_z_max_mm ({rim_z_max})")
+        # profile bounds
+        max_x = float(slot_gen.get("profile_max_x_mm", 0))
+        outer_r = float(slot_gen.get("outer_radius_mm", 0))
+        min_x = float(slot_gen.get("profile_min_x_mm", 0))
+        if outer_r > 0:
+            if max_x <= outer_r:
+                errors.append(f"slot_generation.profile_max_x_mm ({max_x}) must be > outer_radius_mm ({outer_r})")
+            if min_x >= outer_r:
+                errors.append(f"slot_generation.profile_min_x_mm ({min_x}) must be < outer_radius_mm ({outer_r})")
 
-    # ── v0.2: rim_features ──
-    rim = metadata.get("rim_features")
-    if not isinstance(rim, dict):
-        errors.append("metadata.rim_features must be a dict")
-    else:
-        if "slot_count" not in rim:
-            errors.append("rim_features.slot_count missing")
-        if "slot_style" not in rim:
-            errors.append("rim_features.slot_style missing")
+    # ── v0.3: rim_features extended ──
+    rim = metadata.get("rim_features") or {}
+    if int(rim.get("slot_count", 0)) > 0:
         if rim.get("reference_only") is not True:
             errors.append("rim_features.reference_only must be True")
+        pts = rim.get("slot_profile_points_xy")
+        if not pts or len(pts) < 3:
+            errors.append("rim_features.slot_profile_points_xy must be non-empty")
+
+    # ── v0.4: visual_fidelity extended ──
+    visual = metadata.get("visual_fidelity") or {}
+    if visual.get("contains_multistage_sidewall_grooves") is not True:
+        errors.append("visual_fidelity.contains_multistage_sidewall_grooves must be True")
+    if visual.get("contains_symmetric_fir_tree_slots") is not True:
+        errors.append("visual_fidelity.contains_symmetric_fir_tree_slots must be True")
+    if visual.get("contains_real_blade_attachment") is not False:
+        errors.append("visual_fidelity.contains_real_blade_attachment must be False")
+
+    # ── v0.3: safety extended ──
+    safety = metadata.get("safety") or {}
+    if safety.get("not_for_installation") is not True:
+        errors.append("safety.not_for_installation must be True")
+    if safety.get("no_structural_validation") is not True:
+        errors.append("safety.no_structural_validation must be True")
+    if safety.get("no_life_prediction") is not True:
+        errors.append("safety.no_life_prediction must be True")
 
     # ── v0.2: hub_sleeve ──
     sleeve = metadata.get("hub_sleeve")

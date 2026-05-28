@@ -3,8 +3,8 @@
     "axisymmetric_turbine_disk": {
       "primitive": "axisymmetric_turbine_disk",
       "metadata_version": "primitive_metadata_v1",
-      "kernel": "cadquery_turbine_disk_reference_v2",
-      "geometry_family": "axisymmetric_base_with_cyclic_rim_features",
+      "kernel": "cadquery_turbine_disk_reference_v4",
+      "geometry_family": "axisymmetric_base_with_axial_fir_tree_socket_slots",
       "parameters": {
         "outer_dia_mm": 520.0,
         "bore_dia_mm": 86.0,
@@ -35,12 +35,20 @@
         "non_flight_reference_only": true,
         "rim_slot_count": 60,
         "rim_slot_style": "fir_tree_like",
+        "rim_slot_orientation": "axial_through",
         "rim_slot_depth_mm": 38.0,
         "rim_slot_width_mm": 7.0,
         "rim_slot_neck_width_mm": 4.5,
-        "rim_slot_lobe_width_mm": 8.5,
+        "rim_slot_lobe_width_mm": 9.0,
         "rim_slot_lobe_depth_mm": 7.0,
-        "rim_slot_axial_margin_mm": 5.0,
+        "rim_slot_mouth_width_mm": 5.2,
+        "rim_slot_throat_width_mm": 4.5,
+        "rim_slot_root_width_mm": 5.5,
+        "rim_slot_socket_mode": "internal_lobes",
+        "rim_slot_expose_lobes_on_od": false,
+        "rim_slot_axial_margin_mm": 0.0,
+        "rim_slot_through_clearance_mm": 2.0,
+        "rim_slot_outer_clearance_mm": 4.0,
         "rim_slot_root_fillet_mm": 0.0,
         "rim_slot_tip_chamfer_mm": 0.0,
         "front_hub_sleeve_outer_dia_mm": 155.0,
@@ -51,6 +59,7 @@
         "rear_hub_sleeve_outer_dia_mm": 0.0,
         "rear_hub_sleeve_inner_dia_mm": 0.0,
         "rear_hub_sleeve_height_mm": 0.0,
+        "rear_hub_sleeve_chamfer_mm": 0.0,
         "enable_annular_details": true,
         "inner_hub_step_outer_dia_mm": 190.0,
         "inner_hub_step_height_mm": 8.0,
@@ -68,9 +77,11 @@
         "coverplate_bolt_count": 18,
         "coverplate_bolt_pcd_mm": 175.0,
         "coverplate_bolt_dia_mm": 4.0,
+        "coverplate_bolt_axis": "Z",
         "balance_hole_count": 0,
         "balance_hole_pcd_mm": 0.0,
-        "balance_hole_dia_mm": 0.0
+        "balance_hole_dia_mm": 0.0,
+        "balance_hole_axis": "Z"
       },
       "reference_dimensions": {
         "outer_dia_mm": 520.0,
@@ -85,27 +96,44 @@
         "bolt_hole_count": 0,
         "lightening_hole_count": 10,
         "cooling_hole_count": 36,
-        "rim_slot_count": 60,
-        "rim_slot_style": "fir_tree_like",
-        "rim_slot_depth_mm": 38.0,
-        "rim_slot_width_mm": 7.0,
-        "front_hub_sleeve_outer_dia_mm": 155.0,
-        "front_hub_sleeve_inner_dia_mm": 86.0,
-        "front_hub_sleeve_height_mm": 58.0,
         "coverplate_bolt_count": 18,
         "balance_hole_count": 0,
-        "visual_feature_count": 125,
+        "rim_slot_count": 60,
+        "rim_slot_style": "fir_tree_like",
+        "rim_slot_orientation": "axial_through",
+        "rim_slot_socket_mode": "internal_lobes",
+        "rim_slot_exposes_lobes_on_od": false,
+        "rim_slot_mouth_width_mm": 5.2,
+        "rim_slot_throat_width_mm": 4.5,
+        "rim_slot_lobe_width_mm": 9.0,
+        "rim_slot_root_width_mm": 5.5,
+        "rim_slot_depth_mm": 38.0,
+        "rim_slot_width_mm": 7.0,
+        "rim_slot_opens_front_face": true,
+        "rim_slot_opens_back_face": true,
+        "rim_slot_opens_outer_diameter": true,
+        "rim_slot_z_min_mm": -31.0,
+        "rim_slot_z_max_mm": 31.0,
+        "rim_slot_profile_max_x_mm": 264.0,
+        "rim_slot_profile_min_x_mm": 225.04,
+        "front_hub_sleeve_height_mm": 58.0,
+        "front_hub_sleeve_outer_dia_mm": 155.0,
+        "front_hub_sleeve_inner_dia_mm": 86.0,
         "expected_periodic_slot_count": 60,
-        "total_hole_count": 65,
-        "expected_through_hole_count": 65
+        "expected_through_hole_count": 65,
+        "expected_bbox_mm": [
+          520.0,
+          520.0,
+          120.0
+        ]
       },
       "warnings": [
         "axisymmetric_turbine_disk is non-flight reference geometry only.",
         "Not airworthy, not certified, not manufacturing-ready.",
-        "No real fir-tree slots, blade attachment, material, stress, life, or cooling-flow validation is performed.",
-        "Rim slots are visual/reference fir-tree-like features only.",
+        "Not for installation.",
+        "Rim slots are visual/reference internal-lobe socket features only.",
         "They are not certified blade attachment geometry.",
-        "No contact stress, centrifugal load path, fatigue life, or burst margin is validated."
+        "No contact stress, centrifugal load path, fatigue life, burst margin, or thermal validation is performed."
       ],
       "radial_zones": {
         "bore_radius_mm": 43.0,
@@ -113,6 +141,16 @@
         "web_outer_radius_mm": 180.0,
         "rim_inner_radius_mm": 210.0,
         "outer_radius_mm": 260.0
+      },
+      "axial_zones": {
+        "rim_z_min_mm": -29.0,
+        "rim_z_max_mm": 29.0,
+        "hub_z_min_mm": -31.0,
+        "hub_z_max_mm": 31.0,
+        "web_z_min_mm": -15.0,
+        "web_z_max_mm": 15.0,
+        "base_z_min_mm": -31.0,
+        "base_z_max_mm": 31.0
       },
       "profile_points": [
         [
@@ -201,20 +239,106 @@
           "axis": "Z"
         }
       ],
-      "visual_fidelity": {
-        "target": "reference_visual_only",
-        "contains_cyclic_rim_slots": true,
-        "contains_hub_sleeve": true,
-        "contains_annular_details": true,
-        "contains_coverplate_interface": true,
-        "contains_real_blade_attachment": false
+      "slot_generation": {
+        "version": "rim_slot_v4_socket",
+        "orientation": "axial_through",
+        "socket_mode": "internal_lobes",
+        "exposes_lobes_on_od": false,
+        "profile_max_x_mm": 264.0,
+        "profile_min_x_mm": 225.04,
+        "outer_radius_mm": 260.0,
+        "opens_front_face": true,
+        "opens_back_face": true,
+        "opens_outer_diameter": true,
+        "z_min_mm": -31.0,
+        "z_max_mm": 31.0,
+        "rim_z_min_mm": -29.0,
+        "rim_z_max_mm": 29.0,
+        "through_clearance_mm": 2.0
       },
       "rim_features": {
         "slot_count": 60,
         "slot_style": "fir_tree_like",
+        "slot_orientation": "axial_through",
+        "socket_mode": "internal_lobes",
+        "exposes_lobes_on_od": false,
         "slot_depth_mm": 38.0,
-        "slot_width_mm": 7.0,
+        "slot_mouth_width_mm": 5.2,
+        "slot_throat_width_mm": 4.5,
+        "slot_lobe_width_mm": 9.0,
+        "slot_root_width_mm": 5.5,
+        "slot_profile_points_xy": [
+          [
+            264.0,
+            0.0
+          ],
+          [
+            261.72,
+            2.6
+          ],
+          [
+            249.36,
+            2.25
+          ],
+          [
+            244.04,
+            2.25
+          ],
+          [
+            240.24,
+            4.5
+          ],
+          [
+            236.44,
+            3.6
+          ],
+          [
+            232.64,
+            2.6999999999999997
+          ],
+          [
+            225.04,
+            2.75
+          ],
+          [
+            232.64,
+            -2.6999999999999997
+          ],
+          [
+            236.44,
+            -3.6
+          ],
+          [
+            240.24,
+            -4.5
+          ],
+          [
+            244.04,
+            -2.25
+          ],
+          [
+            249.36,
+            -2.25
+          ],
+          [
+            261.72,
+            -2.6
+          ],
+          [
+            264.0,
+            -0.0
+          ]
+        ],
         "reference_only": true
+      },
+      "visual_fidelity": {
+        "target": "reference_turbine_rotor_disk",
+        "contains_cyclic_rim_slots": true,
+        "contains_internal_lobe_socket_slots": true,
+        "contains_hub_sleeve": true,
+        "contains_annular_details": true,
+        "contains_coverplate_interface": true,
+        "contains_real_blade_attachment": false
       },
       "hub_sleeve": {
         "front_enabled": true,
@@ -233,17 +357,20 @@
         "non_flight_reference_only": true,
         "not_for_manufacturing": true,
         "not_airworthy": true,
-        "not_certified": true
+        "not_certified": true,
+        "not_for_installation": true,
+        "no_structural_validation": true,
+        "no_life_prediction": true
       }
     }
   },
   "build_warnings": [
     "axisymmetric_turbine_disk is non-flight reference geometry only.",
     "Not airworthy, not certified, not manufacturing-ready.",
-    "No real fir-tree slots, blade attachment, material, stress, life, or cooling-flow validation is performed.",
-    "Rim slots are visual/reference fir-tree-like features only.",
+    "Not for installation.",
+    "Rim slots are visual/reference internal-lobe socket features only.",
     "They are not certified blade attachment geometry.",
-    "No contact stress, centrifugal load path, fatigue life, or burst margin is validated."
+    "No contact stress, centrifugal load path, fatigue life, burst margin, or thermal validation is performed."
   ],
   "validation": {
     "inspection_validation": {
@@ -290,7 +417,7 @@
             "expected_periodic_slot_count": 60,
             "expected_through_hole_count": 65
           },
-          "kernel": "cadquery_turbine_disk_reference_v2"
+          "kernel": "cadquery_turbine_disk_reference_v4"
         }
       ]
     }
