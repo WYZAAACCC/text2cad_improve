@@ -16,9 +16,11 @@ CAPABILITIES: dict = {
         ],
         "stable_primitives": [
             "involute_spur_gear",
+            "axisymmetric_turbine_disk",
         ],
         "primitive_strategy": {
             "involute_spur_gear": "cadquery_step_import",
+            "axisymmetric_turbine_disk": "cadquery_step_import",
         },
         "experimental_features": [
             "cut_extrude",
@@ -32,6 +34,7 @@ CAPABILITIES: dict = {
             "Complex features must go through strict VBS recipe wrappers.",
             "Do not call FeatureExtrusion2 directly from LLM-generated Python.",
             "Gear primitives are imported via canonical STEP (cadquery_step_import strategy).",
+            "Turbine disk primitives are imported via canonical STEP; native feature trees are not regenerated.",
         ],
     },
     "nx12": {
@@ -47,9 +50,11 @@ CAPABILITIES: dict = {
         ],
         "stable_primitives": [
             "involute_spur_gear",
+            "axisymmetric_turbine_disk",
         ],
         "primitive_strategy": {
             "involute_spur_gear": "cadquery_step_import",
+            "axisymmetric_turbine_disk": "cadquery_step_import",
         },
         "exports": [
             "prt",
@@ -59,6 +64,7 @@ CAPABILITIES: dict = {
             "NXOpen must run inside NX bridge journal.",
             "External Python submits JSON jobs only.",
             "Gear primitives are imported via canonical STEP (cadquery_step_import strategy).",
+            "Turbine disk primitives are imported via canonical STEP; native feature trees are not regenerated.",
         ],
     },
     "ansys181": {
@@ -93,9 +99,11 @@ CAPABILITIES: dict = {
         ],
         "stable_primitives": [
             "involute_spur_gear",
+            "axisymmetric_turbine_disk",
         ],
         "primitive_strategy": {
             "involute_spur_gear": "native_cadquery_primitive",
+            "axisymmetric_turbine_disk": "native_cadquery_primitive",
         },
         "exports": [
             "step",
@@ -103,6 +111,7 @@ CAPABILITIES: dict = {
         ],
         "caveats": [
             "No native SolidWorks or NX feature tree.",
+            "Turbomachinery primitives are non-flight reference geometry only.",
         ],
     },
 }

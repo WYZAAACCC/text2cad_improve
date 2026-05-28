@@ -14,8 +14,8 @@ def test_gear_primitives_loaded():
     assert p.name == "involute_spur_gear"
 
 
-def test_turbomachinery_family_loaded_empty():
-    """TURBOMACHINERY_PRIMITIVES is empty — list should load without errors."""
+def test_turbomachinery_family_loaded():
+    """TURBOMACHINERY_PRIMITIVES has axisymmetric_turbine_disk — list should load without errors."""
     from seekflow_engineering_tools.geometry_primitives.registry import (
         list_primitive_names, _REGISTRY_LOAD_ERRORS
     )
@@ -23,7 +23,7 @@ def test_turbomachinery_family_loaded_empty():
         f"Registry has load errors: {_REGISTRY_LOAD_ERRORS}"
     )
     names = list_primitive_names()
-    assert "axisymmetric_turbine_disk" not in names
+    assert "axisymmetric_turbine_disk" in names
     assert "parametric_turbine_blade" not in names
 
 

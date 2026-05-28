@@ -99,6 +99,17 @@ def _assert_primitive_specific_metadata(pname: str, primitive_entry: dict) -> No
         if "is_standard_involute" not in primitive_entry:
             raise ValueError("Gear metadata missing 'is_standard_involute'")
 
+    elif pname == "axisymmetric_turbine_disk":
+        from seekflow_engineering_tools.geometry_primitives.turbomachinery.metadata import (
+            validate_axisymmetric_turbine_disk_metadata,
+        )
+
+        errors = validate_axisymmetric_turbine_disk_metadata(primitive_entry)
+        if errors:
+            raise ValueError(
+                "Turbine disk metadata validation failed: " + "; ".join(errors)
+            )
+
 
 def _assert_metadata_sidecar(step_path: Path, spec: CADPartSpec) -> dict:
     """Load and validate the metadata sidecar for a primitive build.
@@ -478,8 +489,15 @@ def build_cadquery_from_cad_ir(
                 error="; ".join(errors),
             ).model_dump()
 
-    # Fallback gear must NOT silently succeed — check explicit allow
-    has_fallback = any("visual_fallback" in w.lower() or "not certified" in w.lower() for w in warnings)
+    # Fallback gear must NOT silently succeed — check explicit allow.
+    # Only applies to involute_spur_gear primitives.
+    has_gear_spec = any(
+        f.type == "primitive" and f.primitive_name == "involute_spur_gear"
+        for f in spec.features
+    )
+    has_fallback = has_gear_spec and any(
+        "visual_fallback" in w.lower() or "not certified" in w.lower() for w in warnings
+    )
     if has_fallback:
         # Determine if visual fallback is explicitly allowed
         fallback_allowed = False

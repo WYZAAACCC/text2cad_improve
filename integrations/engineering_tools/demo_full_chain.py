@@ -394,18 +394,19 @@ def _run_primitive_case(
     _stage(report, "choose_backend", ok=True, backend=backend, strategy=strategy)
 
     # Stage 3: build
-    step_path = output_root / "models" / step_filename
-    step_path.parent.mkdir(parents=True, exist_ok=True)
+    step_rel = Path("models") / step_filename
+    step_path = output_root / step_rel
+    (output_root / "models").mkdir(parents=True, exist_ok=True)
 
     allow_fb = backend not in ("solidworks2025", "nx12")
-    build_result = build_fn(spec_dict, backend=backend, out_step=str(step_path),
+    build_result = build_fn(spec_dict, backend=backend, out_step=str(step_rel),
                             inspect=True, allow_backend_fallback=allow_fb)
     _stage(report, "build", ok=build_result.get("ok", False),
            error=build_result.get("error"))
     report["files_created"] = build_result.get("files_created", [])
     report["warnings"] = build_result.get("warnings", [])
 
-    # Stage 4-5: inspect + mechanical_validate
+    # Stage 4-5: inspect + mechanical_validate (primitive path)
     metrics = build_result.get("metrics", {})
     validation_result = metrics.get("validation")
     mech_val_result = metrics.get("mechanical_validation")
@@ -512,15 +513,21 @@ def _run_gear_case(
         return _finalize_case_report(report, required_stages=GEAR_REQUIRED_STAGES,
                                      required_metrics=GEAR_REQUIRED_METRICS)
 
-    strategy = get_primitive_strategy(backend, "involute_spur_gear") or "native_cadquery_primitive"
+    strategy = get_primitive_strategy(backend, "involute_spur_gear")
+    if strategy is None:
+        _fail(report, "choose_backend",
+              f"No primitive strategy for 'involute_spur_gear' on backend '{backend}'.")
+        return _finalize_case_report(report, required_stages=GEAR_REQUIRED_STAGES,
+                                     required_metrics=GEAR_REQUIRED_METRICS)
     _stage(report, "choose_backend", ok=True, backend=backend, strategy=strategy)
 
     # Stage 3: build
-    step_path = output_root / "models" / step_filename
-    step_path.parent.mkdir(parents=True, exist_ok=True)
+    step_rel = Path("models") / step_filename
+    step_path = output_root / step_rel
+    (output_root / "models").mkdir(parents=True, exist_ok=True)
 
     allow_fb = backend not in ("solidworks2025", "nx12")
-    build_result = build_fn(spec_dict, backend=backend, out_step=str(step_path),
+    build_result = build_fn(spec_dict, backend=backend, out_step=str(step_rel),
                             inspect=True, allow_backend_fallback=allow_fb)
     _stage(report, "build", ok=build_result.get("ok", False),
            error=build_result.get("error"))
@@ -750,6 +757,88 @@ def run_case_ansys_buckling(backend: str, output_root: Path, allow_step_import: 
 # Case registry
 # ═══════════════════════════════════════════════════════════════════════
 
+# ── Turbine disk required metrics ──
+
+TURBINE_DISK_REQUIRED_METRICS = [
+    "kernel_used",
+    "reference_dimensions.outer_dia_mm",
+    "reference_dimensions.bore_dia_mm",
+    "reference_dimensions.axial_width_mm",
+    "reference_dimensions.hub_outer_dia_mm",
+    "reference_dimensions.web_outer_dia_mm",
+    "reference_dimensions.rim_inner_dia_mm",
+    "reference_dimensions.expected_through_hole_count",
+]
+
+
+def run_case_axisymmetric_turbine_disk(
+    backend: str,
+    output_root: Path,
+    allow_step_import: bool = False,
+) -> dict:
+    params = {
+        "outer_dia_mm": 480.0,
+        "bore_dia_mm": 80.0,
+        "axial_width_mm": 60.0,
+
+        "hub_outer_dia_mm": 200.0,
+        "web_outer_dia_mm": 340.0,
+        "rim_inner_dia_mm": 400.0,
+
+        "hub_width_mm": 60.0,
+        "web_width_mm": 32.0,
+        "rim_width_mm": 56.0,
+
+        "hub_fillet_radius_mm": 0.0,
+        "web_fillet_radius_mm": 0.0,
+        "rim_fillet_radius_mm": 0.0,
+        "edge_chamfer_mm": 0.0,
+
+        "bolt_hole_count": 12,
+        "bolt_pcd_mm": 140.0,
+        "bolt_hole_dia_mm": 10.0,
+        "bolt_hole_axis": "Z",
+
+        "lightening_hole_count": 8,
+        "lightening_hole_pcd_mm": 280.0,
+        "lightening_hole_dia_mm": 24.0,
+        "lightening_hole_axis": "Z",
+
+        "cooling_hole_count": 24,
+        "cooling_hole_pcd_mm": 430.0,
+        "cooling_hole_dia_mm": 5.0,
+        "cooling_hole_axis": "Z",
+
+        "quality_grade": "concept_geometry",
+        "non_flight_reference_only": True,
+    }
+
+    expected_through_hole_count = 1 + 12 + 8 + 24
+
+    return _run_primitive_case(
+        "axisymmetric_turbine_disk",
+        backend,
+        output_root,
+        "axisymmetric_turbine_disk",
+        params,
+        "axisymmetric_turbine_disk.step",
+        extra_validation={
+            "expected_bbox_mm": [480.0, 480.0, 60.0],
+            "expected_body_count": 1,
+            "expected_through_hole_count": expected_through_hole_count,
+            "tolerance_mm": 0.75,
+            "primitive_validation": {
+                "feat1": {
+                    "expected_kernel": "cadquery_axisymmetric_revolve_v0",
+                    "expected_through_hole_count": expected_through_hole_count,
+                }
+            },
+        },
+        required_metrics=TURBINE_DISK_REQUIRED_METRICS,
+        allow_step_import=allow_step_import,
+    )
+
+
 CASE_RUNNERS = {
     # ── Recipe CAD cases ──
     "box": run_case_box,
@@ -763,6 +852,8 @@ CASE_RUNNERS = {
     # ── Gear primitive cases ──
     "involute_spur_gear": run_case_involute_spur_gear,
     "involute_spur_gear_m3z20": run_case_involute_spur_gear_m3z20,
+    # ── Turbine primitive cases ──
+    "axisymmetric_turbine_disk": run_case_axisymmetric_turbine_disk,
     # ── ANSYS simulation cases ──
     "ansys_static_beam": run_case_ansys_static_beam,
     "ansys_plate_hole": run_case_ansys_plate_hole,
@@ -776,11 +867,12 @@ CAD_CASES = [
     "block_with_hole", "l_bracket", "stepped_block",
 ]
 GEAR_CASES = ["involute_spur_gear", "involute_spur_gear_m3z20"]
+TURBINE_CASES = ["axisymmetric_turbine_disk"]
 ANSYS_CASES = [
     "ansys_static_beam", "ansys_plate_hole", "ansys_thermal",
     "ansys_modal", "ansys_buckling",
 ]
-ALL_CASES = CAD_CASES + GEAR_CASES + ANSYS_CASES
+ALL_CASES = CAD_CASES + GEAR_CASES + TURBINE_CASES + ANSYS_CASES
 
 
 # ═══════════════════════════════════════════════════════════════════════

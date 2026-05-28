@@ -14,14 +14,16 @@ def test_turbomachinery_family_in_module_list():
 
 
 def test_turbomachinery_module_loadable():
-    """TURBOMACHINERY_PRIMITIVES must be importable and be an empty list."""
+    """TURBOMACHINERY_PRIMITIVES must be importable and contain axisymmetric_turbine_disk."""
     from seekflow_engineering_tools.geometry_primitives.turbomachinery.models import (
         TURBOMACHINERY_PRIMITIVES,
     )
     assert isinstance(TURBOMACHINERY_PRIMITIVES, list)
-    assert len(TURBOMACHINERY_PRIMITIVES) == 0, (
-        "TURBOMACHINERY_PRIMITIVES must be empty — no primitives implemented yet"
+    assert len(TURBOMACHINERY_PRIMITIVES) >= 1, (
+        "TURBOMACHINERY_PRIMITIVES must contain at least axisymmetric_turbine_disk"
     )
+    names = [p.name for p in TURBOMACHINERY_PRIMITIVES]
+    assert "axisymmetric_turbine_disk" in names
 
 
 def test_compiler_registry_supports_register():
@@ -65,7 +67,7 @@ def test_validation_spec_accepts_primitive_validation():
 
 
 def test_future_primitive_requires_full_implementation():
-    """A future primitive needs: definition + compiler + metadata + validator + tests + capability."""
+    """A primitive needs: definition + compiler + metadata + validator + tests + capability."""
     from seekflow_engineering_tools.cadquery_backend.primitive_compiler import (
         list_primitive_compiler_names,
     )
@@ -77,13 +79,13 @@ def test_future_primitive_requires_full_implementation():
     )
     from seekflow_engineering_tools.capabilities.registry import CAPABILITIES
 
-    # All three registries must have involute_spur_gear (the reference implementation)
+    # involute_spur_gear is the reference implementation
     assert "involute_spur_gear" in list_primitive_names()
     assert "involute_spur_gear" in list_primitive_compiler_names()
     assert "involute_spur_gear" in list_primitive_mechanical_validator_names()
     assert "involute_spur_gear" in CAPABILITIES["cadquery"]["stable_primitives"]
 
-    # axisymmetric_turbine_disk must be in NONE of these (not implemented)
-    assert "axisymmetric_turbine_disk" not in list_primitive_names()
-    assert "axisymmetric_turbine_disk" not in list_primitive_compiler_names()
-    assert "axisymmetric_turbine_disk" not in list_primitive_mechanical_validator_names()
+    # axisymmetric_turbine_disk IS now implemented — must be in ALL registries
+    assert "axisymmetric_turbine_disk" in list_primitive_names()
+    assert "axisymmetric_turbine_disk" in list_primitive_compiler_names()
+    assert "axisymmetric_turbine_disk" in list_primitive_mechanical_validator_names()

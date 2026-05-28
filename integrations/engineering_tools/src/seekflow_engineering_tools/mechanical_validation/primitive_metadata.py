@@ -111,19 +111,26 @@ def validate_primitive_metadata_v1(
             "severity": "error",
         })
 
-    # 7. warnings: if present must be list[str]; missing → normalize to []
+    # 7. warnings must be list[str]; missing → normalize to []; non-list or
+    #    non-str items → error
     normalized = dict(metadata)
     bw = normalized.get("warnings")
-    if bw is not None:
-        if not isinstance(bw, list):
-            issues.append({
-                "code": "primitive_warnings_not_list",
-                "message": "Metadata 'warnings' must be a list.",
-                "severity": "error",
-            })
-            normalized["warnings"] = []
-    else:
+    if bw is None:
         normalized["warnings"] = []
+    elif not isinstance(bw, list):
+        issues.append({
+            "code": "primitive_warnings_not_list",
+            "message": "Metadata 'warnings' must be a list[str].",
+            "severity": "error",
+        })
+    elif not all(isinstance(item, str) for item in bw):
+        issues.append({
+            "code": "primitive_warnings_item_not_str",
+            "message": "Metadata 'warnings' must contain only strings.",
+            "severity": "error",
+        })
+    else:
+        normalized["warnings"] = bw
 
     ok = not any(i["severity"] == "error" for i in issues)
     return {"ok": ok, "issues": issues, "normalized_metadata": normalized if ok else None}

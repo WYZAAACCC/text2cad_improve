@@ -83,6 +83,34 @@ def _validate_involute_spur_gear_feature(
 register_primitive_mechanical_validator("involute_spur_gear", _validate_involute_spur_gear_feature)
 
 
+def _validate_axisymmetric_turbine_disk_feature(
+    params: dict,
+    inspection: dict,
+    metadata: dict | None,
+    tolerance_mm: float,
+    expected: dict | None = None,
+    raw_metadata: dict | None = None,
+) -> dict:
+    from seekflow_engineering_tools.mechanical_validation.turbomachinery_validation import (
+        validate_axisymmetric_turbine_disk_result,
+    )
+
+    return validate_axisymmetric_turbine_disk_result(
+        params=params,
+        inspection=inspection,
+        metadata=metadata,
+        tolerance_mm=tolerance_mm,
+        expected=expected or {},
+        raw_metadata=raw_metadata,
+    )
+
+
+register_primitive_mechanical_validator(
+    "axisymmetric_turbine_disk",
+    _validate_axisymmetric_turbine_disk_feature,
+)
+
+
 # ── Expected values helper ──
 
 def _expected_for_feature(spec, feature) -> dict[str, Any]:

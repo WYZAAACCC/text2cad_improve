@@ -79,19 +79,20 @@ def get_primitive(name: str) -> PrimitiveDefinition | None:
     return PRIMITIVE_REGISTRY.get(name)
 
 
-def _parse_bool_strict(value):
+def _parse_bool(value: object, pname: str) -> bool:
     """Parse a bool safely.  ``bool("False")`` is ``True`` in Python,
     so strings must be explicitly checked."""
     if isinstance(value, bool):
         return value
     if isinstance(value, str):
-        s = value.strip().lower()
-        if s in ("true", "1", "yes"):
+        v = value.strip().lower()
+        if v in {"true", "1", "yes", "y"}:
             return True
-        if s in ("false", "0", "no"):
+        if v in {"false", "0", "no", "n"}:
             return False
     raise ValueError(
-        f"Cannot parse as bool: {value!r} (type={type(value).__name__})"
+        f"Parameter '{pname}' must be bool or strict bool string "
+        f"(true/false/1/0/yes/no), got {type(value).__name__}: {value!r}"
     )
 
 
@@ -132,7 +133,7 @@ def normalize_primitive_parameters(primitive_name: str, parameters: dict) -> dic
                 elif expected_type == "str":
                     normalized[pname] = str(value)
                 elif expected_type == "bool":
-                    normalized[pname] = _parse_bool_strict(value)
+                    normalized[pname] = _parse_bool(value, pname)
             except (TypeError, ValueError):
                 errors.append(
                     f"Parameter '{pname}' must be {expected_type}, "
@@ -162,6 +163,17 @@ def normalize_primitive_parameters(primitive_name: str, parameters: dict) -> dic
         gear_errors = validate_involute_spur_gear_parameters(normalized)
         if gear_errors:
             raise ValueError("Gear validation failed: " + "; ".join(gear_errors))
+
+    elif primitive_name == "axisymmetric_turbine_disk":
+        from seekflow_engineering_tools.geometry_primitives.turbomachinery.validator import (
+            validate_axisymmetric_turbine_disk_parameters,
+        )
+
+        disk_errors = validate_axisymmetric_turbine_disk_parameters(normalized)
+        if disk_errors:
+            raise ValueError(
+                "Turbine disk validation failed: " + "; ".join(disk_errors)
+            )
 
     return normalized
 

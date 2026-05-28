@@ -88,3 +88,37 @@ else:
 
 # ── Register built-in primitive compilers ──
 register_primitive_compiler("involute_spur_gear", _compile_involute_spur_gear)
+
+
+def _compile_axisymmetric_turbine_disk(feature) -> list[str]:
+    params = feature.parameters
+    param_lines = []
+
+    for k, v in params.items():
+        if isinstance(v, str):
+            param_lines.append(f'    "{k}": {v!r},')
+        else:
+            param_lines.append(f'    "{k}": {v!r},')
+
+    code = f"""
+# [Primitive: axisymmetric_turbine_disk]
+from seekflow_engineering_tools.geometry_primitives.turbomachinery.axisymmetric_turbine_disk import (
+    build_axisymmetric_turbine_disk_cadquery,
+)
+
+_params = {{
+{chr(10).join(param_lines)}
+}}
+
+result, PRIMITIVE_METADATA["axisymmetric_turbine_disk"] = (
+    build_axisymmetric_turbine_disk_cadquery(_params)
+)
+
+BUILD_WARNINGS.extend(
+    PRIMITIVE_METADATA["axisymmetric_turbine_disk"].get("warnings", [])
+)
+"""
+    return code.strip().split("\n")
+
+
+register_primitive_compiler("axisymmetric_turbine_disk", _compile_axisymmetric_turbine_disk)

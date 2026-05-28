@@ -103,7 +103,7 @@ def test_reference_dimensions_not_dict_fails():
     assert result["ok"] is False
 
 
-def test_warnings_not_list_warns():
+def test_warnings_not_list_is_error():
     from seekflow_engineering_tools.mechanical_validation.primitive_metadata import (
         validate_primitive_metadata_v1,
     )
@@ -111,10 +111,18 @@ def test_warnings_not_list_warns():
     result = validate_primitive_metadata_v1(primitive_name="test_primitive_x", metadata=m)
     issues = result["issues"]
     assert any("warnings" in i["code"].lower() for i in issues)
-    # warnings not-list is warning, not error → still ok
-    assert result["ok"] is True
-    # warnings normalized to []
-    assert result["normalized_metadata"]["warnings"] == []
+    # warnings not-list is now error → ok should be False
+    assert result["ok"] is False
+
+
+def test_warnings_item_not_str_is_error():
+    from seekflow_engineering_tools.mechanical_validation.primitive_metadata import (
+        validate_primitive_metadata_v1,
+    )
+    m = dict(VALID_METADATA, warnings=["ok", 123])
+    result = validate_primitive_metadata_v1(primitive_name="test_primitive_x", metadata=m)
+    assert result["ok"] is False
+    assert any("warnings_item_not_str" in i["code"] for i in result["issues"])
 
 
 def test_unknown_metadata_version_fails():
