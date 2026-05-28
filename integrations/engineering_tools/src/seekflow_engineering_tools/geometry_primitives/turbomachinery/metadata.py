@@ -63,9 +63,9 @@ def validate_axisymmetric_turbine_disk_metadata(metadata: dict) -> list[str]:
 
     # ── v0.3: geometry_family ──
     gf = metadata.get("geometry_family")
-    if gf != "axisymmetric_base_with_symmetric_multistage_fir_tree_slots":
+    if gf != "axisymmetric_base_with_clean_symmetric_fir_tree_slots":
         errors.append(
-            "metadata.geometry_family must be 'axisymmetric_base_with_symmetric_multistage_fir_tree_slots', "
+            "metadata.geometry_family must be 'axisymmetric_base_with_clean_symmetric_fir_tree_slots', "
             f"got {gf!r}"
         )
 
@@ -74,8 +74,8 @@ def validate_axisymmetric_turbine_disk_metadata(metadata: dict) -> list[str]:
     if not isinstance(slot_gen, dict):
         errors.append("metadata.slot_generation must be a dict")
     else:
-        if slot_gen.get("version") != "rim_slot_v5_symmetric_multistage":
-            errors.append(f"slot_generation.version must be 'rim_slot_v5_symmetric_multistage', got {slot_gen.get('version')!r}")
+        if slot_gen.get("version") != "rim_slot_v6_clean_symmetric_polygon":
+            errors.append(f"slot_generation.version must be 'rim_slot_v6_clean_symmetric_polygon', got {slot_gen.get('version')!r}")
         if slot_gen.get("orientation") != "axial_through":
             errors.append("slot_generation.orientation must be axial_through")
         if slot_gen.get("socket_mode") != "internal_lobes":
@@ -118,10 +118,10 @@ def validate_axisymmetric_turbine_disk_metadata(metadata: dict) -> list[str]:
 
     # ── v0.4: visual_fidelity extended ──
     visual = metadata.get("visual_fidelity") or {}
-    if visual.get("contains_multistage_sidewall_grooves") is not True:
-        errors.append("visual_fidelity.contains_multistage_sidewall_grooves must be True")
-    if visual.get("contains_symmetric_fir_tree_slots") is not True:
-        errors.append("visual_fidelity.contains_symmetric_fir_tree_slots must be True")
+    if visual.get("contains_box_union_fir_tree_slots") is not False:
+        errors.append("visual_fidelity.contains_box_union_fir_tree_slots must be False")
+    if visual.get("contains_clean_symmetric_fir_tree_slots") is not True:
+        errors.append("visual_fidelity.contains_clean_symmetric_fir_tree_slots must be True")
     if visual.get("contains_real_blade_attachment") is not False:
         errors.append("visual_fidelity.contains_real_blade_attachment must be False")
 

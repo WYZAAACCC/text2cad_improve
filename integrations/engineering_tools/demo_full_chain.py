@@ -916,7 +916,7 @@ def run_case_axisymmetric_turbine_disk(
             "tolerance_mm": 1.5,
             "primitive_validation": {
                 "feat1": {
-                    "expected_kernel": "cadquery_turbine_disk_reference_v5",
+                    "expected_kernel": "cadquery_turbine_disk_reference_v6",
                     "expected_through_hole_count": total_holes,
                 }
             },

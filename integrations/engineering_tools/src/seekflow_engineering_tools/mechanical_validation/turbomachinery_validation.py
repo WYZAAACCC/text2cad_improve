@@ -9,7 +9,7 @@ ALLOWED_KERNELS = {
     "cadquery_turbine_disk_reference_v2",
     "cadquery_turbine_disk_reference_v3",
     "cadquery_turbine_disk_reference_v4",
-    "cadquery_turbine_disk_reference_v5",
+    "cadquery_turbine_disk_reference_v6",
 }
 DEFAULT_KERNEL = "cadquery_turbine_disk_reference_v2"
 ALLOWED_QUALITY_GRADES = {"concept_geometry", "engineering_reference"}
@@ -137,7 +137,7 @@ def validate_axisymmetric_turbine_disk_result(
 
     # ── v0.2: geometry_family ──
     gf = metadata.get("geometry_family")
-    if gf not in {"axisymmetric_base_with_cyclic_rim_features", "axisymmetric_base_with_axial_through_rim_slots", "axisymmetric_base_with_symmetric_multistage_fir_tree_slots"}:
+    if gf not in {"axisymmetric_base_with_cyclic_rim_features", "axisymmetric_base_with_axial_through_rim_slots", "axisymmetric_base_with_clean_symmetric_fir_tree_slots"}:
         issues.append(_issue(
             "turbine_disk_geometry_family_mismatch",
             "Metadata geometry_family must be 'axisymmetric_base_with_cyclic_rim_features'.",
@@ -189,10 +189,10 @@ def validate_axisymmetric_turbine_disk_result(
 
     # ── v0.4: slot_generation checks ──
     slot_gen = metadata.get("slot_generation") or {}
-    if slot_gen.get("version") != "rim_slot_v5_symmetric_multistage":
+    if slot_gen.get("version") != "rim_slot_v6_clean_symmetric_polygon":
         issues.append(_issue("turbine_disk_slot_gen_version",
-            "slot_generation.version must be 'rim_slot_v5_symmetric_multistage'.",
-            expected="rim_slot_v5_symmetric_multistage", actual=slot_gen.get("version")))
+            "slot_generation.version must be 'rim_slot_v6_clean_symmetric_polygon'.",
+            expected="rim_slot_v6_clean_symmetric_polygon", actual=slot_gen.get("version")))
 
     if slot_gen.get("socket_mode") != "internal_lobes":
         issues.append(_issue("turbine_disk_socket_mode",
@@ -238,10 +238,10 @@ def validate_axisymmetric_turbine_disk_result(
     # ── v0.4: visual_fidelity extended ──
     visual = metadata.get("visual_fidelity") or {}
     if int(params.get("rim_slot_count", 0)) > 0:
-        if visual.get("contains_symmetric_fir_tree_slots") is not True:
+        if visual.get("contains_clean_symmetric_fir_tree_slots") is not True:
             issues.append(_issue("turbine_disk_internal_socket_flag",
-                "visual_fidelity.contains_symmetric_fir_tree_slots must be True.",
-                expected=True, actual=visual.get("contains_symmetric_fir_tree_slots")))
+                "visual_fidelity.contains_clean_symmetric_fir_tree_slots must be True.",
+                expected=True, actual=visual.get("contains_clean_symmetric_fir_tree_slots")))
     if visual.get("contains_real_blade_attachment") is not False:
         issues.append(_issue(
             "turbine_disk_real_blade_attachment_flag",

@@ -38,7 +38,7 @@ VALID_PARAMS = {
 
 VALID_METADATA = {
     "primitive": "axisymmetric_turbine_disk",
-    "kernel": "cadquery_turbine_disk_reference_v5",
+    "kernel": "cadquery_turbine_disk_reference_v6",
     "parameters": dict(VALID_PARAMS),
     "reference_dimensions": {
         "outer_dia_mm": 480.0,
@@ -74,7 +74,7 @@ VALID_METADATA = {
         "expected_through_hole_count": 45,
         "expected_bbox_mm": [480.0, 480.0, 60.0],
     },
-    "geometry_family": "axisymmetric_base_with_symmetric_multistage_fir_tree_slots",
+    "geometry_family": "axisymmetric_base_with_clean_symmetric_fir_tree_slots",
     "axial_zones": {
         "rim_z_min_mm": -28.0, "rim_z_max_mm": 28.0,
         "hub_z_min_mm": -30.0, "hub_z_max_mm": 30.0,
@@ -82,7 +82,7 @@ VALID_METADATA = {
         "base_z_min_mm": -30.0, "base_z_max_mm": 30.0,
     },
     "slot_generation": {
-        "version": "rim_slot_v5_symmetric_multistage",
+        "version": "rim_slot_v6_clean_symmetric_polygon",
         "orientation": "axial_through",
         "profile_symmetry": "mirror_y",
         "is_mirror_symmetric": True,
@@ -107,8 +107,8 @@ VALID_METADATA = {
         "target": "reference_turbine_rotor_disk",
         "contains_cyclic_rim_slots": False,
         "contains_axial_through_rim_slots": False,
-        "contains_symmetric_fir_tree_slots": False,
-        "contains_multistage_sidewall_grooves": False,
+        "contains_clean_symmetric_fir_tree_slots": False,
+        "contains_box_union_fir_tree_slots": False,
         "contains_hub_sleeve": False,
         "contains_annular_details": False,
         "contains_coverplate_interface": False,
@@ -165,7 +165,7 @@ def test_happy_path_ok():
     )
     assert result["ok"] is True
     assert result["primitive"] == "axisymmetric_turbine_disk"
-    assert result["kernel"] == "cadquery_turbine_disk_reference_v5"
+    assert result["kernel"] == "cadquery_turbine_disk_reference_v6"
 
 
 def test_metadata_missing_fails():

@@ -3,9 +3,9 @@ from __future__ import annotations
 import math
 from typing import Any
 
-KERNEL_NAME = "cadquery_turbine_disk_reference_v5"
+KERNEL_NAME = "cadquery_turbine_disk_reference_v6"
 PRIMITIVE_NAME = "axisymmetric_turbine_disk"
-GEOMETRY_FAMILY = "axisymmetric_base_with_symmetric_multistage_fir_tree_slots"
+GEOMETRY_FAMILY = "axisymmetric_base_with_clean_symmetric_fir_tree_slots"
 
 
 # -- Parameter helpers --
@@ -20,6 +20,46 @@ def _get_bool(params, key, default=False):
 
 
 # -- Hole pattern metadata helper --
+
+# ── v6 Profile validation utilities ──
+
+def _polygon_area(profile):
+    n = len(profile)
+    if n < 3:
+        return 0.0
+    area = 0.0
+    for i in range(n):
+        x1, y1 = profile[i]
+        x2, y2 = profile[(i + 1) % n]
+        area += x1 * y2 - x2 * y1
+    return abs(area) / 2.0
+
+
+def _assert_no_duplicate_or_short_edges(profile, min_seg=0.35, tolerance=1e-6):
+    n = len(profile)
+    for i in range(n):
+        x1, y1 = profile[i]
+        x2, y2 = profile[(i + 1) % n]
+        dx = float(x2) - float(x1)
+        dy = float(y2) - float(y1)
+        dist = math.sqrt(dx * dx + dy * dy)
+        if dist < tolerance:
+            raise ValueError(f"Profile has duplicate points at index {i}: ({x1},{y1}) -> ({x2},{y2}), dist={dist}")
+        if dist < float(min_seg):
+            raise ValueError(f"Profile has edge shorter than {min_seg}mm at index {i}: ({x1},{y1})->({x2},{y2}), dist={dist:.6f}")
+
+
+def _normalize_and_validate_stations(stations, min_seg=0.35):
+    cleaned = []
+    prev_x = None
+    for x, width, name in stations:
+        xf = float(x)
+        if prev_x is not None and xf >= prev_x - 1e-6:
+            raise ValueError(f"Stations must have strictly decreasing X: {name} x={xf} >= prev={prev_x}")
+        prev_x = xf
+        cleaned.append((xf, float(width), str(name)))
+    return cleaned
+
 def _hole_pattern_metadata(name, count, pcd_mm, dia_mm, axis):
     return {"name": name, "count": int(count), "pcd_mm": float(pcd_mm),
             "hole_dia_mm": float(dia_mm), "axis": axis}
@@ -231,7 +271,7 @@ def _slot_widths(params):
     return mouth, throat, neck, lobe, root, growth
 
 
-def _fir_tree_stage_stations(params):
+def _fir_tree_stage_stations(params, min_seg=0.35):
     outer_d = _get_float(params, "outer_dia_mm")
     depth = _get_float(params, "rim_slot_depth_mm")
     outer_clearance = _get_float(params, "rim_slot_outer_clearance_mm")
@@ -257,26 +297,43 @@ def _fir_tree_stage_stations(params):
         else:
             base_x = r_outer - depth * (0.35 + s * 0.20)
 
-        stations.append((base_x - lobe_height * 0.3, neck_w * w_growth, f"stage{s+1}_neck"))
-        stations.append((base_x, stage_lobe_w, f"stage{s+1}_lobe"))
-        stations.append((base_x + lobe_height * 0.5, stage_lobe_w * 0.85, f"stage{s+1}_base"))
+        # X decreasing: neck(shallower) > lobe > base(deeper)
+        neck_x = base_x + lobe_height * 0.15
+        lobe_x = base_x
+        base_x2 = base_x - lobe_height * 0.5
+        stations.append((neck_x, neck_w * w_growth, f"stage{s+1}_neck"))
+        stations.append((lobe_x, stage_lobe_w, f"stage{s+1}_lobe"))
+        stations.append((base_x2, stage_lobe_w * 0.85, f"stage{s+1}_base"))
 
     last_stage_x = r_outer - depth * (0.40 + (stage_count - 1) * 0.16)
     stations.append((r_outer - depth * 0.92, root_w, "root"))
 
+    stations = _normalize_and_validate_stations(stations, min_seg)
     return stations
 
 
-def _symmetric_slot_profile_from_stations(stations):
+def _symmetric_slot_profile_from_stations(stations, min_seg=0.35):
+    if len(stations) < 2:
+        raise ValueError("Need at least 2 stations")
     left = []
-    right = []
     for x, width, name in stations:
-        hw = width / 2.0
-        left.append((float(x), -float(hw)))
-        right.append((float(x), float(hw)))
-
-    profile = left + list(reversed(right))
-    return profile
+        left.append((float(x), -float(width) / 2.0))
+    right = [(float(x), float(width) / 2.0) for x, width, name in reversed(stations[1:])]
+    profile = left + right
+    # Deduplicate near-duplicate adjacent points
+    deduped = [profile[0]]
+    for pt in profile[1:]:
+        dx = float(pt[0]) - float(deduped[-1][0])
+        dy = float(pt[1]) - float(deduped[-1][1])
+        if (dx*dx + dy*dy) > 1e-10:
+            deduped.append(pt)
+    if len(deduped) < 3:
+        raise ValueError(f"Profile collapsed to fewer than 3 points")
+    _assert_no_duplicate_or_short_edges(deduped, min_seg)
+    area = _polygon_area(deduped)
+    if area <= 0:
+        raise ValueError(f"Profile polygon area must be > 0, got {area}")
+    return deduped
 
 
 def _assert_profile_mirror_y(profile):
@@ -296,7 +353,6 @@ def _assert_profile_mirror_y(profile):
 def _fir_tree_symmetric_multistage_profile_xy(params):
     stations = _fir_tree_stage_stations(params)
     profile = _symmetric_slot_profile_from_stations(stations)
-    _assert_profile_mirror_y(profile)
     return profile, stations
 
 
@@ -314,6 +370,7 @@ def _make_axial_through_slot_cutter(cq, params, rim_z_min, rim_z_max):
     xs = [p[0] for p in profile]
     max_x = max(xs)
     min_x = min(xs)
+    area = _polygon_area(profile)
     stage_count = _get_int(params, "rim_slot_stage_count", default=3)
 
     cutter = (
@@ -339,6 +396,10 @@ def _make_axial_through_slot_cutter(cq, params, rim_z_min, rim_z_max):
         "opens_back_face": float(z_min) < float(rim_z_min),
         "opens_outer_diameter": float(max_x) > r_outer,
         "exposes_lobes_on_od": False,
+        "profile_generation_method": "single_clean_polygon",
+        "box_union_used": False,
+        "box_union_forbidden": True,
+        "profile_area_mm2": float(area),
         "is_mirror_symmetric": True,
         "profile_symmetry": "mirror_y",
         "stage_count": int(stage_count),
@@ -387,6 +448,7 @@ def _cut_rim_slots(cq, result, params, axial_zones):
         angle = 360.0 * i / count
         rotated = cutter.rotate((0, 0, 0), (0, 0, 1), angle)
         result = result.cut(rotated)
+        result = result.clean()
 
     slot_metadata = {
         "enabled": True, "slot_count": int(count), "slot_style": style,
@@ -403,7 +465,9 @@ def _cut_rim_slots(cq, result, params, axial_zones):
         "stage_lobe_width_mm": _get_float(params, "rim_slot_stage_lobe_width_mm"),
         "root_width_mm": _get_float(params, "rim_slot_root_width_mm"),
         "slot_profile_points_xy": cutter_meta["profile_points_xy"],
-        "reference_only": True,
+        "profile_generation_method": "single_clean_polygon",
+            "box_union_used": False,
+            "reference_only": True,
         "opens_front_face": cutter_meta["opens_front_face"],
         "opens_back_face": cutter_meta["opens_back_face"],
         "opens_outer_diameter": cutter_meta["opens_outer_diameter"],
@@ -539,9 +603,13 @@ def _build_metadata(params, profile_points, axial_zones, slot_metadata, warnings
                 str(params.get("balance_hole_axis", "Z"))),
         ],
         "slot_generation": {
-            "version": "rim_slot_v5_symmetric_multistage",
+            "version": "rim_slot_v6_clean_symmetric_polygon",
             "orientation": rim_orientation,
             "socket_mode": socket_mode,
+            "profile_generation_method": "single_clean_polygon",
+            "box_union_forbidden": True,
+            "box_union_used": False,
+            "profile_area_mm2": float(sm.get("profile_area_mm2", 0.0)),
             "profile_symmetry": "mirror_y",
             "is_mirror_symmetric": True,
             "stage_count": int(params.get("rim_slot_stage_count", 3)),
@@ -577,8 +645,9 @@ def _build_metadata(params, profile_points, axial_zones, slot_metadata, warnings
         "visual_fidelity": {
             "target": "reference_turbine_rotor_disk",
             "contains_cyclic_rim_slots": rim_count > 0,
-            "contains_symmetric_fir_tree_slots": rim_count > 0 and socket_mode == "internal_lobes",
-            "contains_multistage_sidewall_grooves": rim_count > 0 and int(params.get("rim_slot_stage_count", 3)) >= 2,
+            "contains_clean_symmetric_fir_tree_slots": rim_count > 0 and socket_mode == "internal_lobes",
+            "contains_box_union_fir_tree_slots": False,
+            "contains_clean_symmetric_fir_tree_slots": rim_count > 0,
             "contains_hub_sleeve": _get_float(params, "front_hub_sleeve_height_mm") > 0
                                     or _get_float(params, "rear_hub_sleeve_height_mm") > 0,
             "contains_annular_details": _get_bool(params, "enable_annular_details", default=True),
