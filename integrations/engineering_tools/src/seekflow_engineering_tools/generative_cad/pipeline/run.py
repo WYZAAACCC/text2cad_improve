@@ -78,9 +78,25 @@ def run_canonical_gcad(
     try:
         _run_components(canonical, ctx)
         final_handle_id = _run_composition_or_select_final(canonical, ctx)
+
+        from seekflow_engineering_tools.generative_cad.runtime.postconditions import validate_runtime_postconditions
+        runtime_pc = validate_runtime_postconditions(canonical, ctx, final_handle_id)
+        if not runtime_pc["ok"]:
+            return GcadRunResult(
+                ok=False,
+                error="runtime postconditions failed: "
+                + "; ".join(i["message"] for i in runtime_pc["issues"]),
+                warnings=ctx.warnings,
+                degraded_features=ctx.degraded_features,
+                operation_metrics=ctx.operation_metrics,
+            )
+
         _export_final_solid(final_handle_id, ctx)
 
-        metadata = build_generative_metadata(canonical=canonical, ctx=ctx)
+        metadata = build_generative_metadata(
+            canonical=canonical, ctx=ctx,
+            validation={"runtime_postconditions": runtime_pc},
+        )
         metadata_path.write_text(
             json.dumps(metadata, indent=2, ensure_ascii=False, default=str),
             encoding="utf-8",

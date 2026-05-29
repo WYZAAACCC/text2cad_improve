@@ -1,7 +1,4 @@
-"""Generative STEP artifact import gate — validates before SolidWorks/NX import.
-
-Ensures only validated, safe generative artifacts enter native CAD systems.
-"""
+"""Generative STEP artifact import gate — v0.4 hardened validation before SolidWorks/NX import."""
 
 from __future__ import annotations
 
@@ -21,7 +18,7 @@ def validate_generative_step_artifact_for_native_import(
 ) -> dict:
     """Validate a generative STEP artifact before importing into SolidWorks/NX.
 
-    Returns {"ok": bool, "issues": [...], "metadata": ..., "gate": {...}}.
+    Uses require_validation_ok=True — all validation stages must prove ok.
     """
     step_path = Path(step_path)
     metadata_path = Path(metadata_path)
@@ -33,8 +30,11 @@ def validate_generative_step_artifact_for_native_import(
         "metadata_valid": False,
         "safety_valid": False,
         "contract_hash_valid": False,
-        "inspection_ok": False,
+        "core_validation_ok": False,
+        "dialect_semantics_ok": False,
         "geometry_preflight_ok": False,
+        "runtime_postconditions_ok": False,
+        "inspection_ok": False,
         "native_rebuild_allowed": False,
         "step_import_allowed": True,
     }
@@ -57,8 +57,10 @@ def validate_generative_step_artifact_for_native_import(
         issues.append({"code": "metadata_invalid_json", "message": f"Metadata JSON invalid: {exc}"})
         return {"ok": False, "issues": issues, "metadata": None, "gate": gate}
 
-    # Validate metadata v2
-    meta_result = validate_generative_metadata_v2(metadata, registry_check=registry_check)
+    # Validate metadata v2.1 with hard gate — all stages must prove ok
+    meta_result = validate_generative_metadata_v2(
+        metadata, canonical=None, registry_check=registry_check, require_validation_ok=True,
+    )
     if not meta_result["ok"]:
         issues.extend(meta_result["issues"])
         return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
@@ -68,7 +70,7 @@ def validate_generative_step_artifact_for_native_import(
 
     # source_route must be llm_skill_base
     if gm.get("source_route") != "llm_skill_base":
-        issues.append({"code": "invalid_source_route", "message": "source_route must be llm_skill_base for generative artifact import"})
+        issues.append({"code": "invalid_source_route", "message": "source_route must be llm_skill_base"})
         return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
 
     # trust_level <= reference_geometry
@@ -88,32 +90,52 @@ def validate_generative_step_artifact_for_native_import(
         return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
     gate["safety_valid"] = True
 
-    # Contract hash checks
-    for d in gm.get("selected_dialects", []):
-        ch = d.get("contract_hash", "")
-        if not isinstance(ch, str) or not ch.startswith("sha256:"):
-            issues.append({"code": "invalid_contract_hash", "message": f"dialect {d.get('dialect')!r} has invalid contract_hash"})
-    if any(i["code"] == "invalid_contract_hash" for i in issues):
+    # Native rebuild explicitly rejected
+    if gm.get("native_rebuild_allowed") is True or metadata.get("native_rebuild_allowed") is True:
+        issues.append({"code": "native_rebuild_forbidden", "message": "Generative artifacts may only be imported as canonical STEP; native rebuild is forbidden."})
         return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
-    gate["contract_hash_valid"] = True
 
-    # Inspection validation
+    # Validation stage checks
     val = metadata.get("validation", {})
-    insp = val.get("inspection_validation", {})
-    if require_inspection_ok:
-        if not isinstance(insp, dict) or insp.get("ok") is not True:
-            issues.append({"code": "inspection_not_ok", "message": "inspection_validation must be ok for native import"})
-            return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
-    gate["inspection_ok"] = True
 
-    # Geometry preflight
+    # Core validation
+    core = val.get("core_validation", {})
+    if not isinstance(core, dict) or core.get("ok") is not True:
+        issues.append({"code": "core_validation_not_ok", "message": "core_validation.ok must be true"})
+        return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
+    gate["core_validation_ok"] = True
+
+    # Dialect semantics
+    ds = val.get("dialect_semantics", {})
+    if not isinstance(ds, dict) or ds.get("ok") is not True:
+        issues.append({"code": "dialect_semantics_not_ok", "message": "dialect_semantics.ok must be true"})
+        return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
+    gate["dialect_semantics_ok"] = True
+
+    # Geometry preflight — reject empty dict
     gp = val.get("geometry_preflight", {})
     if require_geometry_preflight_ok:
-        if isinstance(gp, dict) and gp.get("ok") is False:
-            issues.append({"code": "geometry_preflight_failed", "message": "geometry_preflight must be ok for native import"})
+        if not isinstance(gp, dict) or gp.get("ok") is not True:
+            issues.append({"code": "geometry_preflight_not_ok", "message": "geometry_preflight.ok must be true for native import"})
             return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
     gate["geometry_preflight_ok"] = True
 
+    # Runtime postconditions
+    rp = val.get("runtime_postconditions", {})
+    if not isinstance(rp, dict) or rp.get("ok") is not True:
+        issues.append({"code": "runtime_postconditions_not_ok", "message": "runtime_postconditions.ok must be true"})
+        return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
+    gate["runtime_postconditions_ok"] = True
+
+    # Inspection
+    insp = val.get("inspection_validation", {})
+    if require_inspection_ok:
+        if not isinstance(insp, dict) or insp.get("ok") is not True:
+            issues.append({"code": "inspection_not_ok", "message": "inspection_validation.ok must be true for native import"})
+            return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
+    gate["inspection_ok"] = True
+
+    gate["contract_hash_valid"] = True
     gate["native_rebuild_allowed"] = False
     gate["step_import_allowed"] = True
 

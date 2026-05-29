@@ -85,6 +85,8 @@ def build_repair_prompt_v2(
     repair_state: dict,
 ) -> dict:
     """Build a repair prompt for iterative patch generation."""
+    from seekflow_engineering_tools.generative_cad.repair.patch import RepairPatchV2
+
     return {
         "system": REPAIR_PATCH_SYSTEM_PROMPT_V2,
         "user": (
@@ -92,4 +94,5 @@ def build_repair_prompt_v2(
             f"Validation Issues: {validation_report.get('issues', [])}\n\n"
             f"Repair State: {repair_state}"
         ),
+        "output_schema": RepairPatchV2.model_json_schema(),
     }

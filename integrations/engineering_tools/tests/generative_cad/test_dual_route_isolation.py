@@ -78,12 +78,15 @@ class TestMetadataSchemasDistinct:
 
     def test_generative_metadata_is_v2(self):
         from seekflow_engineering_tools.generative_cad.pipeline.metadata import validate_generative_metadata_v2
+        from seekflow_engineering_tools.generative_cad.dialects.registry import dialect_contract_hash
+        ch = dialect_contract_hash("axisymmetric")
         meta = {
             "generative_metadata": {
-                "metadata_version": "generative_metadata_v2", "source_route": "llm_skill_base",
+                "metadata_version": "generative_metadata_v2", "metadata_schema_minor": "2.1",
+                "source_route": "llm_skill_base",
                 "schema_version": "g_cad_core_v0.2", "canonical_version": "canonical_gcad_v0.2",
                 "trust_level": "reference_geometry", "part_name": "test",
-                "selected_dialects": [{"dialect": "axisymmetric", "version": "0.2.0", "contract_hash": "sha256:abc"}],
+                "selected_dialects": [{"dialect": "axisymmetric", "version": "0.2.0", "contract_hash": ch}],
                 "op_versions": [],
                 "raw_graph_hash": "sha256:def", "canonical_graph_hash": "sha256:ghi",
                 "runner_version": "0.2.0", "geometry_runtime": "cadquery",
@@ -91,7 +94,11 @@ class TestMetadataSchemasDistinct:
                 "safety": {"non_flight_reference_only": True, "not_airworthy": True, "not_certified": True, "not_for_manufacturing": True, "not_for_installation": True, "no_structural_validation": True, "no_life_prediction": True},
             },
             "build_warnings": [],
-            "validation": {"core_validation": {}, "geometry_preflight": {}, "inspection_validation": {}},
+            "validation": {
+                "core_validation": {"ok": True}, "dialect_semantics": {"ok": True},
+                "geometry_preflight": {"ok": True}, "runtime_postconditions": {"ok": True},
+                "inspection_validation": {"ok": True},
+            },
         }
         result = validate_generative_metadata_v2(meta)
         assert result["ok"], f"Expected ok, got: {result['issues']}"

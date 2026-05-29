@@ -101,31 +101,32 @@ class TestBuilderValidation:
     def test_invalid_graph_fails_before_execution(self, temp_config):
         """Invalid spec should fail during graph validation, before subprocess."""
         from seekflow_engineering_tools.generative_cad.builder import build_generative_cad_model
-
-        spec = GenerativeCADSpec.model_validate({
-            "part_name": "bad",
-            "selected_bases": [
-                {"base_id": "nonexistent_base", "base_version": "0.1.0"}
-            ],
-            "feature_graph": {
-                "nodes": [
-                    {
-                        "id": "n1",
-                        "base_id": "nonexistent_base",
-                        "op": "fake_op",
-                        "phase": "base_solid",
-                        "params": {},
-                    }
-                ]
-            },
-        })
+        from seekflow_engineering_tools.generative_cad.ir.raw import RawGcadDocument
 
         out_step = temp_config.workspace_root / "bad_output.step"
+        # Use RawGcadDocument v0.2 with an unknown dialect
         result = build_generative_cad_model(
-            spec=spec, config=temp_config, out_step=out_step, inspect=False,
+            spec={
+                "schema_version": "g_cad_core_v0.2",
+                "document_id": "bad",
+                "part_name": "bad",
+                "units": "mm",
+                "trust_level": "reference_geometry",
+                "selected_dialects": [{"dialect": "nonexistent", "version": "0.2.0"}],
+                "components": [{"id": "c1", "owner_dialect": "nonexistent", "root_node": "n1"}],
+                "nodes": [{
+                    "id": "n1", "component": "c1", "dialect": "nonexistent",
+                    "op": "fake_op", "op_version": "1.0.0", "phase": "base_solid",
+                    "inputs": [], "outputs": [{"name": "body", "type": "solid"}],
+                    "params": {}, "required": True, "degradation_policy": "fail",
+                }],
+                "constraints": {"require_step_file": True, "require_metadata_sidecar": True, "require_closed_solid": True, "expected_body_count": 1, "max_runtime_seconds": 120},
+                "safety": {"non_flight_reference_only": True, "not_airworthy": True, "not_certified": True, "not_for_manufacturing": True, "not_for_installation": True, "no_structural_validation": True, "no_life_prediction": True},
+            },
+            config=temp_config, out_step=out_step, inspect=False,
         )
         assert not result["ok"]
-        assert "Validation failed" in result.get("error", "") or "Graph validation failed" in result.get("error", "")
+        assert "Validation failed" in result.get("error", "")
 
     def test_no_output_outside_workspace(self, temp_config):
         """Output path must be inside workspace."""

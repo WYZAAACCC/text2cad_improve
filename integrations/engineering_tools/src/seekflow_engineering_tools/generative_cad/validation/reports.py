@@ -27,6 +27,7 @@ class ValidationReport(BaseModel):
     ok: bool
     stage: str
     issues: list[ValidationIssue] = Field(default_factory=list)
+    stages_run: list[str] = Field(default_factory=list)
 
     @classmethod
     def ok_report(cls, stage: str) -> "ValidationReport":

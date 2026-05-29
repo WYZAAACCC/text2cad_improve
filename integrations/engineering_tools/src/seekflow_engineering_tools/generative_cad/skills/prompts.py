@@ -58,7 +58,10 @@ Rules:
 21. Do not include file paths.
 22. Do not include code.
 23. Do not include natural language outside JSON.
-24. If the request cannot be expressed with the selected contracts, output a JSON object with unsupported_capabilities instead of inventing ops.
+24. If the request cannot be expressed with the selected contracts, do not produce RawGcadDocument. Return the Level-1 route_decision "unsupported" in the routing step. During Level-2 authoring, never invent fallback fields such as unsupported_capabilities because RawGcadDocument forbids extra fields.
+25. Do not include comments, markdown, prose, or trailing commas.
+26. Do not use deprecated fields: selected_bases, feature_graph, base_id, system_validation_contract, ir_version.
+27. Use selected_dialects, components, nodes, constraints, safety only.
 """
 
 REPAIR_PATCH_SYSTEM_PROMPT_V2 = """

@@ -1,10 +1,10 @@
-"""Skills schemas — DialectSelectionPlan, Level-1 / Level-2 output schemas."""
+"""Skills schemas — DialectSelectionPlan with route invariants."""
 
 from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class DialectSelectionItem(BaseModel):
@@ -34,3 +34,41 @@ class DialectSelectionPlan(BaseModel):
     selected_domain_skills: list[DomainSkillSelectionItem] = Field(default_factory=list)
     unsupported_capabilities: list[str] = Field(default_factory=list)
     safety_notes: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_route_invariants(self):
+        if self.route_decision == "generative_cad_ir":
+            if not self.selected_dialects:
+                raise ValueError("generative_cad_ir requires selected_dialects to be non-empty")
+
+        if self.route_decision == "deterministic_primitive":
+            if self.selected_dialects:
+                raise ValueError("deterministic_primitive must not select generative dialects")
+
+        if self.route_decision == "unsupported":
+            if not self.unsupported_capabilities:
+                raise ValueError("unsupported route requires unsupported_capabilities to be non-empty")
+
+        seen = set()
+        for d in self.selected_dialects:
+            if d.dialect in seen:
+                raise ValueError(f"duplicate selected dialect: {d.dialect}")
+            seen.add(d.dialect)
+
+        return self
+
+
+def validate_selection_plan_against_catalog(
+    plan: DialectSelectionPlan,
+    catalog: dict,
+) -> tuple[bool, list[dict]]:
+    """Validate that all selected dialects exist in the catalog."""
+    allowed = {d["dialect_id"] for d in catalog.get("dialects", [])}
+    issues = []
+    for item in plan.selected_dialects:
+        if item.dialect not in allowed:
+            issues.append({
+                "code": "unknown_selected_dialect",
+                "message": f"selected dialect {item.dialect!r} not present in catalog",
+            })
+    return len(issues) == 0, issues

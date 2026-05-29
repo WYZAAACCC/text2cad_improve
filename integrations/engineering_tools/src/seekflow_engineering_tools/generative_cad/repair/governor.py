@@ -64,8 +64,12 @@ def can_repair_v2(
             return False, "Repair patch hash repeated — looping"
 
     if current_stage_rank > 0 and state.last_stage_rank > 0:
-        if current_stage_rank <= state.last_stage_rank:
-            return False, "Validation stage not progressing"
+        # v0.4: only reject regression, not equal stage
+        if current_stage_rank < state.last_stage_rank:
+            return False, "Validation regressed to an earlier stage"
+        # Same stage + same error signature = no progress
+        if current_stage_rank == state.last_stage_rank and error_sig_hash is not None and error_sig_hash in state.error_signature_hashes:
+            return False, "Same stage and same error signature repeated — repair not helping"
 
     return True, ""
 
