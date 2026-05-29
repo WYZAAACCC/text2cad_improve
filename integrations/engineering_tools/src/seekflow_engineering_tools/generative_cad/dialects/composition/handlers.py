@@ -72,25 +72,20 @@ def handle_linear_pattern_component(node: CanonicalNode, ctx: RuntimeContext) ->
 
 
 def handle_boolean_union(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
-    solids = resolve_all_input_objects(node, ctx)
-    if not solids:
-        raise ValueError("boolean_union requires at least one input solid")
-    result = solids[0]
-    for s in solids[1:]:
-        result = result.union(s)
-    hid = _store_solid(node, ctx, result)
-    return {"body": hid}
+    # Strictly binary in v0.2 — graph must chain for multiple inputs
+    if len(node.inputs) != 2:
+        raise ValueError(f"boolean_union requires exactly 2 inputs, got {len(node.inputs)}")
+    a = resolve_input_object(node, ctx, 0)
+    b = resolve_input_object(node, ctx, 1)
+    return {"body": _store_solid(node, ctx, a.union(b))}
 
 
 def handle_boolean_cut(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
-    solids = resolve_all_input_objects(node, ctx)
-    if len(solids) < 2:
-        raise ValueError("boolean_cut requires at least two input solids (target, tool)")
-    result = solids[0]
-    for s in solids[1:]:
-        result = result.cut(s)
-    hid = _store_solid(node, ctx, result)
-    return {"body": hid}
+    if len(node.inputs) != 2:
+        raise ValueError(f"boolean_cut requires exactly 2 inputs, got {len(node.inputs)}")
+    target = resolve_input_object(node, ctx, 0)
+    tool = resolve_input_object(node, ctx, 1)
+    return {"body": _store_solid(node, ctx, target.cut(tool))}
 
 
 def handle_place_component(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:

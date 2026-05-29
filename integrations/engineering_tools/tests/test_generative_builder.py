@@ -125,7 +125,7 @@ class TestBuilderValidation:
             spec=spec, config=temp_config, out_step=out_step, inspect=False,
         )
         assert not result["ok"]
-        assert "Graph validation failed" in result.get("error", "")
+        assert "Validation failed" in result.get("error", "") or "Graph validation failed" in result.get("error", "")
 
     def test_no_output_outside_workspace(self, temp_config):
         """Output path must be inside workspace."""

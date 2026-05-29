@@ -38,6 +38,11 @@ def build_generative_cad_model(
             return EngineeringActionResult(ok=False, software="cadquery", action="build_generative_cad",
                 error=f"RawGcadDocument validation failed: {exc}").model_dump()
 
+    # Legacy v0.1 GenerativeCADSpec → RawGcadDocument adapter
+    if hasattr(spec, 'feature_graph') and not hasattr(spec, 'components'):
+        from seekflow_engineering_tools.generative_cad.compatibility.legacy_spec_adapter import adapt_legacy_spec
+        spec = adapt_legacy_spec(spec)
+
     canonical, report = validate_and_canonicalize(spec)
     if canonical is None or not report.ok:
         return EngineeringActionResult(ok=False, software="cadquery", action="build_generative_cad",
@@ -112,22 +117,12 @@ def build_generative_cad_model(
     }
     warnings = list(build_warnings)
 
-    # Reconstruct artifact dict for downstream consumption
-    metrics["artifact"] = {
-        "artifact_type": "canonical_step_artifact",
-        "source_route": "llm_skill_base",
-        "part_name": canonical.part_name,
-        "step_path": str(step_path),
-        "metadata_path": str(meta_path),
-        "graph_path": str(graph_path),
-        "runner_script_path": str(script_path),
-        "units": canonical.units,
-        "trust_level": canonical.trust_level,
-        "native_rebuild_allowed": False,
-        "step_import_allowed": True,
-        "inspection": {},
-        "validation": {"core_validation": report.model_dump(), "geometry_preflight": {}, "inspection_validation": {}},
-    }
+    from seekflow_engineering_tools.generative_cad.pipeline.artifact import build_canonical_step_artifact
+    metrics["artifact"] = build_canonical_step_artifact(
+        canonical=canonical, step_path=step_path, metadata_path=meta_path,
+        graph_path=str(graph_path), runner_script_path=str(script_path),
+        validation={"core_validation": report.model_dump(), "geometry_preflight": {}, "inspection_validation": {}},
+    )
 
     if inspect:
         insp_result = inspect_step_with_cadquery(step_path)
@@ -148,8 +143,9 @@ def build_generative_cad_model(
                             contract_issues.append({"code": "bbox_mismatch", "message": f"Bbox[{i}]: expected {exp}, got {act}.", "severity": "error"})
             insp_val = {"ok": len(contract_issues) == 0, "issues": contract_issues}
             metrics["inspection_validation"] = insp_val
-            metrics["artifact"]["inspection"] = insp_result
-            metrics["artifact"]["validation"]["inspection_validation"] = insp_val
+            if "artifact" in metrics:
+                metrics["artifact"]["inspection"] = insp_result
+                metrics["artifact"]["validation"]["inspection_validation"] = insp_val
             # Write validation back to metadata
             if meta_path.exists():
                 metadata["validation"] = {"core_validation": report.model_dump(), "geometry_preflight": {}, "inspection_validation": insp_val}

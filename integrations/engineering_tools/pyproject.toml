@@ -74,4 +74,5 @@ testpaths = ["tests"]
 markers = [
     "requires_cq_gears: tests that require cq_gears to be installed",
     "not_requires_cq_gears: tests that work without cq_gears (fallback)",
+    "requires_cadquery: tests that require cadquery to be installed",
 ]
