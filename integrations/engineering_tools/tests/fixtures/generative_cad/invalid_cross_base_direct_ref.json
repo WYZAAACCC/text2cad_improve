@@ -1,0 +1,110 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "cross_base_001",
+  "part_name": "cross_base_part",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0"
+    },
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "disk",
+      "owner_dialect": "axisymmetric",
+      "root_node": "n_disk"
+    },
+    {
+      "id": "lug",
+      "owner_dialect": "sketch_extrude",
+      "root_node": "n_lug"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_disk",
+      "component": "disk",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 100,
+            "z_front_mm": 0,
+            "z_rear_mm": 10
+          },
+          {
+            "r_mm": 50,
+            "z_front_mm": 10,
+            "z_rear_mm": 20
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_lug",
+      "component": "lug",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [
+        {
+          "node": "n_disk",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 20,
+        "height_mm": 20,
+        "depth_mm": 10
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  }
+}

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>seekflow-engineering 知识图谱</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,sans-serif;background:#0d1117;color:#c9d1d9;overflow:hidden}
+#header{background:#161b22;padding:10px 20px;border-bottom:1px solid #30363d;display:flex;justify-content:space-between;align-items:center;height:48px}
+#header h1{font-size:18px;color:#58a6ff}
+#stats{display:flex;gap:16px;font-size:12px;color:#8b949e}
+#stats span{color:#c9d1d9;font-weight:600}
+#main{display:flex;height:calc(100vh - 48px)}
+#sidebar{width:220px;background:#161b22;border-right:1px solid #30363d;padding:12px;overflow-y:auto;font-size:12px}
+#sidebar h3{color:#8b949e;font-size:10px;text-transform:uppercase;margin:12px 0 6px;letter-spacing:.5px}
+.layer-item{padding:5px 8px;margin:1px 0;border-radius:4px;cursor:pointer;transition:background .1s}
+.layer-item:hover{background:#21262d}
+.layer-item.active{background:#1f6feb33;border:1px solid #1f6feb55}
+.layer-count{float:right;color:#8b949e}
+#canvas-wrap{flex:1;position:relative}
+canvas{display:block}
+#tooltip{position:absolute;background:#161b22;border:1px solid #30363d;border-radius:6px;padding:10px 14px;font-size:12px;pointer-events:none;display:none;max-width:300px;z-index:10}
+#tooltip .t-name{color:#58a6ff;font-weight:600}
+#tooltip .t-path{color:#8b949e;font-size:10px;margin-top:2px}
+#tooltip .t-info{color:#484f58;font-size:10px;margin-top:4px}
+#search{width:calc(100% - 24px);margin:8px 12px;padding:6px 10px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;font-size:12px}
+#search:focus{outline:none;border-color:#58a6ff}
+</style>
+</head>
+<body>
+<div id="header">
+  <h1>seekflow-engineering</h1>
+  <div id="stats">
+    节点 <span id="sn">-</span> &nbsp;
+    边 <span id="se">-</span> &nbsp;
+    层 <span id="sl">-</span> &nbsp;
+    <span style="font-size:10px">拖拽节点 | 滚轮缩放 | 点击展开</span>
+  </div>
+</div>
+<div id="main">
+  <div id="sidebar">
+    <input id="search" placeholder="搜索..." />
+    <h3>架构层</h3>
+    <div id="layer-list"></div>
+    <h3>文件类型</h3>
+    <div id="type-list"></div>
+  </div>
+  <div id="canvas-wrap">
+    <canvas id="c"></canvas>
+    <div id="tooltip"></div>
+  </div>
+</div>
+<script>
+let graph=null,currentLayer=null,nodes=[],edges=[],simRunning=true;
+const COLORS={'python':'#3572a5','markdown':'#58a6ff','config':'#d2a8ff','yaml':'#d2a8ff','json':'#d2a8ff','toml':'#d2a8ff','data':'#3fb950','text':'#8b949e','other':'#484f58'};
+const LAYER_COLORS=['#58a6ff','#3fb950','#d2a8ff','#f0883e','#f85149','#a371f7','#79c0ff','#7ee787'];
+
+let selectedId=null;
+async function init(){
+  graph=await (await fetch('knowledge-graph.json')).json();
+  document.getElementById('sn').textContent=graph.stats.totalNodes;
+  document.getElementById('se').textContent=graph.stats.totalEdges;
+  document.getElementById('sl').textContent=graph.layers.length;
+  buildIndex();
+  renderSidebar();
+  buildGraph();
+  setupCanvas();
+  requestAnimationFrame(render);
+}
+let nodeMap={},edgeIndex={},typeSet=new Set();
+function buildIndex(){
+  for(const n of graph.nodes){nodeMap[n.id]=n;typeSet.add(n.type)}
+  for(const e of graph.edges){
+    const k=e.source;if(!edgeIndex[k])edgeIndex[k]=[];edgeIndex[k].push(e.target);
+  }
+}
+function renderSidebar(){
+  const ll=document.getElementById('layer-list');
+  ll.innerHTML='<div class="layer-item'+(currentLayer?'':' active')+'" onclick="selectLayer(null)">📁 全部 <span class="layer-count">'+graph.nodes.length+'</span></div>';
+  for(const l of graph.layers){
+    ll.innerHTML+='<div class="layer-item'+(currentLayer===l.id?' active':'')+'" onclick="selectLayer(\''+l.id+'\')">'+
+      l.name+'<span class="layer-count">'+l.nodeIds.length+'</span></div>';
+  }
+  const tl=document.getElementById('type-list');
+  tl.innerHTML='';
+  for(const t of [...typeSet].sort()){
+    tl.innerHTML+='<div class="layer-item" style="border-left:3px solid '+(COLORS[t]||'#484f58')+'">'+
+      t+' <span class="layer-count">'+graph.stats.fileTypes[t]+'</span></div>';
+  }
+}
+function selectLayer(id){currentLayer=id;renderSidebar();buildGraph();}
+
+function buildGraph(){
+  const layerNodeIds=currentLayer?new Set(graph.layers.find(l=>l.id===currentLayer)?.nodeIds||[]):null;
+  nodes=graph.nodes.filter(n=>layerNodeIds?layerNodeIds.has(n.id):true);
+  let visibleIds=new Set(nodes.map(n=>n.id));
+  edges=graph.edges.filter(e=>visibleIds.has(e.source)&&visibleIds.has(e.target));
+  if(nodes.length>800){nodes=nodes.filter(n=>graph.edges.some(e=>e.source===n.id||e.target===n.id)||n.category==='code');}
+  if(nodes.length>600){nodes=nodes.slice(0,600);let s=new Set(nodes.map(n=>n.id));edges=edges.filter(e=>s.has(e.source)&&s.has(e.target));}
+  for(const n of nodes){if(!n._x){n._x=(Math.random()-.5)*800;n._y=(Math.random()-.5)*800;n._vx=0;n._vy=0;}}
+}
+
+let W,H,cw,ch,offsetX=0,offsetY=0,scale=0.35,tx=0,ty=0,canvas,ctx,tooltip;
+function setupCanvas(){
+  canvas=document.getElementById('c');ctx=canvas.getContext('2d');
+  tooltip=document.getElementById('tooltip');
+  resize();window.addEventListener('resize',resize);
+  let dragging=null,lastX,lastY;
+  canvas.addEventListener('mousedown',e=>{
+    const mx=e.offsetX,my=e.offsetY;
+    for(const n of nodes){
+      const sx=(n._x+offsetX)*scale+tx,sy=(n._y+offsetY)*scale+ty,r=radius(n);
+      if((mx-sx)**2+(my-sy)**2<r*r){dragging=n;lastX=mx;lastY=my;simRunning=false;return}
+    }
+    dragging={_x:0,_y:0};lastX=mx;lastY=my;
+  });
+  canvas.addEventListener('mousemove',e=>{
+    const mx=e.offsetX,my=e.offsetY;
+    if(dragging){
+      if(dragging._x!==undefined){
+        dragging._x+=(mx-lastX)/scale;dragging._y+=(my-lastY)/scale;
+      }else{
+        tx+=mx-lastX;ty+=my-lastY;
+      }
+      lastX=mx;lastY=my;return;
+    }
+    let found=null;
+    for(const n of nodes){
+      const sx=(n._x+offsetX)*scale+tx,sy=(n._y+offsetY)*scale+ty,r=radius(n);
+      if((mx-sx)**2+(my-sy)**2<r*r){found=n;break}
+    }
+    tooltip.style.display=found?'block':'none';
+    if(found){
+      const edgesOut=edgeIndex[found.id]||[];
+      tooltip.innerHTML='<div class="t-name">'+found.name+'</div><div class="t-path">'+found.path+'</div>'+
+        '<div class="t-info">'+found.type+' | '+edgesOut.length+' imports</div>';
+      tooltip.style.left=(mx+16)+'px';tooltip.style.top=(my-40)+'px';
+    }
+  });
+  canvas.addEventListener('mouseup',()=>{dragging=null;simRunning=true});
+  canvas.addEventListener('wheel',e=>{e.preventDefault();const z=e.deltaY>0?0.9:1.1;scale*=z;if(scale<0.05)scale=0.05;if(scale>3)scale=3});
+  canvas.addEventListener('click',e=>{
+    const mx=e.offsetX,my=e.offsetY;
+    for(const n of nodes){
+      const sx=(n._x+offsetX)*scale+tx,sy=(n._y+offsetY)*scale+ty,r=radius(n);
+      if((mx-sx)**2+(my-sy)**2<r*r){selectedId=selectedId===n.id?null:n.id;return}
+    }
+    selectedId=null;
+  });
+}
+function radius(n){return n.category==='code'?6:4}
+function resize(){const w=document.getElementById('canvas-wrap');canvas.width=w.clientWidth*2;canvas.height=w.clientHeight*2;canvas.style.width=w.clientWidth+'px';canvas.style.height=w.clientHeight+'px';}
+function tick(){
+  if(!simRunning)return;
+  for(const n of nodes){n._vx*=0.6;n._vy*=0.6}
+  for(const e of edges){
+    const s=nodeMap[e.source],t=nodeMap[e.target];
+    if(!s||!t)continue;
+    const dx=t._x-s._x,dy=t._y-s._y,dist=Math.sqrt(dx*dx+dy*dy)||1;
+    const force=(dist-60)/dist*0.005;
+    s._vx+=dx*force;s._vy+=dy*force;
+    t._vx-=dx*force;t._vy-=dy*force;
+  }
+  for(let i=0;i<nodes.length;i++){
+    for(let j=i+1;j<nodes.length;j++){
+      const a=nodes[i],b=nodes[j];
+      const dx=b._x-a._x,dy=b._y-a._y,dist=Math.sqrt(dx*dx+dy*dy)||1;
+      if(dist<20){const f=(20-dist)/dist*0.1;a._vx-=dx*f;a._vy-=dy*f;b._vx+=dx*f;b._vy+=dy*f;}
+    }
+  }
+  for(const n of nodes){n._x+=n._vx;n._y+=n._vy}
+}
+function render(){
+  tick();
+  const w=canvas.width,h=canvas.height;ctx.clearRect(0,0,w,h);
+  ctx.save();ctx.translate(tx,ty);ctx.scale(scale,scale);
+  // edges
+  for(const e of edges){
+    const s=nodeMap[e.source],t=nodeMap[e.target];
+    if(!s||!t)continue;
+    const highlighted=selectedId&&(e.source===selectedId||e.target===selectedId);
+    ctx.strokeStyle=highlighted?'rgba(88,166,255,0.6)':'rgba(48,54,61,0.4)';
+    ctx.lineWidth=highlighted?1.5:0.5;
+    ctx.beginPath();ctx.moveTo(s._x+offsetX,s._y+offsetY);ctx.lineTo(t._x+offsetX,t._y+offsetY);ctx.stroke();
+  }
+  // nodes
+  for(const n of nodes){
+    const x=n._x+offsetX,y=n._y+offsetY,r=radius(n);
+    const highlighted=selectedId===n.id||(selectedId&&edgeIndex[selectedId]?.includes(n.id));
+    ctx.fillStyle=highlighted?'#58a6ff':(COLORS[n.type]||'#484f58');
+    ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+    if(n.category==='code'||highlighted){
+      ctx.strokeStyle='rgba(13,17,23,0.8)';ctx.lineWidth=1;ctx.stroke();
+    }
+  }
+  // selected edges highlight
+  if(selectedId){
+    const sel=nodeMap[selectedId];
+    if(sel){
+      ctx.strokeStyle='rgba(88,166,255,0.8)';ctx.lineWidth=2;
+      for(const tid of(edgeIndex[selectedId]||[])){
+        const t=nodeMap[tid];if(!t)continue;
+        ctx.beginPath();ctx.moveTo(sel._x+offsetX,sel._y+offsetY);ctx.lineTo(t._x+offsetX,t._y+offsetY);ctx.stroke();
+        ctx.fillStyle='#58a6ff';ctx.beginPath();ctx.arc(t._x+offsetX,t._y+offsetY,radius(t)+2,0,Math.PI*2);ctx.fill();
+      }
+      ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(sel._x+offsetX,sel._y+offsetY,radius(sel)+3,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#58a6ff';ctx.beginPath();ctx.arc(sel._x+offsetX,sel._y+offsetY,radius(sel)+1,0,Math.PI*2);ctx.fill();
+    }
+  }
+  ctx.restore();
+  requestAnimationFrame(render);
+}
+init();
+</script>
+</body>
+</html>

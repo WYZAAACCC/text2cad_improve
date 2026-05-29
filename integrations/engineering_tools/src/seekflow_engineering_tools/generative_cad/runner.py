@@ -33,6 +33,7 @@ class GenerativeRunResult:
 
     ok: bool
     step_path: Path | None = None
+    metadata_path: Path | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
     degraded_features: list[dict[str, Any]] = field(default_factory=list)
