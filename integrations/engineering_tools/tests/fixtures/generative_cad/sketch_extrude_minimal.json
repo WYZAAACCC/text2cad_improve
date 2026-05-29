@@ -5,10 +5,18 @@
   "units": "mm",
   "trust_level": "reference_geometry",
   "selected_dialects": [
-    {"dialect": "sketch_extrude", "version": "0.2.0"}
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0"
+    }
   ],
   "components": [
-    {"id": "plate", "owner_dialect": "sketch_extrude", "kind_hint": "rectangular_plate", "root_node": "n_base"}
+    {
+      "id": "plate",
+      "owner_dialect": "sketch_extrude",
+      "kind_hint": "rectangular_plate",
+      "root_node": "n_base"
+    }
   ],
   "nodes": [
     {
@@ -19,8 +27,20 @@
       "op_version": "1.0.0",
       "phase": "base_solid",
       "inputs": [],
-      "outputs": [{"name": "body", "type": "solid"}],
-      "params": {"width_mm": 120, "height_mm": 80, "depth_mm": 12, "plane": "XY", "centered": true, "direction": "+"},
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 120,
+        "height_mm": 80,
+        "depth_mm": 12,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+"
+      },
       "required": true,
       "degradation_policy": "fail"
     }

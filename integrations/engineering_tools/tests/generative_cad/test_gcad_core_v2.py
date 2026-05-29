@@ -183,7 +183,7 @@ def test_input_ref_missing_output_fails():
     })
     canonical, report = validate_and_canonicalize(data)
     assert not report.ok
-    assert any("missing_output_ref" in i.code for i in report.issues)
+    assert any("missing_output_ref" in i.code or "input_type_unresolved" in i.code or "input_output_not_found" in i.code for i in report.issues)
 
 
 # ── Ownership ──

@@ -4,11 +4,53 @@
   "part_name": "bad_disk",
   "units": "mm",
   "trust_level": "reference_geometry",
-  "selected_dialects": [{"dialect": "axisymmetric", "version": "0.2.0"}],
-  "components": [{"id": "disk", "owner_dialect": "axisymmetric", "root_node": "n_bad"}],
-  "nodes": [
-    {"id": "n_bad", "component": "disk", "dialect": "axisymmetric", "op": "nonexistent_op", "op_version": "1.0.0", "phase": "base_solid", "inputs": [], "outputs": [{"name": "body", "type": "solid"}], "params": {}, "required": true, "degradation_policy": "fail"}
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0"
+    }
   ],
-  "constraints": {"require_step_file": true, "require_metadata_sidecar": true, "require_closed_solid": true, "expected_body_count": 1, "max_runtime_seconds": 120},
-  "safety": {"non_flight_reference_only": true, "not_airworthy": true, "not_certified": true, "not_for_manufacturing": true, "not_for_installation": true, "no_structural_validation": true, "no_life_prediction": true}
+  "components": [
+    {
+      "id": "disk",
+      "owner_dialect": "axisymmetric",
+      "root_node": "n_bad"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_bad",
+      "component": "disk",
+      "dialect": "axisymmetric",
+      "op": "nonexistent_op",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {},
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  }
 }

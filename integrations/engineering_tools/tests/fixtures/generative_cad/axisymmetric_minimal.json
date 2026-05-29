@@ -5,10 +5,18 @@
   "units": "mm",
   "trust_level": "reference_geometry",
   "selected_dialects": [
-    {"dialect": "axisymmetric", "version": "0.2.0"}
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0"
+    }
   ],
   "components": [
-    {"id": "disk", "owner_dialect": "axisymmetric", "kind_hint": "rotational_disk", "root_node": "n_body"}
+    {
+      "id": "disk",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": "rotational_disk",
+      "root_node": "n_body"
+    }
   ],
   "nodes": [
     {
@@ -19,13 +27,34 @@
       "op_version": "1.0.0",
       "phase": "base_solid",
       "inputs": [],
-      "outputs": [{"name": "body", "type": "solid"}, {"name": "outer_frame", "type": "frame"}],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
       "params": {
         "axis": "Z",
         "profile_stations": [
-          {"r_mm": 100, "z_front_mm": 0, "z_rear_mm": 5},
-          {"r_mm": 100, "z_front_mm": 5, "z_rear_mm": 10},
-          {"r_mm": 50, "z_front_mm": 10, "z_rear_mm": 15}
+          {
+            "r_mm": 100,
+            "z_front_mm": 0,
+            "z_rear_mm": 5
+          },
+          {
+            "r_mm": 100,
+            "z_front_mm": 5,
+            "z_rear_mm": 10
+          },
+          {
+            "r_mm": 50,
+            "z_front_mm": 10,
+            "z_rear_mm": 15
+          }
         ]
       },
       "required": true,
