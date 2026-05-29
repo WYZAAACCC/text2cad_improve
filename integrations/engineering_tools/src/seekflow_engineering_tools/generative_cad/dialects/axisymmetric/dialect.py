@@ -1,7 +1,8 @@
-"""AxisymmetricDialect — v0.2.1: centralized degradation policy, shared resolver."""
+"""AxisymmetricDialect — v0.6: finite checks, envelope tracking, strengthened preflight."""
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from seekflow_engineering_tools.generative_cad.dialects.axisymmetric.contract import AXISYMMETRIC_CONTRACT
@@ -87,10 +88,15 @@ class AxisymmetricDialect:
                         severity="error", node_id=n.id, component_id=component.id))
         return ValidationReport(ok=not any(i.severity == "error" for i in issues),
                                stage=stage, issues=issues)
+    @staticmethod
+    def _is_finite_number(x) -> bool:
+        return isinstance(x, (int, float)) and math.isfinite(x)
+
     def preflight_component(self, component, nodes):
         issues = []
         stage = "geometry_preflight"
         MARGIN = 1.0  # mm
+        is_finite = AxisymmetricDialect._is_finite_number
 
         # ── Envelope tracking ──
         profile_max_radius: float | None = None
@@ -109,16 +115,16 @@ class AxisymmetricDialect:
                 min_r = float("inf")
                 for s in ps:
                     r = s.get("r_mm", 0)
-                    if r <= 0:
+                    if not is_finite(r) or r <= 0:
                         issues.append(ValidationIssue(stage=stage, code="a001_radius_non_positive",
-                            message=f"revolve_profile station radius must be > 0, got {r}",
+                            message=f"revolve_profile station radius must be > 0 and finite, got {r}",
                             severity="error", node_id=n.id))
                     zf = s.get("z_front_mm", 0); zr = s.get("z_rear_mm", 0)
-                    if zr <= zf:
+                    if not is_finite(zf) or not is_finite(zr) or zr <= zf:
                         issues.append(ValidationIssue(stage=stage, code="a001_z_order",
-                            message=f"z_rear_mm ({zr}) must be > z_front_mm ({zf})",
+                            message=f"z_rear_mm ({zr}) must be > z_front_mm ({zf}) and finite",
                             severity="error", node_id=n.id))
-                    if r > 0:
+                    if is_finite(r) and r > 0:
                         max_r = max(max_r, r)
                         min_r = min(min_r, r)
                 if max_r > 0 and min_r < float("inf") and max_r > min_r:
@@ -134,35 +140,35 @@ class AxisymmetricDialect:
             # A002: center bore
             if n.op == "cut_center_bore":
                 dia = n.typed_params.get("diameter_mm") or n.params.get("diameter_mm", 0)
-                if dia <= 0:
+                if not is_finite(dia) or dia <= 0:
                     issues.append(ValidationIssue(stage=stage, code="a002_bore_dia",
-                        message=f"center bore diameter must be > 0, got {dia}",
+                        message=f"center bore diameter must be > 0 and finite, got {dia}",
                         severity="error", node_id=n.id))
-                if profile_max_radius is not None and dia / 2 >= profile_max_radius - MARGIN:
+                elif profile_max_radius is not None and dia / 2 >= profile_max_radius - MARGIN:
                     issues.append(ValidationIssue(stage=stage, code="a002_bore_too_large",
                         message=f"center bore radius ({dia/2}) >= profile max radius ({profile_max_radius}) - margin ({MARGIN})",
                         severity="error", node_id=n.id))
-                center_bore_radius = dia / 2 if dia > 0 else None
+                center_bore_radius = dia / 2 if is_finite(dia) and dia > 0 else None
 
             # A003: circular hole pattern
             if n.op == "cut_circular_hole_pattern":
                 count = n.typed_params.get("count") or n.params.get("count", 0)
                 hole_dia = n.typed_params.get("hole_dia_mm") or n.params.get("hole_dia_mm", 0)
                 pcd = n.typed_params.get("pcd_mm") or n.params.get("pcd_mm", 0)
-                if count < 3:
+                if not is_finite(count) or count < 3:
                     issues.append(ValidationIssue(stage=stage, code="a003_pattern_count",
-                        message=f"circular hole pattern count must be >= 3, got {count}",
+                        message=f"circular hole pattern count must be >= 3 and finite, got {count}",
                         severity="error", node_id=n.id))
-                if hole_dia <= 0:
+                if not is_finite(hole_dia) or hole_dia <= 0:
                     issues.append(ValidationIssue(stage=stage, code="a003_hole_dia",
-                        message=f"hole diameter must be > 0, got {hole_dia}",
+                        message=f"hole diameter must be > 0 and finite, got {hole_dia}",
                         severity="error", node_id=n.id))
-                if pcd <= 0:
+                if not is_finite(pcd) or pcd <= 0:
                     issues.append(ValidationIssue(stage=stage, code="a003_pcd",
-                        message=f"PCD must be > 0, got {pcd}",
+                        message=f"PCD must be > 0 and finite, got {pcd}",
                         severity="error", node_id=n.id))
                 # Envelope check: pcd/2 + hole_dia/2 < profile_max_radius - margin
-                if profile_max_radius is not None and pcd > 0 and hole_dia > 0:
+                if profile_max_radius is not None and is_finite(pcd) and pcd > 0 and is_finite(hole_dia) and hole_dia > 0:
                     pcd_radius = pcd / 2
                     hole_radius = hole_dia / 2
                     if pcd_radius + hole_radius >= profile_max_radius - MARGIN:
@@ -178,9 +184,9 @@ class AxisymmetricDialect:
             if n.op == "cut_annular_groove":
                 inner = n.typed_params.get("inner_dia_mm") or n.params.get("inner_dia_mm", 0)
                 outer = n.typed_params.get("outer_dia_mm") or n.params.get("outer_dia_mm", 0)
-                if inner >= outer:
+                if not is_finite(inner) or not is_finite(outer) or inner >= outer:
                     issues.append(ValidationIssue(stage=stage, code="a004_groove_dia",
-                        message=f"inner_dia_mm ({inner}) must be < outer_dia_mm ({outer})",
+                        message=f"inner_dia_mm ({inner}) must be < outer_dia_mm ({outer}) and both finite",
                         severity="error", node_id=n.id))
                 if profile_max_radius is not None and outer / 2 >= profile_max_radius - MARGIN:
                     issues.append(ValidationIssue(stage=stage, code="a004_groove_outside_profile",

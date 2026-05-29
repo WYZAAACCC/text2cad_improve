@@ -11,9 +11,14 @@ from seekflow_engineering_tools.common.models import EngineeringActionResult
 from seekflow_engineering_tools.common.paths import ensure_extension, ensure_inside_workspace
 from seekflow_engineering_tools.generative_cad.builder import build_generative_cad_model
 from seekflow_engineering_tools.generative_cad.dialects.registry import (
+
     export_dialect_catalog,
     get_dialect,
     list_dialects,
+)
+from seekflow_engineering_tools.generative_cad.native_importers import (
+    import_step_to_solidworks,
+    import_step_to_nx,
 )
 from seekflow_engineering_tools.generative_cad.validation.pipeline import validate_and_canonicalize
 
@@ -55,33 +60,7 @@ def _get_dialect_contract_result(dialect_id: str) -> dict:
         ).model_dump()
 
 
-def _import_step_to_solidworks(config, input_step: str, out_sldprt: str) -> dict:
-    """Internal helper: import STEP into SolidWorks. Returns result dict."""
-    from seekflow_engineering_tools.solidworks.com_client import SolidWorksClient
-
-    client = SolidWorksClient(
-        visible=config.solidworks_visible,
-        part_template=config.solidworks_part_template,
-    ).connect()
-    ok = client.import_step_as_part(str(input_step), str(out_sldprt))
-    if not ok:
-        raise RuntimeError(f"SolidWorks STEP import failed for {out_sldprt}")
-    if not Path(out_sldprt).exists() or Path(out_sldprt).stat().st_size < 1:
-        raise RuntimeError(f"SolidWorks import reported success but SLDPRT not found: {out_sldprt}")
-    return {"ok": True, "files_created": [out_sldprt]}
-
-
-def _import_step_to_nx(config, job_root: Path, input_step: str, out_prt: str) -> dict:
-    """Internal helper: import STEP into NX via job queue. Returns result dict."""
-    from seekflow_engineering_tools.nx.nx_job_queue import NXJobQueue
-
-    q = NXJobQueue(job_root)
-    job_id = q.submit("import_step_as_prt", {
-        "input_step": str(input_step),
-        "out_prt": str(out_prt),
-    })
-    result = q.wait(job_id, timeout_s=config.nx_default_timeout_s)
-    return result
+# Native import helpers moved to generative_cad/native_importers.py for testability
 
 
 def build_generative_cad_tools(config):
@@ -239,7 +218,7 @@ def build_generative_cad_tools(config):
                     metrics={"import_gate": gate["gate"]},
                 ).model_dump()
 
-            sw_result = _import_step_to_solidworks(config, str(step), str(out))
+            sw_result = import_step_to_solidworks(config, step, out)
 
             return EngineeringActionResult(
                 ok=sw_result.get("ok", True),
@@ -325,7 +304,7 @@ def build_generative_cad_tools(config):
                     metrics={"import_gate": gate["gate"]},
                 ).model_dump()
 
-            nx_result = _import_step_to_nx(config, config.workspace_root, str(step), str(out))
+            nx_result = import_step_to_nx(config, config.workspace_root, step, out)
 
             return EngineeringActionResult(
                 ok=nx_result.get("ok", True),

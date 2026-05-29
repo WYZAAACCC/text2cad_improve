@@ -1,9 +1,11 @@
 """Full validation pipeline — RawGcadDocument → CanonicalGcadDocument.
 
-v0.4: no lazy imports, canonical validators are mandatory, tracks stages_run.
+v0.6: single-pass validators, no double-run.
 """
 
 from __future__ import annotations
+
+from typing import Callable
 
 from seekflow_engineering_tools.generative_cad.ir.canonical import CanonicalGcadDocument
 from seekflow_engineering_tools.generative_cad.ir.raw import RawGcadDocument
@@ -39,36 +41,46 @@ CANONICAL_STAGES = [
 ]
 
 
-def _run_stages(raw, stages, all_issues, stages_run):
-    """Run a list of (stage_name, validator) pairs. Returns (ok, failed_stage)."""
+def _run_stage_collect(
+    subject,
+    stages: list[tuple[str, Callable]],
+    all_issues: list,
+    stages_run: list[str],
+) -> tuple[bool, str | None, dict[str, ValidationReport]]:
+    """Single-pass: run each validator once, collect reports.
+
+    Returns (ok, failed_stage, reports: dict[stage_name, ValidationReport]).
+    """
+    reports: dict[str, ValidationReport] = {}
+
     for stage_name, validator in stages:
         try:
-            report = validator(raw)
+            report = validator(subject)
         except Exception as exc:
             report = ValidationReport.fail(
                 stage=stage_name,
                 code=f"{stage_name}_validator_exception",
                 message=str(exc),
+                stages_run=list(stages_run) + [stage_name],
             )
+
+        if not report.stages_run:
+            report.stages_run = list(stages_run) + [stage_name]
+
+        reports[stage_name] = report
         all_issues.extend(report.issues)
         stages_run.append(stage_name)
+
         if not report.ok:
-            return False, stage_name
-    return True, None
+            return False, stage_name, reports
 
-
-def _run_canonical_stages(canonical, stages, all_issues, stages_run):
-    """Same as _run_stages but for canonical-level validators."""
-    return _run_stages(canonical, stages, all_issues, stages_run)
+    return True, None, reports
 
 
 def validate_and_canonicalize_with_bundle(
     raw: dict | RawGcadDocument,
 ) -> tuple[CanonicalGcadDocument | None, ValidationReport, "ValidationBundle"]:
-    """Full pipeline returning structured ValidationBundle.
-
-    Returns (canonical, combined_report, bundle).
-    """
+    """Full pipeline returning structured ValidationBundle. Single-pass validators."""
     from seekflow_engineering_tools.generative_cad.validation.bundle import ValidationBundle
 
     stages_run: list[str] = []
@@ -88,18 +100,10 @@ def validate_and_canonicalize_with_bundle(
             bundle = ValidationBundle(ok=False, raw_stage_reports={}, canonicalize_report=None, canonical_stage_reports={})
             return None, report, bundle
 
-    # ── Raw stages ──
-    raw_stage_reports: dict[str, ValidationReport] = {}
-    ok, failed_stage = _run_stages(raw, RAW_STAGES, all_issues, stages_run)
-    # Reconstruct reports for bundle
-    for stage_name, validator in RAW_STAGES:
-        try:
-            rpt = validator(raw)
-        except Exception as exc:
-            rpt = ValidationReport.fail(
-                stage=stage_name, code=f"{stage_name}_validator_exception", message=str(exc),
-            )
-        raw_stage_reports[stage_name] = rpt
+    # ── Raw stages (single pass) ──
+    ok, failed_stage, raw_stage_reports = _run_stage_collect(
+        raw, RAW_STAGES, all_issues, stages_run,
+    )
 
     if not ok:
         report = ValidationReport(ok=False, stage=failed_stage, issues=all_issues, stages_run=list(stages_run))
@@ -115,17 +119,10 @@ def validate_and_canonicalize_with_bundle(
         bundle = ValidationBundle(ok=False, raw_stage_reports=raw_stage_reports, canonicalize_report=c_report, canonical_stage_reports={})
         return None, report, bundle
 
-    # ── Canonical stages ──
-    canonical_stage_reports: dict[str, ValidationReport] = {}
-    ok, failed_stage = _run_canonical_stages(canonical, CANONICAL_STAGES, all_issues, stages_run)
-    for stage_name, validator in CANONICAL_STAGES:
-        try:
-            rpt = validator(canonical)
-        except Exception as exc:
-            rpt = ValidationReport.fail(
-                stage=stage_name, code=f"{stage_name}_validator_exception", message=str(exc),
-            )
-        canonical_stage_reports[stage_name] = rpt
+    # ── Canonical stages (single pass) ──
+    ok, failed_stage, canonical_stage_reports = _run_stage_collect(
+        canonical, CANONICAL_STAGES, all_issues, stages_run,
+    )
 
     if not ok:
         report = ValidationReport(ok=False, stage=failed_stage, issues=all_issues, stages_run=list(stages_run))

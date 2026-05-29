@@ -283,8 +283,14 @@ class TestArtifactCompleteness:
     def test_artifact_has_all_required_fields(self):
         from seekflow_engineering_tools.generative_cad.pipeline.artifact import build_canonical_step_artifact
         from pathlib import Path
+        class FakeDialect:
+            def model_dump(self): return {"dialect": "test", "version": "0.2.0"}
         class FakeCanonical:
             part_name = "test"; units = "mm"; trust_level = "reference_geometry"
+            schema_version = "g_cad_core_v0.2"; canonical_version = "canonical_gcad_v0.2"
+            raw_graph_hash = "sha256:abc"; canonical_graph_hash = "sha256:def"
+            document_id = "test_doc"
+            selected_dialects = [FakeDialect()]
         artifact = build_canonical_step_artifact(
             canonical=FakeCanonical(), step_path=Path("/tmp/t.step"), metadata_path=Path("/tmp/t.json"),
             graph_path="/tmp/g.json", runner_script_path="/tmp/r.py",
@@ -301,13 +307,19 @@ class TestArtifactCompleteness:
     def test_artifact_none_for_unavailable_paths(self):
         from seekflow_engineering_tools.generative_cad.pipeline.artifact import build_canonical_step_artifact
         from pathlib import Path
+        class FakeDialect:
+            def model_dump(self): return {"dialect": "test", "version": "0.2.0"}
         class FakeCanonical:
             part_name = "test"; units = "mm"; trust_level = "reference_geometry"
+            schema_version = "g_cad_core_v0.2"; canonical_version = "canonical_gcad_v0.2"
+            raw_graph_hash = "sha256:abc"; canonical_graph_hash = "sha256:def"
+            document_id = "test_doc"
+            selected_dialects = [FakeDialect()]
         artifact = build_canonical_step_artifact(
             canonical=FakeCanonical(), step_path=Path("/tmp/t.step"), metadata_path=Path("/tmp/t.json"),
             graph_path=None, runner_script_path=None,
         )
-        assert artifact["graph_path"] is None
+        assert artifact["graph_path"] == ""
         assert artifact["runner_script_path"] is None
 
 

@@ -104,7 +104,10 @@ def validate_repair_patch_v2(patch: RepairPatchV2) -> tuple[bool, list[dict]]:
 
 
 def apply_repair_patch_v2(raw: dict, patch: RepairPatchV2) -> dict:
-    """Apply a validated RepairPatchV2 to a raw document dict."""
+    """Apply a validated RepairPatchV2 to a raw document dict.
+
+    Raises ValueError if target node/component not found.
+    """
     ok, issues = validate_repair_patch_v2(patch)
     if not ok:
         raise ValueError("invalid repair patch: " + "; ".join(i["message"] for i in issues))
@@ -119,64 +122,90 @@ def apply_repair_patch_v2(raw: dict, patch: RepairPatchV2) -> dict:
         if m:
             node_id = m.group(1)
             field = m.group(2)
+            found = False
             for node in updated.get("nodes", []):
                 if node.get("id") == node_id:
                     node.setdefault("params", {})[field] = change.new_value
+                    found = True
                     break
+            if not found:
+                raise ValueError(f"repair target node not found: {node_id}")
             continue
 
         # /nodes/<node_id>/inputs
         m = re.match(r"^/nodes/([^/]+)/inputs$", path)
         if m:
             node_id = m.group(1)
+            found = False
             for node in updated.get("nodes", []):
                 if node.get("id") == node_id:
                     node["inputs"] = change.new_value
+                    found = True
                     break
+            if not found:
+                raise ValueError(f"repair target node not found: {node_id}")
             continue
 
         # /nodes/<node_id>/outputs
         m = re.match(r"^/nodes/([^/]+)/outputs$", path)
         if m:
             node_id = m.group(1)
+            found = False
             for node in updated.get("nodes", []):
                 if node.get("id") == node_id:
                     node["outputs"] = change.new_value
+                    found = True
                     break
+            if not found:
+                raise ValueError(f"repair target node not found: {node_id}")
             continue
 
         # /nodes/<node_id>/required
         m = re.match(r"^/nodes/([^/]+)/required$", path)
         if m:
             node_id = m.group(1)
+            found = False
             for node in updated.get("nodes", []):
                 if node.get("id") == node_id:
                     node["required"] = change.new_value
+                    found = True
                     break
+            if not found:
+                raise ValueError(f"repair target node not found: {node_id}")
             continue
 
         # /nodes/<node_id>/degradation_policy
         m = re.match(r"^/nodes/([^/]+)/degradation_policy$", path)
         if m:
             node_id = m.group(1)
+            found = False
             for node in updated.get("nodes", []):
                 if node.get("id") == node_id:
                     node["degradation_policy"] = change.new_value
+                    found = True
                     break
+            if not found:
+                raise ValueError(f"repair target node not found: {node_id}")
             continue
 
         # /components/<component_id>/root_node
         m = re.match(r"^/components/([^/]+)/root_node$", path)
         if m:
             comp_id = m.group(1)
+            found = False
             for comp in updated.get("components", []):
                 if comp.get("id") == comp_id:
                     comp["root_node"] = change.new_value
+                    found = True
                     break
+            if not found:
+                raise ValueError(f"repair target component not found: {comp_id}")
             continue
 
         # /llm_validation_hints
         if path == "/llm_validation_hints":
+            if not isinstance(change.new_value, dict):
+                raise ValueError("/llm_validation_hints repair value must be dict")
             updated["llm_validation_hints"] = change.new_value
             continue
 

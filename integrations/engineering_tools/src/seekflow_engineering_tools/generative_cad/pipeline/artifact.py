@@ -1,4 +1,4 @@
-"""CanonicalStepArtifact builder — accepts optional paths, returns proper None for unavailable."""
+"""CanonicalStepArtifact builder — v0.6: proper signature, fail-closed validation default."""
 
 from __future__ import annotations
 
@@ -8,27 +8,54 @@ from typing import Any
 
 def build_canonical_step_artifact(
     canonical,
-    step_path: Path,
-    metadata_path: Path,
-    ctx=None,
+    step_path: str | Path,
+    metadata_path: str | Path,
     *,
     graph_path: str | None = None,
     runner_script_path: str | None = None,
-    inspection: dict | None = None,
-    validation: dict | None = None,
+    validation: dict[str, Any] | None = None,
+    inspection: dict[str, Any] | None = None,
+    ctx=None,
 ) -> dict[str, Any]:
+    step_path = Path(step_path)
+    metadata_path = Path(metadata_path)
+
+    if validation is None and ctx is not None:
+        validation = getattr(ctx, "validation", None)
+
+    if validation is None:
+        validation = {
+            "core_validation": {"ok": False, "stage": "core_validation",
+                "issues": [{"code": "missing_core_validation", "message": "No core validation provided.", "severity": "error"}]},
+            "dialect_semantics": {"ok": False, "stage": "dialect_semantics",
+                "issues": [{"code": "missing_dialect_semantics", "message": "No dialect semantics provided.", "severity": "error"}]},
+            "geometry_preflight": {"ok": False, "stage": "geometry_preflight",
+                "issues": [{"code": "missing_geometry_preflight", "message": "No geometry preflight provided.", "severity": "error"}]},
+            "runtime_postconditions": {"ok": False, "stage": "runtime_postconditions",
+                "issues": [{"code": "missing_runtime_postconditions", "message": "No runtime postconditions provided.", "severity": "error"}]},
+            "inspection_validation": {"ok": False, "stage": "inspection_validation",
+                "issues": [{"code": "missing_inspection_validation", "message": "No inspection validation provided.", "severity": "error"}]},
+        }
+
     return {
         "artifact_type": "canonical_step_artifact",
+        "artifact_version": "canonical_step_artifact_v0.2",
         "source_route": "llm_skill_base",
         "part_name": canonical.part_name,
+        "document_id": getattr(canonical, "document_id", ""),
         "step_path": str(step_path),
         "metadata_path": str(metadata_path),
-        "graph_path": graph_path,
-        "runner_script_path": runner_script_path,
-        "units": canonical.units,
+        "graph_path": str(graph_path) if graph_path else "",
+        "runner_script_path": str(runner_script_path) if runner_script_path else None,
+        "units": "mm",
         "trust_level": canonical.trust_level,
+        "schema_version": canonical.schema_version,
+        "canonical_version": canonical.canonical_version,
+        "raw_graph_hash": getattr(canonical, "raw_graph_hash", ""),
+        "canonical_graph_hash": getattr(canonical, "canonical_graph_hash", ""),
+        "selected_dialects": [d.model_dump() for d in canonical.selected_dialects],
         "native_rebuild_allowed": False,
         "step_import_allowed": True,
         "inspection": inspection or {},
-        "validation": validation or {},
+        "validation": validation,
     }
