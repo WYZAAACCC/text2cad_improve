@@ -55,7 +55,7 @@ class CanonicalNode(BaseModel):
     outputs: list[CanonicalValueDecl] = Field(default_factory=list)
 
     params: dict[str, Any] = Field(default_factory=dict)
-    typed_params: Any = None
+    typed_params: dict[str, Any] = Field(default_factory=dict)
 
     required: bool = True
     degradation_policy: Literal["fail", "may_skip_with_warning"] = "fail"

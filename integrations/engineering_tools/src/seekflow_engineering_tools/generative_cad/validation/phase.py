@@ -1,4 +1,4 @@
-"""Phase order validation — topological order must respect phase ordering."""
+"""Phase validation — node phase matches op + producer→consumer phase rank ordering."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from seekflow_engineering_tools.generative_cad.validation.reports import Validat
 
 def validate_phase(raw: RawGcadDocument) -> ValidationReport:
     issues = []
+    node_map = {n.id: n for n in raw.nodes}
 
-    # Group nodes by dialect+component for phase checking
     for node in raw.nodes:
         try:
             dialect = require_dialect(node.dialect)
@@ -22,14 +22,37 @@ def validate_phase(raw: RawGcadDocument) -> ValidationReport:
         except (KeyError, ValueError):
             continue
 
+        # Node phase must match op phase
         if node.phase != op_spec.phase:
             issues.append(ValidationReport.fail(
                 "phase", "phase_mismatch",
                 f"node {node.id!r} phase {node.phase!r} != op phase {op_spec.phase!r}",
-                node_id=node.id,
-                expected=op_spec.phase,
-                actual=node.phase,
+                node_id=node.id, expected=op_spec.phase, actual=node.phase,
             ).issues[0])
+
+        # Phase rank ordering: for same-component same-dialect deps,
+        # producer phase rank must be <= consumer phase rank
+        phase_rank = {p: i for i, p in enumerate(dialect.phase_order)}
+        consumer_rank = phase_rank.get(node.phase, -1)
+        for inp in node.inputs:
+            if inp.node is None:
+                continue
+            producer = node_map.get(inp.node)
+            if producer is None:
+                continue
+            if producer.component != node.component:
+                continue
+            if producer.dialect != node.dialect:
+                continue
+            producer_rank = phase_rank.get(producer.phase, -1)
+            if producer_rank > consumer_rank:
+                issues.append(ValidationReport.fail(
+                    "phase", "reverse_phase_dependency",
+                    f"node {node.id!r} (phase={node.phase!r}, rank={consumer_rank}) "
+                    f"depends on {producer.id!r} (phase={producer.phase!r}, rank={producer_rank}), "
+                    f"producer phase rank must be <= consumer",
+                    node_id=node.id,
+                ).issues[0])
 
     if issues:
         return ValidationReport(ok=False, stage="phase", issues=issues)

@@ -7,6 +7,11 @@ import math
 from seekflow_engineering_tools.generative_cad.ir.canonical import CanonicalNode
 from seekflow_engineering_tools.generative_cad.runtime.context import RuntimeContext
 from seekflow_engineering_tools.generative_cad.runtime.handles import SolidHandle
+from seekflow_engineering_tools.generative_cad.runtime.resolve import (
+    resolve_input_handle_id,
+    resolve_input_object,
+    resolve_all_input_objects,
+)
 
 
 def _store_solid(node: CanonicalNode, ctx: RuntimeContext, obj) -> str:
@@ -18,32 +23,24 @@ def _store_solid(node: CanonicalNode, ctx: RuntimeContext, obj) -> str:
 
 
 def handle_translate_solid(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
-    import cadquery as cq
+    body = resolve_input_object(node, ctx, 0)
     vector = node.params.get("vector_mm", (0, 0, 0))
-    input_hid = _resolve_input(node, ctx)
-    body = ctx.object_store.get(input_hid)
-    result = body.translate(vector)
-    hid = _store_solid(node, ctx, result)
-    return {"body": hid}
+    return {"body": _store_solid(node, ctx, body.translate(vector))}
 
 
 def handle_rotate_solid(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
+    body = resolve_input_object(node, ctx, 0)
     origin = node.params.get("axis_origin_mm", (0, 0, 0))
     axis_dir = node.params.get("axis_dir", (0, 0, 1))
     angle = float(node.params.get("angle_deg", 0))
-    input_hid = _resolve_input(node, ctx)
-    body = ctx.object_store.get(input_hid)
-    result = body.rotate(origin, axis_dir, angle)
-    hid = _store_solid(node, ctx, result)
-    return {"body": hid}
+    return {"body": _store_solid(node, ctx, body.rotate(origin, axis_dir, angle))}
 
 
 def handle_circular_pattern_component(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
+    body = resolve_input_object(node, ctx, 0)
     count = int(node.params.get("count", 1))
     radius = float(node.params.get("radius_mm", 0))
     start_angle = float(node.params.get("start_angle_deg", 0))
-    input_hid = _resolve_input(node, ctx)
-    body = ctx.object_store.get(input_hid)
 
     combined = None
     for i in range(count):
@@ -58,11 +55,10 @@ def handle_circular_pattern_component(node: CanonicalNode, ctx: RuntimeContext) 
 
 
 def handle_linear_pattern_component(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
+    body = resolve_input_object(node, ctx, 0)
     count = int(node.params.get("count", 1))
     spacing = float(node.params.get("spacing_mm", 0))
     direction = node.params.get("direction", "X")
-    input_hid = _resolve_input(node, ctx)
-    body = ctx.object_store.get(input_hid)
 
     dir_vec = {"X": (1, 0, 0), "Y": (0, 1, 0), "Z": (0, 0, 1)}[direction]
     combined = None
@@ -76,7 +72,7 @@ def handle_linear_pattern_component(node: CanonicalNode, ctx: RuntimeContext) ->
 
 
 def handle_boolean_union(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
-    solids = _resolve_all_inputs(node, ctx)
+    solids = resolve_all_input_objects(node, ctx)
     if not solids:
         raise ValueError("boolean_union requires at least one input solid")
     result = solids[0]
@@ -87,7 +83,7 @@ def handle_boolean_union(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, 
 
 
 def handle_boolean_cut(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
-    solids = _resolve_all_inputs(node, ctx)
+    solids = resolve_all_input_objects(node, ctx)
     if len(solids) < 2:
         raise ValueError("boolean_cut requires at least two input solids (target, tool)")
     result = solids[0]
@@ -98,33 +94,8 @@ def handle_boolean_cut(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, st
 
 
 def handle_place_component(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
+    body = resolve_input_object(node, ctx, 0)
     pos = node.params.get("position_mm", (0, 0, 0))
-    input_hid = _resolve_input(node, ctx)
-    body = ctx.object_store.get(input_hid)
-    result = body.translate(pos)
-    hid = _store_solid(node, ctx, result)
-    return {"body": hid}
+    return {"body": _store_solid(node, ctx, body.translate(pos))}
 
 
-def _resolve_input(node: CanonicalNode, ctx: RuntimeContext) -> str:
-    if node.inputs:
-        inp = node.inputs[0]
-        if inp.producer_node:
-            return ctx.resolve_node_output(inp.producer_node, inp.output)
-        if inp.producer_component:
-            return ctx.resolve_component_output(inp.producer_component, inp.output)
-    return ctx.resolve_node_output(node.id, "body")
-
-
-def _resolve_all_inputs(node: CanonicalNode, ctx: RuntimeContext) -> list:
-    import cadquery as cq
-    objs = []
-    for inp in node.inputs:
-        if inp.producer_node:
-            hid = ctx.resolve_node_output(inp.producer_node, inp.output)
-        elif inp.producer_component:
-            hid = ctx.resolve_component_output(inp.producer_component, inp.output)
-        else:
-            continue
-        objs.append(ctx.object_store.get(hid))
-    return objs

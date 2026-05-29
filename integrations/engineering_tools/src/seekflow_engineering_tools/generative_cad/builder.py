@@ -112,6 +112,23 @@ def build_generative_cad_model(
     }
     warnings = list(build_warnings)
 
+    # Reconstruct artifact dict for downstream consumption
+    metrics["artifact"] = {
+        "artifact_type": "canonical_step_artifact",
+        "source_route": "llm_skill_base",
+        "part_name": canonical.part_name,
+        "step_path": str(step_path),
+        "metadata_path": str(meta_path),
+        "graph_path": str(graph_path),
+        "runner_script_path": str(script_path),
+        "units": canonical.units,
+        "trust_level": canonical.trust_level,
+        "native_rebuild_allowed": False,
+        "step_import_allowed": True,
+        "inspection": {},
+        "validation": {"core_validation": report.model_dump(), "geometry_preflight": {}, "inspection_validation": {}},
+    }
+
     if inspect:
         insp_result = inspect_step_with_cadquery(step_path)
         metrics["inspection"] = insp_result
@@ -131,6 +148,8 @@ def build_generative_cad_model(
                             contract_issues.append({"code": "bbox_mismatch", "message": f"Bbox[{i}]: expected {exp}, got {act}.", "severity": "error"})
             insp_val = {"ok": len(contract_issues) == 0, "issues": contract_issues}
             metrics["inspection_validation"] = insp_val
+            metrics["artifact"]["inspection"] = insp_result
+            metrics["artifact"]["validation"]["inspection_validation"] = insp_val
             # Write validation back to metadata
             if meta_path.exists():
                 metadata["validation"] = {"core_validation": report.model_dump(), "geometry_preflight": {}, "inspection_validation": insp_val}

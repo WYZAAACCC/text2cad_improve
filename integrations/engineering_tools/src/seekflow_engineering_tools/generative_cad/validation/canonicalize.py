@@ -110,7 +110,7 @@ def canonicalize(raw: RawGcadDocument) -> tuple[CanonicalGcadDocument | None, Va
         # Resolve input types — no implicit fallback
         resolved_inputs = []
         for inp in node.inputs:
-            rt = _resolve_input_type(inp, node_map, issues, node.id)
+            rt = _resolve_input_type(inp, node_map, raw.components, issues, node.id)
             if rt is None:
                 continue
             resolved_inputs.append(CanonicalValueRef(
@@ -159,7 +159,7 @@ def canonicalize(raw: RawGcadDocument) -> tuple[CanonicalGcadDocument | None, Va
     return canonical, ValidationReport.ok_report("canonicalize")
 
 
-def _resolve_input_type(inp, node_map, issues, consumer_id):
+def _resolve_input_type(inp, node_map, components, issues, consumer_id):
     if inp.node is not None:
         producer = node_map.get(inp.node)
         if producer is None:
@@ -179,7 +179,19 @@ def _resolve_input_type(inp, node_map, issues, consumer_id):
         ).issues[0])
         return None
     elif inp.component is not None:
-        return "component_ref"
+        comp = next((c for c in components if c.id == inp.component), None)
+        if comp is not None and comp.root_node:
+            rn = node_map.get(comp.root_node)
+            if rn is not None:
+                for o in rn.outputs:
+                    if o.name == inp.output:
+                        return o.type
+        issues.append(ValidationReport.fail(
+            "canonicalize", "component_output_unresolved",
+            f"node {consumer_id!r}: cannot resolve component {inp.component!r} output {inp.output!r}",
+            node_id=consumer_id,
+        ).issues[0])
+        return None
     else:
         issues.append(ValidationReport.fail(
             "canonicalize", "input_no_source",

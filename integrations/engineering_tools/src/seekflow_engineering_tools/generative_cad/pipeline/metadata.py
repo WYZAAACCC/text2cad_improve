@@ -71,19 +71,39 @@ def validate_generative_metadata_v2(metadata: dict, canonical=None, registry_che
     if not isinstance(metadata.get("validation"), dict):
         issues.append({"code": "missing_validation", "message": "validation must be dict"})
 
-    # If canonical provided, compare hashes and contract hashes
+    # If canonical provided, compare all provenance fields
     if canonical is not None and not issues:
+        if gm.get("schema_version") != canonical.schema_version:
+            issues.append({"code": "schema_version_mismatch", "message": f"metadata schema_version={gm.get('schema_version')!r} != canonical {canonical.schema_version!r}"})
+        if gm.get("canonical_version") != canonical.canonical_version:
+            issues.append({"code": "canonical_version_mismatch", "message": f"metadata canonical_version mismatch"})
+        if gm.get("trust_level") != canonical.trust_level:
+            issues.append({"code": "trust_level_mismatch", "message": f"metadata trust_level={gm.get('trust_level')!r} != canonical {canonical.trust_level!r}"})
         if gm.get("canonical_graph_hash") != canonical.canonical_graph_hash:
             issues.append({"code": "canonical_hash_mismatch", "message": "metadata canonical_graph_hash != canonical document hash"})
         if gm.get("raw_graph_hash") and canonical.raw_graph_hash and gm["raw_graph_hash"] != canonical.raw_graph_hash:
             issues.append({"code": "raw_hash_mismatch", "message": "metadata raw_graph_hash != canonical raw_graph_hash"})
+        # Compare safety
+        meta_safety = gm.get("safety", {})
+        canon_safety = canonical.safety.model_dump()
+        for flag in ["non_flight_reference_only", "not_airworthy", "not_certified", "not_for_manufacturing", "not_for_installation", "no_structural_validation", "no_life_prediction"]:
+            if meta_safety.get(flag) is not True or canon_safety.get(flag) is not True:
+                issues.append({"code": "safety_drift", "message": f"safety flag {flag} mismatch in metadata vs canonical"})
+        # Compare op_versions count
+        meta_ops = gm.get("op_versions", [])
+        if len(meta_ops) != len(canonical.nodes):
+            issues.append({"code": "op_versions_count_mismatch", "message": f"metadata has {len(meta_ops)} op_versions, canonical has {len(canonical.nodes)} nodes"})
+        # Compare selected_dialects count
+        meta_dialects = gm.get("selected_dialects", [])
+        if len(meta_dialects) != len(canonical.selected_dialects):
+            issues.append({"code": "dialect_count_mismatch", "message": f"metadata has {len(meta_dialects)} dialects, canonical has {len(canonical.selected_dialects)}"})
         if registry_check:
-            for d in gm.get("selected_dialects", []):
+            for d in meta_dialects:
                 try:
                     reg_ch = dialect_contract_hash(d["dialect"])
                     if d.get("contract_hash") != reg_ch:
                         issues.append({"code": "contract_hash_mismatch", "message": f"dialect {d['dialect']!r} contract_hash mismatch: metadata={d.get('contract_hash')}, registry={reg_ch}"})
                 except KeyError:
-                    pass  # dialect not in registry — not a metadata error
+                    pass
 
     return {"ok": len(issues) == 0, "issues": issues}

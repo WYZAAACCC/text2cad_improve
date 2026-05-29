@@ -73,6 +73,10 @@ class SketchExtrudeDialect:
                         in_degree[other.id] -= 1
                         if in_degree[other.id] == 0 and other not in sorted_nodes and other not in queue:
                             queue.append(other)
+        if len(sorted_nodes) != len(nodes):
+            unscheduled = [n.id for n in nodes if n not in sorted_nodes]
+            raise RuntimeError(f"sketch_extrude: unscheduled nodes: {unscheduled}")
+
         final_outputs = {}
         for node in sorted_nodes:
             op_spec = self.get_op_spec(node.op, node.op_version)
