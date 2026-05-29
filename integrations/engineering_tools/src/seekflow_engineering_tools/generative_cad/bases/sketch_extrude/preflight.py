@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from seekflow_engineering_tools.generative_cad.preflight import DEFAULT_GEOMETRY_POLICY
+from seekflow_engineering_tools.generative_cad.legacy.preflight_v01 import DEFAULT_GEOMETRY_POLICY
 
 
 def preflight_extrude_rectangle(node: dict, _all_nodes: list[dict]) -> list[dict]:

@@ -19,7 +19,7 @@ from seekflow_engineering_tools.generative_cad.dialects.composition.params impor
 from seekflow_engineering_tools.generative_cad.dialects.operation import OperationSpec
 from seekflow_engineering_tools.generative_cad.ir.canonical import CanonicalComponent, CanonicalNode
 from seekflow_engineering_tools.generative_cad.runtime.context import RuntimeContext
-from seekflow_engineering_tools.generative_cad.validation.reports import ValidationReport
+from seekflow_engineering_tools.generative_cad.validation.reports import ValidationIssue, ValidationReport
 
 
 class CompositionDialect:
@@ -97,8 +97,74 @@ class CompositionDialect:
             raise KeyError(f"unknown op/version: {op!r}/{v!r}")
         return specs[key]
 
-    def validate_component(self, component, nodes): return ValidationReport.ok_report("dialect_semantics")
-    def preflight_component(self, component, nodes): return ValidationReport.ok_report("preflight")
+    def validate_component(self, component, nodes):
+        issues = []
+        stage = "dialect_semantics"
+        # 1. component id must be __assembly__
+        if component.id != "__assembly__":
+            issues.append(ValidationIssue(stage=stage, code="composition_not_assembly",
+                message=f"composition dialect only allows __assembly__, got {component.id!r}",
+                severity="error", component_id=component.id))
+        # 2. all nodes must use composition dialect
+        for n in nodes:
+            if n.dialect != "composition":
+                issues.append(ValidationIssue(stage=stage, code="comp_node_wrong_dialect",
+                    message=f"Node {n.id!r} in __assembly__ must use composition dialect, got {n.dialect!r}",
+                    severity="error", node_id=n.id, component_id=component.id))
+        # 3. final root_node must output body:solid
+        if component.root_node:
+            root_nodes = [n for n in nodes if n.id == component.root_node]
+            if root_nodes:
+                rn = root_nodes[0]
+                if not any(o.name == "body" and o.type == "solid" for o in rn.outputs):
+                    issues.append(ValidationIssue(stage=stage, code="comp_root_no_body",
+                        message=f"composition root_node {rn.id!r} must output body:solid",
+                        severity="error", node_id=rn.id, component_id=component.id))
+        # 4. boolean_cut requires exactly 2 inputs
+        for n in nodes:
+            if n.op == "boolean_cut" and len(n.inputs) != 2:
+                issues.append(ValidationIssue(stage=stage, code="comp_boolean_cut_binary",
+                    message=f"boolean_cut requires exactly 2 inputs, got {len(n.inputs)}",
+                    severity="error", node_id=n.id, component_id=component.id))
+        return ValidationReport(ok=not any(i.severity == "error" for i in issues),
+                               stage=stage, issues=issues)
+    def preflight_component(self, component, nodes):
+        issues = []
+        stage = "geometry_preflight"
+        max_instances = 360
+        for n in nodes:
+            if n.op in ("circular_pattern_component", "linear_pattern_component"):
+                count = n.typed_params.get("count") or n.params.get("count", 0)
+                if count > max_instances:
+                    issues.append(ValidationIssue(stage=stage, code="comp_pattern_count",
+                        message=f"pattern count {count} exceeds max {max_instances}",
+                        severity="error", node_id=n.id))
+            if n.op == "rotate_solid":
+                axis = n.typed_params.get("axis_dir") or n.params.get("axis_dir", [0, 0, 0])
+                if isinstance(axis, list) and all(v == 0 for v in axis):
+                    issues.append(ValidationIssue(stage=stage, code="comp_zero_axis",
+                        message="rotate_solid axis_dir must not be zero vector",
+                        severity="error", node_id=n.id))
+            if n.op == "translate_solid":
+                vec = [
+                    n.typed_params.get("x_mm") or n.params.get("x_mm", 0),
+                    n.typed_params.get("y_mm") or n.params.get("y_mm", 0),
+                    n.typed_params.get("z_mm") or n.params.get("z_mm", 0),
+                ]
+                # Check all are finite numbers
+                for v in vec:
+                    if not isinstance(v, (int, float)):
+                        issues.append(ValidationIssue(stage=stage, code="comp_nonfinite_vec",
+                            message=f"translate_solid vector contains non-numeric value: {v}",
+                            severity="error", node_id=n.id))
+                        break
+            if n.op in ("boolean_union", "boolean_cut"):
+                if len(n.inputs) < 2:
+                    issues.append(ValidationIssue(stage=stage, code="comp_boolean_inputs",
+                        message=f"{n.op} requires at least 2 inputs, got {len(n.inputs)}",
+                        severity="error", node_id=n.id))
+        return ValidationReport(ok=not any(i.severity == "error" for i in issues),
+                               stage=stage, issues=issues)
 
     def run_component(
         self, component: CanonicalComponent, nodes: list[CanonicalNode], ctx: RuntimeContext,

@@ -1,4 +1,4 @@
-"""Metadata v2 builder and validator — v0.2.1: canonical + registry comparison."""
+"""Metadata v2.1 builder and validator — extended validation fields."""
 
 from __future__ import annotations
 
@@ -7,10 +7,24 @@ from seekflow_engineering_tools.generative_cad.ir.canonical import CanonicalGcad
 from seekflow_engineering_tools.generative_cad.runtime.context import RuntimeContext
 
 
-def build_generative_metadata(canonical: CanonicalGcadDocument, ctx: RuntimeContext) -> dict:
+def build_generative_metadata(
+    canonical: CanonicalGcadDocument,
+    ctx: RuntimeContext,
+    validation: dict | None = None,
+    repair_summary: dict | None = None,
+) -> dict:
+    if validation is None:
+        validation = {
+            "core_validation": {},
+            "dialect_semantics": {},
+            "geometry_preflight": {},
+            "runtime_postconditions": {},
+            "inspection_validation": {},
+        }
     return {
         "generative_metadata": {
             "metadata_version": "generative_metadata_v2",
+            "metadata_schema_minor": "2.1",
             "source_route": "llm_skill_base",
             "schema_version": canonical.schema_version,
             "canonical_version": canonical.canonical_version,
@@ -24,12 +38,12 @@ def build_generative_metadata(canonical: CanonicalGcadDocument, ctx: RuntimeCont
             "geometry_runtime": ctx.geometry_runtime_name,
             "operation_metrics": ctx.operation_metrics,
             "degraded_features": ctx.degraded_features,
-            "repair_attempts": 0,
+            "repair_attempts": repair_summary.get("attempts", 0) if repair_summary else 0,
             "warnings": ctx.warnings,
             "safety": canonical.safety.model_dump(),
         },
         "build_warnings": ctx.warnings,
-        "validation": {"core_validation": {}, "geometry_preflight": {}, "inspection_validation": {}},
+        "validation": validation,
     }
 
 
@@ -68,8 +82,20 @@ def validate_generative_metadata_v2(metadata: dict, canonical=None, registry_che
         issues.append({"code": "missing_safety", "message": "safety flags missing"})
     if not isinstance(metadata.get("build_warnings"), list):
         issues.append({"code": "missing_build_warnings", "message": "build_warnings must be list"})
-    if not isinstance(metadata.get("validation"), dict):
+    val = metadata.get("validation")
+    if not isinstance(val, dict):
         issues.append({"code": "missing_validation", "message": "validation must be dict"})
+    else:
+        if not isinstance(val.get("core_validation"), dict):
+            issues.append({"code": "missing_core_validation", "message": "validation.core_validation must be dict"})
+        if not isinstance(val.get("geometry_preflight"), dict):
+            issues.append({"code": "missing_geometry_preflight", "message": "validation.geometry_preflight must be dict"})
+        if not isinstance(val.get("inspection_validation"), dict):
+            issues.append({"code": "missing_inspection_validation", "message": "validation.inspection_validation must be dict"})
+        # For SW/NX import gate: inspection must be ok if present and not skipped
+        insp = val.get("inspection_validation", {})
+        if isinstance(insp, dict) and insp.get("ok") is False:
+            issues.append({"code": "inspection_validation_failed", "message": "inspection_validation failed — cannot import into SolidWorks/NX"})
 
     # If canonical provided, compare all provenance fields
     if canonical is not None and not issues:

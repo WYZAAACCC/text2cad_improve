@@ -171,6 +171,7 @@ def build_generative_cad_tools(config):
         spec: dict,
         out_step: str,
         inspect: bool = True,
+        strict_inspection: bool = True,
     ) -> dict:
         try:
             return build_generative_cad_model(
@@ -178,6 +179,7 @@ def build_generative_cad_tools(config):
                 config=config,
                 out_step=out_step,
                 inspect=inspect,
+                strict_inspection=strict_inspection,
             )
         except Exception as exc:
             return EngineeringActionResult(

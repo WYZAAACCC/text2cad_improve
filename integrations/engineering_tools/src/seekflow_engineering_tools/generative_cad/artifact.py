@@ -1,28 +1,8 @@
-"""Canonical STEP artifact descriptor for generative CAD output.
+"""Backward-compat re-export of legacy v0.1 artifact model.
 
-This artifact is what downstream tooling consumes — it never becomes a primitive.
+New code should use `seekflow_engineering_tools.generative_cad.pipeline.artifact`.
 """
 
-from __future__ import annotations
-
-from typing import Literal
-
-from pydantic import BaseModel, ConfigDict, Field
-
-
-class CanonicalStepArtifact(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    artifact_type: Literal["canonical_step_artifact"] = "canonical_step_artifact"
-    source_route: Literal["llm_skill_base"] = "llm_skill_base"
-    part_name: str
-    step_path: str
-    metadata_path: str
-    graph_path: str
-    runner_script_path: str | None = None
-    units: Literal["mm"] = "mm"
-    trust_level: Literal["concept_geometry", "reference_geometry"] = "reference_geometry"
-    native_rebuild_allowed: bool = False
-    step_import_allowed: bool = True
-    inspection: dict = Field(default_factory=dict)
-    validation: dict = Field(default_factory=dict)
+from seekflow_engineering_tools.generative_cad.legacy.artifact_v01 import (  # noqa: F401
+    CanonicalStepArtifact,
+)

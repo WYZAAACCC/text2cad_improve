@@ -65,7 +65,7 @@ class TestCanRepair:
             graph_hashes=["sha256:abc123"],
         )
         # Force the hash to match by using the same spec twice
-        from seekflow_engineering_tools.generative_cad.repair_governor import _hash_graph
+        from seekflow_engineering_tools.generative_cad.legacy.repair_governor_v01 import _hash_graph
         gh = _hash_graph(spec)
         state = RepairState(attempts=1, graph_hashes=[gh])
         allowed, reason = can_repair(state, spec=spec)
@@ -73,7 +73,7 @@ class TestCanRepair:
         assert "Graph hash repeated" in reason
 
     def test_repeated_error_signature_stops(self):
-        from seekflow_engineering_tools.generative_cad.repair_governor import _hash_error_signature
+        from seekflow_engineering_tools.generative_cad.legacy.repair_governor_v01 import _hash_error_signature
 
         issues = [{"code": "error_1"}, {"code": "error_2"}]
         eh = _hash_error_signature(issues)

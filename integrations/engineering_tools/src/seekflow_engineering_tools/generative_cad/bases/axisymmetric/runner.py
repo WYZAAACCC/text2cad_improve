@@ -10,7 +10,7 @@ import json
 import sys
 from typing import Any
 
-from seekflow_engineering_tools.generative_cad.base import OperationDefinition
+from seekflow_engineering_tools.generative_cad.legacy.base_v01 import OperationDefinition
 from seekflow_engineering_tools.generative_cad.bases.axisymmetric.contract import (
     AXISYMMETRIC_CONTRACT,
 )
@@ -135,7 +135,7 @@ class AxisymmetricBase:
 
         Returns GenerativeRunResult.
         """
-        from seekflow_engineering_tools.generative_cad.runner import (
+        from seekflow_engineering_tools.generative_cad.legacy.runner_v01 import (
             GenerativeRunResult,
         )
 

@@ -90,7 +90,8 @@ class TestMetadataSchemasDistinct:
                 "operation_metrics": [], "degraded_features": [], "repair_attempts": 0, "warnings": [],
                 "safety": {"non_flight_reference_only": True, "not_airworthy": True, "not_certified": True, "not_for_manufacturing": True, "not_for_installation": True, "no_structural_validation": True, "no_life_prediction": True},
             },
-            "build_warnings": [], "validation": {},
+            "build_warnings": [],
+            "validation": {"core_validation": {}, "geometry_preflight": {}, "inspection_validation": {}},
         }
         result = validate_generative_metadata_v2(meta)
         assert result["ok"], f"Expected ok, got: {result['issues']}"

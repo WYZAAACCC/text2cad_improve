@@ -148,7 +148,8 @@ class TestMetadataV2Mutation:
                     "no_structural_validation": True, "no_life_prediction": True,
                 },
             },
-            "build_warnings": [], "validation": {},
+            "build_warnings": [],
+            "validation": {"core_validation": {}, "geometry_preflight": {}, "inspection_validation": {}},
         }
 
     def test_valid_passes(self):

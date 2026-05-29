@@ -1,4 +1,4 @@
-"""Generative CAD builder — v0.2.1: canonical harness, metrics fix, artifact in metrics."""
+"""Generative CAD builder — v0.3: strict inspection, canonical harness, metadata v2.1."""
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ def build_generative_cad_model(
     config: EngineeringToolsConfig,
     out_step: str | Path,
     inspect: bool = True,
+    strict_inspection: bool = True,
     graph_out: str | Path | None = None,
     script_out: str | Path | None = None,
 ) -> dict:
@@ -127,34 +128,42 @@ def build_generative_cad_model(
     if inspect:
         insp_result = inspect_step_with_cadquery(step_path)
         metrics["inspection"] = insp_result
+        insp_val: dict = {"ok": True, "issues": []}
         if insp_result.get("error"):
-            warnings.append(f"Inspection unavailable: {insp_result['error']}")
+            if strict_inspection:
+                return EngineeringActionResult(ok=False, software="cadquery", action="build_generative_cad",
+                    error=f"Strict inspection failed: {insp_result['error']}",
+                    files_created=files_created,
+                    metrics=metrics).model_dump()
+            else:
+                warnings.append(f"Inspection unavailable: {insp_result['error']}")
+                insp_val = {"ok": True, "skipped": True, "warning": insp_result["error"]}
         else:
             contract_issues = []
             sc = canonical.constraints
             sc_count = insp_result.get("solid_count")
             if sc_count is not None and sc_count != sc.expected_body_count:
-                contract_issues.append({"code": "body_count_mismatch", "message": f"Expected {sc.expected_body_count} body(s), got {sc_count}.", "severity": "error"})
+                contract_issues.append({"code": "inspection_body_count_mismatch", "message": f"Expected {sc.expected_body_count} body(s), got {sc_count}.", "severity": "error"})
             if sc.expected_bbox_mm is not None:
                 bbox = insp_result.get("bbox_mm")
                 if bbox is not None:
                     for i, (exp, act) in enumerate(zip(sc.expected_bbox_mm, bbox)):
                         if abs(exp - act) > sc.bbox_tolerance_mm:
-                            contract_issues.append({"code": "bbox_mismatch", "message": f"Bbox[{i}]: expected {exp}, got {act}.", "severity": "error"})
+                            contract_issues.append({"code": "inspection_bbox_mismatch", "message": f"Bbox[{i}]: expected {exp}, got {act}.", "severity": "error"})
             insp_val = {"ok": len(contract_issues) == 0, "issues": contract_issues}
-            metrics["inspection_validation"] = insp_val
-            if "artifact" in metrics:
-                metrics["artifact"]["inspection"] = insp_result
-                metrics["artifact"]["validation"]["inspection_validation"] = insp_val
-            # Write validation back to metadata
-            if meta_path.exists():
-                metadata["validation"] = {"core_validation": report.model_dump(), "geometry_preflight": {}, "inspection_validation": insp_val}
-                meta_path.write_text(json.dumps(metadata, indent=2, ensure_ascii=False, default=str), encoding="utf-8")
             if not insp_val["ok"]:
                 return EngineeringActionResult(ok=False, software="cadquery", action="build_generative_cad",
-                    message="STEP created but validation failed.", files_created=files_created,
+                    message="STEP created but inspection validation failed.", files_created=files_created,
                     metrics=metrics, warnings=warnings,
                     error="; ".join(i["message"] for i in contract_issues)).model_dump()
+        metrics["inspection_validation"] = insp_val
+        if "artifact" in metrics:
+            metrics["artifact"]["inspection"] = insp_result
+            metrics["artifact"]["validation"]["inspection_validation"] = insp_val
+        # Write validation back to metadata
+        if meta_path.exists():
+            metadata["validation"] = {"core_validation": report.model_dump(), "geometry_preflight": {}, "inspection_validation": insp_val}
+            meta_path.write_text(json.dumps(metadata, indent=2, ensure_ascii=False, default=str), encoding="utf-8")
 
     return EngineeringActionResult(ok=True, software="cadquery", action="build_generative_cad",
         message=f"Generative CAD STEP created: {step_path}", files_created=files_created,

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from seekflow_engineering_tools.generative_cad.base import OperationDefinition
+from seekflow_engineering_tools.generative_cad.legacy.base_v01 import OperationDefinition
 from seekflow_engineering_tools.generative_cad.bases.sketch_extrude.contract import (
     SKETCH_EXTRUDE_CONTRACT,
 )
@@ -136,7 +136,7 @@ class SketchExtrudeBase:
 
     def run(self, graph: dict[str, Any], context) -> Any:
         """Execute the feature graph via CadQuery operation handlers."""
-        from seekflow_engineering_tools.generative_cad.runner import GenerativeRunResult
+        from seekflow_engineering_tools.generative_cad.legacy.runner_v01 import GenerativeRunResult
 
         import cadquery as cq
 

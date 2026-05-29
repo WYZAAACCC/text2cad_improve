@@ -219,9 +219,10 @@ def test_multiple_components_without_assembly_fails():
     data["nodes"] = [n for n in data["nodes"] if n["component"] != "__assembly__"]
     data["selected_dialects"] = [d for d in data["selected_dialects"] if d["dialect"] != "composition"]
     canonical, report = validate_and_canonicalize(data)
-    assert canonical is not None
-    assert report.ok
-    # But runtime would fail with multiple components
+    # v0.3: composition validation catches this — multiple non-assembly components require __assembly__
+    assert canonical is None
+    assert not report.ok
+    assert any("multiple_components_require_assembly" in i.code for i in report.issues)
 
 
 def test_single_component_without_assembly_allowed():
@@ -265,7 +266,7 @@ def test_metadata_v2_validates():
             },
         },
         "build_warnings": [],
-        "validation": {},
+        "validation": {"core_validation": {}, "geometry_preflight": {}, "inspection_validation": {}},
     }
     result = validate_generative_metadata_v2(meta)
     assert result["ok"], f"Expected ok, got: {result['issues']}"

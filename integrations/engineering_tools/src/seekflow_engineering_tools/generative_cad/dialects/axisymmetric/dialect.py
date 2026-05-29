@@ -17,7 +17,7 @@ from seekflow_engineering_tools.generative_cad.dialects.axisymmetric.params impo
 from seekflow_engineering_tools.generative_cad.dialects.operation import OperationSpec
 from seekflow_engineering_tools.generative_cad.ir.canonical import CanonicalComponent, CanonicalNode
 from seekflow_engineering_tools.generative_cad.runtime.context import RuntimeContext
-from seekflow_engineering_tools.generative_cad.validation.reports import ValidationReport
+from seekflow_engineering_tools.generative_cad.validation.reports import ValidationIssue, ValidationReport
 
 
 class AxisymmetricDialect:
@@ -51,10 +51,104 @@ class AxisymmetricDialect:
         return specs[key]
 
     def validate_component(self, component, nodes):
-        if not any(n.phase == "base_solid" for n in nodes):
-            return ValidationReport.fail("dialect_semantics", "missing_base_solid", "axisymmetric needs base_solid", component_id=component.id)
-        return ValidationReport.ok_report("dialect_semantics")
-    def preflight_component(self, component, nodes): return ValidationReport.ok_report("preflight")
+        issues = []
+        stage = "dialect_semantics"
+        # 1. exactly one base_solid root creation op
+        base_solid_nodes = [n for n in nodes if n.phase == "base_solid"]
+        if len(base_solid_nodes) != 1:
+            issues.append(ValidationIssue(stage=stage, code="axisymmetric_base_solid_count",
+                message=f"axisymmetric requires exactly 1 base_solid node, got {len(base_solid_nodes)}",
+                severity="error", component_id=component.id))
+        # 2. first solid-producing node must be revolve_profile
+        solid_creators = [n for n in nodes if n.op == "revolve_profile"]
+        for n in solid_creators:
+            body_outputs = [o for o in n.outputs if o.name == "body" and o.type == "solid"]
+            if not body_outputs:
+                issues.append(ValidationIssue(stage=stage, code="revolve_no_body_solid",
+                    message=f"revolve_profile node {n.id!r} must output body:solid",
+                    severity="error", node_id=n.id, component_id=component.id))
+            frame_outputs = [o for o in n.outputs if o.name == "outer_frame" and o.type == "frame"]
+            if not frame_outputs:
+                issues.append(ValidationIssue(stage=stage, code="revolve_no_outer_frame",
+                    message=f"revolve_profile node {n.id!r} must output outer_frame:frame",
+                    severity="error", node_id=n.id, component_id=component.id))
+        # 3. all cut/modification ops must consume solid and output solid
+        for n in nodes:
+            if n.phase != "base_solid":
+                input_types = [i.resolved_type for i in n.inputs]
+                output_types = [o.type for o in n.outputs]
+                if "solid" not in input_types and input_types:
+                    issues.append(ValidationIssue(stage=stage, code="cut_op_must_consume_solid",
+                        message=f"Node {n.id!r} ({n.op}) must consume solid input",
+                        severity="error", node_id=n.id, component_id=component.id))
+                if not any(t == "solid" for t in output_types):
+                    issues.append(ValidationIssue(stage=stage, code="cut_op_must_output_solid",
+                        message=f"Node {n.id!r} ({n.op}) must output solid",
+                        severity="error", node_id=n.id, component_id=component.id))
+        return ValidationReport(ok=not any(i.severity == "error" for i in issues),
+                               stage=stage, issues=issues)
+    def preflight_component(self, component, nodes):
+        issues = []
+        stage = "geometry_preflight"
+        # A001: revolve_profile stations
+        for n in nodes:
+            if n.op == "revolve_profile":
+                ps = n.typed_params.get("profile_stations") or n.params.get("profile_stations", [])
+                if len(ps) < 2:
+                    issues.append(ValidationIssue(stage=stage, code="a001_stations_count",
+                        message=f"revolve_profile needs >= 2 stations, got {len(ps)}",
+                        severity="error", node_id=n.id))
+                max_r = 0; min_r = float("inf")
+                for s in ps:
+                    r = s.get("r_mm", 0)
+                    if r <= 0:
+                        issues.append(ValidationIssue(stage=stage, code="a001_radius_non_positive",
+                            message=f"revolve_profile station radius must be > 0, got {r}",
+                            severity="error", node_id=n.id))
+                    zf = s.get("z_front_mm", 0); zr = s.get("z_rear_mm", 0)
+                    if zr <= zf:
+                        issues.append(ValidationIssue(stage=stage, code="a001_z_order",
+                            message=f"z_rear_mm ({zr}) must be > z_front_mm ({zf})",
+                            severity="error", node_id=n.id))
+                    max_r = max(max_r, r); min_r = min(min_r, r) if r > 0 else min_r
+                if max_r <= 0 or min_r <= 0 or max_r <= min_r:
+                    issues.append(ValidationIssue(stage=stage, code="a001_radius_range",
+                        message=f"max radius ({max_r}) must be > min radius ({min_r})",
+                        severity="error", node_id=n.id))
+            # A002: center bore
+            if n.op == "cut_center_bore":
+                dia = n.typed_params.get("diameter_mm") or n.params.get("diameter_mm", 0)
+                if dia <= 0:
+                    issues.append(ValidationIssue(stage=stage, code="a002_bore_dia",
+                        message=f"center bore diameter must be > 0, got {dia}",
+                        severity="error", node_id=n.id))
+            # A003: circular hole pattern
+            if n.op == "cut_circular_hole_pattern":
+                count = n.typed_params.get("count") or n.params.get("count", 0)
+                hole_dia = n.typed_params.get("hole_dia_mm") or n.params.get("hole_dia_mm", 0)
+                pcd = n.typed_params.get("pcd_mm") or n.params.get("pcd_mm", 0)
+                if count < 3:
+                    issues.append(ValidationIssue(stage=stage, code="a003_pattern_count",
+                        message=f"circular hole pattern count must be >= 3, got {count}",
+                        severity="error", node_id=n.id))
+                if hole_dia <= 0:
+                    issues.append(ValidationIssue(stage=stage, code="a003_hole_dia",
+                        message=f"hole diameter must be > 0, got {hole_dia}",
+                        severity="error", node_id=n.id))
+                if pcd <= 0:
+                    issues.append(ValidationIssue(stage=stage, code="a003_pcd",
+                        message=f"PCD must be > 0, got {pcd}",
+                        severity="error", node_id=n.id))
+            # A004: annular groove
+            if n.op == "cut_annular_groove":
+                inner = n.typed_params.get("inner_dia_mm") or n.params.get("inner_dia_mm", 0)
+                outer = n.typed_params.get("outer_dia_mm") or n.params.get("outer_dia_mm", 0)
+                if inner >= outer:
+                    issues.append(ValidationIssue(stage=stage, code="a004_groove_dia",
+                        message=f"inner_dia_mm ({inner}) must be < outer_dia_mm ({outer})",
+                        severity="error", node_id=n.id))
+        return ValidationReport(ok=not any(i.severity == "error" for i in issues),
+                               stage=stage, issues=issues)
 
     def run_component(self, component: CanonicalComponent, nodes: list[CanonicalNode], ctx: RuntimeContext) -> dict[str, str]:
         phase_rank = {p: i for i, p in enumerate(self.phase_order)}

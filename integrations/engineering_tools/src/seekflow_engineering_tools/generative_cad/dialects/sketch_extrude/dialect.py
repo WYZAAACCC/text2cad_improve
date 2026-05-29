@@ -18,7 +18,7 @@ from seekflow_engineering_tools.generative_cad.dialects.sketch_extrude.params im
 )
 from seekflow_engineering_tools.generative_cad.ir.canonical import CanonicalComponent, CanonicalNode
 from seekflow_engineering_tools.generative_cad.runtime.context import RuntimeContext
-from seekflow_engineering_tools.generative_cad.validation.reports import ValidationReport
+from seekflow_engineering_tools.generative_cad.validation.reports import ValidationIssue, ValidationReport
 
 
 class SketchExtrudeDialect:
@@ -54,10 +54,86 @@ class SketchExtrudeDialect:
         return self.op_specs()[key]
 
     def validate_component(self, component, nodes):
-        if not any(n.phase == "base_solid" for n in nodes):
-            return ValidationReport.fail("dialect_semantics", "missing_base_solid", "sketch_extrude needs base_solid", component_id=component.id)
-        return ValidationReport.ok_report("dialect_semantics")
-    def preflight_component(self, component, nodes): return ValidationReport.ok_report("preflight")
+        issues = []
+        stage = "dialect_semantics"
+        # 1. exactly one base_solid creation op
+        base_solid_nodes = [n for n in nodes if n.phase == "base_solid"]
+        if len(base_solid_nodes) != 1:
+            issues.append(ValidationIssue(stage=stage, code="se_base_solid_count",
+                message=f"sketch_extrude requires exactly 1 base_solid node, got {len(base_solid_nodes)}",
+                severity="error", component_id=component.id))
+        # 2. first solid-producing node must be extrude_rectangle
+        for n in base_solid_nodes:
+            if n.op != "extrude_rectangle":
+                issues.append(ValidationIssue(stage=stage, code="se_first_must_be_extrude",
+                    message=f"sketch_extrude base_solid node must be extrude_rectangle, got {n.op!r}",
+                    severity="error", node_id=n.id, component_id=component.id))
+        # 3. pocket/hole/rib/boss ops must consume solid and output solid
+        for n in nodes:
+            if n.phase != "base_solid":
+                output_types = [o.type for o in n.outputs]
+                if not any(t == "solid" for t in output_types):
+                    issues.append(ValidationIssue(stage=stage, code="se_op_must_output_solid",
+                        message=f"Node {n.id!r} ({n.op}) must output solid",
+                        severity="error", node_id=n.id, component_id=component.id))
+        # 4. root_node must output body:solid
+        if component.root_node:
+            root_nodes = [n for n in nodes if n.id == component.root_node]
+            if root_nodes:
+                rn = root_nodes[0]
+                if not any(o.name == "body" and o.type == "solid" for o in rn.outputs):
+                    issues.append(ValidationIssue(stage=stage, code="se_root_no_body_solid",
+                        message=f"sketch_extrude root_node {rn.id!r} must output body:solid",
+                        severity="error", node_id=rn.id, component_id=component.id))
+        return ValidationReport(ok=not any(i.severity == "error" for i in issues),
+                               stage=stage, issues=issues)
+    def preflight_component(self, component, nodes):
+        issues = []
+        stage = "geometry_preflight"
+        for n in nodes:
+            if n.op == "extrude_rectangle":
+                w = n.typed_params.get("width_mm") or n.params.get("width_mm", 0)
+                h = n.typed_params.get("height_mm") or n.params.get("height_mm", 0)
+                d = n.typed_params.get("depth_mm") or n.params.get("depth_mm", 0)
+                if w <= 0:
+                    issues.append(ValidationIssue(stage=stage, code="se_width",
+                        message=f"width_mm must be > 0, got {w}", severity="error", node_id=n.id))
+                if h <= 0:
+                    issues.append(ValidationIssue(stage=stage, code="se_height",
+                        message=f"height_mm must be > 0, got {h}", severity="error", node_id=n.id))
+                if d <= 0:
+                    issues.append(ValidationIssue(stage=stage, code="se_depth",
+                        message=f"depth_mm must be > 0, got {d}", severity="error", node_id=n.id))
+            if n.op == "cut_hole":
+                dia = n.typed_params.get("diameter_mm") or n.params.get("diameter_mm", 0)
+                if dia <= 0:
+                    issues.append(ValidationIssue(stage=stage, code="se_hole_dia",
+                        message=f"hole diameter must be > 0, got {dia}", severity="error", node_id=n.id))
+            if n.op == "cut_rectangular_pocket":
+                w = n.typed_params.get("width_mm") or n.params.get("width_mm", 0)
+                d = n.typed_params.get("depth_mm") or n.params.get("depth_mm", 0)
+                if w <= 0:
+                    issues.append(ValidationIssue(stage=stage, code="se_pocket_width",
+                        message=f"pocket width must be > 0, got {w}", severity="error", node_id=n.id))
+                if d <= 0:
+                    issues.append(ValidationIssue(stage=stage, code="se_pocket_depth",
+                        message=f"pocket depth must be > 0, got {d}", severity="error", node_id=n.id))
+            if n.op == "add_rectangular_boss":
+                w = n.typed_params.get("width_mm") or n.params.get("width_mm", 0)
+                h = n.typed_params.get("height_mm") or n.params.get("height_mm", 0)
+                if w <= 0:
+                    issues.append(ValidationIssue(stage=stage, code="se_boss_width",
+                        message=f"boss width must be > 0, got {w}", severity="error", node_id=n.id))
+                if h <= 0:
+                    issues.append(ValidationIssue(stage=stage, code="se_boss_height",
+                        message=f"boss height must be > 0, got {h}", severity="error", node_id=n.id))
+            if n.op == "add_rib":
+                thickness = n.typed_params.get("thickness_mm") or n.params.get("thickness_mm", 0)
+                if thickness <= 0:
+                    issues.append(ValidationIssue(stage=stage, code="se_rib_thickness",
+                        message=f"rib thickness must be > 0, got {thickness}", severity="error", node_id=n.id))
+        return ValidationReport(ok=not any(i.severity == "error" for i in issues),
+                               stage=stage, issues=issues)
 
     def run_component(self, component: CanonicalComponent, nodes: list[CanonicalNode], ctx: RuntimeContext) -> dict[str, str]:
         phase_rank = {p: i for i, p in enumerate(self.phase_order)}
