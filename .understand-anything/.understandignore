@@ -1,0 +1,76 @@
+# .understandignore ¡ª patterns for files/dirs to exclude from analysis
+# Syntax: same as .gitignore (globs, # comments, ! negation, trailing / for dirs)
+# Lines below are suggestions ¡ª uncomment to activate.
+# Built-in defaults (always excluded): node_modules/, .git/, dist/, build/, *.lock, etc.
+# --- From .gitignore (already active) ---
+
+__pycache__/
+*.py[cod]
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.env
+env/
+venv/
+ENV/
+.eggs/
+*.manifest
+*.spec
+pip-wheel-metadata/
+.coverage
+.tox/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+apikey.txt
+.env
+_archive/
+.vscode/
+.idea/
+.claude/
+.agents/
+skills-lock.json
+output/
+trace_output.json
+integration_test.py
+verify_reliability.py
+.conda/
+demo_output/
+*.swp
+*.swb
+*.vbs
+~$*.sldprt
+~$*.prt
+*_test_*.sldprt
+*_test_*.step
+*_test_*.prt
+*.result.json
+.env.seekflow
+seekflow_workspace/
+
+# --- Detected directories (uncomment to exclude) ---
+
+# tests/
+# docs/
+# examples/
+# scripts/
+
+# --- Test file patterns (uncomment to exclude) ---
+
+# *.test.*
+# *.spec.*

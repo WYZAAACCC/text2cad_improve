@@ -7,6 +7,7 @@ from pathlib import Path
 from seekflow_engineering_tools.ansys.tools import build_ansys_tools
 from seekflow_engineering_tools.cadquery_backend.tools import build_cadquery_tools
 from seekflow_engineering_tools.config import EngineeringToolsConfig
+from seekflow_engineering_tools.generative_cad.tools import build_generative_cad_tools
 from seekflow_engineering_tools.natural_language.tools import build_natural_language_tools
 from seekflow_engineering_tools.nx.tools import build_nx_tools
 from seekflow_engineering_tools.solidworks.tools import build_solidworks_tools
@@ -29,6 +30,8 @@ ENGINEERING_CAPABILITIES: set[str] = {
     "cad.cadquery.write",
     "cad.generic.inspect",
     "cad.generic.validate",
+    "cad.generative.read",
+    "cad.generative.write",
 }
 
 
@@ -42,6 +45,7 @@ def build_engineering_tools(config: EngineeringToolsConfig) -> list:
     # Always register CadQuery and natural language tools (no HW dependency)
     tools.extend(build_cadquery_tools(config))
     tools.extend(build_natural_language_tools(config))
+    tools.extend(build_generative_cad_tools(config))
 
     if config.solidworks_enabled:
         tools.extend(build_solidworks_tools(config))
