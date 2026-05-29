@@ -90,7 +90,14 @@ class AxisymmetricDialect:
     def preflight_component(self, component, nodes):
         issues = []
         stage = "geometry_preflight"
-        # A001: revolve_profile stations
+        MARGIN = 1.0  # mm
+
+        # ── Envelope tracking ──
+        profile_max_radius: float | None = None
+        profile_min_radius: float | None = None
+        center_bore_radius: float | None = None
+
+        # First pass: gather envelope from revolve_profile
         for n in nodes:
             if n.op == "revolve_profile":
                 ps = n.typed_params.get("profile_stations") or n.params.get("profile_stations", [])
@@ -98,7 +105,8 @@ class AxisymmetricDialect:
                     issues.append(ValidationIssue(stage=stage, code="a001_stations_count",
                         message=f"revolve_profile needs >= 2 stations, got {len(ps)}",
                         severity="error", node_id=n.id))
-                max_r = 0; min_r = float("inf")
+                max_r = 0.0
+                min_r = float("inf")
                 for s in ps:
                     r = s.get("r_mm", 0)
                     if r <= 0:
@@ -110,11 +118,19 @@ class AxisymmetricDialect:
                         issues.append(ValidationIssue(stage=stage, code="a001_z_order",
                             message=f"z_rear_mm ({zr}) must be > z_front_mm ({zf})",
                             severity="error", node_id=n.id))
-                    max_r = max(max_r, r); min_r = min(min_r, r) if r > 0 else min_r
-                if max_r <= 0 or min_r <= 0 or max_r <= min_r:
+                    if r > 0:
+                        max_r = max(max_r, r)
+                        min_r = min(min_r, r)
+                if max_r > 0 and min_r < float("inf") and max_r > min_r:
+                    profile_max_radius = max_r
+                    profile_min_radius = min_r
+                elif max_r <= 0 or min_r <= 0 or max_r <= min_r:
                     issues.append(ValidationIssue(stage=stage, code="a001_radius_range",
                         message=f"max radius ({max_r}) must be > min radius ({min_r})",
                         severity="error", node_id=n.id))
+
+        # Second pass: validate cuts against envelope
+        for n in nodes:
             # A002: center bore
             if n.op == "cut_center_bore":
                 dia = n.typed_params.get("diameter_mm") or n.params.get("diameter_mm", 0)
@@ -122,6 +138,12 @@ class AxisymmetricDialect:
                     issues.append(ValidationIssue(stage=stage, code="a002_bore_dia",
                         message=f"center bore diameter must be > 0, got {dia}",
                         severity="error", node_id=n.id))
+                if profile_max_radius is not None and dia / 2 >= profile_max_radius - MARGIN:
+                    issues.append(ValidationIssue(stage=stage, code="a002_bore_too_large",
+                        message=f"center bore radius ({dia/2}) >= profile max radius ({profile_max_radius}) - margin ({MARGIN})",
+                        severity="error", node_id=n.id))
+                center_bore_radius = dia / 2 if dia > 0 else None
+
             # A003: circular hole pattern
             if n.op == "cut_circular_hole_pattern":
                 count = n.typed_params.get("count") or n.params.get("count", 0)
@@ -139,6 +161,19 @@ class AxisymmetricDialect:
                     issues.append(ValidationIssue(stage=stage, code="a003_pcd",
                         message=f"PCD must be > 0, got {pcd}",
                         severity="error", node_id=n.id))
+                # Envelope check: pcd/2 + hole_dia/2 < profile_max_radius - margin
+                if profile_max_radius is not None and pcd > 0 and hole_dia > 0:
+                    pcd_radius = pcd / 2
+                    hole_radius = hole_dia / 2
+                    if pcd_radius + hole_radius >= profile_max_radius - MARGIN:
+                        issues.append(ValidationIssue(stage=stage, code="hole_pattern_outside_profile",
+                            message=f"hole pattern PCD radius ({pcd_radius}) + hole radius ({hole_radius}) >= profile max ({profile_max_radius}) - margin ({MARGIN})",
+                            severity="error", node_id=n.id))
+                    if center_bore_radius is not None and pcd_radius - hole_radius <= center_bore_radius + MARGIN:
+                        issues.append(ValidationIssue(stage=stage, code="hole_pattern_intersects_center_bore",
+                            message=f"hole pattern PCD radius ({pcd_radius}) - hole radius ({hole_radius}) <= bore radius ({center_bore_radius}) + margin ({MARGIN})",
+                            severity="error", node_id=n.id))
+
             # A004: annular groove
             if n.op == "cut_annular_groove":
                 inner = n.typed_params.get("inner_dia_mm") or n.params.get("inner_dia_mm", 0)
@@ -147,6 +182,11 @@ class AxisymmetricDialect:
                     issues.append(ValidationIssue(stage=stage, code="a004_groove_dia",
                         message=f"inner_dia_mm ({inner}) must be < outer_dia_mm ({outer})",
                         severity="error", node_id=n.id))
+                if profile_max_radius is not None and outer / 2 >= profile_max_radius - MARGIN:
+                    issues.append(ValidationIssue(stage=stage, code="a004_groove_outside_profile",
+                        message=f"groove outer radius ({outer/2}) >= profile max ({profile_max_radius}) - margin ({MARGIN})",
+                        severity="error", node_id=n.id))
+
         return ValidationReport(ok=not any(i.severity == "error" for i in issues),
                                stage=stage, issues=issues)
 
