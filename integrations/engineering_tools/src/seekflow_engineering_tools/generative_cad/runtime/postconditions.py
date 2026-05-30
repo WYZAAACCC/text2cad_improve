@@ -1,4 +1,4 @@
-"""Runtime postconditions — validates runner output before STEP export."""
+"""Runtime postconditions — validates runner output before STEP export. v0.7: root output binding."""
 
 from __future__ import annotations
 
@@ -15,9 +15,10 @@ def validate_runtime_postconditions(
 
     Checks:
     - final_handle_id is non-empty
-    - final handle exists in object_store
+    - final handle exists in object_store and is retrievable
     - final handle type is solid
     - every non-assembly component's root_node outputs are bound
+    - every non-assembly component's root_node can resolve its body output
     """
     issues: list[dict] = []
 
@@ -52,6 +53,17 @@ def validate_runtime_postconditions(
                 "severity": "error",
             })
 
+    # Check final object is retrievable from object store
+    try:
+        ctx.object_store.get(final_handle_id)
+    except Exception as exc:
+        issues.append({
+            "stage": "runtime_postconditions",
+            "code": "final_object_lookup_failed",
+            "message": f"Final object {final_handle_id!r} not found in object store: {exc}",
+            "severity": "error",
+        })
+
     # Check component root_nodes
     for comp in canonical.components:
         if comp.id == "__assembly__":
@@ -64,6 +76,32 @@ def validate_runtime_postconditions(
                 "severity": "error",
                 "component_id": comp.id,
             })
+            continue
+
+        # Check root node exists and its outputs are bound
+        root = next((n for n in canonical.nodes if n.id == comp.root_node), None)
+        if root is None:
+            issues.append({
+                "stage": "runtime_postconditions",
+                "code": "component_root_node_not_found",
+                "message": f"Component {comp.id!r} root_node {comp.root_node!r} not found.",
+                "severity": "error",
+                "component_id": comp.id,
+            })
+            continue
+
+        for output in root.outputs:
+            try:
+                ctx.resolve_node_output(root.id, output.name)
+            except Exception as exc:
+                issues.append({
+                    "stage": "runtime_postconditions",
+                    "code": "component_root_output_not_bound",
+                    "message": f"Root output {root.id}.{output.name} for component {comp.id!r} is not bound: {exc}",
+                    "severity": "error",
+                    "component_id": comp.id,
+                    "node_id": root.id,
+                })
 
     return {
         "ok": not any(i["severity"] == "error" for i in issues),

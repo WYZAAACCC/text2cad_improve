@@ -1,4 +1,4 @@
-"""Generative STEP artifact import gate — v0.4 hardened validation before SolidWorks/NX import."""
+"""Generative STEP artifact import gate — v0.7: accurate gate flags, contract hash granularity."""
 
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ def validate_generative_step_artifact_for_native_import(
     """Validate a generative STEP artifact before importing into SolidWorks/NX.
 
     Uses require_validation_ok=True — all validation stages must prove ok.
+    Gate flags reflect actual state even when optional checks are skipped.
     """
     step_path = Path(step_path)
     metadata_path = Path(metadata_path)
@@ -63,8 +64,13 @@ def validate_generative_step_artifact_for_native_import(
     )
     if not meta_result["ok"]:
         issues.extend(meta_result["issues"])
+        # Detect contract hash mismatch specifically
+        if any(i.get("code") in {"contract_hash_mismatch", "unknown_metadata_dialect"}
+               for i in meta_result["issues"]):
+            gate["contract_hash_valid"] = False
         return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
     gate["metadata_valid"] = True
+    gate["contract_hash_valid"] = True
 
     gm = metadata.get("generative_metadata", {})
 
@@ -112,13 +118,12 @@ def validate_generative_step_artifact_for_native_import(
         return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
     gate["dialect_semantics_ok"] = True
 
-    # Geometry preflight — reject empty dict
+    # Geometry preflight — gate flag reflects actual state; require_* only controls failure
     gp = val.get("geometry_preflight", {})
-    if require_geometry_preflight_ok:
-        if not isinstance(gp, dict) or gp.get("ok") is not True:
-            issues.append({"code": "geometry_preflight_not_ok", "message": "geometry_preflight.ok must be true for native import"})
-            return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
-    gate["geometry_preflight_ok"] = True
+    gate["geometry_preflight_ok"] = isinstance(gp, dict) and gp.get("ok") is True
+    if require_geometry_preflight_ok and not gate["geometry_preflight_ok"]:
+        issues.append({"code": "geometry_preflight_not_ok", "message": "geometry_preflight.ok must be true for native import"})
+        return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
 
     # Runtime postconditions
     rp = val.get("runtime_postconditions", {})
@@ -127,15 +132,13 @@ def validate_generative_step_artifact_for_native_import(
         return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
     gate["runtime_postconditions_ok"] = True
 
-    # Inspection
+    # Inspection — gate flag reflects actual state; require_* only controls failure
     insp = val.get("inspection_validation", {})
-    if require_inspection_ok:
-        if not isinstance(insp, dict) or insp.get("ok") is not True:
-            issues.append({"code": "inspection_not_ok", "message": "inspection_validation.ok must be true for native import"})
-            return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
-    gate["inspection_ok"] = True
+    gate["inspection_ok"] = isinstance(insp, dict) and insp.get("ok") is True
+    if require_inspection_ok and not gate["inspection_ok"]:
+        issues.append({"code": "inspection_not_ok", "message": "inspection_validation.ok must be true for native import"})
+        return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
 
-    gate["contract_hash_valid"] = True
     gate["native_rebuild_allowed"] = False
     gate["step_import_allowed"] = True
 

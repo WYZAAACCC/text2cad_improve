@@ -16,10 +16,7 @@ from seekflow_engineering_tools.generative_cad.dialects.registry import (
     get_dialect,
     list_dialects,
 )
-from seekflow_engineering_tools.generative_cad.native_importers import (
-    import_step_to_solidworks,
-    import_step_to_nx,
-)
+from seekflow_engineering_tools.generative_cad import native_importers
 from seekflow_engineering_tools.generative_cad.validation.pipeline import validate_and_canonicalize
 
 
@@ -218,7 +215,7 @@ def build_generative_cad_tools(config):
                     metrics={"import_gate": gate["gate"]},
                 ).model_dump()
 
-            sw_result = import_step_to_solidworks(config, step, out)
+            sw_result = native_importers.import_step_to_solidworks(config, step, out)
 
             return EngineeringActionResult(
                 ok=sw_result.get("ok", True),
@@ -304,7 +301,7 @@ def build_generative_cad_tools(config):
                     metrics={"import_gate": gate["gate"]},
                 ).model_dump()
 
-            nx_result = import_step_to_nx(config, config.workspace_root, step, out)
+            nx_result = native_importers.import_step_to_nx(config, config.workspace_root, step, out)
 
             return EngineeringActionResult(
                 ok=nx_result.get("ok", True),

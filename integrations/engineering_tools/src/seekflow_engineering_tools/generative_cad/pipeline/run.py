@@ -1,7 +1,7 @@
-"""G-CAD Core runner — raw validation → canonical → components → STEP → metadata.
+"""G-CAD Core runner — raw validation → canonical → components → STEP → metadata. v0.7: full validation proof.
 
 Split entrypoints:
-- run_gcad_core_from_files / run_gcad_core: accepts RAW JSON, validates+canonicalizes
+- run_gcad_core_from_files / run_gcad_core: accepts RAW JSON, validates+canonicalizes with bundle
 - run_canonical_gcad_from_files / run_canonical_gcad: accepts PRE-VALIDATED canonical JSON
 """
 
@@ -16,7 +16,7 @@ from seekflow_engineering_tools.generative_cad.pipeline.artifact import build_ca
 from seekflow_engineering_tools.generative_cad.pipeline.metadata import build_generative_metadata
 from seekflow_engineering_tools.generative_cad.runtime.context import RuntimeContext
 from seekflow_engineering_tools.generative_cad.runtime.results import GcadRunResult
-from seekflow_engineering_tools.generative_cad.validation.pipeline import validate_and_canonicalize
+from seekflow_engineering_tools.generative_cad.validation.pipeline import validate_and_canonicalize_with_bundle
 
 
 # ── Raw entrypoints (validate + canonicalize) ──
@@ -38,13 +38,18 @@ def run_gcad_core(
     out_step: str | Path,
     metadata_path: str | Path,
 ) -> GcadRunResult:
-    canonical, report = validate_and_canonicalize(raw)
+    canonical, report, bundle = validate_and_canonicalize_with_bundle(raw)
     if canonical is None or not report.ok:
         return GcadRunResult(
             ok=False,
             error="validation failed: " + "; ".join(i.message for i in report.issues),
         )
-    return run_canonical_gcad(canonical, out_step=out_step, metadata_path=metadata_path)
+    return run_canonical_gcad(
+        canonical,
+        out_step=out_step,
+        metadata_path=metadata_path,
+        validation_seed=bundle.to_metadata_dict(),
+    )
 
 
 # ── Canonical entrypoints (pre-validated) ──
@@ -66,6 +71,7 @@ def run_canonical_gcad(
     canonical: CanonicalGcadDocument,
     out_step: str | Path,
     metadata_path: str | Path,
+    validation_seed: dict | None = None,
 ) -> GcadRunResult:
     out_step = Path(out_step)
     metadata_path = Path(metadata_path)
@@ -93,9 +99,12 @@ def run_canonical_gcad(
 
         _export_final_solid(final_handle_id, ctx)
 
+        validation = validation_seed or {}
+        validation["runtime_postconditions"] = runtime_pc
+
         metadata = build_generative_metadata(
             canonical=canonical, ctx=ctx,
-            validation={"runtime_postconditions": runtime_pc},
+            validation=validation,
         )
         metadata_path.write_text(
             json.dumps(metadata, indent=2, ensure_ascii=False, default=str),

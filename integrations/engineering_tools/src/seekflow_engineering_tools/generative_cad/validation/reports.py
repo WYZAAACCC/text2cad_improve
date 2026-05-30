@@ -1,4 +1,4 @@
-"""ValidationReport and ValidationIssue models."""
+"""ValidationReport and ValidationIssue models — v0.7: explicit fail/ok_report parameters."""
 
 from __future__ import annotations
 
@@ -30,20 +30,47 @@ class ValidationReport(BaseModel):
     stages_run: list[str] = Field(default_factory=list)
 
     @classmethod
-    def ok_report(cls, stage: str) -> "ValidationReport":
-        return cls(ok=True, stage=stage, issues=[])
+    def ok_report(
+        cls,
+        stage: str,
+        stages_run: list[str] | None = None,
+    ) -> "ValidationReport":
+        return cls(
+            ok=True,
+            stage=stage,
+            issues=[],
+            stages_run=stages_run or [stage],
+        )
 
     @classmethod
-    def fail(cls, stage: str, code: str, message: str, **kwargs) -> "ValidationReport":
+    def fail(
+        cls,
+        stage: str,
+        code: str,
+        message: str,
+        stages_run: list[str] | None = None,
+        severity: Severity = "error",
+        node_id: str | None = None,
+        component_id: str | None = None,
+        path: str | None = None,
+        expected: Any | None = None,
+        actual: Any | None = None,
+    ) -> "ValidationReport":
         return cls(
             ok=False,
             stage=stage,
+            stages_run=stages_run or [stage],
             issues=[
                 ValidationIssue(
                     stage=stage,
                     code=code,
                     message=message,
-                    **kwargs,
+                    severity=severity,
+                    node_id=node_id,
+                    component_id=component_id,
+                    path=path,
+                    expected=expected,
+                    actual=actual,
                 )
             ],
         )
