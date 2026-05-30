@@ -1,4 +1,4 @@
-"""Repair patch v0.4 — RepairPatchV2 with path validators and apply logic."""
+"""Repair patch v0.8 — RepairPatchV2 with old_value verification, applied count, give_up."""
 
 from __future__ import annotations
 
@@ -6,6 +6,11 @@ import copy, re
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
+
+
+def _old_value_matches(current, expected) -> bool:
+    """Return True if expected is None (no check) or current == expected."""
+    return expected is None or current == expected
 
 
 class RepairChange(BaseModel):
@@ -106,13 +111,19 @@ def validate_repair_patch_v2(patch: RepairPatchV2) -> tuple[bool, list[dict]]:
 def apply_repair_patch_v2(raw: dict, patch: RepairPatchV2) -> dict:
     """Apply a validated RepairPatchV2 to a raw document dict.
 
-    Raises ValueError if target node/component not found.
+    Raises ValueError if target node/component not found, old_value mismatches,
+    or applied count does not match change count.
     """
     ok, issues = validate_repair_patch_v2(patch)
     if not ok:
         raise ValueError("invalid repair patch: " + "; ".join(i["message"] for i in issues))
 
+    # give_up: return unchanged deep copy, no changes required
+    if patch.give_up:
+        return copy.deepcopy(raw)
+
     updated = copy.deepcopy(raw)
+    applied = 0
 
     for change in patch.changes:
         path = change.path
@@ -125,11 +136,18 @@ def apply_repair_patch_v2(raw: dict, patch: RepairPatchV2) -> dict:
             found = False
             for node in updated.get("nodes", []):
                 if node.get("id") == node_id:
+                    current = node.setdefault("params", {}).get(field)
+                    if not _old_value_matches(current, change.old_value):
+                        raise ValueError(
+                            f"repair old_value mismatch at {path}: "
+                            f"expected {change.old_value!r}, got {current!r}"
+                        )
                     node.setdefault("params", {})[field] = change.new_value
                     found = True
                     break
             if not found:
                 raise ValueError(f"repair target node not found: {node_id}")
+            applied += 1
             continue
 
         # /nodes/<node_id>/inputs
@@ -139,11 +157,17 @@ def apply_repair_patch_v2(raw: dict, patch: RepairPatchV2) -> dict:
             found = False
             for node in updated.get("nodes", []):
                 if node.get("id") == node_id:
+                    if not _old_value_matches(node.get("inputs"), change.old_value):
+                        raise ValueError(
+                            f"repair old_value mismatch at {path}: "
+                            f"expected {change.old_value!r}, got {node.get('inputs')!r}"
+                        )
                     node["inputs"] = change.new_value
                     found = True
                     break
             if not found:
                 raise ValueError(f"repair target node not found: {node_id}")
+            applied += 1
             continue
 
         # /nodes/<node_id>/outputs
@@ -153,11 +177,17 @@ def apply_repair_patch_v2(raw: dict, patch: RepairPatchV2) -> dict:
             found = False
             for node in updated.get("nodes", []):
                 if node.get("id") == node_id:
+                    if not _old_value_matches(node.get("outputs"), change.old_value):
+                        raise ValueError(
+                            f"repair old_value mismatch at {path}: "
+                            f"expected {change.old_value!r}, got {node.get('outputs')!r}"
+                        )
                     node["outputs"] = change.new_value
                     found = True
                     break
             if not found:
                 raise ValueError(f"repair target node not found: {node_id}")
+            applied += 1
             continue
 
         # /nodes/<node_id>/required
@@ -167,11 +197,17 @@ def apply_repair_patch_v2(raw: dict, patch: RepairPatchV2) -> dict:
             found = False
             for node in updated.get("nodes", []):
                 if node.get("id") == node_id:
+                    if not _old_value_matches(node.get("required"), change.old_value):
+                        raise ValueError(
+                            f"repair old_value mismatch at {path}: "
+                            f"expected {change.old_value!r}, got {node.get('required')!r}"
+                        )
                     node["required"] = change.new_value
                     found = True
                     break
             if not found:
                 raise ValueError(f"repair target node not found: {node_id}")
+            applied += 1
             continue
 
         # /nodes/<node_id>/degradation_policy
@@ -181,11 +217,17 @@ def apply_repair_patch_v2(raw: dict, patch: RepairPatchV2) -> dict:
             found = False
             for node in updated.get("nodes", []):
                 if node.get("id") == node_id:
+                    if not _old_value_matches(node.get("degradation_policy"), change.old_value):
+                        raise ValueError(
+                            f"repair old_value mismatch at {path}: "
+                            f"expected {change.old_value!r}, got {node.get('degradation_policy')!r}"
+                        )
                     node["degradation_policy"] = change.new_value
                     found = True
                     break
             if not found:
                 raise ValueError(f"repair target node not found: {node_id}")
+            applied += 1
             continue
 
         # /components/<component_id>/root_node
@@ -195,18 +237,37 @@ def apply_repair_patch_v2(raw: dict, patch: RepairPatchV2) -> dict:
             found = False
             for comp in updated.get("components", []):
                 if comp.get("id") == comp_id:
+                    if not _old_value_matches(comp.get("root_node"), change.old_value):
+                        raise ValueError(
+                            f"repair old_value mismatch at {path}: "
+                            f"expected {change.old_value!r}, got {comp.get('root_node')!r}"
+                        )
                     comp["root_node"] = change.new_value
                     found = True
                     break
             if not found:
                 raise ValueError(f"repair target component not found: {comp_id}")
+            applied += 1
             continue
 
         # /llm_validation_hints
         if path == "/llm_validation_hints":
             if not isinstance(change.new_value, dict):
                 raise ValueError("/llm_validation_hints repair value must be dict")
+            if not _old_value_matches(updated.get("llm_validation_hints"), change.old_value):
+                raise ValueError(
+                    f"repair old_value mismatch at {path}: "
+                    f"expected {change.old_value!r}, got {updated.get('llm_validation_hints')!r}"
+                )
             updated["llm_validation_hints"] = change.new_value
+            applied += 1
             continue
+
+        raise ValueError(f"unsupported repair path: {path}")
+
+    if applied != len(patch.changes):
+        raise ValueError(
+            f"repair patch applied {applied} of {len(patch.changes)} change(s)"
+        )
 
     return updated

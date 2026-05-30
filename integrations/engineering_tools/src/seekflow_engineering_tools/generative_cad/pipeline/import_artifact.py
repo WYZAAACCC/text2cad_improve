@@ -1,4 +1,4 @@
-"""Generative STEP artifact import gate — v0.7: accurate gate flags, contract hash granularity."""
+"""Generative STEP artifact import gate — v0.8: fail-closed gate defaults, complete flags."""
 
 from __future__ import annotations
 
@@ -6,6 +6,13 @@ import json
 from pathlib import Path
 
 from seekflow_engineering_tools.generative_cad.pipeline.metadata import validate_generative_metadata_v2
+
+REQUIRED_GATE_FLAGS = [
+    "step_exists", "metadata_exists", "metadata_valid", "safety_valid",
+    "contract_hash_valid", "core_validation_ok", "dialect_semantics_ok",
+    "geometry_preflight_ok", "runtime_postconditions_ok", "inspection_ok",
+    "native_rebuild_allowed", "step_import_allowed",
+]
 
 
 def validate_generative_step_artifact_for_native_import(
@@ -37,7 +44,7 @@ def validate_generative_step_artifact_for_native_import(
         "runtime_postconditions_ok": False,
         "inspection_ok": False,
         "native_rebuild_allowed": False,
-        "step_import_allowed": True,
+        "step_import_allowed": False,
     }
 
     # STEP exists and non-empty

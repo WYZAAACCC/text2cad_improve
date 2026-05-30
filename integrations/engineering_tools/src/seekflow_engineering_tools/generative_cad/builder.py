@@ -1,4 +1,4 @@
-"""Generative CAD builder — v0.4: hard-gate, strict validation, metadata proof."""
+"""Generative CAD builder — v0.8: artifact/metadata consistency, metadata_path in metrics."""
 
 from __future__ import annotations
 
@@ -188,11 +188,30 @@ def build_generative_cad_model(
     warnings_list = list(build_warnings)
 
     from seekflow_engineering_tools.generative_cad.pipeline.artifact import build_canonical_step_artifact
-    metrics["artifact"] = build_canonical_step_artifact(
+    artifact = build_canonical_step_artifact(
         canonical=canonical, step_path=step_path, metadata_path=meta_path,
         graph_path=str(graph_path), runner_script_path=str(script_path),
         validation=validation_meta,
+        inspection=insp_val,
     )
+
+    # v0.8: artifact/metadata consistency check
+    metadata_gm = metadata.get("generative_metadata", {})
+    if artifact.get("canonical_graph_hash") != metadata_gm.get("canonical_graph_hash"):
+        return EngineeringActionResult(
+            ok=False, software="cadquery", action="build_generative_cad",
+            error="Artifact/metadata canonical_graph_hash mismatch.",
+            files_created=files_created,
+        ).model_dump()
+    if artifact.get("validation") != metadata.get("validation"):
+        return EngineeringActionResult(
+            ok=False, software="cadquery", action="build_generative_cad",
+            error="Artifact/metadata validation proof mismatch.",
+            files_created=files_created,
+        ).model_dump()
+
+    metrics["artifact"] = artifact
+    metrics["metadata_path"] = str(meta_path)
 
     return EngineeringActionResult(ok=True, software="cadquery", action="build_generative_cad",
         message=f"Generative CAD STEP created: {step_path}", files_created=files_created,

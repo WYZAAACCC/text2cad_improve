@@ -1,8 +1,13 @@
-"""G-CAD Core runner — raw validation → canonical → components → STEP → metadata. v0.7: full validation proof.
+"""G-CAD Core runner — raw validation → canonical → components → STEP → metadata. v0.8: require_full_validation_seed.
 
 Split entrypoints:
 - run_gcad_core_from_files / run_gcad_core: accepts RAW JSON, validates+canonicalizes with bundle
 - run_canonical_gcad_from_files / run_canonical_gcad: accepts PRE-VALIDATED canonical JSON
+
+run_canonical_gcad_from_files: This entrypoint is for pre-validated canonical documents.
+Metadata produced here is runner-local and may not contain full validation proof unless
+validation_seed is provided. Production build_generative_cad_model rewrites metadata
+with ValidationBundle and inspection proof before returning success.
 """
 
 from __future__ import annotations
@@ -49,6 +54,7 @@ def run_gcad_core(
         out_step=out_step,
         metadata_path=metadata_path,
         validation_seed=bundle.to_metadata_dict(),
+        require_full_validation_seed=True,
     )
 
 
@@ -59,6 +65,12 @@ def run_canonical_gcad_from_files(
     out_step: str | Path,
     metadata_path: str | Path,
 ) -> GcadRunResult:
+    """Load and run a pre-validated canonical document.
+
+    This entrypoint does not pass validation_seed — metadata produced here is
+    runner-local. Builder rewrites metadata with full ValidationBundle proof
+    after process return.
+    """
     try:
         data = json.loads(Path(canonical_json).read_text(encoding="utf-8"))
         canonical = CanonicalGcadDocument.model_validate(data)
@@ -72,7 +84,18 @@ def run_canonical_gcad(
     out_step: str | Path,
     metadata_path: str | Path,
     validation_seed: dict | None = None,
+    require_full_validation_seed: bool = False,
 ) -> GcadRunResult:
+    if require_full_validation_seed and validation_seed is None:
+        return GcadRunResult(
+            ok=False,
+            error=(
+                "run_canonical_gcad requires validation_seed when "
+                "require_full_validation_seed=True. Use run_gcad_core for raw input "
+                "or pass ValidationBundle.to_metadata_dict()."
+            ),
+        )
+
     out_step = Path(out_step)
     metadata_path = Path(metadata_path)
     ctx = RuntimeContext(
@@ -80,6 +103,12 @@ def run_canonical_gcad(
         metadata_path=metadata_path,
         workspace_root=out_step.parent,
     )
+
+    if validation_seed is None:
+        ctx.warnings.append(
+            "Canonical runner executed without validation_seed; metadata is runner-local "
+            "and not a full importable proof until builder attaches validation bundle and inspection."
+        )
 
     try:
         _run_components(canonical, ctx)
