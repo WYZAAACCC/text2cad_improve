@@ -33,13 +33,28 @@ def build_generative_cad_model(
         return EngineeringActionResult(ok=False, software="cadquery", action="build_generative_cad",
             error=f"Output file {step_path} already exists.").model_dump()
 
-    if isinstance(spec, dict):
-        try: spec = RawGcadDocument.model_validate(spec)
-        except Exception as exc:
-            return EngineeringActionResult(ok=False, software="cadquery", action="build_generative_cad",
-                error=f"RawGcadDocument validation failed: {exc}").model_dump()
-
     # v0.4: Legacy GenerativeCADSpec v0.1 is NOT accepted by production builder
+    # Check BEFORE model_validate so legacy dicts get a clear error, not confusing Pydantic errors
+    if isinstance(spec, dict) and "feature_graph" in spec and "components" not in spec:
+        return EngineeringActionResult(
+            ok=False, software="cadquery", action="build_generative_cad",
+            error=(
+                "Legacy GenerativeCADSpec v0.1 is not accepted by the v0.4 production builder. "
+                "Convert explicitly using generative_cad.compatibility.legacy_spec_adapter in a legacy-only workflow."
+            ),
+        ).model_dump()
+
+    if isinstance(spec, dict):
+        from seekflow_engineering_tools.generative_cad.ir.parse import parse_raw_gcad_document
+        parse_result = parse_raw_gcad_document(spec)
+        if not parse_result.ok:
+            return EngineeringActionResult(ok=False, software="cadquery", action="build_generative_cad",
+                error="RawGcadDocument parse failed: " + "; ".join(
+                    f"[{i.code}] {i.message}" for i in parse_result.issues
+                )).model_dump()
+        spec = parse_result.document
+
+    # Double-check legacy objects (non-dict) are also rejected
     if hasattr(spec, "feature_graph") and not hasattr(spec, "components"):
         return EngineeringActionResult(
             ok=False, software="cadquery", action="build_generative_cad",
@@ -69,6 +84,13 @@ def build_generative_cad_model(
     graph_path.parent.mkdir(parents=True, exist_ok=True)
     graph_path.write_text(json.dumps(canonical.model_dump(), indent=2, ensure_ascii=False, default=str), encoding="utf-8")
 
+    # Write validation seed JSON
+    validation_seed_path = graph_path.with_suffix(".validation.json")
+    validation_seed_path.write_text(
+        json.dumps(validation_bundle.to_metadata_dict(), indent=2, ensure_ascii=False, default=str),
+        encoding="utf-8",
+    )
+
     # Script path with workspace guard
     script_dir = ensure_inside_workspace(workspace, ".generative_cad_scripts")
     script_dir.mkdir(parents=True, exist_ok=True)
@@ -78,7 +100,7 @@ def build_generative_cad_model(
         script_path = script_dir / f"run_gcad_{uuid.uuid4().hex[:12]}.py"
     script_path = Path(script_path)
     script_path.parent.mkdir(parents=True, exist_ok=True)
-    script_path.write_text(_generate_harness_script(Path(graph_path), step_path, meta_path), encoding="utf-8")
+    script_path.write_text(_generate_harness_script(Path(graph_path), validation_seed_path, step_path, meta_path), encoding="utf-8")
 
     timeout = canonical.constraints.max_runtime_seconds
     try:
@@ -196,6 +218,7 @@ def build_generative_cad_model(
     )
 
     # v0.9: extended artifact/metadata consistency checks
+    # v1.1 (P4): artifact state machine — builder returns validated_reference_step
     metadata_gm = metadata.get("generative_metadata", {})
     if artifact.get("canonical_graph_hash") != metadata_gm.get("canonical_graph_hash"):
         return EngineeringActionResult(
@@ -215,10 +238,28 @@ def build_generative_cad_model(
             error="Artifact native_rebuild_allowed must be False.",
             files_created=files_created,
         ).model_dump()
-    if artifact.get("step_import_allowed") is not True:
+    if artifact.get("state") != "validated_reference_step":
         return EngineeringActionResult(
             ok=False, software="cadquery", action="build_generative_cad",
-            error="Artifact step_import_allowed must be True.",
+            error=f"Artifact state must be validated_reference_step, got {artifact.get('state')!r}.",
+            files_created=files_created,
+        ).model_dump()
+    if artifact.get("step_import_candidate") is not True:
+        return EngineeringActionResult(
+            ok=False, software="cadquery", action="build_generative_cad",
+            error="Artifact step_import_candidate must be True.",
+            files_created=files_created,
+        ).model_dump()
+    if artifact.get("step_import_allowed") is not False:
+        return EngineeringActionResult(
+            ok=False, software="cadquery", action="build_generative_cad",
+            error="Artifact step_import_allowed must be False (only import gate may set true).",
+            files_created=files_created,
+        ).model_dump()
+    if artifact.get("requires_import_gate") is not True:
+        return EngineeringActionResult(
+            ok=False, software="cadquery", action="build_generative_cad",
+            error="Artifact requires_import_gate must be True.",
             files_created=files_created,
         ).model_dump()
     if artifact.get("step_path") != str(step_path):
@@ -250,8 +291,8 @@ def build_generative_cad_model(
         stdout_tail=stdout_tail, stderr_tail=stderr_tail, metrics=metrics, warnings=warnings_list).model_dump()
 
 
-def _generate_harness_script(graph_path: Path, out_step: Path, metadata_path: Path) -> str:
-    """Fixed harness — calls run_canonical_gcad_from_files (canonical JSON, NOT raw)."""
+def _generate_harness_script(graph_path: Path, validation_seed_path: Path, out_step: Path, metadata_path: Path) -> str:
+    """Fixed harness — calls run_canonical_gcad_from_files with validation seed (canonical JSON, NOT raw)."""
     return f'''
 """Fixed G-CAD runner harness — auto-generated, no LLM CAD code."""
 import sys
@@ -259,6 +300,7 @@ from seekflow_engineering_tools.generative_cad.pipeline.run import run_canonical
 
 result = run_canonical_gcad_from_files(
     canonical_json=r"{graph_path.as_posix()}",
+    validation_seed_json=r"{validation_seed_path.as_posix()}",
     out_step=r"{out_step.as_posix()}",
     metadata_path=r"{metadata_path.as_posix()}",
 )

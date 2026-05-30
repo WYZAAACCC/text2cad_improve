@@ -44,7 +44,7 @@ class TestRunMetadataModes:
             require_full_validation_seed=True,
         )
         assert not result.ok
-        assert "requires validation_seed" in result.error
+        assert ("requires validation_seed" in result.error) or ("requires non-empty validation_seed" in result.error)
 
     def test_run_canonical_accepts_seed_without_requirement(self, tmp_path):
         from seekflow_engineering_tools.generative_cad.pipeline.run import run_canonical_gcad

@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from seekflow_engineering_tools.generative_cad.runtime.cadquery_runtime import CadQueryRuntime
+from seekflow_engineering_tools.generative_cad.runtime.geometry_runtime import GeometryRuntime
 from seekflow_engineering_tools.generative_cad.runtime.object_store import RuntimeObjectStore
 
 
@@ -15,6 +17,7 @@ class RuntimeContext:
     metadata_path: Path
     workspace_root: Path
     object_store: RuntimeObjectStore = field(default_factory=RuntimeObjectStore)
+    geometry_runtime: GeometryRuntime = field(default_factory=CadQueryRuntime)
 
     node_outputs: dict[str, dict[str, str]] = field(default_factory=dict)
     component_outputs: dict[str, dict[str, str]] = field(default_factory=dict)
@@ -23,8 +26,11 @@ class RuntimeContext:
     degraded_features: list[dict[str, Any]] = field(default_factory=list)
     operation_metrics: list[dict[str, Any]] = field(default_factory=list)
 
-    geometry_runtime_name: str = "cadquery"
     runner_version: str = "0.2.0"
+
+    @property
+    def geometry_runtime_name(self) -> str:
+        return self.geometry_runtime.runtime_id
 
     def bind_node_output(self, node_id: str, output_name: str, handle_id: str) -> None:
         self.node_outputs.setdefault(node_id, {})[output_name] = handle_id

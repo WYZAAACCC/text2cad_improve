@@ -67,60 +67,62 @@ class RawNode(BaseModel):
 
 class RawConstraints(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    require_step_file: bool = True
-    require_metadata_sidecar: bool = True
-    require_closed_solid: bool = True
-    expected_body_count: int = Field(default=1, ge=1)
+
+    require_step_file: bool
+    require_metadata_sidecar: bool
+    require_closed_solid: bool
+    expected_body_count: int = Field(ge=1)
     expected_bbox_mm: list[float] | None = None
     bbox_tolerance_mm: float = Field(default=1.0, gt=0)
     max_runtime_seconds: int = Field(default=120, ge=1, le=600)
 
     @model_validator(mode="after")
     def fail_closed_flags(self):
-        if not self.require_step_file:
-            raise ValueError("require_step_file cannot be false")
-        if not self.require_metadata_sidecar:
-            raise ValueError("require_metadata_sidecar cannot be false")
-        if not self.require_closed_solid:
-            raise ValueError("require_closed_solid cannot be false")
+        if self.require_step_file is not True:
+            raise ValueError("constraints.require_step_file must be explicitly true")
+        if self.require_metadata_sidecar is not True:
+            raise ValueError("constraints.require_metadata_sidecar must be explicitly true")
+        if self.require_closed_solid is not True:
+            raise ValueError("constraints.require_closed_solid must be explicitly true")
         if self.expected_bbox_mm is not None and len(self.expected_bbox_mm) != 3:
-            raise ValueError("expected_bbox_mm must be [x, y, z]")
+            raise ValueError("constraints.expected_bbox_mm must be [x, y, z]")
         return self
 
 
 class RawSafety(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    non_flight_reference_only: bool = True
-    not_airworthy: bool = True
-    not_certified: bool = True
-    not_for_manufacturing: bool = True
-    not_for_installation: bool = True
-    no_structural_validation: bool = True
-    no_life_prediction: bool = True
+
+    non_flight_reference_only: bool
+    not_airworthy: bool
+    not_certified: bool
+    not_for_manufacturing: bool
+    not_for_installation: bool
+    no_structural_validation: bool
+    no_life_prediction: bool
 
     @model_validator(mode="after")
     def all_true(self):
         for key, value in self.model_dump().items():
             if value is not True:
-                raise ValueError(f"safety flag {key} must be true")
+                raise ValueError(f"safety.{key} must be explicitly true")
         return self
 
 
 class RawGcadDocument(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["g_cad_core_v0.2"] = "g_cad_core_v0.2"
+    schema_version: Literal["g_cad_core_v0.2"]
     document_id: str
     part_name: str
-    units: LengthUnit = "mm"
-    trust_level: TrustLevel = "reference_geometry"
+    units: LengthUnit
+    trust_level: TrustLevel
 
     selected_dialects: list[RawSelectedDialect]
     components: list[RawComponent]
     nodes: list[RawNode]
 
-    constraints: RawConstraints = Field(default_factory=RawConstraints)
-    safety: RawSafety = Field(default_factory=RawSafety)
+    constraints: RawConstraints
+    safety: RawSafety
 
     llm_validation_hints: dict[str, Any] = Field(default_factory=dict)
 

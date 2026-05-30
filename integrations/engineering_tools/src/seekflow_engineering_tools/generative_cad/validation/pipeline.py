@@ -88,17 +88,26 @@ def validate_and_canonicalize_with_bundle(
 
     # Parse raw
     if isinstance(raw, dict):
-        try:
-            raw = RawGcadDocument.model_validate(raw)
-        except Exception as exc:
+        from seekflow_engineering_tools.generative_cad.ir.parse import parse_raw_gcad_document
+        from seekflow_engineering_tools.generative_cad.validation.reports import ValidationIssue
+        parse_result = parse_raw_gcad_document(raw)
+        if not parse_result.ok:
             stages_run.append("structure")
-            report = ValidationReport.fail(
-                "structure", "raw_validation_failed",
-                f"RawGcadDocument validation failed: {exc}",
+            for issue in parse_result.issues:
+                all_issues.append(ValidationIssue(
+                    stage="structure",
+                    code=issue.code,
+                    message=issue.message,
+                    severity=issue.severity,
+                    path=issue.path,
+                ))
+            report = ValidationReport(
+                ok=False, stage="structure", issues=list(all_issues),
                 stages_run=list(stages_run),
             )
             bundle = ValidationBundle(ok=False, raw_stage_reports={}, canonicalize_report=None, canonical_stage_reports={})
             return None, report, bundle
+        raw = parse_result.document
 
     # ── Raw stages (single pass) ──
     ok, failed_stage, raw_stage_reports = _run_stage_collect(

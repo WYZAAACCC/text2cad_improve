@@ -172,4 +172,4 @@ def validate_generative_step_artifact_for_native_import(
         gate["step_import_allowed"] = False
         return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
 
-    return {"ok": True, "issues": [], "metadata": metadata, "gate": gate}
+    return {"ok": True, "state": "native_import_eligible", "issues": [], "metadata": metadata, "gate": gate}

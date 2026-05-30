@@ -34,8 +34,8 @@ def test_registry_has_axisymmetric_sketch_extrude_composition():
 
 
 def test_harness_result_has_metadata_path():
-    from seekflow_engineering_tools.generative_cad.runner import GenerativeRunResult
-    result = GenerativeRunResult(ok=True, metadata_path=Path("/tmp/test.json"))
+    from seekflow_engineering_tools.generative_cad.runtime.results import GcadRunResult
+    result = GcadRunResult(ok=True, metadata_path=Path("/tmp/test.json"))
     assert result.metadata_path is not None
     assert str(result.metadata_path) == str(Path("/tmp/test.json"))
 
@@ -70,7 +70,7 @@ def test_unknown_op_fails_closed():
 
 def test_safety_false_fails():
     from seekflow_engineering_tools.generative_cad.ir.raw import RawGcadDocument
-    with pytest.raises(ValueError, match="must be true"):
+    with pytest.raises(ValueError, match=r"safety\.\w+ must be explicitly true"):
         RawGcadDocument.model_validate(_load_fixture("invalid_safety_false.json"))
 
 
@@ -78,7 +78,7 @@ def test_constraints_false_fails():
     from seekflow_engineering_tools.generative_cad.ir.raw import RawGcadDocument
     data = _load_fixture("axisymmetric_minimal.json")
     data["constraints"]["require_step_file"] = False
-    with pytest.raises(ValueError, match="require_step_file cannot be false"):
+    with pytest.raises(ValueError, match=r"constraints\.require_step_file must be explicitly true"):
         RawGcadDocument.model_validate(data)
 
 

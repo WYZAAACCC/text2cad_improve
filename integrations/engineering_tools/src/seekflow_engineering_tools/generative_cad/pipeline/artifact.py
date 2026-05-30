@@ -39,8 +39,9 @@ def build_canonical_step_artifact(
 
     return {
         "artifact_type": "canonical_step_artifact",
-        "artifact_version": "canonical_step_artifact_v0.2",
+        "artifact_schema_version": "canonical_step_artifact_v1",
         "source_route": "llm_skill_base",
+        "state": "validated_reference_step",
         "part_name": canonical.part_name,
         "document_id": getattr(canonical, "document_id", ""),
         "step_path": str(step_path),
@@ -55,7 +56,9 @@ def build_canonical_step_artifact(
         "canonical_graph_hash": getattr(canonical, "canonical_graph_hash", ""),
         "selected_dialects": [d.model_dump() for d in canonical.selected_dialects],
         "native_rebuild_allowed": False,
-        "step_import_allowed": True,
+        "step_import_candidate": True,
+        "step_import_allowed": False,
+        "requires_import_gate": True,
         "inspection": inspection or {},
         "validation": validation,
     }

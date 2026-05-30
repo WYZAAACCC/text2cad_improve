@@ -301,7 +301,10 @@ class TestArtifactCompleteness:
         assert artifact["graph_path"] == "/tmp/g.json"
         assert artifact["runner_script_path"] == "/tmp/r.py"
         assert artifact["native_rebuild_allowed"] is False
-        assert artifact["step_import_allowed"] is True
+        assert artifact["step_import_allowed"] is False
+        assert artifact["step_import_candidate"] is True
+        assert artifact["requires_import_gate"] is True
+        assert artifact["state"] == "validated_reference_step"
         assert artifact["units"] == "mm"
 
     def test_artifact_none_for_unavailable_paths(self):

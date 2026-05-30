@@ -24,6 +24,9 @@ Effect = Literal[
 ]
 
 OperationHandler = Callable[..., dict[str, str]]
+"""Legacy handler type — returns dict[str, str] mapping output name → handle_id.
+New operations should return OperationResult instead. Use handler_kind='v2_result'.
+"""
 
 
 class OperationSpec(BaseModel):
@@ -44,6 +47,7 @@ class OperationSpec(BaseModel):
     postconditions: list[str] = []
 
     handler: OperationHandler
+    handler_kind: Literal["v1_dict", "v2_result"] = "v1_dict"
 
     def validate_params(self, raw_params: dict[str, Any]) -> BaseModel:
         return self.params_model.model_validate(raw_params)
