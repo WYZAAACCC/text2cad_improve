@@ -200,11 +200,13 @@ class CompositionDialect:
             unscheduled = [n.id for n in nodes if n not in sorted_nodes]
             raise RuntimeError(f"composition: could not schedule nodes: {unscheduled}")
 
+        from seekflow_engineering_tools.generative_cad.dialects.executor import execute_operation
+
         final_outputs: dict[str, str] = {}
         for node in sorted_nodes:
             op_spec = self.get_op_spec(node.op, node.op_version)
             try:
-                outputs = op_spec.handler(node, ctx)
+                executed = execute_operation(node=node, op_spec=op_spec, ctx=ctx)
             except Exception as exc:
                 if not node.required and node.degradation_policy == "may_skip_with_warning":
                     ctx.warnings.append(f"Optional node {node.id!r} ({node.op}) skipped: {exc}")
@@ -212,8 +214,7 @@ class CompositionDialect:
                     ctx.operation_metrics.append({"node_id": node.id, "op": node.op, "status": "degraded", "reason": str(exc)})
                     continue
                 raise
-            for name, handle_id in outputs.items():
-                ctx.bind_node_output(node.id, name, handle_id)
+            for name, handle_id in executed.outputs.items():
                 final_outputs[name] = handle_id
             ctx.operation_metrics.append({"node_id": node.id, "op": node.op, "status": "ok"})
 

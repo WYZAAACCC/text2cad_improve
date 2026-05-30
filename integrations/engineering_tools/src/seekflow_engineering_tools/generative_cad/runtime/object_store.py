@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 from seekflow_engineering_tools.generative_cad.runtime.handles import (
@@ -10,6 +11,13 @@ from seekflow_engineering_tools.generative_cad.runtime.handles import (
     SolidArrayHandle,
     FrameHandle,
 )
+
+
+@dataclass(frozen=True)
+class StoredRuntimeObject:
+    handle_id: str
+    value_type: str
+    obj: object
 
 
 class RuntimeObjectStore:
@@ -34,6 +42,16 @@ class RuntimeObjectStore:
         if handle_id not in self._handles:
             raise KeyError(f"runtime handle not found: {handle_id}")
         return self._handles[handle_id]
+
+    def get_typed(self, handle_id: str) -> StoredRuntimeObject:
+        """Return typed handle + object for output validation."""
+        handle = self.get_handle(handle_id)
+        obj = self.get(handle_id)
+        return StoredRuntimeObject(
+            handle_id=handle_id,
+            value_type=handle.type,
+            obj=obj,
+        )
 
     def put_solid(self, handle: SolidHandle, obj: Any) -> SolidHandle:
         self.put(handle, obj)

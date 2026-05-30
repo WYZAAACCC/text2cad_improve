@@ -26,15 +26,15 @@ class TestPromptsV08:
                         f"{name} prompt uses legacy term '{term}' without deprecation context"
 
     def test_level1_prompt_has_hard_rules(self):
-        assert "Hard rules:" in LEVEL1_ROUTING_SYSTEM_PROMPT
+        assert "Hard safety rules:" in LEVEL1_ROUTING_SYSTEM_PROMPT
         assert "deterministic_primitive" in LEVEL1_ROUTING_SYSTEM_PROMPT
         assert "generative_cad_ir" in LEVEL1_ROUTING_SYSTEM_PROMPT
 
     def test_level2_prompt_forbids_unsupported_capabilities_in_raw(self):
-        assert "Never include unsupported_capabilities inside RawGcadDocument" in LEVEL2_AUTHORING_SYSTEM_PROMPT
+        assert "return to Level-1 routing as unsupported" in LEVEL2_AUTHORING_SYSTEM_PROMPT
 
     def test_level2_prompt_has_rule_30(self):
-        assert "unsupported_capabilities belongs only to DialectSelectionPlan" in LEVEL2_AUTHORING_SYSTEM_PROMPT
+        assert "Do not invent dialects, operations" in LEVEL2_AUTHORING_SYSTEM_PROMPT
 
     def test_repair_prompt_mentions_old_value(self):
         assert "old_value" in REPAIR_PATCH_SYSTEM_PROMPT_V2

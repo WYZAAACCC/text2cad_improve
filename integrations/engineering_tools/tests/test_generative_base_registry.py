@@ -1,4 +1,7 @@
-"""Test generative CAD base registry."""
+"""Test generative CAD base registry — legacy v0.1 tests require env flag."""
+
+import os
+os.environ["SEEKFLOW_ALLOW_LEGACY_GCAD_IMPORTS"] = "1"
 
 import pytest
 

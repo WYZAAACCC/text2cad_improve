@@ -193,11 +193,13 @@ class SketchExtrudeDialect:
             unscheduled = [n.id for n in nodes if n not in sorted_nodes]
             raise RuntimeError(f"sketch_extrude: unscheduled nodes: {unscheduled}")
 
+        from seekflow_engineering_tools.generative_cad.dialects.executor import execute_operation
+
         final_outputs = {}
         for node in sorted_nodes:
             op_spec = self.get_op_spec(node.op, node.op_version)
             try:
-                outputs = op_spec.handler(node, ctx)
+                executed = execute_operation(node=node, op_spec=op_spec, ctx=ctx)
             except Exception as exc:
                 if not node.required and node.degradation_policy == "may_skip_with_warning":
                     ctx.warnings.append(f"Optional {node.id!r} ({node.op}) skipped: {exc}")
@@ -205,8 +207,8 @@ class SketchExtrudeDialect:
                     ctx.operation_metrics.append({"node_id": node.id, "op": node.op, "status": "degraded", "reason": str(exc)})
                     continue
                 raise
-            for name, hid in outputs.items():
-                ctx.bind_node_output(node.id, name, hid); final_outputs[name] = hid
+            for name, hid in executed.outputs.items():
+                final_outputs[name] = hid
             ctx.operation_metrics.append({"node_id": node.id, "op": node.op, "status": "ok"})
         root = next((n for n in sorted_nodes if n.id == component.root_node), sorted_nodes[-1] if sorted_nodes else None)
         if root:
