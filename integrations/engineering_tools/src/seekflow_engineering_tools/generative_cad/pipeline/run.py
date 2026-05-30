@@ -1,13 +1,10 @@
-"""G-CAD Core runner — v0.9: deep-copy validation_seed, artifact/metadata consistency.
+"""G-CAD Core runner — vNext: MetadataProofV3, canonical_ir_path/validation_seed_path.
 
 Split entrypoints:
 - run_gcad_core_from_files / run_gcad_core: accepts RAW JSON, validates+canonicalizes with bundle
 - run_canonical_gcad_from_files / run_canonical_gcad: accepts PRE-VALIDATED canonical JSON
 
-run_canonical_gcad_from_files: This entrypoint is for pre-validated canonical documents.
-Metadata produced here is runner-local and may not contain full validation proof unless
-validation_seed is provided. Production build_generative_cad_model rewrites metadata
-with ValidationBundle and inspection proof before returning success.
+Metadata v3 requires paths, runtime proof, artifact hash, and import policy.
 """
 
 from __future__ import annotations
@@ -19,7 +16,7 @@ from pathlib import Path
 from seekflow_engineering_tools.generative_cad.dialects.registry import require_dialect
 from seekflow_engineering_tools.generative_cad.ir.canonical import CanonicalGcadDocument
 from seekflow_engineering_tools.generative_cad.pipeline.artifact import build_canonical_step_artifact
-from seekflow_engineering_tools.generative_cad.pipeline.metadata import build_generative_metadata
+from seekflow_engineering_tools.generative_cad.pipeline.metadata_v3 import build_generative_metadata_v3
 from seekflow_engineering_tools.generative_cad.runtime.context import RuntimeContext
 from seekflow_engineering_tools.generative_cad.runtime.results import GcadRunResult
 from seekflow_engineering_tools.generative_cad.validation.pipeline import validate_and_canonicalize_with_bundle
@@ -55,6 +52,8 @@ def run_gcad_core(
         out_step=out_step,
         metadata_path=metadata_path,
         validation_seed=bundle.to_metadata_dict(),
+        canonical_ir_path="<in_memory>",
+        validation_seed_path="<in_memory>",
         require_full_validation_seed=True,
     )
 
@@ -86,6 +85,8 @@ def run_canonical_gcad_from_files(
         out_step=out_step,
         metadata_path=metadata_path,
         validation_seed=validation_seed,
+        canonical_ir_path=canonical_json,
+        validation_seed_path=validation_seed_json,
         require_full_validation_seed=True,
     )
 
@@ -95,6 +96,9 @@ def run_canonical_gcad(
     out_step: str | Path,
     metadata_path: str | Path,
     validation_seed: dict,
+    *,
+    canonical_ir_path: str | Path | None = None,
+    validation_seed_path: str | Path | None = None,
     require_full_validation_seed: bool = True,
 ) -> GcadRunResult:
     if require_full_validation_seed and not validation_seed:
@@ -136,9 +140,13 @@ def run_canonical_gcad(
         validation = copy.deepcopy(validation_seed)
         validation["runtime_postconditions"] = runtime_pc
 
-        metadata = build_generative_metadata(
+        metadata = build_generative_metadata_v3(
             canonical=canonical, ctx=ctx,
             validation=validation,
+            canonical_ir_path=Path(canonical_ir_path) if canonical_ir_path else Path("<in_memory>"),
+            validation_seed_path=Path(validation_seed_path) if validation_seed_path else Path("<in_memory>"),
+            step_path=out_step,
+            metadata_path=metadata_path,
         )
         metadata_path.write_text(
             json.dumps(metadata, indent=2, ensure_ascii=False, default=str),

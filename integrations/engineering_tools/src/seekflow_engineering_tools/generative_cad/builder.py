@@ -11,7 +11,8 @@ from seekflow_engineering_tools.common.models import EngineeringActionResult
 from seekflow_engineering_tools.common.paths import ensure_extension, ensure_inside_workspace
 from seekflow_engineering_tools.config import EngineeringToolsConfig
 from seekflow_engineering_tools.generative_cad.ir.raw import RawGcadDocument
-from seekflow_engineering_tools.generative_cad.pipeline.metadata import validate_generative_metadata_v2
+from seekflow_engineering_tools.generative_cad.pipeline.metadata_v3 import validate_generative_metadata_v3
+from seekflow_engineering_tools.generative_cad.dialects.default_registry import default_registry
 from seekflow_engineering_tools.generative_cad.validation.pipeline import validate_and_canonicalize_with_bundle
 
 
@@ -138,10 +139,13 @@ def build_generative_cad_model(
             error=f"Metadata JSON invalid: {exc}", files_created=files_created).model_dump()
 
     # Initial metadata validation (NO require_validation_ok — runtime/inspection not yet attached)
-    meta_validation = validate_generative_metadata_v2(metadata, canonical=canonical, registry_check=True, require_validation_ok=False)
+    meta_validation = validate_generative_metadata_v3(
+        metadata, canonical=canonical, registry=default_registry(),
+        require_validation_ok=False, require_final_artifact_hash=False,
+    )
     if not meta_validation["ok"]:
         return EngineeringActionResult(ok=False, software="cadquery", action="build_generative_cad",
-            error="Metadata v2 invalid: " + "; ".join(i["message"] for i in meta_validation["issues"]),
+            error="Metadata v3 invalid: " + "; ".join(i["message"] for i in meta_validation["issues"]),
             files_created=files_created).model_dump()
 
     # ── Inspection ──
@@ -189,12 +193,13 @@ def build_generative_cad_model(
     meta_path.write_text(json.dumps(metadata, indent=2, ensure_ascii=False, default=str), encoding="utf-8")
 
     # ── Final revalidation with require_validation_ok=True ──
-    meta_validation_final = validate_generative_metadata_v2(
-        metadata, canonical=canonical, registry_check=True, require_validation_ok=True,
+    meta_validation_final = validate_generative_metadata_v3(
+        metadata, canonical=canonical, registry=default_registry(),
+        require_validation_ok=True, require_final_artifact_hash=True,
     )
     if not meta_validation_final["ok"]:
         return EngineeringActionResult(ok=False, software="cadquery", action="build_generative_cad",
-            error="Metadata v2.1 final validation failed: " + "; ".join(i["message"] for i in meta_validation_final["issues"]),
+            error="Metadata v3 final validation failed: " + "; ".join(i["message"] for i in meta_validation_final["issues"]),
             files_created=files_created).model_dump()
 
     metrics = {
@@ -212,7 +217,8 @@ def build_generative_cad_model(
     from seekflow_engineering_tools.generative_cad.pipeline.artifact import build_canonical_step_artifact
     artifact = build_canonical_step_artifact(
         canonical=canonical, step_path=step_path, metadata_path=meta_path,
-        graph_path=str(graph_path), runner_script_path=str(script_path),
+        graph_path=str(graph_path), validation_seed_path=str(validation_seed_path),
+        runner_script_path=str(script_path),
         validation=validation_meta,
         inspection=insp_val,
     )

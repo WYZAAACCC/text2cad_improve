@@ -1,11 +1,13 @@
-"""Generative STEP artifact import gate — v1.0: complete postcondition invariants."""
+"""Generative STEP artifact import gate — vNext: MetadataProofV3 validation, step_sha256 check."""
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
-from seekflow_engineering_tools.generative_cad.pipeline.metadata import validate_generative_metadata_v2
+from seekflow_engineering_tools.generative_cad.pipeline.metadata_v3 import validate_generative_metadata_v3
+from seekflow_engineering_tools.generative_cad.dialects.default_registry import default_registry
 
 REQUIRED_GATE_FLAGS = [
     "step_exists", "metadata_exists", "metadata_valid", "safety_valid",
@@ -65,9 +67,10 @@ def validate_generative_step_artifact_for_native_import(
         issues.append({"code": "metadata_invalid_json", "message": f"Metadata JSON invalid: {exc}"})
         return {"ok": False, "issues": issues, "metadata": None, "gate": gate}
 
-    # Validate metadata v2.1 with hard gate — all stages must prove ok
-    meta_result = validate_generative_metadata_v2(
-        metadata, canonical=None, registry_check=registry_check, require_validation_ok=True,
+    # Validate metadata v3 with hard gate — all stages must prove ok
+    meta_result = validate_generative_metadata_v3(
+        metadata, canonical=None, registry=default_registry() if registry_check else None,
+        require_validation_ok=True, require_final_artifact_hash=True,
     )
     if not meta_result["ok"]:
         issues.extend(meta_result["issues"])
@@ -148,6 +151,15 @@ def validate_generative_step_artifact_for_native_import(
 
     gate["native_rebuild_allowed"] = False
     gate["step_import_allowed"] = True
+
+    # vNext: verify step_sha256 matches actual file
+    expected_hash = (gm.get("artifact", {}) or {}).get("step_sha256", "")
+    if expected_hash and expected_hash != "sha256:pending":
+        actual = "sha256:" + hashlib.sha256(step_path.read_bytes()).hexdigest()
+        if actual != expected_hash:
+            issues.append({"code": "step_sha256_mismatch", "message": f"STEP hash mismatch: metadata={expected_hash}, actual={actual}"})
+            gate["step_import_allowed"] = False
+            return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
 
     # v1.0: postcondition invariants — all required flags must be True at success path
     REQUIRED_TRUE_FLAGS = [

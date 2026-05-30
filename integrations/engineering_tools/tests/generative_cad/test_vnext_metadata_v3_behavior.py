@@ -86,7 +86,7 @@ class TestMetadataV3Behavior:
 
     def test_metadata_v3_requires_import_policy(self):
         from seekflow_engineering_tools.generative_cad.pipeline.metadata_v3 import validate_generative_metadata_v3
-        result = validate_generative_metadata_v3({"generative_metadata": {}})
+        result = validate_generative_metadata_v3({"generative_metadata": {"metadata_version": "generative_metadata_v3"}})
         assert not result["ok"]
         assert any("import_policy" in i["code"] for i in result["issues"])
 

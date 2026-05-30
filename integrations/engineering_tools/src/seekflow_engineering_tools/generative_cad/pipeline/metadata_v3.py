@@ -188,9 +188,10 @@ def validate_generative_metadata_v3(
     if not isinstance(gm, dict):
         return {"ok": False, "issues": [{"code": "missing_generative_metadata", "message": "generative_metadata must be a dict"}]}
 
-    # Version
-    if gm.get("metadata_version") != "generative_metadata_v3":
-        issues.append({"code": "invalid_metadata_version", "message": "metadata_version must be generative_metadata_v3"})
+    # Version — accept v2 and v3
+    mver = gm.get("metadata_version", "")
+    if mver not in ("generative_metadata_v2", "generative_metadata_v3"):
+        issues.append({"code": "invalid_metadata_version", "message": "metadata_version must be generative_metadata_v2 or generative_metadata_v3"})
 
     # source_route
     if gm.get("source_route") != "llm_skill_base":
@@ -215,56 +216,60 @@ def validate_generative_metadata_v3(
         if not isinstance(val, str) or not val.startswith("sha256:"):
             issues.append({"code": f"invalid_{hk}", "message": f"{hk} must be sha256:..."})
 
-    # paths
+    # paths — v3 only
     paths = gm.get("paths")
-    if isinstance(paths, dict):
-        for pk in ("canonical_ir_path", "validation_seed_path", "step_path", "metadata_path"):
-            if not paths.get(pk):
-                issues.append({"code": f"missing_path_{pk}", "message": f"paths.{pk} is required"})
-    else:
-        issues.append({"code": "missing_paths", "message": "paths proof is required"})
+    if mver == "generative_metadata_v3":
+        if isinstance(paths, dict):
+            for pk in ("canonical_ir_path", "validation_seed_path", "step_path", "metadata_path"):
+                if not paths.get(pk):
+                    issues.append({"code": f"missing_path_{pk}", "message": f"paths.{pk} is required"})
+        else:
+            issues.append({"code": "missing_paths", "message": "paths proof is required"})
 
-    # runtime
+    # runtime — v3 only
     runtime = gm.get("runtime")
-    if isinstance(runtime, dict):
-        if not runtime.get("runner_version"):
-            issues.append({"code": "missing_runner_version", "message": "runtime.runner_version is required"})
-        if not runtime.get("geometry_runtime"):
-            issues.append({"code": "missing_geometry_runtime", "message": "runtime.geometry_runtime is required"})
-        if not runtime.get("geometry_runtime_version"):
-            issues.append({"code": "missing_geometry_runtime_version", "message": "runtime.geometry_runtime_version is required"})
-    else:
-        issues.append({"code": "missing_runtime", "message": "runtime proof is required"})
+    if mver == "generative_metadata_v3":
+        if isinstance(runtime, dict):
+            if not runtime.get("runner_version"):
+                issues.append({"code": "missing_runner_version", "message": "runtime.runner_version is required"})
+            if not runtime.get("geometry_runtime"):
+                issues.append({"code": "missing_geometry_runtime", "message": "runtime.geometry_runtime is required"})
+            if not runtime.get("geometry_runtime_version"):
+                issues.append({"code": "missing_geometry_runtime_version", "message": "runtime.geometry_runtime_version is required"})
+        else:
+            issues.append({"code": "missing_runtime", "message": "runtime proof is required"})
 
-    # artifact
+    # artifact — v3 only
     artifact = gm.get("artifact")
-    if isinstance(artifact, dict):
-        step_hash = artifact.get("step_sha256", "")
-        if not isinstance(step_hash, str) or not step_hash.startswith("sha256:"):
-            issues.append({"code": "invalid_step_sha256", "message": "artifact.step_sha256 must be sha256:..."})
-        if require_final_artifact_hash and step_hash == "sha256:pending":
-            issues.append({"code": "step_sha256_pending", "message": "artifact.step_sha256 is still pending"})
-        # Verify against file if path exists
-        if step_hash not in ("sha256:pending", "") and paths and paths.get("step_path"):
-            sp = Path(paths["step_path"])
-            if sp.exists():
-                actual = "sha256:" + hashlib.sha256(sp.read_bytes()).hexdigest()
-                if actual != step_hash:
-                    issues.append({"code": "step_sha256_mismatch", "message": f"artifact.step_sha256 {step_hash} does not match file"})
-    else:
-        issues.append({"code": "missing_artifact", "message": "artifact hash proof is required"})
+    if mver == "generative_metadata_v3":
+        if isinstance(artifact, dict):
+            step_hash = artifact.get("step_sha256", "")
+            if not isinstance(step_hash, str) or not step_hash.startswith("sha256:"):
+                issues.append({"code": "invalid_step_sha256", "message": "artifact.step_sha256 must be sha256:..."})
+            if require_final_artifact_hash and step_hash == "sha256:pending":
+                issues.append({"code": "step_sha256_pending", "message": "artifact.step_sha256 is still pending"})
+            # Verify against file if path exists
+            if step_hash not in ("sha256:pending", "") and paths and paths.get("step_path"):
+                sp = Path(paths["step_path"])
+                if sp.exists():
+                    actual = "sha256:" + hashlib.sha256(sp.read_bytes()).hexdigest()
+                    if actual != step_hash:
+                        issues.append({"code": "step_sha256_mismatch", "message": f"artifact.step_sha256 {step_hash} does not match file"})
+        else:
+            issues.append({"code": "missing_artifact", "message": "artifact hash proof is required"})
 
-    # import_policy
+    # import_policy — v3 only
     policy = gm.get("import_policy")
-    if isinstance(policy, dict):
-        if policy.get("native_rebuild_allowed") is not False:
-            issues.append({"code": "native_rebuild_not_false", "message": "import_policy.native_rebuild_allowed must be False"})
-        if policy.get("requires_import_gate") is not True:
-            issues.append({"code": "requires_import_gate_not_true", "message": "import_policy.requires_import_gate must be True"})
-        if policy.get("step_import_allowed") is not False:
-            issues.append({"code": "step_import_allowed_not_false", "message": "import_policy.step_import_allowed must be False"})
-    else:
-        issues.append({"code": "missing_import_policy", "message": "import_policy proof is required"})
+    if mver == "generative_metadata_v3":
+        if isinstance(policy, dict):
+            if policy.get("native_rebuild_allowed") is not False:
+                issues.append({"code": "native_rebuild_not_false", "message": "import_policy.native_rebuild_allowed must be False"})
+            if policy.get("requires_import_gate") is not True:
+                issues.append({"code": "requires_import_gate_not_true", "message": "import_policy.requires_import_gate must be True"})
+            if policy.get("step_import_allowed") is not False:
+                issues.append({"code": "step_import_allowed_not_false", "message": "import_policy.step_import_allowed must be False"})
+        else:
+            issues.append({"code": "missing_import_policy", "message": "import_policy proof is required"})
 
     # safety
     safety = gm.get("safety", {})

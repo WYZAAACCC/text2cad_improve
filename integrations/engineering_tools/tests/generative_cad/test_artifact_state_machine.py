@@ -6,7 +6,7 @@ class TestArtifactStateMachine:
         from seekflow_engineering_tools.generative_cad.pipeline.artifact import build_canonical_step_artifact
         import inspect
         src = inspect.getsource(build_canonical_step_artifact)
-        assert '"state"' in src or "'state'" in src
+        assert '"state"' in src or "'state'" in src or "state=" in src
         assert "validated_reference_step" in src
 
     def test_artifact_step_import_allowed_is_false(self):
@@ -14,7 +14,7 @@ class TestArtifactStateMachine:
         import inspect
         src = inspect.getsource(build_canonical_step_artifact)
         assert "step_import_allowed" in src
-        assert '"step_import_allowed": False' in src or "'step_import_allowed': False" in src
+        assert "step_import_allowed=False" in src
 
     def test_artifact_step_import_candidate_is_true(self):
         from seekflow_engineering_tools.generative_cad.pipeline.artifact import build_canonical_step_artifact
@@ -101,4 +101,5 @@ class TestArtifactStateMachine:
         import inspect
         from seekflow_engineering_tools.generative_cad.pipeline import artifact
         src = inspect.getsource(artifact)
-        assert '"native_rebuild_allowed": False' in src or "'native_rebuild_allowed': False" in src
+        assert "native_rebuild_allowed" in src
+        assert "native_rebuild_allowed=False" in src
