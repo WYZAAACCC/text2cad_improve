@@ -1,4 +1,4 @@
-"""Metadata v2.1 builder and validator — hard validation with require_validation_ok."""
+"""Metadata v2.1 builder and validator — v0.9: normalize_validation_proof, partial dict safety."""
 
 from __future__ import annotations
 
@@ -21,35 +21,60 @@ REQUIRED_SAFETY_FLAGS = [
 ]
 
 
+def _missing_stage(stage: str) -> dict:
+    """Return a fail-closed validation stage dict for a missing stage."""
+    return {
+        "ok": False,
+        "stage": stage,
+        "issues": [
+            {
+                "code": f"missing_{stage}_report",
+                "message": f"No {stage} report was provided.",
+                "severity": "error",
+            }
+        ],
+    }
+
+
+def default_validation_proof() -> dict:
+    """Return a fail-closed validation proof with all required stages missing."""
+    return {stage: _missing_stage(stage) for stage in REQUIRED_VALIDATION_STAGES}
+
+
+def normalize_validation_proof(validation: dict | None) -> dict:
+    """Normalize a validation dict to contain all REQUIRED_VALIDATION_STAGES.
+
+    Missing stages get fail-closed _missing_stage entries.
+    Partial dicts are merged into the default fail-closed template.
+    Extra diagnostic sections are preserved.
+    """
+    normalized = default_validation_proof()
+    if validation is None:
+        return normalized
+
+    if not isinstance(validation, dict):
+        return normalized
+
+    for stage in REQUIRED_VALIDATION_STAGES:
+        value = validation.get(stage)
+        if isinstance(value, dict):
+            normalized[stage] = value
+
+    # Preserve any extra non-required diagnostic sections
+    for key, value in validation.items():
+        if key not in normalized:
+            normalized[key] = value
+
+    return normalized
+
+
 def build_generative_metadata(
     canonical: CanonicalGcadDocument,
     ctx: RuntimeContext,
     validation: dict | None = None,
     repair_summary: dict | None = None,
 ) -> dict:
-    if validation is None:
-        validation = {
-            "core_validation": {
-                "ok": False, "stage": "core_validation",
-                "issues": [{"code": "missing_core_validation_report", "message": "No core validation report was provided.", "severity": "error"}],
-            },
-            "dialect_semantics": {
-                "ok": False, "stage": "dialect_semantics",
-                "issues": [{"code": "missing_dialect_semantics_report", "message": "No dialect semantics report was provided.", "severity": "error"}],
-            },
-            "geometry_preflight": {
-                "ok": False, "stage": "geometry_preflight",
-                "issues": [{"code": "missing_geometry_preflight_report", "message": "No geometry preflight report was provided.", "severity": "error"}],
-            },
-            "runtime_postconditions": {
-                "ok": False, "stage": "runtime_postconditions",
-                "issues": [{"code": "missing_runtime_postconditions_report", "message": "No runtime postconditions report was provided.", "severity": "error"}],
-            },
-            "inspection_validation": {
-                "ok": False, "stage": "inspection_validation",
-                "issues": [{"code": "missing_inspection_validation_report", "message": "No inspection validation report was provided.", "severity": "error"}],
-            },
-        }
+    validation = normalize_validation_proof(validation)
     return {
         "generative_metadata": {
             "metadata_version": "generative_metadata_v2",

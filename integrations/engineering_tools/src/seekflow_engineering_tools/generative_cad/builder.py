@@ -195,7 +195,7 @@ def build_generative_cad_model(
         inspection=insp_val,
     )
 
-    # v0.8: artifact/metadata consistency check
+    # v0.9: extended artifact/metadata consistency checks
     metadata_gm = metadata.get("generative_metadata", {})
     if artifact.get("canonical_graph_hash") != metadata_gm.get("canonical_graph_hash"):
         return EngineeringActionResult(
@@ -207,6 +207,38 @@ def build_generative_cad_model(
         return EngineeringActionResult(
             ok=False, software="cadquery", action="build_generative_cad",
             error="Artifact/metadata validation proof mismatch.",
+            files_created=files_created,
+        ).model_dump()
+    if artifact.get("native_rebuild_allowed") is not False:
+        return EngineeringActionResult(
+            ok=False, software="cadquery", action="build_generative_cad",
+            error="Artifact native_rebuild_allowed must be False.",
+            files_created=files_created,
+        ).model_dump()
+    if artifact.get("step_import_allowed") is not True:
+        return EngineeringActionResult(
+            ok=False, software="cadquery", action="build_generative_cad",
+            error="Artifact step_import_allowed must be True.",
+            files_created=files_created,
+        ).model_dump()
+    if artifact.get("step_path") != str(step_path):
+        return EngineeringActionResult(
+            ok=False, software="cadquery", action="build_generative_cad",
+            error="Artifact step_path mismatch.",
+            files_created=files_created,
+        ).model_dump()
+    if artifact.get("metadata_path") != str(meta_path):
+        return EngineeringActionResult(
+            ok=False, software="cadquery", action="build_generative_cad",
+            error="Artifact metadata_path mismatch.",
+            files_created=files_created,
+        ).model_dump()
+    artifact_dialects = artifact.get("selected_dialects")
+    metadata_dialects = metadata_gm.get("selected_dialects")
+    if artifact_dialects != metadata_dialects:
+        return EngineeringActionResult(
+            ok=False, software="cadquery", action="build_generative_cad",
+            error="Artifact/metadata selected_dialects mismatch.",
             files_created=files_created,
         ).model_dump()
 

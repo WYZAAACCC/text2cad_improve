@@ -1,4 +1,4 @@
-"""G-CAD Core runner — raw validation → canonical → components → STEP → metadata. v0.8: require_full_validation_seed.
+"""G-CAD Core runner — v0.9: deep-copy validation_seed, artifact/metadata consistency.
 
 Split entrypoints:
 - run_gcad_core_from_files / run_gcad_core: accepts RAW JSON, validates+canonicalizes with bundle
@@ -12,6 +12,7 @@ with ValidationBundle and inspection proof before returning success.
 
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 
@@ -128,7 +129,7 @@ def run_canonical_gcad(
 
         _export_final_solid(final_handle_id, ctx)
 
-        validation = validation_seed or {}
+        validation = copy.deepcopy(validation_seed) if validation_seed is not None else {}
         validation["runtime_postconditions"] = runtime_pc
 
         metadata = build_generative_metadata(
@@ -142,8 +143,20 @@ def run_canonical_gcad(
 
         artifact = build_canonical_step_artifact(
             canonical=canonical, step_path=out_step,
-            metadata_path=metadata_path, ctx=ctx,
+            metadata_path=metadata_path,
+            validation=metadata["validation"],
+            ctx=ctx,
         )
+
+        # v0.9: artifact/metadata consistency check for direct runner path
+        if artifact.get("validation") != metadata.get("validation"):
+            return GcadRunResult(
+                ok=False,
+                error="runner artifact/metadata validation mismatch",
+                warnings=ctx.warnings,
+                degraded_features=ctx.degraded_features,
+                operation_metrics=ctx.operation_metrics,
+            )
 
         return GcadRunResult(
             ok=True,
