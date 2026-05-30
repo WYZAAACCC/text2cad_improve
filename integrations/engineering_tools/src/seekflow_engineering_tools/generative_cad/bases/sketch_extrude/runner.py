@@ -401,23 +401,29 @@ def _op_add_rib(body: Any, params: dict) -> Any:
 
 
 def _op_apply_safe_fillet(body: Any, params: dict) -> Any:
+    """Apply fillet; returns original body on geometry failure, raises on fatal errors."""
     r = float(params.get("radius_mm", 0))
     if r <= 0:
         return body
     try:
         return body.fillet(r)
-    except Exception:
+    except (ValueError, RuntimeError):
+        # Geometry failure (complex topology, edge loss, kernel tolerance)
         return body
+    # Fatal errors (MemoryError, OSError, etc.) propagate naturally
 
 
 def _op_apply_safe_chamfer(body: Any, params: dict) -> Any:
+    """Apply chamfer; returns original body on geometry failure, raises on fatal errors."""
     d = float(params.get("distance_mm", 0))
     if d <= 0:
         return body
     try:
         return body.chamfer(d)
-    except Exception:
+    except (ValueError, RuntimeError):
+        # Geometry failure (complex topology, edge loss, kernel tolerance)
         return body
+    # Fatal errors (MemoryError, OSError, etc.) propagate naturally
 
 
 def _build_se_metadata(

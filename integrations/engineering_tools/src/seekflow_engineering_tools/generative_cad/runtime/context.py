@@ -32,6 +32,10 @@ class RuntimeContext:
     def geometry_runtime_name(self) -> str:
         return self.geometry_runtime.runtime_id
 
+    @property
+    def geometry_runtime_version(self) -> str:
+        return self.geometry_runtime.runtime_version
+
     def bind_node_output(self, node_id: str, output_name: str, handle_id: str) -> None:
         self.node_outputs.setdefault(node_id, {})[output_name] = handle_id
 

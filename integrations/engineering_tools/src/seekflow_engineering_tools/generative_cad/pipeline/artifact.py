@@ -10,10 +10,12 @@ from seekflow_engineering_tools.generative_cad.pipeline.artifact_models import C
 
 
 def _sha256_file(path: Path) -> str:
+    """Compute SHA256 of a file. Returns empty string if file not yet available."""
     try:
         return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
-    except Exception:
+    except (FileNotFoundError, PermissionError, OSError):
         return ""
+    # Fatal errors (MemoryError, etc.) propagate naturally
 
 
 def build_canonical_step_artifact(

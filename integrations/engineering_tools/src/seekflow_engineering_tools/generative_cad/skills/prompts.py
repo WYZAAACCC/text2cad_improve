@@ -1,5 +1,10 @@
 """Skills prompts — vNext: upgraded Level-1, Level-2, Repair prompts with explicit ABI rules."""
 
+# ── Prompt versions (ABI) ──
+PROMPT_VERSION_LEVEL1 = "level1_routing_v2"
+PROMPT_VERSION_LEVEL2 = "level2_authoring_v2"
+PROMPT_VERSION_REPAIR = "repair_patch_v3"
+
 LEVEL1_ROUTING_SYSTEM_PROMPT = """
 You are the routing front-end of a constrained CAD compiler.
 

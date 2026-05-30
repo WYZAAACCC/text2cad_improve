@@ -1,5 +1,8 @@
 """Test generative metadata validation."""
 
+import os
+os.environ["SEEKFLOW_ALLOW_LEGACY_GCAD_IMPORTS"] = "1"
+
 import pytest
 
 from seekflow_engineering_tools.generative_cad.metadata import validate_generative_metadata_v1

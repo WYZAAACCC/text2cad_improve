@@ -95,10 +95,12 @@ class MetadataProofV3(BaseModel):
 
 
 def _compute_step_sha256(step_path: Path) -> str:
+    """Compute SHA256 of STEP file. Returns 'sha256:pending' if file not yet available."""
     try:
         return "sha256:" + hashlib.sha256(step_path.read_bytes()).hexdigest()
-    except Exception:
+    except (FileNotFoundError, PermissionError, OSError):
         return "sha256:pending"
+    # Fatal errors (MemoryError, etc.) propagate naturally
 
 
 def build_generative_metadata_v3(

@@ -1,5 +1,8 @@
 """Test geometry preflight for axisymmetric and sketch_extrude bases."""
 
+import os
+os.environ["SEEKFLOW_ALLOW_LEGACY_GCAD_IMPORTS"] = "1"
+
 import pytest
 
 from seekflow_engineering_tools.generative_cad.ir import GenerativeCADSpec

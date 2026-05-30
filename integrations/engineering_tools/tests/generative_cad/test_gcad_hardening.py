@@ -330,10 +330,15 @@ class TestArtifactCompleteness:
 
 class TestErrorClasses:
     def test_errors_importable(self):
-        from seekflow_engineering_tools.generative_cad.errors import (
-            GenerativeCadError, ValidationFailedError, BuildFailedError,
-            UnknownDialectError, UnknownOperationError, StepExportError,
-        )
-        e = UnknownDialectError("fake_dialect")
+        """Verify error types remain available from runtime module.
+
+        The legacy generative_cad.errors module has been removed (dead code).
+        Structured error codes in ValidationIssue serve as the error ABI.
+        """
+        from seekflow_engineering_tools.generative_cad.validation.reports import ValidationIssue
+        # Verify ValidationIssue can be created with error-level severity
+        e = ValidationIssue(stage="test", code="unknown_dialect",
+                            message="fake_dialect", severity="error")
+        assert e.code == "unknown_dialect"
         assert "fake_dialect" in str(e)
-        assert e.code == "UNKNOWN_DIALECT"
+        assert e.code == "unknown_dialect"

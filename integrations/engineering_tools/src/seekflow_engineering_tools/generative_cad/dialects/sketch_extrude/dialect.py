@@ -214,7 +214,7 @@ class SketchExtrudeDialect:
         if root:
             for o in root.outputs:
                 try: ctx.bind_component_output(component.id, o.name, ctx.resolve_node_output(root.id, o.name))
-                except KeyError: pass
+                except KeyError: pass  # postconditions.py independently validates root outputs
         return final_outputs
 
 

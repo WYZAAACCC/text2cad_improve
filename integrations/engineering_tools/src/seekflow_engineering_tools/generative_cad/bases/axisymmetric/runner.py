@@ -497,15 +497,16 @@ def _op_cut_rim_slot_pattern(body: Any, params: dict) -> Any:
 
 
 def _op_apply_safe_chamfer(body: Any, params: dict) -> Any:
-    """Apply chamfer to all external edges."""
+    """Apply chamfer to all external edges. Returns original body on geometry failure."""
     distance = float(params.get("distance_mm", 0))
     if distance <= 0:
         raise ValueError("distance_mm must be positive")
     try:
         return body.chamfer(distance)
-    except Exception:
-        # Chamfer may fail on complex topology — skip gracefully
+    except (ValueError, RuntimeError):
+        # Geometry failure (complex topology, edge loss, kernel tolerance)
         return body
+    # Fatal errors (MemoryError, OSError, etc.) propagate naturally
 
 
 def _build_axisymmetric_metadata(

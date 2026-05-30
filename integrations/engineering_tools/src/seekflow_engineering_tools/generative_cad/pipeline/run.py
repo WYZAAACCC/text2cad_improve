@@ -182,9 +182,12 @@ def run_canonical_gcad(
         )
 
     except Exception as exc:
+        import traceback
+        tb = traceback.format_exc()
+        ctx.warnings.append(f"runner exception traceback:\n{tb}")
         return GcadRunResult(
             ok=False,
-            error=str(exc),
+            error=f"{exc}\n{tb[-2000:]}",
             warnings=ctx.warnings,
             degraded_features=ctx.degraded_features,
             operation_metrics=ctx.operation_metrics,

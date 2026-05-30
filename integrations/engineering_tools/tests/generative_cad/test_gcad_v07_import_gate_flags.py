@@ -7,8 +7,7 @@ class TestImportGateFlags:
         ch = dialect_contract_hash("axisymmetric")
         return {
             "generative_metadata": {
-                "metadata_version": "generative_metadata_v2",
-                "metadata_schema_minor": "2.1",
+                "metadata_version": "generative_metadata_v3",
                 "source_route": "llm_skill_base",
                 "schema_version": "g_cad_core_v0.2",
                 "canonical_version": "canonical_gcad_v0.2",
@@ -18,8 +17,26 @@ class TestImportGateFlags:
                 "op_versions": [{"node_id": "n1", "dialect": "axisymmetric", "op": "revolve_profile", "op_version": "1.0.0"}],
                 "raw_graph_hash": "sha256:def",
                 "canonical_graph_hash": "sha256:ghi",
-                "runner_version": "0.2.0",
-                "geometry_runtime": "cadquery",
+                "paths": {
+                    "canonical_ir_path": "/tmp/canonical.json",
+                    "validation_seed_path": "/tmp/validation.json",
+                    "step_path": "/tmp/test.step",
+                    "metadata_path": "/tmp/test.metadata.json",
+                },
+                "runtime": {
+                    "runner_version": "0.2.0",
+                    "geometry_runtime": "cadquery",
+                    "geometry_runtime_version": "cadquery_runtime_v1",
+                },
+                "artifact": {
+                    "step_sha256": "sha256:f173fe44447b57a79ca85a732c31c5fb5fca41fcef440054a099df01e02a037b",
+                },
+                "import_policy": {
+                    "native_rebuild_allowed": False,
+                    "requires_import_gate": True,
+                    "step_import_candidate": True,
+                    "step_import_allowed": False,
+                },
                 "operation_metrics": [],
                 "degraded_features": [],
                 "repair_attempts": 0,

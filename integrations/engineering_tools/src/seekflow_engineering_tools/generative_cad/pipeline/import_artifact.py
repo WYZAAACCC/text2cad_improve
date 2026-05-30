@@ -67,6 +67,17 @@ def validate_generative_step_artifact_for_native_import(
         issues.append({"code": "metadata_invalid_json", "message": f"Metadata JSON invalid: {exc}"})
         return {"ok": False, "issues": issues, "metadata": None, "gate": gate}
 
+    # vNext: production gate requires v3 metadata proof
+    gm = metadata.get("generative_metadata", {})
+    mver = gm.get("metadata_version", "")
+    if mver != "generative_metadata_v3":
+        issues.append({
+            "code": "metadata_version_not_v3",
+            "message": f"Production import gate requires generative_metadata_v3, got {mver!r}. "
+                       "v2.1 metadata is accepted only in compatibility mode.",
+        })
+        return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
+
     # Validate metadata v3 with hard gate — all stages must prove ok
     meta_result = validate_generative_metadata_v3(
         metadata, canonical=None, registry=default_registry() if registry_check else None,
