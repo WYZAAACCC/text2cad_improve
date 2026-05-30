@@ -1,4 +1,4 @@
-"""Generative STEP artifact import gate — v0.8: fail-closed gate defaults, complete flags."""
+"""Generative STEP artifact import gate — v1.0: complete postcondition invariants."""
 
 from __future__ import annotations
 
@@ -149,17 +149,25 @@ def validate_generative_step_artifact_for_native_import(
     gate["native_rebuild_allowed"] = False
     gate["step_import_allowed"] = True
 
-    # v0.9: postcondition invariant — all required flags must be True at success path
+    # v1.0: postcondition invariants — all required flags must be True at success path
     REQUIRED_TRUE_FLAGS = [
         "step_exists", "metadata_exists", "metadata_valid", "safety_valid",
         "contract_hash_valid", "core_validation_ok", "dialect_semantics_ok",
         "geometry_preflight_ok", "runtime_postconditions_ok", "inspection_ok",
         "step_import_allowed",
     ]
-    if not all(gate[k] is True for k in REQUIRED_TRUE_FLAGS):
+    if not all(gate.get(k) is True for k in REQUIRED_TRUE_FLAGS):
         issues.append({
             "code": "gate_internal_invariant_failed",
             "message": "Import gate reached success path with incomplete true flags.",
+        })
+        gate["step_import_allowed"] = False
+        return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
+
+    if gate.get("native_rebuild_allowed") is not False:
+        issues.append({
+            "code": "gate_internal_invariant_failed",
+            "message": "native_rebuild_allowed must remain false.",
         })
         gate["step_import_allowed"] = False
         return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}

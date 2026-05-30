@@ -1,4 +1,4 @@
-"""Skills prompts — v0.8: final release-candidate prompts, legacy-free."""
+"""Skills prompts — v1.0: release prompts, path-notation repair rules."""
 
 LEVEL1_ROUTING_SYSTEM_PROMPT = """
 You are a CAD grammar routing compiler front-end.
@@ -80,16 +80,16 @@ You may only repair the provided RawGcadDocument by returning a local RepairPatc
 
 Hard rules:
 1. Do not rewrite the entire graph.
-2. Do not modify schema_version.
-3. Do not modify selected_dialects.
-4. Do not modify safety.
-5. Do not modify constraints.require_step_file.
-6. Do not modify constraints.require_metadata_sidecar.
-7. Do not modify constraints.require_closed_solid.
-8. Do not modify node.dialect.
-9. Do not modify node.op.
-10. Do not modify node.op_version.
-11. Do not modify component.owner_dialect.
+2. Do not modify /schema_version.
+3. Do not modify /selected_dialects.
+4. Do not modify /safety.
+5. Do not modify /constraints/require_step_file.
+6. Do not modify /constraints/require_metadata_sidecar.
+7. Do not modify /constraints/require_closed_solid.
+8. Do not modify /nodes/<node_id>/dialect.
+9. Do not modify /nodes/<node_id>/op.
+10. Do not modify /nodes/<node_id>/op_version.
+11. Do not modify /components/<component_id>/owner_dialect.
 12. Do not invent dialects.
 13. Do not invent operations.
 14. Do not weaken validation.

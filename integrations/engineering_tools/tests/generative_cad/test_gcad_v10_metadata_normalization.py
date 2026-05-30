@@ -1,0 +1,61 @@
+"""v1.0: metadata normalization — partial validation gets fail-closed defaults."""
+
+
+class TestMetadataNormalizationV10:
+    def _canonical(self):
+        from seekflow_engineering_tools.generative_cad.ir.canonical import (
+            CanonicalGcadDocument, CanonicalNode, CanonicalComponent,
+        )
+        return CanonicalGcadDocument(
+            schema_version="g_cad_core_v0.2",
+            canonical_version="canonical_gcad_v0.2",
+            document_id="test", part_name="test", units="mm",
+            trust_level="reference_geometry",
+            raw_graph_hash="sha256:abc", canonical_graph_hash="sha256:def",
+            selected_dialects=[],
+            components=[CanonicalComponent(id="disk", owner_dialect="axisymmetric", root_node="n_body")],
+            nodes=[CanonicalNode(
+                id="n_body", component="disk", dialect="axisymmetric",
+                op="revolve_profile", op_version="1.0.0", phase="base_solid",
+                inputs=[], outputs=[{"name": "body", "type": "solid", "value_id": "v1"}],
+                params={}, typed_params={},
+            )],
+            constraints={"require_step_file": True, "require_metadata_sidecar": True,
+                         "require_closed_solid": True, "expected_body_count": 1,
+                         "max_runtime_seconds": 120},
+            safety={"non_flight_reference_only": True, "not_airworthy": True,
+                    "not_certified": True, "not_for_manufacturing": True,
+                    "not_for_installation": True, "no_structural_validation": True,
+                    "no_life_prediction": True},
+        )
+
+    def _ctx(self, tmp_path):
+        from seekflow_engineering_tools.generative_cad.runtime.context import RuntimeContext
+        from pathlib import Path
+        return RuntimeContext(
+            out_step=Path(tmp_path / "test.step"),
+            metadata_path=Path(tmp_path / "test.json"),
+            workspace_root=Path(tmp_path),
+        )
+
+    def test_build_metadata_normalizes_partial_validation(self, tmp_path):
+        from seekflow_engineering_tools.generative_cad.pipeline.metadata import build_generative_metadata
+        metadata = build_generative_metadata(
+            canonical=self._canonical(), ctx=self._ctx(tmp_path),
+            validation={"runtime_postconditions": {"ok": True, "stage": "rp", "issues": []}},
+        )
+        val = metadata["validation"]
+        assert val["core_validation"]["ok"] is False
+        assert val["dialect_semantics"]["ok"] is False
+        assert val["geometry_preflight"]["ok"] is False
+        assert val["runtime_postconditions"]["ok"] is True
+        assert val["inspection_validation"]["ok"] is False
+
+    def test_normalized_metadata_always_has_all_stages(self, tmp_path):
+        from seekflow_engineering_tools.generative_cad.pipeline.metadata import build_generative_metadata
+        metadata = build_generative_metadata(
+            canonical=self._canonical(), ctx=self._ctx(tmp_path), validation=None,
+        )
+        for stage in ["core_validation", "dialect_semantics", "geometry_preflight",
+                       "runtime_postconditions", "inspection_validation"]:
+            assert stage in metadata["validation"]
