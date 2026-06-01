@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "step": "E:\\auto_detection_process\\demo_output_v2\\L2_complex_comp\\output.step",
+  "sldprt": "E:\\auto_detection_process\\demo_output_v2\\L2_complex_comp\\L2_complex_comp.SLDPRT",
+  "error": null,
+  "expected": "should_build",
+  "step_size": 10699,
+  "sldprt_size": 54644,
+  "test_passed": true
+}

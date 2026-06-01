@@ -1,0 +1,434 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "doc-001",
+  "part_name": "底板竖板组件",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "contract_hash": "sha256:1ff66c680d94f60891bf00260f365ffa2a0d213d5571a2366a3f1c27748f5382"
+    }
+  ],
+  "components": [
+    {
+      "id": "base_plate",
+      "owner_dialect": "sketch_extrude",
+      "kind_hint": null,
+      "root_node": "n_base_extrude",
+      "output_aliases": {}
+    },
+    {
+      "id": "vert_plate",
+      "owner_dialect": "sketch_extrude",
+      "kind_hint": null,
+      "root_node": "n_vert_extrude",
+      "output_aliases": {}
+    },
+    {
+      "id": "__assembly__",
+      "owner_dialect": "composition",
+      "kind_hint": null,
+      "root_node": "n_assembly",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_base_extrude",
+      "component": "base_plate",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:base_plate:n_base_extrude:body"
+        }
+      ],
+      "params": {
+        "width_mm": 80,
+        "height_mm": 40,
+        "depth_mm": 6,
+        "plane": "XY",
+        "centered": false,
+        "direction": "+"
+      },
+      "typed_params": {
+        "width_mm": 80.0,
+        "height_mm": 40.0,
+        "depth_mm": 6.0,
+        "plane": "XY",
+        "centered": false,
+        "direction": "+"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_base_hole1",
+      "component": "base_plate",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n_base_extrude",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:base_plate:n_base_hole1:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 6,
+        "position_mm": [
+          15,
+          20,
+          0
+        ],
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 6.0,
+        "position_mm": [
+          15.0,
+          20.0,
+          0.0
+        ],
+        "axis": "Z",
+        "through_all": true,
+        "depth_mm": null
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_base_hole2",
+      "component": "base_plate",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n_base_hole1",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:base_plate:n_base_hole2:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 6,
+        "position_mm": [
+          65,
+          20,
+          0
+        ],
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 6.0,
+        "position_mm": [
+          65.0,
+          20.0,
+          0.0
+        ],
+        "axis": "Z",
+        "through_all": true,
+        "depth_mm": null
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_vert_extrude",
+      "component": "vert_plate",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:vert_plate:n_vert_extrude:body"
+        }
+      ],
+      "params": {
+        "width_mm": 80,
+        "height_mm": 50,
+        "depth_mm": 6,
+        "plane": "XY",
+        "centered": false,
+        "direction": "+"
+      },
+      "typed_params": {
+        "width_mm": 80.0,
+        "height_mm": 50.0,
+        "depth_mm": 6.0,
+        "plane": "XY",
+        "centered": false,
+        "direction": "+"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_vert_hole",
+      "component": "vert_plate",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n_vert_extrude",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:vert_plate:n_vert_hole:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 10,
+        "position_mm": [
+          40,
+          25,
+          0
+        ],
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 10.0,
+        "position_mm": [
+          40.0,
+          25.0,
+          0.0
+        ],
+        "axis": "Z",
+        "through_all": true,
+        "depth_mm": null
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_place_base",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "place_component",
+      "op_version": "1.0.0",
+      "phase": "transform",
+      "inputs": [
+        {
+          "producer_node": "n_base_hole2",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:__assembly__:n_place_base:body"
+        }
+      ],
+      "params": {
+        "position_mm": [
+          0,
+          0,
+          0
+        ]
+      },
+      "typed_params": {
+        "position_mm": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "places_component"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_place_vert",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "place_component",
+      "op_version": "1.0.0",
+      "phase": "transform",
+      "inputs": [
+        {
+          "producer_node": "n_vert_hole",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:__assembly__:n_place_vert:body"
+        }
+      ],
+      "params": {
+        "position_mm": [
+          0,
+          40,
+          0
+        ]
+      },
+      "typed_params": {
+        "position_mm": [
+          0.0,
+          40.0,
+          0.0
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "places_component"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_assembly",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "producer_node": "n_place_base",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        },
+        {
+          "producer_node": "n_place_vert",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:__assembly__:n_assembly:body"
+        }
+      ],
+      "params": {
+        "clean_after": true
+      },
+      "typed_params": {
+        "clean_after": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "boolean_union"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:c418bbcfe4619bf83d33f2cd2ca1cde420c6fdeccd972504d6f4ad9543d31029",
+  "raw_graph_hash": "sha256:4d9a210e8ac99379e21db5d6785c02a66777aa8c1305b4b97041d8895a02d150"
+}

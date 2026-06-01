@@ -1,0 +1,447 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "reference_geometry",
+    "document_id": "doc_001",
+    "part_name": "enclosure_80x50x25",
+    "selected_dialects": [
+      {
+        "dialect": "sketch_extrude",
+        "version": "0.2.0",
+        "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+      },
+      {
+        "dialect": "composition",
+        "version": "0.2.0",
+        "contract_hash": "sha256:1ff66c680d94f60891bf00260f365ffa2a0d213d5571a2366a3f1c27748f5382"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "n_base",
+        "dialect": "sketch_extrude",
+        "op": "extrude_rectangle",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_cut_body",
+        "dialect": "sketch_extrude",
+        "op": "cut_rectangular_pocket",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_vent1",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_vent2",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_vent3",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_vent4",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_boss1",
+        "dialect": "sketch_extrude",
+        "op": "extrude_rectangle",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_boss1_hole",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_boss2",
+        "dialect": "sketch_extrude",
+        "op": "extrude_rectangle",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_boss2_hole",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_boss3",
+        "dialect": "sketch_extrude",
+        "op": "extrude_rectangle",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_boss3_hole",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_boss4",
+        "dialect": "sketch_extrude",
+        "op": "extrude_rectangle",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_boss4_hole",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_place_boss1",
+        "dialect": "composition",
+        "op": "place_component",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_place_boss2",
+        "dialect": "composition",
+        "op": "place_component",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_place_boss3",
+        "dialect": "composition",
+        "op": "place_component",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_place_boss4",
+        "dialect": "composition",
+        "op": "place_component",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_union1",
+        "dialect": "composition",
+        "op": "boolean_union",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_union2",
+        "dialect": "composition",
+        "op": "boolean_union",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_union3",
+        "dialect": "composition",
+        "op": "boolean_union",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_union_all",
+        "dialect": "composition",
+        "op": "boolean_union",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:89e26d99622d46d7df2aae629a731585801d67aeb9fd811407aae0a2f5173309",
+    "canonical_graph_hash": "sha256:42e279c58990e971ed7b1924598790ed599ba4435cd056a2e7daceed29edbfdb",
+    "paths": {
+      "canonical_ir_path": "E:\\auto_detection_process\\demo_output_v3\\.generative_cad_graphs\\gcad_75f4fa4c129f.json",
+      "validation_seed_path": "E:\\auto_detection_process\\demo_output_v3\\.generative_cad_graphs\\gcad_75f4fa4c129f.validation.json",
+      "step_path": "E:\\auto_detection_process\\demo_output_v3\\17_electronics_case\\output.step",
+      "metadata_path": "E:\\auto_detection_process\\demo_output_v3\\17_electronics_case\\output.metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:bcd14dd062cb94498c08d82980948a8cff933623792d2de547eb2eeeac693a10",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [],
+    "degraded_features": [],
+    "operation_metrics": [
+      {
+        "node_id": "n_base",
+        "op": "extrude_rectangle",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_cut_body",
+        "op": "cut_rectangular_pocket",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_vent1",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_vent2",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_vent3",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_vent4",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_boss1",
+        "op": "extrude_rectangle",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_boss1_hole",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_boss2",
+        "op": "extrude_rectangle",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_boss2_hole",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_boss3",
+        "op": "extrude_rectangle",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_boss3_hole",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_boss4",
+        "op": "extrude_rectangle",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_boss4_hole",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_place_boss1",
+        "op": "place_component",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_place_boss2",
+        "op": "place_component",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_place_boss3",
+        "op": "place_component",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_place_boss4",
+        "op": "place_component",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_union1",
+        "op": "boolean_union",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_union2",
+        "op": "boolean_union",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_union3",
+        "op": "boolean_union",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_union_all",
+        "op": "boolean_union",
+        "status": "ok"
+      }
+    ],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {
+        "structure": {
+          "ok": true,
+          "stage": "structure",
+          "issues": [],
+          "stages_run": [
+            "structure"
+          ]
+        },
+        "registry": {
+          "ok": true,
+          "stage": "registry",
+          "issues": [],
+          "stages_run": [
+            "registry"
+          ]
+        },
+        "params": {
+          "ok": true,
+          "stage": "params",
+          "issues": [],
+          "stages_run": [
+            "params"
+          ]
+        },
+        "ownership": {
+          "ok": true,
+          "stage": "ownership",
+          "issues": [],
+          "stages_run": [
+            "ownership"
+          ]
+        },
+        "graph": {
+          "ok": true,
+          "stage": "graph",
+          "issues": [],
+          "stages_run": [
+            "graph"
+          ]
+        },
+        "typecheck": {
+          "ok": true,
+          "stage": "typecheck",
+          "issues": [],
+          "stages_run": [
+            "typecheck"
+          ]
+        },
+        "phase": {
+          "ok": true,
+          "stage": "phase",
+          "issues": [],
+          "stages_run": [
+            "phase"
+          ]
+        },
+        "composition": {
+          "ok": true,
+          "stage": "composition",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "registry",
+            "params",
+            "ownership",
+            "graph",
+            "typecheck",
+            "phase",
+            "composition"
+          ]
+        },
+        "safety": {
+          "ok": true,
+          "stage": "safety",
+          "issues": [],
+          "stages_run": [
+            "safety"
+          ]
+        }
+      },
+      "canonicalize": {
+        "ok": true,
+        "stage": "canonicalize",
+        "issues": [],
+        "stages_run": [
+          "canonicalize"
+        ]
+      },
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": true,
+      "stage": "dialect_semantics",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "safety",
+        "canonicalize",
+        "dialect_semantics"
+      ]
+    },
+    "geometry_preflight": {
+      "ok": true,
+      "stage": "geometry_preflight",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "safety",
+        "canonicalize",
+        "dialect_semantics",
+        "geometry_preflight"
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": true,
+      "issues": []
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "case_id": "composed_disk_with_lugs",
+  "ok": true,
+  "step": "E:\\auto_detection_process\\demo_output_v2\\composed_disk_with_lugs\\output.step",
+  "sldprt": null,
+  "error": "SW import: (-2147023170, '远程过程调用失败。', None, None)",
+  "step_size": 34399
+}

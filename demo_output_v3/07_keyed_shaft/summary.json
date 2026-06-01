@@ -1,0 +1,12 @@
+{
+  "cid": "07_keyed_shaft",
+  "name": "带键槽阶梯轴",
+  "ok": true,
+  "stage": "",
+  "step": "E:\\auto_detection_process\\demo_output_v3\\07_keyed_shaft\\output.step",
+  "sldprt": "E:\\auto_detection_process\\demo_output_v3\\07_keyed_shaft\\07_keyed_shaft.SLDPRT",
+  "error": null,
+  "elapsed": 58.82037615776062,
+  "step_size": 32312,
+  "sldprt_size": 86040
+}

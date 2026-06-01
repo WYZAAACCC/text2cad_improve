@@ -1,0 +1,262 @@
+{
+  "01_hole_plate": {
+    "cid": "01_hole_plate",
+    "name": "带孔矩形板",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "02_washer": {
+    "cid": "02_washer",
+    "name": "垫片",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "03_flange": {
+    "cid": "03_flange",
+    "name": "圆形法兰",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "04_l_bracket": {
+    "cid": "04_l_bracket",
+    "name": "L型支架",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "05_ribbed_bracket": {
+    "cid": "05_ribbed_bracket",
+    "name": "带加强筋支架",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "06_stepped_shaft": {
+    "cid": "06_stepped_shaft",
+    "name": "阶梯轴",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "07_keyed_shaft": {
+    "cid": "07_keyed_shaft",
+    "name": "带键槽阶梯轴",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "08_bearing_housing": {
+    "cid": "08_bearing_housing",
+    "name": "轴承座",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "09_slide_rail": {
+    "cid": "09_slide_rail",
+    "name": "滑块导轨座",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "10_pulley": {
+    "cid": "10_pulley",
+    "name": "皮带轮",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "11_gear_approx": {
+    "cid": "11_gear_approx",
+    "name": "齿轮近似",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "12_heatsink": {
+    "cid": "12_heatsink",
+    "name": "散热器",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "13_clamp_block": {
+    "cid": "13_clamp_block",
+    "name": "夹具块",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "14_motor_mount": {
+    "cid": "14_motor_mount",
+    "name": "电机安装座",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "15_pump_body": {
+    "cid": "15_pump_body",
+    "name": "泵体简化件",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "16_thinwall_box": {
+    "cid": "16_thinwall_box",
+    "name": "薄壁盒体",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "17_electronics_case": {
+    "cid": "17_electronics_case",
+    "name": "电子外壳",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "18_hinge": {
+    "cid": "18_hinge",
+    "name": "铰链叶片",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "19_clamp": {
+    "cid": "19_clamp",
+    "name": "夹钳",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "20_ujoint": {
+    "cid": "20_ujoint",
+    "name": "万向节",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "B1_flange": {
+    "cid": "B1_flange",
+    "name": "法兰",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "B2_hexnut": {
+    "cid": "B2_hexnut",
+    "name": "六角螺母",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "B3_bracket": {
+    "cid": "B3_bracket",
+    "name": "L型支架",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "B4_bushing": {
+    "cid": "B4_bushing",
+    "name": "轴套",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "B5_disk": {
+    "cid": "B5_disk",
+    "name": "阶梯盘",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  },
+  "B6_ribbed": {
+    "cid": "B6_ribbed",
+    "name": "加强筋支架",
+    "ok": false,
+    "stage": "exception",
+    "step": null,
+    "sldprt": null,
+    "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+    "elapsed": 0
+  }
+}

@@ -1,0 +1,1 @@
+圆柱腔体外径80mm内径50mm高60mm。reference geometry only。

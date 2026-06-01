@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "step": "E:\\auto_detection_process\\demo_output_v2\\L1_large_flange\\output.step",
+  "sldprt": "E:\\auto_detection_process\\demo_output_v2\\L1_large_flange\\L1_large_flange.SLDPRT",
+  "error": null,
+  "expected": "should_build",
+  "step_size": 6511,
+  "sldprt_size": 62216,
+  "test_passed": true
+}

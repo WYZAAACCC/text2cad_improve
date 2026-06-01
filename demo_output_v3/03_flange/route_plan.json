@@ -1,0 +1,21 @@
+{
+  "route_decision": "generative_cad_ir",
+  "part_intent": {
+    "object_type": "simple_disk_washer",
+    "dominant_geometry": "axisymmetric_annular_disk",
+    "engineering_domain": "general_mechanical"
+  },
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "The part is a simple axisymmetric annular disk (outer diameter 120mm, thickness 16mm, center bore 40mm). The axisymmetric dialect can revolve a radial-axial profile and cut a center bore to produce this reference geometry."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Reference geometry only — not for manufacturing, not certified."
+  ]
+}

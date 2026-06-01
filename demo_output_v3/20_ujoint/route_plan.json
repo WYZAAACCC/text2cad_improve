@@ -1,0 +1,27 @@
+{
+  "route_decision": "generative_cad_ir",
+  "part_intent": {
+    "object_type": "coupling_hub",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "mechanical_power_transmission"
+  },
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "The part is a rotationally symmetric coupling hub with two coaxial hubs (input hub O40x20 with O15 bore, output hub O35x18 with O12 bore). The axisymmetric dialect supports revolve_profile, cut_center_bore, and cut_annular_groove which can express the stepped outer diameters and through bores."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "The part has two distinct hub sections (input and output) that may need to be composed into a single body via boolean_union, or the two bores may need boolean_cut operations. Composition dialect handles combining independent components."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only, not manufacturing-ready.",
+    "The user specified 'reference geometry only' which aligns with this route."
+  ]
+}

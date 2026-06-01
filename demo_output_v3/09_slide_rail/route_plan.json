@@ -1,0 +1,22 @@
+{
+  "part_intent": {
+    "object_type": "prismatic_block",
+    "dominant_geometry": "rectangular_prism_with_features",
+    "engineering_domain": "general_mechanical"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_primitive": null,
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "Prismatic block with rectangular base body, top-face rectangular pocket/slot, corner hole pattern, and side locating holes — all expressible via extrude_rectangle, cut_rectangular_pocket, and cut_hole operations native to the sketch_extrude dialect."
+    }
+  ],
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Reference geometry only — no manufacturing or structural certification implied.",
+    "All dimensions interpreted as nominal reference values; no tolerances, GD&T, or surface finishes are encoded."
+  ]
+}

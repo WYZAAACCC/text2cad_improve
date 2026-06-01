@@ -1,0 +1,79 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "L1_large",
+  "part_name": "large_flange_500mm",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "disk",
+      "owner_dialect": "axisymmetric",
+      "root_node": "n_rev"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_rev",
+      "component": "disk",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 250,
+            "z_front_mm": 0,
+            "z_rear_mm": 5
+          },
+          {
+            "r_mm": 250,
+            "z_front_mm": 5,
+            "z_rear_mm": 40
+          },
+          {
+            "r_mm": 50,
+            "z_front_mm": 40,
+            "z_rear_mm": 41
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  }
+}

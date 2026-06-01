@@ -1,0 +1,21 @@
+{
+  "route_decision": "generative_cad_ir",
+  "part_intent": {
+    "object_type": "bushing/sleeve",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "mechanical"
+  },
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "The part is a simple axisymmetric sleeve (bushing) with outer diameter 40mm, inner bore 20mm, and length 60mm. This is a rotationally symmetric solid best expressed via revolve_profile and cut_center_bore operations."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "User specified 'reference geometry only' — generative CAD output is reference geometry only, consistent with safety rules."
+  ]
+}

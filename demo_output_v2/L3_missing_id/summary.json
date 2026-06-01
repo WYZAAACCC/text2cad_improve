@@ -1,0 +1,8 @@
+{
+  "ok": false,
+  "step": null,
+  "sldprt": null,
+  "error": "RawGcadDocument parse failed: [pydantic_validation_failed] 1 validation error for RawGcadDocument\n  Value error, document_id must be non-empty [type=value_error, input_value={'schema_version': 'g_cad...life_prediction': True}}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error",
+  "expected": "should_fail_closed",
+  "test_passed": true
+}

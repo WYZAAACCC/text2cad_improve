@@ -1,0 +1,12 @@
+{
+  "cid": "12_heatsink",
+  "name": "散热器",
+  "ok": true,
+  "stage": "",
+  "step": "E:\\auto_detection_process\\demo_output_v3\\12_heatsink\\output.step",
+  "sldprt": "E:\\auto_detection_process\\demo_output_v3\\12_heatsink\\12_heatsink.SLDPRT",
+  "error": null,
+  "elapsed": 68.64610886573792,
+  "step_size": 189095,
+  "sldprt_size": 132862
+}

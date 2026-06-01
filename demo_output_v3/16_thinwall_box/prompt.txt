@@ -1,0 +1,1 @@
+60x40x30mm盒体，壁厚3mm，内部腔体54x34x27mm。reference geometry only。

@@ -1,0 +1,26 @@
+{
+  "route_decision": "generative_cad_ir",
+  "part_intent": {
+    "object_type": "base_plate_with_boss_and_rib",
+    "dominant_geometry": "prismatic",
+    "engineering_domain": "general_mechanical"
+  },
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "底板、凸台和筋都是棱柱形特征，适合用sketch_extrude方言通过矩形拉伸、凸台添加和筋添加操作来表达。"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "底板、凸台和筋是多个独立组件需要组合，因此需要composition方言进行布尔并集操作。"
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "用户明确要求'reference geometry only'，符合生成式CAD仅提供参考几何的限制。"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "part_intent": {
+    "object_type": "rectangular_plate",
+    "dominant_geometry": "prismatic_with_linear_hole_array",
+    "engineering_domain": "thermal_management"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "Prismatic base plate with rectangular outline and 10x4 linear hole array is a textbook sketch_extrude part: extrude rectangle for the 100x60x5mm body, then cut_hole_pattern_linear for the O3 cooling hole grid."
+    }
+  ],
+  "selected_primitive": "null",
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Reference geometry only — no manufacturing or certification claims.",
+    "Hole array is cosmetic/reference; no thermal or structural simulation is implied."
+  ]
+}

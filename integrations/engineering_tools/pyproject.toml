@@ -72,6 +72,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
+    "slow: tests that make real LLM API calls (text-to-CAD end-to-end)",
     "requires_cq_gears: tests that require cq_gears to be installed",
     "not_requires_cq_gears: tests that work without cq_gears (fallback)",
     "requires_cadquery: tests that require cadquery to be installed",

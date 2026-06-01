@@ -1,0 +1,9 @@
+{
+  "name": "阶梯轴",
+  "ok": true,
+  "step": "E:\\auto_detection_process\\demo_output_v2\\06_stepped_shaft\\output.step",
+  "sldprt": "E:\\auto_detection_process\\demo_output_v2\\06_stepped_shaft\\06_stepped_shaft.SLDPRT",
+  "error": null,
+  "step_size": 6494,
+  "sldprt_size": 69960
+}

@@ -30,10 +30,16 @@ def handle_revolve_profile(node: CanonicalNode, ctx: RuntimeContext) -> dict[str
         pts_2d.append((float(s["r_mm"]), float(s.get("z_rear_mm", 0))))
     pts_2d.sort(key=lambda p: (p[1], p[0]))
 
-    result = cq.Workplane("XZ").moveTo(pts_2d[0][0], pts_2d[0][1])
-    for (r, z) in pts_2d[1:]:
+    # Deduplicate consecutive identical points (prevent degenerate zero-length edges)
+    unique_pts = [pts_2d[0]]
+    for pt in pts_2d[1:]:
+        if pt != unique_pts[-1]:
+            unique_pts.append(pt)
+
+    result = cq.Workplane("XZ").moveTo(unique_pts[0][0], unique_pts[0][1])
+    for (r, z) in unique_pts[1:]:
         result = result.lineTo(r, z)
-    result = result.lineTo(0, pts_2d[-1][1]).lineTo(0, pts_2d[0][1]).close()
+    result = result.lineTo(0, unique_pts[-1][1]).lineTo(0, unique_pts[0][1]).close()
     result = result.revolve(360, (0, 0, 0), (0, 0, 1))
 
     result_map = {}

@@ -1,0 +1,21 @@
+{
+  "route_decision": "generative_cad_ir",
+  "part_intent": {
+    "object_type": "stepped_disk",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "general_mechanical"
+  },
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "The part is a stepped disk (O60x16→O30x10) which is rotationally symmetric. The axisymmetric dialect can revolve a radial-axial profile to create the stepped disk geometry."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only, not for manufacturing."
+  ]
+}

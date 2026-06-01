@@ -1,0 +1,173 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "stepped_shaft_001",
+  "part_name": "Stepped Shaft O40x20-O50x15-O40x25-O30x10",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+    }
+  ],
+  "components": [
+    {
+      "id": "shaft",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": null,
+      "root_node": "n1",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n1",
+      "component": "shaft",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:shaft:n1:body"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame",
+          "value_id": "frame:shaft:n1:outer_frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 20.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 20.0,
+            "label": "O40_section"
+          },
+          {
+            "r_mm": 25.0,
+            "z_front_mm": 20.0,
+            "z_rear_mm": 35.0,
+            "label": "O50_section"
+          },
+          {
+            "r_mm": 20.0,
+            "z_front_mm": 35.0,
+            "z_rear_mm": 60.0,
+            "label": "O40_section_2"
+          },
+          {
+            "r_mm": 15.0,
+            "z_front_mm": 60.0,
+            "z_rear_mm": 70.0,
+            "label": "O30_section"
+          }
+        ]
+      },
+      "typed_params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 20.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 20.0,
+            "label": "O40_section"
+          },
+          {
+            "r_mm": 25.0,
+            "z_front_mm": 20.0,
+            "z_rear_mm": 35.0,
+            "label": "O50_section"
+          },
+          {
+            "r_mm": 20.0,
+            "z_front_mm": 35.0,
+            "z_rear_mm": 60.0,
+            "label": "O40_section_2"
+          },
+          {
+            "r_mm": 15.0,
+            "z_front_mm": 60.0,
+            "z_rear_mm": 70.0,
+            "label": "O30_section"
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid",
+        "creates_frame"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n2",
+      "component": "shaft",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "producer_node": "n1",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:shaft:n2:body"
+        }
+      ],
+      "params": {
+        "distance_mm": 0.5,
+        "target": "all_external_edges"
+      },
+      "typed_params": {
+        "distance_mm": 0.5,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "modifies_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:92f6435278ed76a94784b5dfbfe26966cf4353a12f8e8cabf1248d614cd8136e",
+  "raw_graph_hash": "sha256:8ad73d9b355c386529d7c06402dd8c25b1bd1cac8f34d6f65ae83b02cfe57e75"
+}

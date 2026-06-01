@@ -1,0 +1,46 @@
+{
+  "gear_spur_20t_m2_pa20": {
+    "case_id": "gear_spur_20t_m2_pa20",
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\gear_spur_20t_m2_pa20\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\gear_spur_20t_m2_pa20\\gear_spur_20t_m2_pa20.SLDPRT",
+    "error": null,
+    "step_size": 421433,
+    "sldprt_size": 195028
+  },
+  "axisymmetric_disk": {
+    "case_id": "axisymmetric_disk",
+    "ok": false,
+    "step": null,
+    "sldprt": null,
+    "error": null
+  },
+  "sketch_extrude_plate": {
+    "case_id": "sketch_extrude_plate",
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\sketch_extrude_plate\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\sketch_extrude_plate\\sketch_extrude_plate.SLDPRT",
+    "error": null,
+    "step_size": 15501,
+    "sldprt_size": 57837
+  },
+  "composed_disk_with_lugs": {
+    "case_id": "composed_disk_with_lugs",
+    "ok": false,
+    "step": null,
+    "sldprt": null,
+    "error": null
+  },
+  "industrial_gear_sw_backend": {
+    "case_id": "industrial_gear_sw_backend",
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\industrial_gear_sw_backend\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\industrial_gear_sw_backend\\output.SLDPRT",
+    "step_size": 421433,
+    "sldprt_size": 193363,
+    "message": "SolidWorks part built from canonical STEP: E:\\auto_detection_process\\demo_output_v2\\industrial_gear_sw_backend\\output.SLDPRT",
+    "warnings": [
+      "Native SLDPRT created by importing canonical STEP; feature tree is not regenerated."
+    ]
+  }
+}

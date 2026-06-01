@@ -1,0 +1,20 @@
+{
+  "part_intent": {
+    "object_type": "stepped shaft",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "mechanical"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "Stepped shaft is a single axisymmetric body; revolve_profile with a radial-axial profile naturally captures the four diameter-length sections O40x20, O50x15, O40x25, O30x10."
+    }
+  ],
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Reference geometry only. Not validated for manufacturing, structural integrity, or certification."
+  ]
+}

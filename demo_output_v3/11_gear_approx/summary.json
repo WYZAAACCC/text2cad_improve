@@ -1,0 +1,10 @@
+{
+  "cid": "11_gear_approx",
+  "name": "齿轮近似",
+  "ok": false,
+  "stage": "exception",
+  "step": null,
+  "sldprt": null,
+  "error": "'NoneType' object is not subscriptable",
+  "elapsed": 0
+}

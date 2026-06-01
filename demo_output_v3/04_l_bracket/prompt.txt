@@ -1,0 +1,1 @@
+底板80x40x6mm竖板80x50x6mm。底板2xO6孔，竖板1xO10孔。reference geometry only。

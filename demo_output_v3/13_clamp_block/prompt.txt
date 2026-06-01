@@ -1,0 +1,1 @@
+60x60x40mm块体，顶面O20孔，前面30x20x15槽，4xO5孔。reference geometry only。

@@ -1,0 +1,27 @@
+{
+  "route_decision": "generative_cad_ir",
+  "part_intent": {
+    "object_type": "hex_nut_blank",
+    "dominant_geometry": "axisymmetric_with_hex_outer_profile",
+    "engineering_domain": "fastener_reference_geometry"
+  },
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "The nut blank is primarily axisymmetric: a hexagonal outer profile (across-flats 19mm), 10mm thickness, central bore 12mm, and 1mm chamfer. The revolve_profile operation can create the body, cut_center_bore for the hole, and apply_safe_chamfer for the chamfer."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "The hexagonal shape is not a pure axisymmetric revolve; composition may be needed to combine the hexagonal prism body with the bore and chamfer operations, or to handle the hex shape via boolean operations."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only, not manufacturing-ready.",
+    "The user explicitly stated 'reference geometry only' — this is respected."
+  ]
+}

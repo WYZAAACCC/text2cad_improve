@@ -1,0 +1,8 @@
+{
+  "ok": false,
+  "step": null,
+  "sldprt": null,
+  "error": "Validation failed: [unknown_op] node 'n_bad': unknown op 'nonexistent_op_v99' in 'axisymmetric': \"unknown op/version: 'nonexistent_op_v99'/'1.0.0'\"",
+  "expected": "should_fail_closed",
+  "test_passed": true
+}

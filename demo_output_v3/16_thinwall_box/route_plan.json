@@ -1,0 +1,27 @@
+{
+  "route_decision": "generative_cad_ir",
+  "part_intent": {
+    "object_type": "rectangular_box",
+    "dominant_geometry": "prismatic",
+    "engineering_domain": "enclosure"
+  },
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "The part is a rectangular box (60x40x30mm) with a wall thickness of 3mm and an internal cavity (54x34x27mm). This is a prismatic enclosure best expressed via sketch_extrude operations: extrude a rectangular base, then cut a rectangular pocket for the internal cavity."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "If the box is modeled as a separate outer shell and inner cavity cut, composition boolean operations may be needed to combine or subtract geometry."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only, not manufacturing-ready.",
+    "The user explicitly stated 'reference geometry only' — this is consistent with generative CAD IR capabilities."
+  ]
+}

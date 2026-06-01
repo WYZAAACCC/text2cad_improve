@@ -1,0 +1,21 @@
+{
+  "part_intent": {
+    "object_type": "base_plate",
+    "dominant_geometry": "prismatic_rectangular",
+    "engineering_domain": "general_mechanical"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.1.0",
+      "reason": "Rectangular plate (120x80x10mm) with four corner mounting holes (⌀8mm) is a classic prismatic machined part. sketch_extrude dialect provides extrude_rectangle for the blank and cut_hole for each corner hole, with no need for rotational symmetry or composition."
+    }
+  ],
+  "selected_primitive": "null",
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "User explicitly states reference geometry only — compliant with generative CAD output limits. No manufacturing, certification, or structural claims made."
+  ]
+}

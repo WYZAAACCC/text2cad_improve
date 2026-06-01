@@ -1,0 +1,22 @@
+{
+  "part_intent": {
+    "object_type": "stepped_shaft",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "mechanical"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "Rotationally symmetric stepped shaft with two cylindrical sections (OD30×30, OD20×25) and a concentric center bore (O6) — ideal for revolve_profile + cut_center_bore via axisymmetric dialect."
+    }
+  ],
+  "selected_primitive": "null",
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Reference geometry only — not for manufacturing, not certified, not structurally validated.",
+    "Generative CAD output is reference geometry only; no simulation or production guarantees."
+  ]
+}

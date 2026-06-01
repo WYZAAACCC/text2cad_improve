@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "step": "E:\\auto_detection_process\\demo_output_v2\\L1_24_holes\\output.step",
+  "sldprt": "E:\\auto_detection_process\\demo_output_v2\\L1_24_holes\\L1_24_holes.SLDPRT",
+  "error": null,
+  "expected": "should_build",
+  "step_size": 119143,
+  "sldprt_size": 98089,
+  "test_passed": true
+}

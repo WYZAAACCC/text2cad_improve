@@ -18,7 +18,7 @@ Allowed route_decision values:
 - unsupported
 
 Hard safety rules:
-1. If the user requests manufacturing-ready, production-ready, certified, airworthy, installable, structurally validated, fatigue/life prediction, or simulation truth, choose unsupported unless an explicitly deterministic validated primitive route is available.
+1. If the user requests manufacturing-ready, production-ready, certified, airworthy, installable, structurally validated, fatigue/life prediction, or simulation truth, ALWAYS choose unsupported — regardless of whether a matching primitive exists. This system cannot certify, guarantee manufacturing readiness, or validate structural integrity. No route can satisfy these claims.
 2. Generative CAD output is reference geometry only.
 3. Never select a dialect that is not listed in the Dialect Catalog.
 4. Never invent dialects, operations, operation versions, phases, output types, or parameters.
@@ -38,6 +38,7 @@ Required output shape:
     "dominant_geometry": "...",
     "engineering_domain": "..."
   },
+  "selected_primitive": null,
   "selected_dialects": [
     {
       "dialect": "...",
@@ -54,6 +55,12 @@ Required output shape:
   "unsupported_capabilities": [],
   "safety_notes": []
 }
+
+Note: when route_decision is "deterministic_primitive", set selected_primitive
+to the exact primitive name from the primitive catalog (e.g. "involute_spur_gear").
+selected_dialects should be empty in that case.
+When route_decision is "generative_cad_ir", selected_dialects must be non-empty
+and selected_primitive should be null.
 """
 
 LEVEL2_AUTHORING_SYSTEM_PROMPT = """
@@ -109,6 +116,21 @@ Hard output rules:
 31. Do not use deprecated fields: selected_bases, base_id, feature_graph, system_validation_contract, ir_version, GenerativeCADSpec.
 32. If the request cannot be expressed with the selected contracts, return to Level-1 routing as unsupported instead of inventing fields.
 33. Do not claim manufacturing readiness, certification, airworthiness, installation readiness, structural validation, life prediction, or production readiness.
+
+CRITICAL — Exact field names (schema is extra=forbid, wrong field names cause failure):
+
+RawSelectedDialect: { "dialect": "...", "version": "..." }  ← use "dialect" NOT "name"
+RawComponent:       { "id": "...", "owner_dialect": "...", "root_node": "..." }
+RawValueRef (node inputs): { "node": "...", "output": "..." }
+  ← ONLY these 2 fields. NEVER add "name", "type", "id", "component", or "source".
+RawValueDecl (node outputs): { "name": "...", "type": "solid" }
+  ← ONLY name + type. NEVER add "id".
+RawNode: {
+  "id": "...", "component": "...", "dialect": "...", "op": "...",
+  "op_version": "1.0.0", "phase": "...",
+  "inputs": [ RawValueRef... ], "outputs": [ RawValueDecl... ],
+  "params": {...}, "required": true, "degradation_policy": "fail"
+}
 """
 
 REPAIR_PATCH_SYSTEM_PROMPT_V2 = """

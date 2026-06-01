@@ -1,0 +1,119 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "fixture_axi_001",
+  "part_name": "minimal_disk",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+    }
+  ],
+  "components": [
+    {
+      "id": "disk",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": "rotational_disk",
+      "root_node": "n_body",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_body",
+      "component": "disk",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:disk:n_body:body"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame",
+          "value_id": "frame:disk:n_body:outer_frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 100,
+            "z_front_mm": 0,
+            "z_rear_mm": 5
+          },
+          {
+            "r_mm": 100,
+            "z_front_mm": 5,
+            "z_rear_mm": 10
+          },
+          {
+            "r_mm": 50,
+            "z_front_mm": 10,
+            "z_rear_mm": 15
+          }
+        ]
+      },
+      "typed_params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 100.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 5.0,
+            "label": null
+          },
+          {
+            "r_mm": 100.0,
+            "z_front_mm": 5.0,
+            "z_rear_mm": 10.0,
+            "label": null
+          },
+          {
+            "r_mm": 50.0,
+            "z_front_mm": 10.0,
+            "z_rear_mm": 15.0,
+            "label": null
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid",
+        "creates_frame"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:3d8407b05154f6b0bff3714a534a71b77b59ea891966c890c158af06e8d83641",
+  "raw_graph_hash": "sha256:d6480ce251aa6cbb0a95d05cc297a3557a8a8a9ea754d7a678f70d9994e1ffdb"
+}

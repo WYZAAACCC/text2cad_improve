@@ -1,0 +1,585 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "P20",
+  "part_name": "ujoint",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+    },
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "contract_hash": "sha256:1ff66c680d94f60891bf00260f365ffa2a0d213d5571a2366a3f1c27748f5382"
+    }
+  ],
+  "components": [
+    {
+      "id": "hi",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": null,
+      "root_node": "n_hib",
+      "output_aliases": {}
+    },
+    {
+      "id": "ho",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": null,
+      "root_node": "n_hob",
+      "output_aliases": {}
+    },
+    {
+      "id": "ri",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": null,
+      "root_node": "n_ring",
+      "output_aliases": {}
+    },
+    {
+      "id": "__assembly__",
+      "owner_dialect": "composition",
+      "kind_hint": null,
+      "root_node": "n_u2",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_hr",
+      "component": "hi",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:hi:n_hr:body"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame",
+          "value_id": "frame:hi:n_hr:outer_frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 20,
+            "z_front_mm": 0,
+            "z_rear_mm": 2
+          },
+          {
+            "r_mm": 20,
+            "z_front_mm": 2,
+            "z_rear_mm": 20
+          },
+          {
+            "r_mm": 7.5,
+            "z_front_mm": 20,
+            "z_rear_mm": 21
+          }
+        ]
+      },
+      "typed_params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 20.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 2.0,
+            "label": null
+          },
+          {
+            "r_mm": 20.0,
+            "z_front_mm": 2.0,
+            "z_rear_mm": 20.0,
+            "label": null
+          },
+          {
+            "r_mm": 7.5,
+            "z_front_mm": 20.0,
+            "z_rear_mm": 21.0,
+            "label": null
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid",
+        "creates_frame"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_hib",
+      "component": "hi",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n_hr",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:hi:n_hib:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 15
+      },
+      "typed_params": {
+        "diameter_mm": 15.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_or",
+      "component": "ho",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:ho:n_or:body"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame",
+          "value_id": "frame:ho:n_or:outer_frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 17.5,
+            "z_front_mm": 0,
+            "z_rear_mm": 2
+          },
+          {
+            "r_mm": 17.5,
+            "z_front_mm": 2,
+            "z_rear_mm": 18
+          },
+          {
+            "r_mm": 6,
+            "z_front_mm": 18,
+            "z_rear_mm": 19
+          }
+        ]
+      },
+      "typed_params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 17.5,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 2.0,
+            "label": null
+          },
+          {
+            "r_mm": 17.5,
+            "z_front_mm": 2.0,
+            "z_rear_mm": 18.0,
+            "label": null
+          },
+          {
+            "r_mm": 6.0,
+            "z_front_mm": 18.0,
+            "z_rear_mm": 19.0,
+            "label": null
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid",
+        "creates_frame"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_hob",
+      "component": "ho",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n_or",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:ho:n_hob:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 12
+      },
+      "typed_params": {
+        "diameter_mm": 12.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_rr",
+      "component": "ri",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:ri:n_rr:body"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame",
+          "value_id": "frame:ri:n_rr:outer_frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 25,
+            "z_front_mm": 0,
+            "z_rear_mm": 2
+          },
+          {
+            "r_mm": 25,
+            "z_front_mm": 2,
+            "z_rear_mm": 10
+          },
+          {
+            "r_mm": 22,
+            "z_front_mm": 10,
+            "z_rear_mm": 11
+          }
+        ]
+      },
+      "typed_params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 25.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 2.0,
+            "label": null
+          },
+          {
+            "r_mm": 25.0,
+            "z_front_mm": 2.0,
+            "z_rear_mm": 10.0,
+            "label": null
+          },
+          {
+            "r_mm": 22.0,
+            "z_front_mm": 10.0,
+            "z_rear_mm": 11.0,
+            "label": null
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid",
+        "creates_frame"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_ring",
+      "component": "ri",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n_rr",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:ri:n_ring:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 42
+      },
+      "typed_params": {
+        "diameter_mm": 42.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_to",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "translate_solid",
+      "op_version": "1.0.0",
+      "phase": "transform",
+      "inputs": [
+        {
+          "producer_node": "n_hob",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:__assembly__:n_to:body"
+        }
+      ],
+      "params": {
+        "vector_mm": [
+          0,
+          50,
+          0
+        ]
+      },
+      "typed_params": {
+        "vector_mm": [
+          0.0,
+          50.0,
+          0.0
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "places_component"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_tr",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "translate_solid",
+      "op_version": "1.0.0",
+      "phase": "transform",
+      "inputs": [
+        {
+          "producer_node": "n_ring",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:__assembly__:n_tr:body"
+        }
+      ],
+      "params": {
+        "vector_mm": [
+          0,
+          25,
+          0
+        ]
+      },
+      "typed_params": {
+        "vector_mm": [
+          0.0,
+          25.0,
+          0.0
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "places_component"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_u1",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "producer_node": "n_hib",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        },
+        {
+          "producer_node": "n_to",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:__assembly__:n_u1:body"
+        }
+      ],
+      "params": {},
+      "typed_params": {
+        "clean_after": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "boolean_union"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_u2",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "producer_node": "n_u1",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        },
+        {
+          "producer_node": "n_tr",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:__assembly__:n_u2:body"
+        }
+      ],
+      "params": {},
+      "typed_params": {
+        "clean_after": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "boolean_union"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:fec785ac50c20e82ed0f28cea43d918d30f01288dc48e2296cae3b0e11b5e740",
+  "raw_graph_hash": "sha256:22d92e83c30ba5a8f2bed4857dd7ffbcef2d275bf832cca153c1f50f6a716167"
+}

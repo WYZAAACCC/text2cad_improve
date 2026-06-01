@@ -1,0 +1,9 @@
+{
+  "case_id": "sketch_extrude_plate",
+  "ok": true,
+  "step": "E:\\auto_detection_process\\demo_output_v2\\sketch_extrude_plate\\output.step",
+  "sldprt": "E:\\auto_detection_process\\demo_output_v2\\sketch_extrude_plate\\sketch_extrude_plate.SLDPRT",
+  "error": null,
+  "step_size": 15501,
+  "sldprt_size": 57474
+}

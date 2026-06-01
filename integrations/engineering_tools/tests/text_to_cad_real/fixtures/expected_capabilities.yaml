@@ -1,0 +1,50 @@
+# Capability expectations for text-to-CAD tests.
+# These are checked at test time to determine expected behavior.
+
+# Dialects expected to be available
+expected_dialects:
+  - axisymmetric
+  - sketch_extrude
+  - composition
+
+# Primitives expected to be available
+expected_primitives:
+  - involute_spur_gear
+  - axisymmetric_turbine_disk
+
+# Capabilities NOT expected (yet)
+# If any of these become available, tests should be updated
+not_yet_available:
+  dialects:
+    - loft_sweep
+    - thread
+  operations:
+    - cut_internal_thread
+    - helical_sweep_cut
+    - threaded_bore
+    - loft_sections
+    - twist_sections
+    - sweep_profile
+
+# Operations expected per dialect
+expected_operations:
+  axisymmetric:
+    - revolve_profile
+    - cut_center_bore
+    - cut_annular_groove
+    - cut_circular_hole_pattern
+    - apply_safe_fillet
+    - apply_safe_chamfer
+  sketch_extrude:
+    - extrude_rectangle
+    - cut_rectangular_pocket
+    - cut_hole
+    - cut_hole_pattern_linear
+    - add_rectangular_boss
+    - add_rib
+    - apply_safe_fillet
+    - apply_safe_chamfer
+  composition:
+    - boolean_union
+    - boolean_cut
+    - boolean_intersect

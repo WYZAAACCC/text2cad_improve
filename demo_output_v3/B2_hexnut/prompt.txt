@@ -1,0 +1,1 @@
+M12六角螺母blank：对边19mm厚10mm中心孔12mm，倒角1mm。reference geometry only。

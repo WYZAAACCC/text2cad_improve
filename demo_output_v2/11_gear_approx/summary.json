@@ -1,0 +1,9 @@
+{
+  "name": "齿轮近似",
+  "ok": true,
+  "step": "E:\\auto_detection_process\\demo_output_v2\\11_gear_approx\\output.step",
+  "sldprt": "E:\\auto_detection_process\\demo_output_v2\\11_gear_approx\\11_gear_approx.SLDPRT",
+  "error": null,
+  "step_size": 31454,
+  "sldprt_size": 111950
+}

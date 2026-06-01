@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "step": "E:\\auto_detection_process\\demo_output_v2\\L2_deep_chain\\output.step",
+  "sldprt": "E:\\auto_detection_process\\demo_output_v2\\L2_deep_chain\\L2_deep_chain.SLDPRT",
+  "error": null,
+  "expected": "should_build",
+  "step_size": 40651,
+  "sldprt_size": 74965,
+  "test_passed": true
+}

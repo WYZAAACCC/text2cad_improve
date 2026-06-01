@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "step": "E:\\auto_detection_process\\demo_output_v2\\L1_tiny_bushing\\output.step",
+  "sldprt": "E:\\auto_detection_process\\demo_output_v2\\L1_tiny_bushing\\L1_tiny_bushing.SLDPRT",
+  "error": null,
+  "expected": "should_build",
+  "step_size": 6480,
+  "sldprt_size": 67819,
+  "test_passed": true
+}

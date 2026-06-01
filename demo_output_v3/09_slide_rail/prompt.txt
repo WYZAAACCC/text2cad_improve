@@ -1,0 +1,1 @@
+80x50x12mm块体，顶面30x12x6mm槽，四角4xO5孔，两侧2xO4定位孔。reference geometry only。

@@ -1,0 +1,122 @@
+{
+  "L1_large_flange": {
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\L1_large_flange\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\L1_large_flange\\L1_large_flange.SLDPRT",
+    "error": null,
+    "expected": "should_build",
+    "step_size": 6511,
+    "sldprt_size": 62216,
+    "test_passed": true
+  },
+  "L1_tiny_bushing": {
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\L1_tiny_bushing\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\L1_tiny_bushing\\L1_tiny_bushing.SLDPRT",
+    "error": null,
+    "expected": "should_build",
+    "step_size": 6480,
+    "sldprt_size": 67819,
+    "test_passed": true
+  },
+  "L1_24_holes": {
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\L1_24_holes\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\L1_24_holes\\L1_24_holes.SLDPRT",
+    "error": null,
+    "expected": "should_build",
+    "step_size": 119143,
+    "sldprt_size": 98089,
+    "test_passed": true
+  },
+  "L1_multi_step_shaft": {
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\L1_multi_step_shaft\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\L1_multi_step_shaft\\L1_multi_step_shaft.SLDPRT",
+    "error": null,
+    "expected": "should_build",
+    "step_size": 6492,
+    "sldprt_size": 61695,
+    "test_passed": true
+  },
+  "L2_triple_assembly": {
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\L2_triple_assembly\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\L2_triple_assembly\\L2_triple_assembly.SLDPRT",
+    "error": null,
+    "expected": "should_build",
+    "step_size": 27592,
+    "sldprt_size": 87303,
+    "test_passed": true
+  },
+  "L2_deep_chain": {
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\L2_deep_chain\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\L2_deep_chain\\L2_deep_chain.SLDPRT",
+    "error": null,
+    "expected": "should_build",
+    "step_size": 40651,
+    "sldprt_size": 74965,
+    "test_passed": true
+  },
+  "L2_complex_comp": {
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\L2_complex_comp\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\L2_complex_comp\\L2_complex_comp.SLDPRT",
+    "error": null,
+    "expected": "should_build",
+    "step_size": 10699,
+    "sldprt_size": 54644,
+    "test_passed": true
+  },
+  "L3_missing_id": {
+    "ok": false,
+    "step": null,
+    "sldprt": null,
+    "error": "RawGcadDocument parse failed: [pydantic_validation_failed] 1 validation error for RawGcadDocument\n  Value error, document_id must be non-empty [type=value_error, input_value={'schema_version': 'g_cad...life_prediction': True}}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error",
+    "expected": "should_fail_closed",
+    "test_passed": true
+  },
+  "L3_invalid_op": {
+    "ok": false,
+    "step": null,
+    "sldprt": null,
+    "error": "Validation failed: [unknown_op] node 'n_bad': unknown op 'nonexistent_op_v99' in 'axisymmetric': \"unknown op/version: 'nonexistent_op_v99'/'1.0.0'\"",
+    "expected": "should_fail_closed",
+    "test_passed": true
+  },
+  "L3_phase_violation": {
+    "ok": false,
+    "step": null,
+    "sldprt": null,
+    "error": "Validation failed: [reverse_phase_dependency] node 'n_hole' (phase='primary_cut', rank=1) depends on 'n_chamfer' (phase='edge_treatment', rank=4), producer phase rank must be <= consumer",
+    "expected": "should_fail_closed",
+    "test_passed": true
+  },
+  "L3_cross_dialect": {
+    "ok": false,
+    "step": null,
+    "sldprt": null,
+    "error": "Validation failed: [cross_component_node_ref_forbidden] node 'n_bad_hole' (component=plate) references node 'n_rev' (component=disk) without composition dialect",
+    "expected": "should_fail_closed",
+    "test_passed": true
+  },
+  "L4_minimal": {
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\L4_minimal\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\L4_minimal\\L4_minimal.SLDPRT",
+    "error": null,
+    "expected": "should_build",
+    "step_size": 15422,
+    "sldprt_size": 58374,
+    "test_passed": true
+  },
+  "L4_body_mismatch": {
+    "ok": false,
+    "step": null,
+    "sldprt": null,
+    "error": "Expected 99 body(s), got 1.",
+    "expected": "should_fail_closed",
+    "test_passed": true
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "ok": false,
+  "step": null,
+  "sldprt": null,
+  "error": "Expected 99 body(s), got 1.",
+  "expected": "should_fail_closed",
+  "test_passed": true
+}

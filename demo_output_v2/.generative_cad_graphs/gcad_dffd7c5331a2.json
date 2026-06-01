@@ -1,0 +1,244 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "flange_001",
+  "part_name": "axisymmetric_flange",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+    }
+  ],
+  "components": [
+    {
+      "id": "disk",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": null,
+      "root_node": "n_holes",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_revolve",
+      "component": "disk",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:disk:n_revolve:body"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame",
+          "value_id": "frame:disk:n_revolve:outer_frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 60,
+            "z_front_mm": 0,
+            "z_rear_mm": 2
+          },
+          {
+            "r_mm": 60,
+            "z_front_mm": 2,
+            "z_rear_mm": 16
+          },
+          {
+            "r_mm": 20,
+            "z_front_mm": 16,
+            "z_rear_mm": 17
+          }
+        ]
+      },
+      "typed_params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 60.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 2.0,
+            "label": null
+          },
+          {
+            "r_mm": 60.0,
+            "z_front_mm": 2.0,
+            "z_rear_mm": 16.0,
+            "label": null
+          },
+          {
+            "r_mm": 20.0,
+            "z_front_mm": 16.0,
+            "z_rear_mm": 17.0,
+            "label": null
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid",
+        "creates_frame"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_bore",
+      "component": "disk",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n_revolve",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:disk:n_bore:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 40
+      },
+      "typed_params": {
+        "diameter_mm": 40.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_groove",
+      "component": "disk",
+      "dialect": "axisymmetric",
+      "op": "cut_annular_groove",
+      "op_version": "1.0.0",
+      "phase": "annular_detail",
+      "inputs": [
+        {
+          "producer_node": "n_bore",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:disk:n_groove:body"
+        }
+      ],
+      "params": {
+        "side": "front",
+        "inner_dia_mm": 42,
+        "outer_dia_mm": 48,
+        "depth_mm": 2
+      },
+      "typed_params": {
+        "side": "front",
+        "inner_dia_mm": 42.0,
+        "outer_dia_mm": 48.0,
+        "depth_mm": 2.0
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_holes",
+      "component": "disk",
+      "dialect": "axisymmetric",
+      "op": "cut_circular_hole_pattern",
+      "op_version": "1.0.0",
+      "phase": "pattern_cut",
+      "inputs": [
+        {
+          "producer_node": "n_groove",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:disk:n_holes:body"
+        }
+      ],
+      "params": {
+        "count": 8,
+        "pcd_mm": 90,
+        "hole_dia_mm": 8
+      },
+      "typed_params": {
+        "count": 8,
+        "pcd_mm": 90.0,
+        "hole_dia_mm": 8.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:8c038ccb001bbcc171b5c91e4ac6f3ef9820d0e7c9cdc7580739fff1203d19c5",
+  "raw_graph_hash": "sha256:f26c087663ba6ce04ffd6820c01d83ef5fd394df4aa817ea3894d84a88675ad1"
+}

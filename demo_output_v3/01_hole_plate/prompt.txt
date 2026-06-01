@@ -1,0 +1,1 @@
+100x60x8mm板，四角4个O8通孔。reference geometry only，不用于制造。

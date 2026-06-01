@@ -1,0 +1,8 @@
+{
+  "ok": false,
+  "step": null,
+  "sldprt": null,
+  "error": "Validation failed: [reverse_phase_dependency] node 'n_hole' (phase='primary_cut', rank=1) depends on 'n_chamfer' (phase='edge_treatment', rank=4), producer phase rank must be <= consumer",
+  "expected": "should_fail_closed",
+  "test_passed": true
+}

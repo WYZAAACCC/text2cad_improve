@@ -1,0 +1,240 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "bf1",
+  "part_name": "bushing_flange",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "bushing",
+      "owner_dialect": "axisymmetric",
+      "root_node": "n_bore"
+    },
+    {
+      "id": "flange",
+      "owner_dialect": "axisymmetric",
+      "root_node": "n_fl_bore"
+    },
+    {
+      "id": "__assembly__",
+      "owner_dialect": "composition",
+      "root_node": "n_union"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_rev",
+      "component": "bushing",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 20,
+            "z_front_mm": 0,
+            "z_rear_mm": 2
+          },
+          {
+            "r_mm": 20,
+            "z_front_mm": 2,
+            "z_rear_mm": 60
+          },
+          {
+            "r_mm": 10,
+            "z_front_mm": 60,
+            "z_rear_mm": 61
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_bore",
+      "component": "bushing",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "n_rev",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 20
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_fl_rev",
+      "component": "flange",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 45,
+            "z_front_mm": 0,
+            "z_rear_mm": 2
+          },
+          {
+            "r_mm": 45,
+            "z_front_mm": 2,
+            "z_rear_mm": 10
+          },
+          {
+            "r_mm": 20,
+            "z_front_mm": 10,
+            "z_rear_mm": 11
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_fl_bore",
+      "component": "flange",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "n_fl_rev",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 40
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_place",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "translate_solid",
+      "op_version": "1.0.0",
+      "phase": "transform",
+      "inputs": [
+        {
+          "node": "n_fl_bore",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "vector_mm": [
+          0,
+          0,
+          25
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_union",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "node": "n_bore",
+          "output": "body"
+        },
+        {
+          "node": "n_place",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {},
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  }
+}

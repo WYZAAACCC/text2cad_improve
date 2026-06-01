@@ -1,0 +1,9 @@
+{
+  "name": "薄壁盒体",
+  "ok": true,
+  "step": "E:\\auto_detection_process\\demo_output_v2\\16_thinwall_box\\output.step",
+  "sldprt": "E:\\auto_detection_process\\demo_output_v2\\16_thinwall_box\\16_thinwall_box.SLDPRT",
+  "error": null,
+  "step_size": 23897,
+  "sldprt_size": 74276
+}

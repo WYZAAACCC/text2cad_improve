@@ -1,0 +1,7 @@
+{
+  "name": "带键槽阶梯轴",
+  "ok": false,
+  "step": null,
+  "sldprt": null,
+  "error": "Validation failed: [invalid_params] node 'n_slot' params invalid for op 'cut_rim_slot_pattern': 1 validation error for CutRimSlotPatternParams\nslot_profile\n  Value error, slot profile station depths must be nondecreasing [type=value_error, input_value={'stations': [{'depth_mm'...1, 'half_width_mm': "
+}

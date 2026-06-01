@@ -1,0 +1,21 @@
+{
+  "route_decision": "generative_cad_ir",
+  "part_intent": {
+    "object_type": "mounting_plate",
+    "dominant_geometry": "rectangular_prismatic",
+    "engineering_domain": "general_mechanical"
+  },
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "Rectangular plate with through holes is a prismatic machined part, well-suited to sketch_extrude operations (extrude_rectangle for the base plate, cut_hole for the 4 corner through holes)."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "User explicitly stated 'reference geometry only, not for manufacturing' — safe for generative CAD IR route."
+  ]
+}

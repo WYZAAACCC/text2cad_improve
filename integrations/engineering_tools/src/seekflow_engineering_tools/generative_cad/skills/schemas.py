@@ -31,6 +31,10 @@ class DialectSelectionPlan(BaseModel):
         "unsupported",
     ]
     selected_dialects: list[DialectSelectionItem] = Field(default_factory=list)
+    selected_primitive: str | None = Field(
+        default=None,
+        description="Primitive name when route_decision is deterministic_primitive.",
+    )
     selected_domain_skills: list[DomainSkillSelectionItem] = Field(default_factory=list)
     unsupported_capabilities: list[str] = Field(default_factory=list)
     safety_notes: list[str] = Field(default_factory=list)
@@ -44,6 +48,8 @@ class DialectSelectionPlan(BaseModel):
         if self.route_decision == "deterministic_primitive":
             if self.selected_dialects:
                 raise ValueError("deterministic_primitive must not select generative dialects")
+            if not self.selected_primitive:
+                raise ValueError("deterministic_primitive requires selected_primitive to be set")
 
         if self.route_decision == "unsupported":
             if not self.unsupported_capabilities:

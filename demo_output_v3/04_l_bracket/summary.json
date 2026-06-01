@@ -1,0 +1,10 @@
+{
+  "cid": "04_l_bracket",
+  "name": "L型支架",
+  "ok": false,
+  "stage": "exception",
+  "step": null,
+  "sldprt": null,
+  "error": "'NoneType' object is not subscriptable",
+  "elapsed": 0
+}

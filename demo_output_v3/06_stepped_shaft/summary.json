@@ -1,0 +1,12 @@
+{
+  "cid": "06_stepped_shaft",
+  "name": "阶梯轴",
+  "ok": true,
+  "stage": "",
+  "step": "E:\\auto_detection_process\\demo_output_v3\\06_stepped_shaft\\output.step",
+  "sldprt": "E:\\auto_detection_process\\demo_output_v3\\06_stepped_shaft\\06_stepped_shaft.SLDPRT",
+  "error": null,
+  "elapsed": 50.21473717689514,
+  "step_size": 3438,
+  "sldprt_size": 55245
+}

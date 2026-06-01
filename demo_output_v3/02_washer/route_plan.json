@@ -1,0 +1,21 @@
+{
+  "route_decision": "generative_cad_ir",
+  "part_intent": {
+    "object_type": "flat_washer",
+    "dominant_geometry": "axisymmetric_annular_disk",
+    "engineering_domain": "general_purpose"
+  },
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "A flat washer is a rotationally symmetric annular disk with outer diameter 30mm, inner diameter (bore) 12mm, and thickness 2mm. The axisymmetric dialect can revolve a rectangular profile and cut a center bore to produce this simple washer geometry."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only, not manufacturing-ready or certified."
+  ]
+}

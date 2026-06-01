@@ -1,0 +1,87 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "stepped-shaft-O40x20-O50x15-O40x25-O30x10",
+  "part_name": "Stepped Shaft O40x20-O50x15-O40x25-O30x10",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "shaft",
+      "owner_dialect": "axisymmetric",
+      "root_node": "n1"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n1",
+      "component": "shaft",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 20.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 20.0,
+            "label": "O40x20"
+          },
+          {
+            "r_mm": 25.0,
+            "z_front_mm": 20.0,
+            "z_rear_mm": 35.0,
+            "label": "O50x15"
+          },
+          {
+            "r_mm": 20.0,
+            "z_front_mm": 35.0,
+            "z_rear_mm": 60.0,
+            "label": "O40x25"
+          },
+          {
+            "r_mm": 15.0,
+            "z_front_mm": 60.0,
+            "z_rear_mm": 70.0,
+            "label": "O30x10"
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  }
+}

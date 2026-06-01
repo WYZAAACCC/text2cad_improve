@@ -1,0 +1,12 @@
+{
+  "cid": "13_clamp_block",
+  "name": "夹具块",
+  "ok": true,
+  "stage": "",
+  "step": "E:\\auto_detection_process\\demo_output_v3\\13_clamp_block\\output.step",
+  "sldprt": "E:\\auto_detection_process\\demo_output_v3\\13_clamp_block\\13_clamp_block.SLDPRT",
+  "error": null,
+  "elapsed": 72.17874526977539,
+  "step_size": 59993,
+  "sldprt_size": 82643
+}

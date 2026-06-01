@@ -1,0 +1,27 @@
+{
+  "route_decision": "generative_cad_ir",
+  "part_intent": {
+    "object_type": "clamp/vise assembly",
+    "dominant_geometry": "prismatic rectangular blocks",
+    "engineering_domain": "general mechanical"
+  },
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "All three components (base plate 80x30x8mm, movable jaw 40x15x15mm, handle 60x10x6mm) are simple rectangular prismatic blocks that can be generated via sketch_extrude operations."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "Multiple independent components must be combined/positioned relative to each other to form the assembly."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Reference geometry only — not for manufacturing or structural validation.",
+    "User explicitly stated 'reference geometry only'."
+  ]
+}

@@ -1,0 +1,1 @@
+100x60x5mm基板，10x4阵列O3散热孔。reference geometry only。

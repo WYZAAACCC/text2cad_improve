@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "step": "E:\\auto_detection_process\\demo_output_v2\\L2_triple_assembly\\output.step",
+  "sldprt": "E:\\auto_detection_process\\demo_output_v2\\L2_triple_assembly\\L2_triple_assembly.SLDPRT",
+  "error": null,
+  "expected": "should_build",
+  "step_size": 27592,
+  "sldprt_size": 87303,
+  "test_passed": true
+}

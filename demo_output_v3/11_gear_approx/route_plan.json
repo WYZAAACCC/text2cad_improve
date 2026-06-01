@@ -1,0 +1,27 @@
+{
+  "part_intent": {
+    "object_type": "cylindrical_gear_blank_approximation",
+    "dominant_geometry": "axisymmetric_disk_with_bore",
+    "engineering_domain": "mechanical_power_transmission"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "Rotationally symmetric disk with OD 88mm, center bore 30mm, axial thickness 20mm — an approximate gear blank reference shape. No tooth geometry requested; axisymmetric revolve_profile can express the blank body."
+    }
+  ],
+  "selected_primitive": "null",
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [
+    "involute_tooth_profile_generation",
+    "gear_mesh_validation",
+    "tooth_form_accuracy"
+  ],
+  "safety_notes": [
+    "Reference geometry only — not for manufacturing, not certified, not airworthy.",
+    "This is an axisymmetric disk approximation; true involute tooth geometry is not expressed.",
+    "Outer diameter 88mm and bore 30mm inferred as disk profile; no module or tooth count was provided so deterministic gear primitive cannot be used."
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "route_decision": "generative_cad_ir",
+  "part_intent": {
+    "object_type": "hinge_leaf",
+    "dominant_geometry": "prismatic_plate_with_holes",
+    "engineering_domain": "general_mechanical"
+  },
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "Hinge leaf is a rectangular plate (60x30x4mm) with 3 holes (O5mm) — best expressed via sketch_extrude for the rectangular body and cut_hole operations."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "If the hinge leaf needs to be combined with other components (e.g., mating leaf, pin), composition dialect handles boolean operations and placement."
+    }
+  ],
+  "selected_domain_skills": [],
+  "selected_primitive": null,
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only, not manufacturing-ready.",
+    "User explicitly stated 'reference geometry only' — compliant."
+  ]
+}

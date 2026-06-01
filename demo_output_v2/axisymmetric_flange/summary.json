@@ -1,0 +1,8 @@
+{
+  "ok": true,
+  "step": "E:\\auto_detection_process\\demo_output_v2\\axisymmetric_flange\\output.step",
+  "sldprt": "E:\\auto_detection_process\\demo_output_v2\\axisymmetric_flange\\axisymmetric_flange.SLDPRT",
+  "error": null,
+  "step_size": 32217,
+  "sldprt_size": 103253
+}

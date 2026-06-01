@@ -1,0 +1,167 @@
+{
+  "01_hole_plate": {
+    "name": "带孔矩形板",
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\01_hole_plate\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\01_hole_plate\\01_hole_plate.SLDPRT",
+    "error": null,
+    "step_size": 32235,
+    "sldprt_size": 83067
+  },
+  "02_washer": {
+    "name": "垫片/washer",
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\02_washer\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\02_washer\\02_washer.SLDPRT",
+    "error": null,
+    "step_size": 32062,
+    "sldprt_size": 108627
+  },
+  "03_circular_flange": {
+    "name": "圆形法兰",
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\03_circular_flange\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\03_circular_flange\\03_circular_flange.SLDPRT",
+    "error": null,
+    "step_size": 32171,
+    "sldprt_size": 112366
+  },
+  "04_l_bracket": {
+    "name": "L型支架",
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\04_l_bracket\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\04_l_bracket\\04_l_bracket.SLDPRT",
+    "error": null,
+    "step_size": 52090,
+    "sldprt_size": 82729
+  },
+  "05_ribbed_bracket": {
+    "name": "带加强筋支架",
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\05_ribbed_bracket\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\05_ribbed_bracket\\05_ribbed_bracket.SLDPRT",
+    "error": null,
+    "step_size": 61494,
+    "sldprt_size": 87515
+  },
+  "06_stepped_shaft": {
+    "name": "阶梯轴",
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\06_stepped_shaft\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\06_stepped_shaft\\06_stepped_shaft.SLDPRT",
+    "error": null,
+    "step_size": 6494,
+    "sldprt_size": 69960
+  },
+  "07_keyed_shaft": {
+    "name": "带键槽阶梯轴",
+    "ok": false,
+    "step": null,
+    "sldprt": null,
+    "error": "Validation failed: [invalid_params] node 'n_slot' params invalid for op 'cut_rim_slot_pattern': 1 validation error for CutRimSlotPatternParams\nslot_profile\n  Value error, slot profile station depths must be nondecreasing [type=value_error, input_value={'stations': [{'depth_mm'...1, 'half_width_mm': "
+  },
+  "08_bearing_housing": {
+    "name": "轴承座",
+    "ok": false,
+    "step": null,
+    "sldprt": null,
+    "error": "Expected 1 body(s), got 2."
+  },
+  "09_slide_rail": {
+    "name": "滑块导轨座",
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\09_slide_rail\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\09_slide_rail\\09_slide_rail.SLDPRT",
+    "error": null,
+    "step_size": 40662,
+    "sldprt_size": 86652
+  },
+  "10_pulley": {
+    "name": "皮带轮",
+    "ok": false,
+    "step": null,
+    "sldprt": null,
+    "error": "Expected 1 body(s), got 2."
+  },
+  "11_gear_approx": {
+    "name": "齿轮近似",
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\11_gear_approx\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\11_gear_approx\\11_gear_approx.SLDPRT",
+    "error": null,
+    "step_size": 31454,
+    "sldprt_size": 111950
+  },
+  "12_heatsink": {
+    "name": "散热器",
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\12_heatsink\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\12_heatsink\\12_heatsink.SLDPRT",
+    "error": null,
+    "step_size": 464345,
+    "sldprt_size": 1740117
+  },
+  "13_clamp_block": {
+    "name": "夹具块",
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\13_clamp_block\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\13_clamp_block\\13_clamp_block.SLDPRT",
+    "error": null,
+    "step_size": 36504,
+    "sldprt_size": 88354
+  },
+  "14_motor_mount": {
+    "name": "电机安装座",
+    "ok": false,
+    "step": null,
+    "sldprt": null,
+    "error": "Expected 1 body(s), got 4."
+  },
+  "15_pump_body": {
+    "name": "泵体简化件",
+    "ok": false,
+    "step": null,
+    "sldprt": null,
+    "error": "Expected 1 body(s), got 4."
+  },
+  "16_thinwall_box": {
+    "name": "薄壁盒体",
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\16_thinwall_box\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\16_thinwall_box\\16_thinwall_box.SLDPRT",
+    "error": null,
+    "step_size": 23897,
+    "sldprt_size": 74276
+  },
+  "17_electronics_case": {
+    "name": "电子外壳",
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\17_electronics_case\\output.step",
+    "sldprt": null,
+    "error": null,
+    "step_size": 32283
+  },
+  "18_hinge": {
+    "name": "铰链",
+    "ok": false,
+    "step": null,
+    "sldprt": null,
+    "error": "Expected 1 body(s), got 2."
+  },
+  "19_clamp": {
+    "name": "夹钳",
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\19_clamp\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\19_clamp\\19_clamp.SLDPRT",
+    "error": null,
+    "step_size": 195478,
+    "sldprt_size": 115807
+  },
+  "20_universal_joint": {
+    "name": "万向节",
+    "ok": false,
+    "step": null,
+    "sldprt": null,
+    "error": "Expected 1 body(s), got 4."
+  }
+}

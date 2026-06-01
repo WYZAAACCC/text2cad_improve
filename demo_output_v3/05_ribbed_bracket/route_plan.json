@@ -1,0 +1,22 @@
+{
+  "part_intent": {
+    "object_type": "mounting_plate",
+    "dominant_geometry": "prismatic",
+    "engineering_domain": "general_mechanical"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "Rectangular base plate with boss, triangular ribs, and corner hole pattern — all within the sketch_extrude prismatic part envelope. extrude_rectangle for the 100x60x10mm base, add_rectangular_boss for the 20x15x20mm central boss, add_rib for the 4mm triangular gussets on both boss sides, cut_hole_pattern_linear for four Ø6mm corner holes."
+    }
+  ],
+  "selected_primitive": "null",
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only — not certified, not manufacturing-ready, not structurally validated.",
+    "Triangular rib geometry (4mm thick, gusset-style) will be best-effort within sketch_extrude add_rib parameters; exact triangular profile may require post-generation inspection."
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "cid": "02_washer",
+  "name": "垫片",
+  "ok": false,
+  "stage": "exception",
+  "step": null,
+  "sldprt": null,
+  "error": "Error code: 400 - {'error': {'message': 'Thinking mode does not support this tool_choice', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}",
+  "elapsed": 0
+}

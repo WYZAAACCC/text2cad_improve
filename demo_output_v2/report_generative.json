@@ -1,0 +1,50 @@
+{
+  "axisymmetric_flange": {
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\axisymmetric_flange\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\axisymmetric_flange\\axisymmetric_flange.SLDPRT",
+    "error": null,
+    "step_size": 32217,
+    "sldprt_size": 103253
+  },
+  "hex_nut_m12_generative": {
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\hex_nut_m12_generative\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\hex_nut_m12_generative\\hex_nut_m12_generative.SLDPRT",
+    "error": null,
+    "step_size": 71441,
+    "sldprt_size": 99795
+  },
+  "l_bracket_generative": {
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\l_bracket_generative\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\l_bracket_generative\\l_bracket_generative.SLDPRT",
+    "error": null,
+    "step_size": 52090,
+    "sldprt_size": 73733
+  },
+  "simple_bushing": {
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\simple_bushing\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\simple_bushing\\simple_bushing.SLDPRT",
+    "error": null,
+    "step_size": 31568,
+    "sldprt_size": 90524
+  },
+  "stepped_disk": {
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\stepped_disk\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\stepped_disk\\stepped_disk.SLDPRT",
+    "error": null,
+    "step_size": 6482,
+    "sldprt_size": 63457
+  },
+  "ribbed_bracket": {
+    "ok": true,
+    "step": "E:\\auto_detection_process\\demo_output_v2\\ribbed_bracket\\output.step",
+    "sldprt": "E:\\auto_detection_process\\demo_output_v2\\ribbed_bracket\\ribbed_bracket.SLDPRT",
+    "error": null,
+    "step_size": 55890,
+    "sldprt_size": 78284
+  }
+}

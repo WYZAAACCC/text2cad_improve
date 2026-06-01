@@ -1,0 +1,1 @@
+输入端毂O40x20带O15孔，输出端毂O35x18带O12孔。reference geometry only。

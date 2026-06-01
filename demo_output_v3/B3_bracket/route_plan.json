@@ -1,0 +1,27 @@
+{
+  "route_decision": "generative_cad_ir",
+  "part_intent": {
+    "object_type": "bracket/plate assembly",
+    "dominant_geometry": "prismatic rectangular plates",
+    "engineering_domain": "general mechanical"
+  },
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "Two rectangular plates (base plate 80x40x6mm and vertical plate 80x50x6mm) can be modelled as sketch-extrude primitives. Composition dialect is needed to combine the two independent components."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "Two independent components (base plate and vertical plate) must be combined into a single assembly/part via boolean union or placement."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Reference geometry only — not manufacturing-ready, not certified.",
+    "Generative CAD output is reference geometry only."
+  ]
+}

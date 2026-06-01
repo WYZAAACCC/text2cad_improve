@@ -1,0 +1,9 @@
+{
+  "name": "带加强筋支架",
+  "ok": true,
+  "step": "E:\\auto_detection_process\\demo_output_v2\\05_ribbed_bracket\\output.step",
+  "sldprt": "E:\\auto_detection_process\\demo_output_v2\\05_ribbed_bracket\\05_ribbed_bracket.SLDPRT",
+  "error": null,
+  "step_size": 61494,
+  "sldprt_size": 87515
+}

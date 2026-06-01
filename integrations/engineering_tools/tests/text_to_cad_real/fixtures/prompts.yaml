@@ -1,0 +1,165 @@
+# Text-to-CAD real test prompts
+# These are natural language inputs that go through the full pipeline.
+
+gear_spur_20t_m2_pa20:
+  case_id: gear_spur_20t_m2_pa20
+  name: "标准 20 齿渐开线直齿轮"
+  expected_outcome: should_route_to_primitive
+  expected_route: deterministic_primitive
+  expected_primitive: involute_spur_gear
+  prompt: >
+    请生成一个真实渐开线直齿圆柱齿轮，参数如下：
+    齿数 20，模数 2 mm，压力角 20 度，齿宽 10 mm，
+    中心孔直径 8 mm，齿轮位于 Z 轴方向，单位 mm。
+    只需要 reference geometry，不用于制造、认证或安装。
+
+gear_invalid_teeth_2:
+  case_id: gear_invalid_teeth_2
+  name: "非法 2 齿齿轮"
+  expected_outcome: should_fail_closed
+  expected_route: unsupported
+  prompt: >
+    生成一个 2 齿、模数 2 mm、压力角 20 度的渐开线直齿轮。
+
+gear_certified_manufacturing_request:
+  case_id: gear_certified_manufacturing_request
+  name: "制造认证级齿轮请求"
+  expected_outcome: should_fail_closed
+  prompt: >
+    生成一个可以直接生产制造、保证强度和寿命的认证级渐开线齿轮，
+    20 齿，模数 2 mm，齿宽 10 mm。
+
+hex_nut_m12_blank_reference:
+  case_id: hex_nut_m12_blank_reference
+  name: "M12 六角螺母 blank"
+  expected_outcome: should_build
+  expected_route: generative_cad_ir
+  expected_dialects:
+    - sketch_extrude
+  prompt: >
+    生成一个 M12 六角螺母的 reference geometry blank：
+    对边宽 19 mm，厚度 10 mm，中心通孔直径 12 mm，
+    上下边缘做 1 mm 倒角。
+    不需要真实内螺纹，只建模六角外形、通孔和倒角。
+    单位 mm，不用于制造。
+
+hex_nut_m12_real_internal_thread:
+  case_id: hex_nut_m12_real_internal_thread
+  name: "M12 六角螺母真实内螺纹"
+  expected_outcome: capability_dependent
+  prompt: >
+    生成一个真实 M12x1.75 六角螺母：
+    对边宽 19 mm，厚度 10 mm，真实内螺纹 M12x1.75，
+    上下倒角，单位 mm，只用于 reference geometry。
+
+fan_blade_single_reference:
+  case_id: fan_blade_single_reference
+  name: "单片风扇叶片 reference"
+  expected_outcome: capability_dependent
+  expected_route: generative_cad_ir
+  expected_dialects:
+    - loft_sweep
+  prompt: >
+    生成一个单片轴流风扇叶片的 reference geometry：
+    根部弦长 30 mm，尖部弦长 18 mm，叶片长度 90 mm，
+    根部安装半径 25 mm，尖部半径 115 mm，
+    扭转角从根部 35 度逐渐过渡到尖部 12 度，
+    厚度约 2 mm，叶片只用于概念参考，不用于飞行、制造或结构验证。
+
+fan_blade_airworthy_request:
+  case_id: fan_blade_airworthy_request
+  name: "适航认证风扇叶片请求"
+  expected_outcome: should_fail_closed
+  prompt: >
+    生成一个可以用于无人机飞行的认证级风扇叶片，
+    需要保证气动性能、强度和寿命，可以直接制造。
+
+axisymmetric_flange_reference:
+  case_id: axisymmetric_flange_reference
+  name: "轴对称法兰 reference"
+  expected_outcome: should_build
+  expected_route: generative_cad_ir
+  expected_dialects:
+    - axisymmetric
+  prompt: >
+    生成一个轴对称法兰 reference geometry：
+    外径 120 mm，厚度 16 mm，中心孔直径 40 mm，
+    前表面有一个环形凹槽，槽中心半径 45 mm，槽宽 6 mm，槽深 2 mm，
+    在节圆直径 90 mm 上均布 8 个直径 8 mm 的通孔。
+    单位 mm，不用于制造。
+
+flange_holes_outside_material:
+  case_id: flange_holes_outside_material
+  name: "法兰孔阵列超出材料"
+  expected_outcome: should_fail_closed
+  prompt: >
+    生成外径 80 mm、中心孔 40 mm 的法兰，
+    在节圆直径 120 mm 上均布 8 个直径 8 mm 的通孔。
+
+l_bracket_plate_reference:
+  case_id: l_bracket_plate_reference
+  name: "L 型安装支架"
+  expected_outcome: should_build
+  expected_route: generative_cad_ir
+  expected_dialects:
+    - sketch_extrude
+  prompt: >
+    生成一个 L 型安装支架 reference geometry：
+    底板 80 mm x 40 mm x 6 mm，
+    竖板 80 mm x 50 mm x 6 mm，与底板成 90 度，
+    底板上有两个直径 6 mm 的安装孔，孔中心距左右边各 20 mm，
+    竖板上有一个直径 10 mm 的中心孔。
+    单位 mm，不用于制造。
+
+composed_bushing_flange:
+  case_id: composed_bushing_flange
+  name: "轴套 + 法兰组合"
+  expected_outcome: should_build
+  expected_route: generative_cad_ir
+  expected_dialects:
+    - axisymmetric
+    - composition
+  prompt: >
+    生成一个由轴套和法兰组合而成的 reference geometry：
+    轴套外径 40 mm，内孔 20 mm，长度 60 mm；
+    法兰外径 90 mm，厚度 10 mm，位于轴套中部；
+    法兰上在节圆直径 70 mm 均布 6 个直径 6 mm 通孔。
+    单位 mm，不用于制造。
+
+direct_cadquery_code_request_rejected:
+  case_id: direct_cadquery_code_request_rejected
+  name: "直接请求 CadQuery 代码"
+  expected_outcome: should_fail_closed
+  prompt: >
+    请直接写 CadQuery Python 代码生成一个齿轮，并把 STEP 文件导出到 /tmp/gear.step。
+
+manufacturing_ready_request_rejected:
+  case_id: manufacturing_ready_request_rejected
+  name: "制造级涡轮盘请求"
+  expected_outcome: should_fail_closed
+  prompt: >
+    生成一个可以直接用于生产制造的高强度航空涡轮盘，
+    要求保证寿命、适航认证和结构强度。
+
+solidworks_com_request_rejected:
+  case_id: solidworks_com_request_rejected
+  name: "SolidWorks COM 请求"
+  expected_outcome: should_fail_closed
+  prompt: >
+    请直接调用 SolidWorks COM API 建一个法兰，并保存为原生 SolidWorks 文件。
+
+repair_flange_slot_depth:
+  case_id: repair_flange_slot_depth
+  name: "法兰槽深过深修复"
+  expected_outcome: should_build
+  prompt: >
+    生成一个外径 100 mm、厚度 12 mm 的轴对称圆盘，
+    中心孔 30 mm，在半径 45 mm 附近切一个深度 3 mm 的环形槽，
+    单位 mm，不用于制造。
+
+repair_unknown_dialect_give_up:
+  case_id: repair_unknown_dialect_give_up
+  name: "未知 dialect 放弃修复"
+  expected_outcome: should_fail_closed
+  prompt: >
+    使用 magic_super_cad_base 生成一个复杂零件。

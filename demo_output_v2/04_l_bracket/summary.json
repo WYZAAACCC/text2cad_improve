@@ -1,0 +1,9 @@
+{
+  "name": "L型支架",
+  "ok": true,
+  "step": "E:\\auto_detection_process\\demo_output_v2\\04_l_bracket\\output.step",
+  "sldprt": "E:\\auto_detection_process\\demo_output_v2\\04_l_bracket\\04_l_bracket.SLDPRT",
+  "error": null,
+  "step_size": 52090,
+  "sldprt_size": 82729
+}

@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "step": "E:\\auto_detection_process\\demo_output_v2\\L4_minimal\\output.step",
+  "sldprt": "E:\\auto_detection_process\\demo_output_v2\\L4_minimal\\L4_minimal.SLDPRT",
+  "error": null,
+  "expected": "should_build",
+  "step_size": 15422,
+  "sldprt_size": 58374,
+  "test_passed": true
+}

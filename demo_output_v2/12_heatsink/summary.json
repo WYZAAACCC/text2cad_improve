@@ -1,0 +1,9 @@
+{
+  "name": "散热器",
+  "ok": true,
+  "step": "E:\\auto_detection_process\\demo_output_v2\\12_heatsink\\output.step",
+  "sldprt": "E:\\auto_detection_process\\demo_output_v2\\12_heatsink\\12_heatsink.SLDPRT",
+  "error": null,
+  "step_size": 464345,
+  "sldprt_size": 1740117
+}

@@ -315,7 +315,7 @@ class TestRunnerCadQuery:
             # Verify metadata v2
             meta = json.loads(meta_path.read_text(encoding="utf-8"))
             gm = meta["generative_metadata"]
-            assert gm["metadata_version"] == "generative_metadata_v2"
+            assert gm["metadata_version"] == "generative_metadata_v3"
             assert len(gm["selected_dialects"]) == 3
 
     def test_metadata_v2_written(self):
@@ -329,4 +329,4 @@ class TestRunnerCadQuery:
             assert result.ok
             assert result.metadata_path == meta_path
             meta = json.loads(meta_path.read_text(encoding="utf-8"))
-            assert meta["generative_metadata"]["metadata_version"] == "generative_metadata_v2"
+            assert meta["generative_metadata"]["metadata_version"] == "generative_metadata_v3"

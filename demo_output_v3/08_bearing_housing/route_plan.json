@@ -1,0 +1,21 @@
+{
+  "route_decision": "generative_cad_ir",
+  "part_intent": {
+    "object_type": "cylindrical sleeve / bushing",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "mechanical"
+  },
+  "selected_primitive": "null",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "Simple rotationally symmetric sleeve with coaxial bore — revolve profile for outer cylinder, cut_center_bore for inner diameter. Perfect fit for axisymmetric dialect."
+    }
+  ],
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only — not for manufacturing, structural validation, or certification."
+  ]
+}

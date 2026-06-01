@@ -1,0 +1,8 @@
+{
+  "ok": false,
+  "step": null,
+  "sldprt": null,
+  "error": "Validation failed: [cross_component_node_ref_forbidden] node 'n_bad_hole' (component=plate) references node 'n_rev' (component=disk) without composition dialect",
+  "expected": "should_fail_closed",
+  "test_passed": true
+}

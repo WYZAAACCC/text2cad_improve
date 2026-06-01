@@ -1,0 +1,27 @@
+{
+  "route_decision": "generative_cad_ir",
+  "part_intent": {
+    "object_type": "rectangular enclosure",
+    "dominant_geometry": "prismatic box with holes and bosses",
+    "engineering_domain": "general mechanical housing"
+  },
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.1.0",
+      "reason": "The enclosure is a rectangular prismatic box (80x50x25mm) which can be created via extrude_rectangle, with cut_hole for the 4x O3 ventilation holes on the side, and cut_hole for the 4x O5 screw bosses at corners. The sketch_extrude dialect supports rectangular extrusions, holes, and patterns needed for this part."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "The screw bosses (4x O5) are separate cylindrical features that need to be combined with the main enclosure body via boolean_union. The composition dialect provides boolean operations to union the bosses with the main body."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only, not manufacturing-ready.",
+    "The user specified 'reference geometry only' — this is consistent with generative CAD IR limitations."
+  ]
+}

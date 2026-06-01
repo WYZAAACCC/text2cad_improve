@@ -1,0 +1,9 @@
+{
+  "name": "圆形法兰",
+  "ok": true,
+  "step": "E:\\auto_detection_process\\demo_output_v2\\03_circular_flange\\output.step",
+  "sldprt": "E:\\auto_detection_process\\demo_output_v2\\03_circular_flange\\03_circular_flange.SLDPRT",
+  "error": null,
+  "step_size": 32171,
+  "sldprt_size": 112366
+}

@@ -1,0 +1,119 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "L1_large",
+  "part_name": "large_flange_500mm",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+    }
+  ],
+  "components": [
+    {
+      "id": "disk",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": null,
+      "root_node": "n_rev",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_rev",
+      "component": "disk",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:disk:n_rev:body"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame",
+          "value_id": "frame:disk:n_rev:outer_frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 250,
+            "z_front_mm": 0,
+            "z_rear_mm": 5
+          },
+          {
+            "r_mm": 250,
+            "z_front_mm": 5,
+            "z_rear_mm": 40
+          },
+          {
+            "r_mm": 50,
+            "z_front_mm": 40,
+            "z_rear_mm": 41
+          }
+        ]
+      },
+      "typed_params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 250.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 5.0,
+            "label": null
+          },
+          {
+            "r_mm": 250.0,
+            "z_front_mm": 5.0,
+            "z_rear_mm": 40.0,
+            "label": null
+          },
+          {
+            "r_mm": 50.0,
+            "z_front_mm": 40.0,
+            "z_rear_mm": 41.0,
+            "label": null
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid",
+        "creates_frame"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:f7f61ffef3efc583ab4e30fb643c3746a4a785b2c0d4d976b86a91e43fa65776",
+  "raw_graph_hash": "sha256:0f421766127b8504c11cbf931fad5e88ef25ccf5a4b47689855c56ba021d8331"
+}

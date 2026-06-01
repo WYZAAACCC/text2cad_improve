@@ -1,0 +1,1 @@
+底板100x60x10mm，中心20x15x20mm凸台，凸台两侧4mm厚三角筋，四角4xO6孔。reference geometry only。

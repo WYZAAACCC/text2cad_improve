@@ -1,0 +1,134 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "stepped_shaft_001",
+  "part_name": "Stepped Shaft O40x20-O50x15-O40x25-O30x10",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+    }
+  ],
+  "components": [
+    {
+      "id": "shaft",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": null,
+      "root_node": "n_revolve",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_revolve",
+      "component": "shaft",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:shaft:n_revolve:body"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame",
+          "value_id": "frame:shaft:n_revolve:outer_frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 20,
+            "z_front_mm": 0,
+            "z_rear_mm": 20,
+            "label": "O40x20"
+          },
+          {
+            "r_mm": 25,
+            "z_front_mm": 20,
+            "z_rear_mm": 35,
+            "label": "O50x15"
+          },
+          {
+            "r_mm": 20,
+            "z_front_mm": 35,
+            "z_rear_mm": 60,
+            "label": "O40x25"
+          },
+          {
+            "r_mm": 15,
+            "z_front_mm": 60,
+            "z_rear_mm": 70,
+            "label": "O30x10"
+          }
+        ]
+      },
+      "typed_params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 20.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 20.0,
+            "label": "O40x20"
+          },
+          {
+            "r_mm": 25.0,
+            "z_front_mm": 20.0,
+            "z_rear_mm": 35.0,
+            "label": "O50x15"
+          },
+          {
+            "r_mm": 20.0,
+            "z_front_mm": 35.0,
+            "z_rear_mm": 60.0,
+            "label": "O40x25"
+          },
+          {
+            "r_mm": 15.0,
+            "z_front_mm": 60.0,
+            "z_rear_mm": 70.0,
+            "label": "O30x10"
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid",
+        "creates_frame"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:574a149e58bb81d8e0a56310818a4cc1ee384663126818f7b20b5a5361905484",
+  "raw_graph_hash": "sha256:244af5df90b757988d04a3fbaf8e903abc86f3d4765c5f7c599efc69d4ec9aec"
+}

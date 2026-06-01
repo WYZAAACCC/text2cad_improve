@@ -1,0 +1,12 @@
+{
+  "cid": "09_slide_rail",
+  "name": "滑块导轨座",
+  "ok": true,
+  "stage": "",
+  "step": "E:\\auto_detection_process\\demo_output_v3\\09_slide_rail\\output.step",
+  "sldprt": "E:\\auto_detection_process\\demo_output_v3\\09_slide_rail\\09_slide_rail.SLDPRT",
+  "error": null,
+  "elapsed": 81.69922304153442,
+  "step_size": 40698,
+  "sldprt_size": 77400
+}

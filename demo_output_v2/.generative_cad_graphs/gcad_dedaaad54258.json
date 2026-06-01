@@ -1,0 +1,158 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "P11",
+  "part_name": "gear_approx",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+    }
+  ],
+  "components": [
+    {
+      "id": "ge",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": null,
+      "root_node": "n_bore",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_rev",
+      "component": "ge",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:ge:n_rev:body"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame",
+          "value_id": "frame:ge:n_rev:outer_frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 44,
+            "z_front_mm": 0,
+            "z_rear_mm": 2
+          },
+          {
+            "r_mm": 44,
+            "z_front_mm": 2,
+            "z_rear_mm": 20
+          },
+          {
+            "r_mm": 15,
+            "z_front_mm": 20,
+            "z_rear_mm": 21
+          }
+        ]
+      },
+      "typed_params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 44.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 2.0,
+            "label": null
+          },
+          {
+            "r_mm": 44.0,
+            "z_front_mm": 2.0,
+            "z_rear_mm": 20.0,
+            "label": null
+          },
+          {
+            "r_mm": 15.0,
+            "z_front_mm": 20.0,
+            "z_rear_mm": 21.0,
+            "label": null
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid",
+        "creates_frame"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_bore",
+      "component": "ge",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n_rev",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:ge:n_bore:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 30
+      },
+      "typed_params": {
+        "diameter_mm": 30.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:f68b4c8bb2def10c46e9f6fb778b6c67c187079c58b706f37d0dd9b3c7119fa5",
+  "raw_graph_hash": "sha256:580d06cfe8d3cc3fe0379fb6c1de1050d6260108ecda406a5630fec8eeaeb3dd"
+}
