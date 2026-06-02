@@ -1,0 +1,44 @@
+[
+  {
+    "id": "industrial_flange",
+    "name": "工业法兰 Industrial Flange",
+    "ok": false,
+    "msg": "Validate: [invalid_params] node 'node_05_chamfer_outer' params invalid for op 'apply_safe_chamfer': 1 valid; [invalid_params] node 'node_06_chamfer_outer' params invalid for op 'apply_safe_chamfer': 1 valid"
+  },
+  {
+    "id": "engine_mount",
+    "name": "发动机支架 Engine Mount Bracket",
+    "ok": false,
+    "msg": "Validate: [invalid_params] node 'n_base_plate' params invalid for op 'extrude_rectangle': 1 validation erro; [invalid_params] node 'n_pocket' params invalid for op 'cut_rectangular_pocket': 1 validation err"
+  },
+  {
+    "id": "bearing_housing",
+    "name": "轴承座 Bearing Housing Assembly",
+    "ok": true,
+    "msg": "STEP=53479B SW=107111B"
+  },
+  {
+    "id": "gearbox_housing",
+    "name": "变速箱壳体 Gearbox Housing",
+    "ok": true,
+    "msg": "STEP=521171B SW=373989B"
+  },
+  {
+    "id": "turbine_disk",
+    "name": "涡轮盘 Turbine Disk",
+    "ok": true,
+    "msg": "STEP=229894B SW=201532B"
+  },
+  {
+    "id": "exhaust_pipe",
+    "name": "排气管 Exhaust Pipe",
+    "ok": false,
+    "msg": "Validate: [invalid_params] node 'node_path' params invalid for op 'create_sweep_path': 15 validation errors"
+  },
+  {
+    "id": "hydraulic_cap",
+    "name": "液压缸端盖 Hydraulic Cylinder Cap",
+    "ok": true,
+    "msg": "STEP=3514922B SW=4425505B"
+  }
+]

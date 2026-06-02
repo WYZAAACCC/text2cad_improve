@@ -1,0 +1,6 @@
+工业管道法兰, 单位 mm, 参考几何.
+外径 200mm, 厚度 25mm, 中心孔 80mm 通孔.
+节圆直径 160mm 上均布 8 个直径 18mm 螺栓孔.
+前表面切环形槽: inner_dia_mm=140 outer_dia_mm=160 depth_mm=4 side=front.
+所有外边缘倒角 2mm.
+使用 revolve_profile 定义轮廓 (r=100 z=0-25), cut_center_bore 切中心孔, cut_annular_groove 切环槽, cut_circular_hole_pattern 打螺栓孔, apply_safe_chamfer 倒角.

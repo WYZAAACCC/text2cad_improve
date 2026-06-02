@@ -1,0 +1,8 @@
+液压缸端盖, 单位 mm, 参考几何.
+外径 120mm (r=60), 总厚 35mm.
+使用 revolve_profile 定义轮廓: station1 r=60 z=0-10 (法兰), station2 r=45 z=10-35 (凸台).
+中心活塞杆孔: cut_center_bore diameter_mm=30 through_all=true.
+法兰上 6 个螺栓孔 PCD 95mm: cut_circular_hole_pattern count=6 pcd_mm=95 hole_dia_mm=11.
+凸台端面环槽: cut_annular_groove side=front inner_dia_mm=50 outer_dia_mm=60 depth_mm=4.
+法兰外缘倒角 1mm: apply_safe_chamfer distance_mm=1 target=all_external_edges.
+凸台内孔口倒角: apply_safe_chamfer distance_mm=0.5 target=all_external_edges.

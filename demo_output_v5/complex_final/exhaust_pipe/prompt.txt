@@ -1,0 +1,4 @@
+发动机排气管弯管, 单位 mm, 参考几何.
+创建扫掠路径 create_sweep_path path_points: {x=0,y=0,z=0} → {x=0,y=0,z=80} → {x=40,y=0,z=80} → {x=40,y=30,z=80} → {x=40,y=30,z=0}.
+使用 sweep_profile shape=circle radius_mm=15 沿路径扫掠.
+所有节点在同一组件中, owner_dialect=loft_sweep.

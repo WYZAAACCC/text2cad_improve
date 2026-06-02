@@ -1,0 +1,9 @@
+航空发动机安装支架, 单位 mm, 参考几何.
+主体板: extrude_rectangle width_mm=180 height_mm=120 depth_mm=20 centered=true.
+4 个 M12 安装孔在四角: cut_hole_pattern_linear hole_dia_mm=13 count_x=2 count_y=2 spacing_x_mm=150 spacing_y_mm=90 through_all=true.
+中央减重槽: cut_rectangular_pocket width_mm=100 height_mm=60 depth_mm=8 centered=true.
+左侧加强筋: add_rib thickness_mm=8 height_mm=25 length_mm=80 position_mm=[-60,0,10] direction=X.
+右侧加强筋: add_rib thickness_mm=8 height_mm=25 length_mm=80 position_mm=[60,0,10] direction=X.
+顶部凸台: add_rectangular_boss width_mm=40 height_mm=30 depth_mm=15 position_mm=[0,50,10] centered=true.
+凸台上 2 个定位孔: cut_hole diameter_mm=8 position_mm=[-12,50] 和 position_mm=[12,50] through_all=true.
+所有边缘圆角 2mm: apply_safe_fillet radius_mm=2 target=all_external_edges.

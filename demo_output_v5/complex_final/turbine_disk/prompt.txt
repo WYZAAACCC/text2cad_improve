@@ -1,0 +1,12 @@
+燃气轮机涡轮盘参考几何, 单位 mm.
+盘体外径 300mm (r=150), 轮毂直径 60mm (r=30), 总厚度 80mm.
+使用 revolve_profile 定义多段轮廓:
+  station1 r=150 z=0-15 (前缘),
+  station2 r=120 z=15-40 (盘面),
+  station3 r=80 z=40-65 (辐板),
+  station4 r=30 z=65-80 (轮毂).
+中心孔直径 40mm: cut_center_bore diameter_mm=40 through_all=true.
+轮毂上 6 个螺栓孔 PCD 100mm: cut_circular_hole_pattern count=6 pcd_mm=100 hole_dia_mm=12.
+盘面上 12 个减重孔 PCD 200mm: cut_circular_hole_pattern count=12 pcd_mm=200 hole_dia_mm=20.
+前表面环槽: cut_annular_groove side=front inner_dia_mm=180 outer_dia_mm=220 depth_mm=5.
+外缘倒角 1.5mm: apply_safe_chamfer distance_mm=1.5 target=all_external_edges.

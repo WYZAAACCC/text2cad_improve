@@ -24,11 +24,12 @@ def handle_create_sweep_path(node, ctx) -> dict:
     if len(points) < 2:
         raise ValueError("Need at least 2 path points")
     cid = node.component
+    from seekflow_engineering_tools.generative_cad.runtime.handles import RuntimeHandle
     ctx.object_store.put(
-        SolidHandle(id=f"path:{cid}:{node.id}:path", component_id=cid, producer_node=node.id),
+        RuntimeHandle(id=f"curve:{cid}:{node.id}:curve", type="curve", component_id=cid, producer_node=node.id),
         points,
     )
-    return {"path": f"path:{cid}:{node.id}:path"}
+    return {"curve": f"curve:{cid}:{node.id}:curve"}
 
 
 def handle_sweep_profile(node, ctx) -> dict:

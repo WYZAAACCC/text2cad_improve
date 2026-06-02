@@ -91,6 +91,7 @@ TARGET_VALUE_FIXES: dict[str, str] = {
     "external_edges": "all_external_edges",
     "all_edges": "all_external_edges",
     "outer_edges": "all_external_edges",
+    "all_outer_edges": "all_external_edges",
 }
 
 
@@ -108,11 +109,13 @@ def auto_fix(raw_doc: dict, dialect_registry=None) -> dict:
       8. 多余参数清理
     """
     doc = _fix_output_names(raw_doc)
+    doc = _fix_input_output_names(doc)
     doc = _fix_op_versions(doc, dialect_registry)
     doc = _fix_dialect_names(doc, dialect_registry)
     doc = _fix_qualified_op_names(doc)
     doc = _fix_param_names(doc)
     doc = _fix_param_values(doc)
+    doc = _fix_path_points(doc)
     doc = _fix_unknown_ops(doc, dialect_registry)
     doc = _fix_target_values(doc)
     doc = _fix_cross_component_refs(doc)
@@ -122,6 +125,23 @@ def auto_fix(raw_doc: dict, dialect_registry=None) -> dict:
     doc = _fix_profile_stations(doc)
     doc = _fill_default_params(doc)
     doc = _remove_extra_params(doc)
+    return doc
+
+
+def _fix_input_output_names(doc: dict) -> dict:
+    """修正 input 引用中的 output 名: LLM 写 output='solid' 但实际输出名叫 'body'。
+    查找 producer node 的实际 outputs, 将 type 名替换为 name。"""
+    # Build map: node_id -> {output_type: output_name}
+    type_to_name: dict[str, dict[str, str]] = {}
+    for n in doc.get("nodes", []):
+        type_to_name[n["id"]] = {o.get("type", ""): o.get("name", "") for o in n.get("outputs", [])}
+
+    for node in doc.get("nodes", []):
+        for inp in node.get("inputs", []):
+            ref = inp.get("node", "")
+            out = inp.get("output", "")
+            if ref in type_to_name and out in type_to_name[ref]:
+                inp["output"] = type_to_name[ref][out]
     return doc
 
 
@@ -467,7 +487,8 @@ def _fix_profile_stations(doc: dict) -> dict:
             s1["z_front_mm"] = s0["z_rear_mm"]
             s1["z_rear_mm"] = s0["z_rear_mm"] + 0.5
             node["params"]["profile_stations"] = [s0, s1]
-            continue
+            stations = node["params"]["profile_stations"]  # Refresh after fix
+            # Don't continue — fall through to all-same-r check below
 
         # 检测: 所有 station 的 z_front_mm 相同 AND z_rear_mm 相同？
         z_fronts = {s.get("z_front_mm") for s in stations}
@@ -512,6 +533,21 @@ def _fix_profile_stations(doc: dict) -> dict:
 
             node["params"]["profile_stations"] = new_stations
 
+        # After all fixes: if all r_mm are still identical, the profile is just
+        # a cylinder with no bore — split the last station to create a bore.
+        stations = node["params"].get("profile_stations", [])
+        if len(stations) >= 2:
+            r_values = {s.get("r_mm") for s in stations}
+            if len(r_values) == 1:
+                last = dict(stations[-1])
+                last["r_mm"] = last["r_mm"] / 2.0  # Create a center bore
+                # Shift z to create a small step
+                prev_z = stations[-2]["z_rear_mm"] if len(stations) > 1 else stations[0]["z_rear_mm"]
+                last["z_front_mm"] = prev_z
+                last["z_rear_mm"] = prev_z + 1.0
+                stations[-1] = last
+                node["params"]["profile_stations"] = stations
+
     return doc
 
 
@@ -521,6 +557,7 @@ def _fix_param_values(doc: dict) -> dict:
         "positive": "+", "pos": "+", "up": "+", "outward": "+",
         "negative": "-", "neg": "-", "down": "-", "inward": "-",
         "+z": "+", "-z": "-", "z+": "+", "z-": "-", "both": "+",
+        "z": "+", "Z": "+",  # LLM uses axis name as direction
     }
     AXIS_FIXES = {"z+": "Z", "+z": "Z", "z-": "Z", "-z": "Z", "+Z": "Z", "-Z": "Z", "z": "Z", "x": "X", "y": "Y"}
     PLANE_FIXES = {"xy": "XY", "yz": "YZ", "xz": "XZ", "yx": "XY", "zy": "YZ", "zx": "XZ"}
@@ -561,6 +598,30 @@ def _fix_param_values(doc: dict) -> dict:
             c = str(params["thread_class"]).strip()
             if c in CLASS_FIXES:
                 params["thread_class"] = CLASS_FIXES[c]
+    return doc
+
+
+def _fix_path_points(doc: dict) -> dict:
+    """修正 create_sweep_path 的 path_points: {x,y,z} → {x_mm,y_mm,z_mm}。"""
+    for node in doc.get("nodes", []):
+        if node.get("op") != "create_sweep_path":
+            continue
+        pts = node.get("params", {}).get("path_points", [])
+        fixed = []
+        for pt in pts:
+            if isinstance(pt, dict):
+                fp = {}
+                for k, v in pt.items():
+                    if k in ("x", "y", "z"):
+                        fp[f"{k}_mm"] = v
+                    else:
+                        fp[k] = v
+                # If no _mm fields were created, use as-is
+                fixed.append(fp if any(k.endswith("_mm") for k in fp) else pt)
+            else:
+                fixed.append(pt)
+        if any(p != o for p, o in zip(fixed, pts)):
+            node["params"]["path_points"] = fixed
     return doc
 
 
