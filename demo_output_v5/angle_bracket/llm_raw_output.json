@@ -1,32 +1,28 @@
 {
   "schema_version": "g_cad_core_v0.2",
-  "document_id": "washer-ref-001",
-  "part_name": "reference_washer",
+  "document_id": "l-bracket-sketch-extrude-001",
+  "part_name": "l_bracket",
   "units": "mm",
   "trust_level": "reference_geometry",
   "selected_dialects": [
     {
-      "dialect": "axisymmetric",
+      "dialect": "sketch_extrude",
       "version": "0.2.0"
-    },
-    {
-      "dialect": "composition",
-      "version": "1.0.0"
     }
   ],
   "components": [
     {
-      "id": "washer",
-      "owner_dialect": "axisymmetric",
-      "root_node": "n3"
+      "id": "l_bracket",
+      "owner_dialect": "sketch_extrude",
+      "root_node": "node_3_fillet"
     }
   ],
   "nodes": [
     {
-      "id": "n1",
-      "component": "washer",
-      "dialect": "axisymmetric",
-      "op": "revolve_profile",
+      "id": "node_1_base",
+      "component": "l_bracket",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
       "op_version": "1.0.0",
       "phase": "base_solid",
       "inputs": [],
@@ -34,67 +30,62 @@
         {
           "name": "body",
           "type": "solid"
-        },
-        {
-          "name": "frame",
-          "type": "frame"
         }
       ],
       "params": {
-        "axis": "Z",
-        "profile_stations": [
-          {
-            "r_mm": 15.0,
-            "z_front_mm": 0.0,
-            "z_rear_mm": 12.0
-          },
-          {
-            "r_mm": 40.0,
-            "z_front_mm": 0.0,
-            "z_rear_mm": 12.0
-          }
+        "width_mm": 80,
+        "height_mm": 50,
+        "depth_mm": 8,
+        "plane": "XY",
+        "centered": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "node_2_boss",
+      "component": "l_bracket",
+      "dialect": "sketch_extrude",
+      "op": "add_rectangular_boss",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "node_1_base",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 8,
+        "height_mm": 40,
+        "depth_mm": 80,
+        "plane": "YZ",
+        "centered": false,
+        "position_mm": [
+          0,
+          25,
+          0
         ]
       },
       "required": true,
       "degradation_policy": "fail"
     },
     {
-      "id": "n2",
-      "component": "washer",
-      "dialect": "axisymmetric",
-      "op": "cut_center_bore",
-      "op_version": "1.0.0",
-      "phase": "primary_cut",
-      "inputs": [
-        {
-          "node": "n1",
-          "output": "body"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "body",
-          "type": "solid"
-        }
-      ],
-      "params": {
-        "diameter_mm": 30.0,
-        "axis": "Z",
-        "through_all": true
-      },
-      "required": true,
-      "degradation_policy": "fail"
-    },
-    {
-      "id": "n3",
-      "component": "washer",
-      "dialect": "axisymmetric",
-      "op": "apply_safe_chamfer",
+      "id": "node_3_fillet",
+      "component": "l_bracket",
+      "dialect": "sketch_extrude",
+      "op": "apply_safe_fillet",
       "op_version": "1.0.0",
       "phase": "edge_treatment",
       "inputs": [
         {
-          "node": "n2",
+          "node": "node_2_boss",
           "output": "body"
         }
       ],
@@ -105,8 +96,8 @@
         }
       ],
       "params": {
-        "distance_mm": 1.0,
-        "target": "all"
+        "radius_mm": 2,
+        "target": "all_external_edges"
       },
       "required": true,
       "degradation_policy": "fail"

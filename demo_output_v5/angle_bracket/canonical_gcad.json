@@ -1,0 +1,180 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "l-bracket-sketch-extrude-001",
+  "part_name": "l_bracket",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+    }
+  ],
+  "components": [
+    {
+      "id": "l_bracket",
+      "owner_dialect": "sketch_extrude",
+      "kind_hint": null,
+      "root_node": "node_3_fillet",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "node_1_base",
+      "component": "l_bracket",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:l_bracket:node_1_base:body"
+        }
+      ],
+      "params": {
+        "width_mm": 80,
+        "height_mm": 50,
+        "depth_mm": 8,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+"
+      },
+      "typed_params": {
+        "width_mm": 80.0,
+        "height_mm": 50.0,
+        "depth_mm": 8.0,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "node_2_boss",
+      "component": "l_bracket",
+      "dialect": "sketch_extrude",
+      "op": "add_rectangular_boss",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "node_1_base",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:l_bracket:node_2_boss:body"
+        }
+      ],
+      "params": {
+        "width_mm": 8,
+        "height_mm": 40,
+        "depth_mm": 80,
+        "plane": "YZ",
+        "centered": false,
+        "position_mm": [
+          0,
+          25,
+          0
+        ]
+      },
+      "typed_params": {
+        "width_mm": 8.0,
+        "height_mm": 40.0,
+        "depth_mm": 80.0,
+        "position_mm": [
+          0.0,
+          25.0,
+          0.0
+        ],
+        "plane": "YZ",
+        "centered": false
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "node_3_fillet",
+      "component": "l_bracket",
+      "dialect": "sketch_extrude",
+      "op": "apply_safe_fillet",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "producer_node": "node_2_boss",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:l_bracket:node_3_fillet:body"
+        }
+      ],
+      "params": {
+        "radius_mm": 2,
+        "target": "all_external_edges"
+      },
+      "typed_params": {
+        "radius_mm": 2.0,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "modifies_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:abb286969a343d3a329e0784c1ac57b986bfbfced8abaf7b99a3167deb084014",
+  "raw_graph_hash": "sha256:71914ce5daf586b5dc9af181c2d758e766e211e7ebf0479d963b350d07a483ec"
+}

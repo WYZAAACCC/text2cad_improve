@@ -1,0 +1,6 @@
+Create an L-shaped bracket using sketch_extrude dialect:
+1. extrude_rectangle width_mm=80 height_mm=50 depth_mm=8 plane=XY centered=true (base plate)
+2. add_rectangular_boss width_mm=8 height_mm=40 depth_mm=80 plane=YZ centered=false position_mm=[0,25,0] (vertical leg)
+3. apply_safe_fillet radius_mm=2 target=all_external_edges
+Only ONE base_solid (use extrude_rectangle once).
+Units mm. Reference geometry only. Not for manufacturing.

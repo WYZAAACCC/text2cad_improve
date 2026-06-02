@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "E:\auto_detection_process\integrations\engineering_tools\run_auto_all.py", line 298, in run_case
+    canonical, report, bundle = validate_and_fix(args, case["dialects"])
+                                ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\auto_detection_process\integrations\engineering_tools\run_auto_all.py", line 88, in validate_and_fix
+    raw_args = auto_fix(raw_args, REG)
+  File "E:\auto_detection_process\integrations\engineering_tools\src\seekflow_engineering_tools\generative_cad\authoring\auto_fixer.py", line 108, in auto_fix
+    doc = _fix_output_names(doc)
+                            ^^^
+UnboundLocalError: cannot access local variable 'doc' where it is not associated with a value

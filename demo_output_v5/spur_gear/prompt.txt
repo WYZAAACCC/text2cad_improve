@@ -1,0 +1,1 @@
+Create a cylindrical gear blank: outer diameter 44mm (r_mm=22), center bore 10mm (diameter_mm=10), thickness 15mm. Use revolve_profile and cut_center_bore. Units mm. Not for manufacturing.

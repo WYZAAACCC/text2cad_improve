@@ -105,12 +105,13 @@ def auto_fix(raw_doc: dict, dialect_registry=None) -> dict:
       7. 缺失默认参数填充
       8. 多余参数清理
     """
-    doc = _fix_output_names(doc)
+    doc = _fix_output_names(raw_doc)
     doc = _fix_dialect_names(doc, dialect_registry)
     doc = _fix_qualified_op_names(doc)
     doc = _fix_param_names(doc)
     doc = _fix_target_values(doc)
     doc = _fix_root_node(doc)
+    doc = _fix_profile_stations(doc)
     doc = _fill_default_params(doc)
     doc = _remove_extra_params(doc)
     return doc
@@ -233,6 +234,33 @@ def _fix_root_node(doc: dict) -> dict:
                     comp["root_node"] = body_nodes[-1]["id"]
                 else:
                     comp["root_node"] = comp_nodes[-1]["id"]
+    return doc
+
+
+def _fix_profile_stations(doc: dict) -> dict:
+    """确保 revolve_profile 的 profile_stations 至少有 2 个 station。
+    LLM 经常只输出 1 个 station 来定义圆柱体，但 validator 要求 ≥2。
+    修复方法：复制第一个 station 并给 z 加 0.5mm 偏移。"""
+    for node in doc.get("nodes", []):
+        if node.get("op") != "revolve_profile":
+            continue
+        stations = node.get("params", {}).get("profile_stations", [])
+        if not isinstance(stations, list):
+            continue
+        if len(stations) < 2:
+            if len(stations) == 1:
+                s0 = dict(stations[0])
+                # 创建一个微小偏移的第二个 station
+                s1 = dict(s0)
+                s1["z_front_mm"] = s0["z_rear_mm"]
+                s1["z_rear_mm"] = s0["z_rear_mm"] + 0.5
+                node["params"]["profile_stations"] = [s0, s1]
+            else:
+                # 空列表 → 添加默认 station
+                node["params"]["profile_stations"] = [
+                    {"r_mm": 10.0, "z_front_mm": 0.0, "z_rear_mm": 5.0},
+                    {"r_mm": 5.0, "z_front_mm": 5.0, "z_rear_mm": 6.0},
+                ]
     return doc
 
 

@@ -1,32 +1,28 @@
 {
   "schema_version": "g_cad_core_v0.2",
-  "document_id": "washer-ref-001",
-  "part_name": "reference_washer",
+  "document_id": "base_plate_120x80x12",
+  "part_name": "Rectangular Base Plate",
   "units": "mm",
   "trust_level": "reference_geometry",
   "selected_dialects": [
     {
-      "dialect": "axisymmetric",
+      "dialect": "sketch_extrude",
       "version": "0.2.0"
-    },
-    {
-      "dialect": "composition",
-      "version": "1.0.0"
     }
   ],
   "components": [
     {
-      "id": "washer",
-      "owner_dialect": "axisymmetric",
-      "root_node": "n3"
+      "id": "base_plate",
+      "owner_dialect": "sketch_extrude",
+      "root_node": "n_fillet"
     }
   ],
   "nodes": [
     {
-      "id": "n1",
-      "component": "washer",
-      "dialect": "axisymmetric",
-      "op": "revolve_profile",
+      "id": "n_extrude",
+      "component": "base_plate",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
       "op_version": "1.0.0",
       "phase": "base_solid",
       "inputs": [],
@@ -34,40 +30,28 @@
         {
           "name": "body",
           "type": "solid"
-        },
-        {
-          "name": "frame",
-          "type": "frame"
         }
       ],
       "params": {
-        "axis": "Z",
-        "profile_stations": [
-          {
-            "r_mm": 15.0,
-            "z_front_mm": 0.0,
-            "z_rear_mm": 12.0
-          },
-          {
-            "r_mm": 40.0,
-            "z_front_mm": 0.0,
-            "z_rear_mm": 12.0
-          }
-        ]
+        "width_mm": 120,
+        "height_mm": 80,
+        "depth_mm": 12,
+        "plane": "XY",
+        "centered": true
       },
       "required": true,
       "degradation_policy": "fail"
     },
     {
-      "id": "n2",
-      "component": "washer",
-      "dialect": "axisymmetric",
-      "op": "cut_center_bore",
+      "id": "n_holes",
+      "component": "base_plate",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_pattern_linear",
       "op_version": "1.0.0",
-      "phase": "primary_cut",
+      "phase": "hole_pattern",
       "inputs": [
         {
-          "node": "n1",
+          "node": "n_extrude",
           "output": "body"
         }
       ],
@@ -78,7 +62,11 @@
         }
       ],
       "params": {
-        "diameter_mm": 30.0,
+        "hole_dia_mm": 6,
+        "count_x": 2,
+        "count_y": 2,
+        "spacing_x_mm": 90,
+        "spacing_y_mm": 50,
         "axis": "Z",
         "through_all": true
       },
@@ -86,15 +74,15 @@
       "degradation_policy": "fail"
     },
     {
-      "id": "n3",
-      "component": "washer",
-      "dialect": "axisymmetric",
-      "op": "apply_safe_chamfer",
+      "id": "n_pocket",
+      "component": "base_plate",
+      "dialect": "sketch_extrude",
+      "op": "cut_rectangular_pocket",
       "op_version": "1.0.0",
-      "phase": "edge_treatment",
+      "phase": "primary_cut",
       "inputs": [
         {
-          "node": "n2",
+          "node": "n_holes",
           "output": "body"
         }
       ],
@@ -105,8 +93,37 @@
         }
       ],
       "params": {
-        "distance_mm": 1.0,
-        "target": "all"
+        "width_mm": 50,
+        "height_mm": 30,
+        "depth_mm": 4,
+        "plane": "XY",
+        "centered": true,
+        "direction": "-"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_fillet",
+      "component": "base_plate",
+      "dialect": "sketch_extrude",
+      "op": "apply_safe_fillet",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "n_pocket",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "radius_mm": 1
       },
       "required": true,
       "degradation_policy": "fail"

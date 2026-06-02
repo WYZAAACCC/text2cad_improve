@@ -74,6 +74,16 @@ def build_contract_text(dialect_ids: list[str]) -> str:
                     pstrs.append(f"{pn}:{pi.get('type','?')} [{req}]")
             lines.append(f"  {op_name} v{spec.op_version} phase={spec.phase} in={list(spec.input_types)} out={list(spec.output_types)}")
             lines.append(f"    params: {' | '.join(pstrs)}")
+            # 为 revolve_profile 添加显式 example (LLM 在此处最容易出错)
+            if op_name == "revolve_profile":
+                lines.append("    EXAMPLE: {{\"axis\":\"Z\",\"profile_stations\":[{{\"r_mm\":40.0,\"z_front_mm\":0.0,\"z_rear_mm\":12.0}},{{\"r_mm\":15.0,\"z_front_mm\":12.0,\"z_rear_mm\":13.0}}]}}")
+                lines.append("    NOTE: profile_stations is a list of objects. Each object has r_mm (RADIUS=half of diameter), z_front_mm, z_rear_mm. r_mm is NOT diameter! z_rear_mm MUST be > z_front_mm.")
+            if op_name == "cut_center_bore":
+                lines.append("    EXAMPLE: {{\"diameter_mm\":30.0,\"axis\":\"Z\",\"through_all\":true}}")
+            if op_name == "extrude_rectangle":
+                lines.append("    EXAMPLE: {{\"width_mm\":100,\"height_mm\":80,\"depth_mm\":10,\"plane\":\"XY\",\"centered\":true}}")
+            if op_name == "boolean_union":
+                lines.append("    NOTE: boolean_union takes no params (empty dict). Inputs must reference component outputs, not node outputs.")
         lines.append("")
     return "\n".join(lines)
 

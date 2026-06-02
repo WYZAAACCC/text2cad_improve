@@ -1,0 +1,11 @@
+Create a finned heatsink using sketch_extrude:
+1. extrude_rectangle width_mm=100 height_mm=60 depth_mm=5 (base)
+2. add_rectangular_boss width_mm=2 height_mm=25 depth_mm=60 position_mm=[-40,0,0] plane=XY centered=true (fin 1)
+3. add_rectangular_boss width_mm=2 height_mm=25 depth_mm=60 position_mm=[-25,0,0] plane=XY centered=true (fin 2)
+4. add_rectangular_boss width_mm=2 height_mm=25 depth_mm=60 position_mm=[-10,0,0] plane=XY centered=true (fin 3)
+5. add_rectangular_boss width_mm=2 height_mm=25 depth_mm=60 position_mm=[5,0,0] plane=XY centered=true (fin 4)
+6. add_rectangular_boss width_mm=2 height_mm=25 depth_mm=60 position_mm=[20,0,0] plane=XY centered=true (fin 5)
+7. add_rectangular_boss width_mm=2 height_mm=25 depth_mm=60 position_mm=[35,0,0] plane=XY centered=true (fin 6)
+8. apply_safe_fillet radius_mm=0.5 target=all_external_edges
+Only ONE base_solid node (the first extrude_rectangle).
+Units mm. Reference geometry only. Not for manufacturing.

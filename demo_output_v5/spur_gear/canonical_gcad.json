@@ -1,0 +1,149 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "cylindrical-gear-blank-44x10x15",
+  "part_name": "Cylindrical Gear Blank",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+    }
+  ],
+  "components": [
+    {
+      "id": "blank",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": null,
+      "root_node": "n02",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n01",
+      "component": "blank",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:blank:n01:body"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame",
+          "value_id": "frame:blank:n01:outer_frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 22.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 15.0
+          },
+          {
+            "r_mm": 5.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 15.0
+          }
+        ]
+      },
+      "typed_params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 22.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 15.0,
+            "label": null
+          },
+          {
+            "r_mm": 5.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 15.0,
+            "label": null
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid",
+        "creates_frame"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n02",
+      "component": "blank",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n01",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:blank:n02:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 10.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 10.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:588f690903b00e1d8a1c0b0764b5e27375d769ffd81bf556b44a597b10baad30",
+  "raw_graph_hash": "sha256:4da78713ecc0a97d3ec050d41bf2e640f594457abaa58a4ca4f2fa151c7b739f"
+}

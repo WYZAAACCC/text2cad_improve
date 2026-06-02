@@ -1,0 +1,5 @@
+Create an assembly of a hub and base plate:
+Component 'hub' (axisymmetric): revolve_profile with profile_stations r_mm=25 z=0-5, r_mm=30 z=5-40. Then cut_center_bore diameter_mm=20.
+Component 'plate' (sketch_extrude): extrude_rectangle width_mm=100 height_mm=80 depth_mm=10.
+Component '__assembly__' (composition): boolean_union the hub and plate.boolean_union inputs: [{component: hub, output: body}, {component: plate, output: body}].
+Units mm. Not for manufacturing.
