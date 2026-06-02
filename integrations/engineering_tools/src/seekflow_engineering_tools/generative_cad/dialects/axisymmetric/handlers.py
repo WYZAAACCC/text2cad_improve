@@ -97,7 +97,6 @@ def handle_cut_center_bore(node: CanonicalNode, ctx: RuntimeContext) -> dict[str
 
 def handle_cut_circular_hole_pattern(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
     import cadquery as cq
-    import math
     body = resolve_input_object(node, ctx, 0)
     p = node.typed_params if node.typed_params else node.params
     count = int(p.get("count", 0))
@@ -105,25 +104,16 @@ def handle_cut_circular_hole_pattern(node: CanonicalNode, ctx: RuntimeContext) -
     hole_dia = float(p.get("hole_dia_mm", 0))
     if count < 2 or pcd <= 0 or hole_dia <= 0:
         ctx.warnings.append(
-            f"circular_hole_pattern on '{node.id}': invalid params count={count} pcd={pcd} hole={hole_dia}. Skipping."
+            f"circular_hole_pattern on '{node.id}': invalid params. Skipping."
         )
         return {"body": _store_solid(node, ctx, body)}
     try:
         bb = body.val().BoundingBox()
         z_len = bb.zlen + 10
-        # Build all cutters, union, then cut once (more efficient)
-        cutters = []
-        for i in range(count):
-            angle = math.radians(i * 360.0 / count)
-            x = (pcd / 2.0) * math.cos(angle)
-            y = (pcd / 2.0) * math.sin(angle)
-            cutters.append(
-                cq.Workplane("XY").center(x, y).circle(hole_dia / 2.0).extrude(z_len, both=True)
-            )
-        combined = cutters[0]
-        for c in cutters[1:]:
-            combined = combined.union(c)
-        result = body.cut(combined)
+        # Native polarArray: place N copies on circle, extrude all at once (O(n)→O(1))
+        wp = cq.Workplane("XY").polarArray(pcd / 2.0, 0, 360, count)
+        holes = wp.circle(hole_dia / 2.0).extrude(z_len, both=True)
+        result = body.cut(holes)
     except Exception as e:
         ctx.warnings.append(f"circular_hole_pattern failed on '{node.id}': {e}")
         return {"body": _store_solid(node, ctx, body)}

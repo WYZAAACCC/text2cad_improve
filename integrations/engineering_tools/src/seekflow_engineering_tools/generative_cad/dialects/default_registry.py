@@ -12,12 +12,16 @@ def build_default_registry() -> DialectRegistry:
     from seekflow_engineering_tools.generative_cad.dialects.sketch_extrude.dialect import SKETCH_EXTRUDE_DIALECT
     from seekflow_engineering_tools.generative_cad.dialects.composition.dialect import COMPOSITION_DIALECT
     from seekflow_engineering_tools.generative_cad.dialects.sketch_profile.dialect import SKETCH_PROFILE_DIALECT
+    from seekflow_engineering_tools.generative_cad.dialects.loft_sweep.dialect import LOFT_SWEEP_DIALECT
+    from seekflow_engineering_tools.generative_cad.dialects.shell_housing.dialect import SHELL_HOUSING_DIALECT
 
     registry = DialectRegistry()
     registry.register(AXISYMMETRIC_DIALECT)
     registry.register(SKETCH_EXTRUDE_DIALECT)
     registry.register(COMPOSITION_DIALECT)
     registry.register(SKETCH_PROFILE_DIALECT)
+    registry.register(LOFT_SWEEP_DIALECT)
+    registry.register(SHELL_HOUSING_DIALECT)
 
     # ── Governance check before freeze ──
     from seekflow_engineering_tools.generative_cad.dialects.governance import (
