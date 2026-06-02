@@ -1,0 +1,110 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "stepped-shaft-001",
+  "part_name": "Stepped Shaft",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "shaft",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": null,
+      "root_node": "chamfer"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "revolve",
+      "component": "shaft",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "profile_stations": [
+          {
+            "r_mm": 30.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 20.0
+          },
+          {
+            "r_mm": 20.0,
+            "z_front_mm": 20.0,
+            "z_rear_mm": 50.0
+          },
+          {
+            "r_mm": 12.5,
+            "z_front_mm": 50.0,
+            "z_rear_mm": 75.0
+          }
+        ],
+        "axis": "Z"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "chamfer",
+      "component": "shaft",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "revolve",
+          "component": null,
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 2.0,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {}
+}

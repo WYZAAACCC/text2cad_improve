@@ -1,0 +1,9 @@
+Create a stepped shaft with three cylindrical sections along Z axis:
+- Bottom section: diameter 60mm, height 20mm
+- Middle section: diameter 40mm, height 30mm
+- Top section: diameter 25mm, height 25mm
+- Apply 2mm chamfer on all external edges
+Units mm. Reference geometry only. Not for manufacturing.
+
+Use revolve_profile to define the stepped profile. Each profile_stations entry represents one cylindrical section. The r_mm value is the RADIUS (half of diameter). z_front_mm is the start Z, z_rear_mm is the end Z of each section.
+For a stepped shaft going UP: bottom section Z=0 to 20, middle Z=20 to 50, top Z=50 to 75.

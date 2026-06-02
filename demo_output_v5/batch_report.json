@@ -1,0 +1,105 @@
+{
+  "output_dir": "E:\\auto_detection_process\\demo_output_v5",
+  "total": 7,
+  "passed": 1,
+  "step_count": 1,
+  "solidworks_count": 1,
+  "results": [
+    {
+      "id": "stage1_stepped_shaft",
+      "name": "阶梯轴 Stepped Shaft",
+      "ok": false,
+      "stages": [
+        "prompt_saved",
+        "llm_call",
+        "validation_passed"
+      ],
+      "files": [],
+      "elapsed_s": 18.6,
+      "route": "generative_cad_ir"
+    },
+    {
+      "id": "stage1_hole_plate",
+      "name": "带孔矩形板 Plate with Holes",
+      "ok": false,
+      "stages": [
+        "prompt_saved",
+        "llm_call"
+      ],
+      "files": [],
+      "elapsed_s": -1,
+      "route": "generative_cad_ir",
+      "error": "Validation: [reverse_phase_dependency] node 'center_pocket' (phase='primary_cut', rank=1) depends on 'corner_holes' (phase='hole_pattern', "
+    },
+    {
+      "id": "stage1_angle_bracket",
+      "name": "直角支架 Angle Bracket",
+      "ok": false,
+      "stages": [
+        "prompt_saved",
+        "llm_call"
+      ],
+      "files": [],
+      "elapsed_s": -1,
+      "route": "generative_cad_ir",
+      "error": "Validation: [se_base_solid_count] sketch_extrude requires exactly 1 base_solid node, got 2"
+    },
+    {
+      "id": "stage2_spur_gear",
+      "name": "渐开线齿轮 Spur Gear",
+      "ok": false,
+      "stages": [
+        "prompt_saved",
+        "primitive_step"
+      ],
+      "files": [],
+      "elapsed_s": 2.0,
+      "route": "deterministic_primitive"
+    },
+    {
+      "id": "stage2_finned_heatsink",
+      "name": "鳍片散热器 Finned Heatsink",
+      "ok": true,
+      "stages": [
+        "prompt_saved",
+        "llm_call",
+        "validation_passed",
+        "step_built",
+        "solidworks_imported"
+      ],
+      "files": [
+        "output.step",
+        "output.metadata.json",
+        "output.SLDPRT"
+      ],
+      "elapsed_s": 37.5,
+      "route": "generative_cad_ir"
+    },
+    {
+      "id": "stage3_l_bracket_profile",
+      "name": "L形支架轮廓 Sketch Profile Bracket",
+      "ok": false,
+      "stages": [
+        "prompt_saved",
+        "llm_call",
+        "validation_passed"
+      ],
+      "files": [],
+      "elapsed_s": 15.5,
+      "route": "generative_cad_ir"
+    },
+    {
+      "id": "stage4_hub_plate_assembly",
+      "name": "轴套底板组合 Hub+Plate Assembly",
+      "ok": false,
+      "stages": [
+        "prompt_saved",
+        "llm_call"
+      ],
+      "files": [],
+      "elapsed_s": -1,
+      "route": "generative_cad_ir",
+      "error": "Validation: [invalid_params] node 'hub_revolve' params invalid for op 'revolve_profile': 10 validation errors for RevolveProfileP; [invalid_params] node 'hub_union' params invalid for op 'revolve_profile': 5 validation errors for RevolveProfilePara"
+    }
+  ]
+}

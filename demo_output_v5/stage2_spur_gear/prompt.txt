@@ -1,0 +1,1 @@
+Create involute spur gear: 20 teeth, module 2mm, pressure angle 20deg, face width 15mm, bore 10mm.

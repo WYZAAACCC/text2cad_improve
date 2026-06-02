@@ -1,0 +1,26 @@
+{
+  "ok": false,
+  "software": "cadquery",
+  "action": "build_from_cad_ir",
+  "message": "",
+  "files_created": [],
+  "files_modified": [],
+  "log_path": null,
+  "stdout_tail": "",
+  "stderr_tail": "Traceback (most recent call last):\n  File \"E:\\auto_detection_process\\demo_output_v5\\stage2_spur_gear\\.cadquery_scripts\\build_61c78a803040.py\", line 1, in <module>\n    import cadquery as cq\nModuleNotFoundError: No module named 'cadquery'\n",
+  "metrics": {
+    "script_path": "E:\\auto_detection_process\\demo_output_v5\\stage2_spur_gear\\.cadquery_scripts\\build_61c78a803040.py",
+    "script_length": 1788,
+    "repair_diagnostics": {
+      "stage": "execute",
+      "error_type": "script_execution_failed",
+      "message": "CadQuery script failed (rc=1). Stderr: Traceback (most recent call last):\n  File \"E:\\auto_detection_process\\demo_output_v5\\stage2_spur_gear\\.cadquery_scripts\\build_61c78a803040.py\", line 1, in <module>\n    import cadquery as cq\nModuleNotFo",
+      "feature_id": null,
+      "spec_name": "参数化齿轮 (Parametric Spur Gear)",
+      "validation": null,
+      "suggested_fix": "Check CadQuery API usage and geometry constraints in the generated script."
+    }
+  },
+  "warnings": [],
+  "error": "CadQuery script failed (rc=1)."
+}

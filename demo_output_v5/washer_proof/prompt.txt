@@ -1,0 +1,22 @@
+Create a simple washer: outer diameter 80mm, center bore 30mm, thickness 12mm. Units mm.
+
+EXACT OPERATION NAMES AND THEIR EXACT PARAMETER FIELDS (use THESE names exactly):
+  revolve_profile params: axis: string [optional]  | profile_stations: array [REQUIRED] 
+  cut_center_bore params: diameter_mm: number [REQUIRED]  | axis: string [optional]  | through_all: boolean [optional] 
+  cut_annular_groove params: side: string [REQUIRED]  | inner_dia_mm: number [REQUIRED]  | outer_dia_mm: number [REQUIRED]  | depth_mm: number [REQUIRED] 
+  cut_circular_hole_pattern params: count: integer [REQUIRED]  | pcd_mm: number [REQUIRED]  | hole_dia_mm: number [REQUIRED]  | axis: string [optional]  | through_all: boolean [optional] 
+  cut_rim_slot_pattern params: count: integer [REQUIRED]  | slot_depth_mm: number [REQUIRED]  | slot_profile: [REQUIRED] list of {kind:string, stations:array}
+  apply_safe_chamfer params: distance_mm: number [REQUIRED]  | target: string [optional] 
+
+EXAMPLE revolve_profile params (copy this structure exactly, adjust values for washer):
+{"axis": "Z", "profile_stations": [{"r_mm": 40.0, "z_front_mm": 0.0, "z_rear_mm": 2.0}, {"r_mm": 40.0, "z_front_mm": 2.0, "z_rear_mm": 12.0}, {"r_mm": 15.0, "z_front_mm": 12.0, "z_rear_mm": 13.0}]}
+
+EXAMPLE cut_center_bore params (copy exactly with correct diameter):
+{"diameter_mm": 30.0, "axis": "Z", "through_all": true}
+
+CRITICAL RULES:
+- revolve_profile: op_version="1.0.0" phase="base_solid" outputs: [body:solid, outer_frame:frame] inputs: []
+- cut_center_bore: op_version="1.0.0" phase="primary_cut" outputs: [body:solid] inputs: [body from revolve_profile]
+- selected_dialects version="0.2.0" (NOT "1.0.0")
+- ALL 7 safety flags true. ALL 3 constraint flags true. trust_level "reference_geometry".
+- llm_validation_hints: {}

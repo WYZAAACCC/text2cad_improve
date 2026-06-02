@@ -1,0 +1,527 @@
+{
+  "output_dir": "E:\\auto_detection_process\\demo_output_v5",
+  "total": 7,
+  "passed": 0,
+  "failed": 7,
+  "by_stage": {
+    "stage1": {
+      "total": 3,
+      "passed": 0
+    },
+    "stage2": {
+      "total": 2,
+      "passed": 0
+    },
+    "stage3": {
+      "total": 1,
+      "passed": 0
+    },
+    "stage4": {
+      "total": 1,
+      "passed": 0
+    }
+  },
+  "results": [
+    {
+      "case_id": "stage1_stepped_shaft",
+      "name": "阶梯轴 (Stepped Shaft)",
+      "stage": 1,
+      "ok": false,
+      "error": "Validation failed: [\"node 'revolve_node' params invalid for op 'revolve_profile': 2 validation errors for RevolveProfileParams\\nprofile_stations\\n  Field required [type=missing, input_value={'profile': [{'z': 0, 'r'..., {'z': 75, 'r': 12.5}]}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nprofile\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=[{'z': 0, 'r': 30}, {'z':...}, {'z': 75, 'r': 12.5}], input_type=list]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'chamfer_node' params invalid for op 'apply_safe_chamfer': 3 validation errors for ApplySafeChamferParams\\ndistance_mm\\n  Field required [type=missing, input_value={'chamfer_distance': 2, 'edges': 'all_external'}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nchamfer_distance\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=2, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nedges\\n  Extra inputs are not permitted [type=extra_forbidden, input_value='all_external', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\"]",
+      "stages_completed": [
+        "llm_raw_generation"
+      ],
+      "files": [
+        "prompt.txt"
+      ],
+      "elapsed_s": -1,
+      "route": "generative_cad_ir",
+      "validation_report": {
+        "ok": false,
+        "stage": "params",
+        "issues": [
+          {
+            "code": "invalid_params",
+            "message": "node 'revolve_node' params invalid for op 'revolve_profile': 2 validation errors for RevolveProfileParams\nprofile_stations\n  Field required [type=missing, input_value={'profile': [{'z': 0, 'r'..., {'z': 75, 'r': 12.5}]}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nprofile\n  Extra inputs are not permitted [type=extra_forbidden, input_value=[{'z': 0, 'r': 30}, {'z':...}, {'z': 75, 'r': 12.5}], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "revolve_node",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'chamfer_node' params invalid for op 'apply_safe_chamfer': 3 validation errors for ApplySafeChamferParams\ndistance_mm\n  Field required [type=missing, input_value={'chamfer_distance': 2, 'edges': 'all_external'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nchamfer_distance\n  Extra inputs are not permitted [type=extra_forbidden, input_value=2, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nedges\n  Extra inputs are not permitted [type=extra_forbidden, input_value='all_external', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "chamfer_node",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          }
+        ],
+        "stages_run": [
+          "structure",
+          "registry",
+          "params"
+        ]
+      }
+    },
+    {
+      "case_id": "stage1_hole_plate",
+      "name": "带孔矩形板 (Plate with Hole Pattern)",
+      "stage": 1,
+      "ok": false,
+      "error": "Validation failed: [\"node 'n_base' params invalid for op 'extrude_rectangle': 6 validation errors for ExtrudeRectangleParams\\nwidth_mm\\n  Field required [type=missing, input_value={'width': 120, 'depth': 80, 'height': 12}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nheight_mm\\n  Field required [type=missing, input_value={'width': 120, 'depth': 80, 'height': 12}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\ndepth_mm\\n  Field required [type=missing, input_value={'width': 120, 'depth': 80, 'height': 12}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nwidth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=120, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ndepth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=80, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nheight\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=12, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'n_hole_bl' params invalid for op 'cut_hole': 6 validation errors for CutHoleParams\\ndiameter_mm\\n  Field required [type=missing, input_value={'diameter': 8, 'depth': ..._x': 15, 'offset_y': 15}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nposition_mm\\n  Field required [type=missing, input_value={'diameter': 8, 'depth': ..._x': 15, 'offset_y': 15}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\ndiameter\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=8, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ndepth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=12, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_x\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=15, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_y\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=15, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'n_hole_br' params invalid for op 'cut_hole': 6 validation errors for CutHoleParams\\ndiameter_mm\\n  Field required [type=missing, input_value={'diameter': 8, 'depth': ...x': 105, 'offset_y': 15}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nposition_mm\\n  Field required [type=missing, input_value={'diameter': 8, 'depth': ...x': 105, 'offset_y': 15}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\ndiameter\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=8, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ndepth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=12, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_x\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=105, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_y\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=15, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'n_hole_tr' params invalid for op 'cut_hole': 6 validation errors for CutHoleParams\\ndiameter_mm\\n  Field required [type=missing, input_value={'diameter': 8, 'depth': ...x': 105, 'offset_y': 65}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nposition_mm\\n  Field required [type=missing, input_value={'diameter': 8, 'depth': ...x': 105, 'offset_y': 65}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\ndiameter\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=8, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ndepth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=12, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_x\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=105, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_y\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=65, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'n_hole_tl' params invalid for op 'cut_hole': 6 validation errors for CutHoleParams\\ndiameter_mm\\n  Field required [type=missing, input_value={'diameter': 8, 'depth': ..._x': 15, 'offset_y': 65}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nposition_mm\\n  Field required [type=missing, input_value={'diameter': 8, 'depth': ..._x': 15, 'offset_y': 65}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\ndiameter\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=8, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ndepth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=12, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_x\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=15, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_y\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=65, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'n_pocket' params invalid for op 'cut_rectangular_pocket': 8 validation errors for CutRectangularPocketParams\\nwidth_mm\\n  Field required [type=missing, input_value={'width': 50, 'depth': 30..._x': 35, 'offset_y': 25}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nheight_mm\\n  Field required [type=missing, input_value={'width': 50, 'depth': 30..._x': 35, 'offset_y': 25}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\ndepth_mm\\n  Field required [type=missing, input_value={'width': 50, 'depth': 30..._x': 35, 'offset_y': 25}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nwidth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=50, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ndepth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=30, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nheight\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=4, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_x\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=35, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_y\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'n_fillet' params invalid for op 'apply_safe_fillet': 2 validation errors for ApplySafeFilletParams\\nradius_mm\\n  Field required [type=missing, input_value={'radius': 1}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nradius\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=1, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\"]",
+      "stages_completed": [
+        "llm_raw_generation"
+      ],
+      "files": [
+        "prompt.txt"
+      ],
+      "elapsed_s": -1,
+      "route": "generative_cad_ir",
+      "validation_report": {
+        "ok": false,
+        "stage": "params",
+        "issues": [
+          {
+            "code": "invalid_params",
+            "message": "node 'n_base' params invalid for op 'extrude_rectangle': 6 validation errors for ExtrudeRectangleParams\nwidth_mm\n  Field required [type=missing, input_value={'width': 120, 'depth': 80, 'height': 12}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nheight_mm\n  Field required [type=missing, input_value={'width': 120, 'depth': 80, 'height': 12}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ndepth_mm\n  Field required [type=missing, input_value={'width': 120, 'depth': 80, 'height': 12}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nwidth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=120, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ndepth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=80, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nheight\n  Extra inputs are not permitted [type=extra_forbidden, input_value=12, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "n_base",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'n_hole_bl' params invalid for op 'cut_hole': 6 validation errors for CutHoleParams\ndiameter_mm\n  Field required [type=missing, input_value={'diameter': 8, 'depth': ..._x': 15, 'offset_y': 15}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nposition_mm\n  Field required [type=missing, input_value={'diameter': 8, 'depth': ..._x': 15, 'offset_y': 15}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ndiameter\n  Extra inputs are not permitted [type=extra_forbidden, input_value=8, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ndepth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=12, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_x\n  Extra inputs are not permitted [type=extra_forbidden, input_value=15, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_y\n  Extra inputs are not permitted [type=extra_forbidden, input_value=15, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "n_hole_bl",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'n_hole_br' params invalid for op 'cut_hole': 6 validation errors for CutHoleParams\ndiameter_mm\n  Field required [type=missing, input_value={'diameter': 8, 'depth': ...x': 105, 'offset_y': 15}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nposition_mm\n  Field required [type=missing, input_value={'diameter': 8, 'depth': ...x': 105, 'offset_y': 15}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ndiameter\n  Extra inputs are not permitted [type=extra_forbidden, input_value=8, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ndepth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=12, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_x\n  Extra inputs are not permitted [type=extra_forbidden, input_value=105, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_y\n  Extra inputs are not permitted [type=extra_forbidden, input_value=15, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "n_hole_br",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'n_hole_tr' params invalid for op 'cut_hole': 6 validation errors for CutHoleParams\ndiameter_mm\n  Field required [type=missing, input_value={'diameter': 8, 'depth': ...x': 105, 'offset_y': 65}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nposition_mm\n  Field required [type=missing, input_value={'diameter': 8, 'depth': ...x': 105, 'offset_y': 65}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ndiameter\n  Extra inputs are not permitted [type=extra_forbidden, input_value=8, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ndepth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=12, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_x\n  Extra inputs are not permitted [type=extra_forbidden, input_value=105, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_y\n  Extra inputs are not permitted [type=extra_forbidden, input_value=65, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "n_hole_tr",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'n_hole_tl' params invalid for op 'cut_hole': 6 validation errors for CutHoleParams\ndiameter_mm\n  Field required [type=missing, input_value={'diameter': 8, 'depth': ..._x': 15, 'offset_y': 65}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nposition_mm\n  Field required [type=missing, input_value={'diameter': 8, 'depth': ..._x': 15, 'offset_y': 65}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ndiameter\n  Extra inputs are not permitted [type=extra_forbidden, input_value=8, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ndepth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=12, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_x\n  Extra inputs are not permitted [type=extra_forbidden, input_value=15, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_y\n  Extra inputs are not permitted [type=extra_forbidden, input_value=65, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "n_hole_tl",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'n_pocket' params invalid for op 'cut_rectangular_pocket': 8 validation errors for CutRectangularPocketParams\nwidth_mm\n  Field required [type=missing, input_value={'width': 50, 'depth': 30..._x': 35, 'offset_y': 25}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nheight_mm\n  Field required [type=missing, input_value={'width': 50, 'depth': 30..._x': 35, 'offset_y': 25}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ndepth_mm\n  Field required [type=missing, input_value={'width': 50, 'depth': 30..._x': 35, 'offset_y': 25}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nwidth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=50, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ndepth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=30, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nheight\n  Extra inputs are not permitted [type=extra_forbidden, input_value=4, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_x\n  Extra inputs are not permitted [type=extra_forbidden, input_value=35, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_y\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "n_pocket",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'n_fillet' params invalid for op 'apply_safe_fillet': 2 validation errors for ApplySafeFilletParams\nradius_mm\n  Field required [type=missing, input_value={'radius': 1}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nradius\n  Extra inputs are not permitted [type=extra_forbidden, input_value=1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "n_fillet",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          }
+        ],
+        "stages_run": [
+          "structure",
+          "registry",
+          "params"
+        ]
+      }
+    },
+    {
+      "case_id": "stage1_angle_bracket",
+      "name": "直角支架 (Angle Bracket)",
+      "stage": 1,
+      "ok": false,
+      "error": "Validation failed: [\"node 'base_plate' params invalid for op 'extrude_rectangle': 6 validation errors for ExtrudeRectangleParams\\nwidth_mm\\n  Field required [type=missing, input_value={'width': 80.0, 'depth': 50.0, 'height': 8.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nheight_mm\\n  Field required [type=missing, input_value={'width': 80.0, 'depth': 50.0, 'height': 8.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\ndepth_mm\\n  Field required [type=missing, input_value={'width': 80.0, 'depth': 50.0, 'height': 8.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nwidth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=80.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ndepth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=50.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nheight\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=8.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'vert_plate' params invalid for op 'add_rectangular_boss': 9 validation errors for AddRectangularBossParams\\nwidth_mm\\n  Field required [type=missing, input_value={'width': 80.0, 'depth': ...42.0, 'position_z': 0.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nheight_mm\\n  Field required [type=missing, input_value={'width': 80.0, 'depth': ...42.0, 'position_z': 0.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\ndepth_mm\\n  Field required [type=missing, input_value={'width': 80.0, 'depth': ...42.0, 'position_z': 0.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nwidth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=80.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ndepth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=8.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nheight\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=40.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nposition_x\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nposition_y\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=42.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nposition_z\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'tri_rib' params invalid for op 'add_rib': 9 validation errors for AddRibParams\\nthickness_mm\\n  Field required [type=missing, input_value={'thickness': 6.0, 'heigh...42.0, 'position_z': 0.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nheight_mm\\n  Field required [type=missing, input_value={'thickness': 6.0, 'heigh...42.0, 'position_z': 0.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nlength_mm\\n  Field required [type=missing, input_value={'thickness': 6.0, 'heigh...42.0, 'position_z': 0.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nthickness\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=6.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nheight\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=20.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nlength\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=20.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nposition_x\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=30.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nposition_y\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=42.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nposition_z\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'hole_left' params invalid for op 'cut_hole': 7 validation errors for CutHoleParams\\ndiameter_mm\\n  Field required [type=missing, input_value={'diameter': 6.0, 'depth'...25.0, 'position_z': 8.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nposition_mm\\n  Field required [type=missing, input_value={'diameter': 6.0, 'depth'...25.0, 'position_z': 8.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\ndiameter\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=6.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ndepth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=8.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nposition_x\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=15.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nposition_y\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nposition_z\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=8.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'hole_right' params invalid for op 'cut_hole': 7 validation errors for CutHoleParams\\ndiameter_mm\\n  Field required [type=missing, input_value={'diameter': 6.0, 'depth'...25.0, 'position_z': 8.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nposition_mm\\n  Field required [type=missing, input_value={'diameter': 6.0, 'depth'...25.0, 'position_z': 8.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\ndiameter\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=6.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ndepth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=8.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nposition_x\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=65.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nposition_y\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nposition_z\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=8.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'fillets_inner' params invalid for op 'apply_safe_fillet': 3 validation errors for ApplySafeFilletParams\\nradius_mm\\n  Field required [type=missing, input_value={'radius': 2.0, 'edge_selection': 'inner_corner'}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nradius\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=2.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nedge_selection\\n  Extra inputs are not permitted [type=extra_forbidden, input_value='inner_corner', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'l_bracket_solid' params invalid for op 'apply_safe_fillet': 3 validation errors for ApplySafeFilletParams\\nradius_mm\\n  Field required [type=missing, input_value={'radius': 2.0, 'edge_selection': 'inner_corner'}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nradius\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=2.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nedge_selection\\n  Extra inputs are not permitted [type=extra_forbidden, input_value='inner_corner', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\"]",
+      "stages_completed": [
+        "llm_raw_generation"
+      ],
+      "files": [
+        "prompt.txt"
+      ],
+      "elapsed_s": -1,
+      "route": "generative_cad_ir",
+      "validation_report": {
+        "ok": false,
+        "stage": "params",
+        "issues": [
+          {
+            "code": "invalid_params",
+            "message": "node 'base_plate' params invalid for op 'extrude_rectangle': 6 validation errors for ExtrudeRectangleParams\nwidth_mm\n  Field required [type=missing, input_value={'width': 80.0, 'depth': 50.0, 'height': 8.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nheight_mm\n  Field required [type=missing, input_value={'width': 80.0, 'depth': 50.0, 'height': 8.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ndepth_mm\n  Field required [type=missing, input_value={'width': 80.0, 'depth': 50.0, 'height': 8.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nwidth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=80.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ndepth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=50.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nheight\n  Extra inputs are not permitted [type=extra_forbidden, input_value=8.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "base_plate",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'vert_plate' params invalid for op 'add_rectangular_boss': 9 validation errors for AddRectangularBossParams\nwidth_mm\n  Field required [type=missing, input_value={'width': 80.0, 'depth': ...42.0, 'position_z': 0.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nheight_mm\n  Field required [type=missing, input_value={'width': 80.0, 'depth': ...42.0, 'position_z': 0.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ndepth_mm\n  Field required [type=missing, input_value={'width': 80.0, 'depth': ...42.0, 'position_z': 0.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nwidth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=80.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ndepth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=8.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nheight\n  Extra inputs are not permitted [type=extra_forbidden, input_value=40.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nposition_x\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nposition_y\n  Extra inputs are not permitted [type=extra_forbidden, input_value=42.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nposition_z\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "vert_plate",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'tri_rib' params invalid for op 'add_rib': 9 validation errors for AddRibParams\nthickness_mm\n  Field required [type=missing, input_value={'thickness': 6.0, 'heigh...42.0, 'position_z': 0.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nheight_mm\n  Field required [type=missing, input_value={'thickness': 6.0, 'heigh...42.0, 'position_z': 0.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nlength_mm\n  Field required [type=missing, input_value={'thickness': 6.0, 'heigh...42.0, 'position_z': 0.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nthickness\n  Extra inputs are not permitted [type=extra_forbidden, input_value=6.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nheight\n  Extra inputs are not permitted [type=extra_forbidden, input_value=20.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nlength\n  Extra inputs are not permitted [type=extra_forbidden, input_value=20.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nposition_x\n  Extra inputs are not permitted [type=extra_forbidden, input_value=30.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nposition_y\n  Extra inputs are not permitted [type=extra_forbidden, input_value=42.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nposition_z\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "tri_rib",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'hole_left' params invalid for op 'cut_hole': 7 validation errors for CutHoleParams\ndiameter_mm\n  Field required [type=missing, input_value={'diameter': 6.0, 'depth'...25.0, 'position_z': 8.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nposition_mm\n  Field required [type=missing, input_value={'diameter': 6.0, 'depth'...25.0, 'position_z': 8.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ndiameter\n  Extra inputs are not permitted [type=extra_forbidden, input_value=6.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ndepth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=8.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nposition_x\n  Extra inputs are not permitted [type=extra_forbidden, input_value=15.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nposition_y\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nposition_z\n  Extra inputs are not permitted [type=extra_forbidden, input_value=8.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "hole_left",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'hole_right' params invalid for op 'cut_hole': 7 validation errors for CutHoleParams\ndiameter_mm\n  Field required [type=missing, input_value={'diameter': 6.0, 'depth'...25.0, 'position_z': 8.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nposition_mm\n  Field required [type=missing, input_value={'diameter': 6.0, 'depth'...25.0, 'position_z': 8.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ndiameter\n  Extra inputs are not permitted [type=extra_forbidden, input_value=6.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ndepth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=8.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nposition_x\n  Extra inputs are not permitted [type=extra_forbidden, input_value=65.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nposition_y\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nposition_z\n  Extra inputs are not permitted [type=extra_forbidden, input_value=8.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "hole_right",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'fillets_inner' params invalid for op 'apply_safe_fillet': 3 validation errors for ApplySafeFilletParams\nradius_mm\n  Field required [type=missing, input_value={'radius': 2.0, 'edge_selection': 'inner_corner'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nradius\n  Extra inputs are not permitted [type=extra_forbidden, input_value=2.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nedge_selection\n  Extra inputs are not permitted [type=extra_forbidden, input_value='inner_corner', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "fillets_inner",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'l_bracket_solid' params invalid for op 'apply_safe_fillet': 3 validation errors for ApplySafeFilletParams\nradius_mm\n  Field required [type=missing, input_value={'radius': 2.0, 'edge_selection': 'inner_corner'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nradius\n  Extra inputs are not permitted [type=extra_forbidden, input_value=2.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nedge_selection\n  Extra inputs are not permitted [type=extra_forbidden, input_value='inner_corner', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "l_bracket_solid",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          }
+        ],
+        "stages_run": [
+          "structure",
+          "registry",
+          "params"
+        ]
+      }
+    },
+    {
+      "case_id": "stage2_spur_gear",
+      "name": "参数化齿轮 (Parametric Spur Gear)",
+      "stage": 2,
+      "ok": false,
+      "error": null,
+      "stages_completed": [
+        "primitive_build"
+      ],
+      "files": [
+        "prompt.txt"
+      ],
+      "elapsed_s": 0.2,
+      "route": "deterministic_primitive"
+    },
+    {
+      "case_id": "stage2_finned_heatsink",
+      "name": "鳍片散热器 (Finned Heatsink)",
+      "stage": 2,
+      "ok": false,
+      "error": "Validation failed: [\"node 'base_plate' params invalid for op 'extrude_rectangle': 6 validation errors for ExtrudeRectangleParams\\nwidth_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth': 60.0, 'height': 5.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nheight_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth': 60.0, 'height': 5.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\ndepth_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth': 60.0, 'height': 5.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nwidth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=100.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ndepth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=60.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nheight\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=5.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'fin_1' params invalid for op 'add_rectangular_boss': 8 validation errors for AddRectangularBossParams\\nwidth_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...': 0.0, 'offset_y': 0.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nheight_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...': 0.0, 'offset_y': 0.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\ndepth_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...': 0.0, 'offset_y': 0.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nwidth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=100.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ndepth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=2.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nheight\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_x\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_y\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'fin_2' params invalid for op 'add_rectangular_boss': 8 validation errors for AddRectangularBossParams\\nwidth_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 12.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nheight_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 12.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\ndepth_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 12.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nwidth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=100.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ndepth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=2.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nheight\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_x\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_y\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=12.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'fin_3' params invalid for op 'add_rectangular_boss': 8 validation errors for AddRectangularBossParams\\nwidth_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 24.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nheight_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 24.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\ndepth_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 24.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nwidth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=100.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ndepth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=2.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nheight\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_x\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_y\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=24.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'fin_4' params invalid for op 'add_rectangular_boss': 8 validation errors for AddRectangularBossParams\\nwidth_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 36.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nheight_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 36.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\ndepth_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 36.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nwidth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=100.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ndepth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=2.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nheight\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_x\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_y\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=36.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'fin_5' params invalid for op 'add_rectangular_boss': 8 validation errors for AddRectangularBossParams\\nwidth_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 48.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nheight_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 48.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\ndepth_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 48.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nwidth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=100.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ndepth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=2.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nheight\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_x\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_y\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=48.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'fin_6' params invalid for op 'add_rectangular_boss': 8 validation errors for AddRectangularBossParams\\nwidth_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 60.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nheight_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 60.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\ndepth_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 60.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nwidth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=100.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ndepth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=2.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nheight\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_x\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_y\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=60.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'fin_7' params invalid for op 'add_rectangular_boss': 8 validation errors for AddRectangularBossParams\\nwidth_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 72.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nheight_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 72.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\ndepth_mm\\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 72.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nwidth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=100.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ndepth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=2.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nheight\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_x\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\noffset_y\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=72.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'fillet_all_fins' params invalid for op 'apply_safe_fillet': 3 validation errors for ApplySafeFilletParams\\nradius_mm\\n  Field required [type=missing, input_value={'radius': 0.5, 'scope': 'all_fin_edges'}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nradius\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.5, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nscope\\n  Extra inputs are not permitted [type=extra_forbidden, input_value='all_fin_edges', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\"]",
+      "stages_completed": [
+        "llm_raw_generation"
+      ],
+      "files": [
+        "prompt.txt"
+      ],
+      "elapsed_s": -1,
+      "route": "generative_cad_ir",
+      "validation_report": {
+        "ok": false,
+        "stage": "params",
+        "issues": [
+          {
+            "code": "invalid_params",
+            "message": "node 'base_plate' params invalid for op 'extrude_rectangle': 6 validation errors for ExtrudeRectangleParams\nwidth_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth': 60.0, 'height': 5.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nheight_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth': 60.0, 'height': 5.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ndepth_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth': 60.0, 'height': 5.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nwidth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=100.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ndepth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=60.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nheight\n  Extra inputs are not permitted [type=extra_forbidden, input_value=5.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "base_plate",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'fin_1' params invalid for op 'add_rectangular_boss': 8 validation errors for AddRectangularBossParams\nwidth_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...': 0.0, 'offset_y': 0.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nheight_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...': 0.0, 'offset_y': 0.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ndepth_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...': 0.0, 'offset_y': 0.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nwidth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=100.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ndepth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=2.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nheight\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_x\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_y\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "fin_1",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'fin_2' params invalid for op 'add_rectangular_boss': 8 validation errors for AddRectangularBossParams\nwidth_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 12.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nheight_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 12.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ndepth_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 12.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nwidth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=100.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ndepth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=2.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nheight\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_x\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_y\n  Extra inputs are not permitted [type=extra_forbidden, input_value=12.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "fin_2",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'fin_3' params invalid for op 'add_rectangular_boss': 8 validation errors for AddRectangularBossParams\nwidth_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 24.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nheight_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 24.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ndepth_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 24.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nwidth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=100.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ndepth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=2.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nheight\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_x\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_y\n  Extra inputs are not permitted [type=extra_forbidden, input_value=24.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "fin_3",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'fin_4' params invalid for op 'add_rectangular_boss': 8 validation errors for AddRectangularBossParams\nwidth_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 36.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nheight_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 36.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ndepth_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 36.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nwidth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=100.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ndepth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=2.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nheight\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_x\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_y\n  Extra inputs are not permitted [type=extra_forbidden, input_value=36.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "fin_4",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'fin_5' params invalid for op 'add_rectangular_boss': 8 validation errors for AddRectangularBossParams\nwidth_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 48.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nheight_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 48.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ndepth_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 48.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nwidth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=100.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ndepth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=2.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nheight\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_x\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_y\n  Extra inputs are not permitted [type=extra_forbidden, input_value=48.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "fin_5",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'fin_6' params invalid for op 'add_rectangular_boss': 8 validation errors for AddRectangularBossParams\nwidth_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 60.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nheight_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 60.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ndepth_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 60.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nwidth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=100.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ndepth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=2.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nheight\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_x\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_y\n  Extra inputs are not permitted [type=extra_forbidden, input_value=60.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "fin_6",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'fin_7' params invalid for op 'add_rectangular_boss': 8 validation errors for AddRectangularBossParams\nwidth_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 72.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nheight_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 72.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ndepth_mm\n  Field required [type=missing, input_value={'width': 100.0, 'depth':...: 0.0, 'offset_y': 72.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nwidth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=100.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ndepth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=2.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nheight\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_x\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\noffset_y\n  Extra inputs are not permitted [type=extra_forbidden, input_value=72.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "fin_7",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'fillet_all_fins' params invalid for op 'apply_safe_fillet': 3 validation errors for ApplySafeFilletParams\nradius_mm\n  Field required [type=missing, input_value={'radius': 0.5, 'scope': 'all_fin_edges'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nradius\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nscope\n  Extra inputs are not permitted [type=extra_forbidden, input_value='all_fin_edges', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "fillet_all_fins",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          }
+        ],
+        "stages_run": [
+          "structure",
+          "registry",
+          "params"
+        ]
+      }
+    },
+    {
+      "case_id": "stage3_l_bracket_profile",
+      "name": "L形支架轮廓 (L-Bracket via sketch_profile)",
+      "stage": 3,
+      "ok": false,
+      "error": "Validation failed: [\"node 'node_polyline' params invalid for op 'add_polyline': 9 validation errors for AddPolylineParams\\npoints.0\\n  Input should be a valid dictionary or instance of Point2D [type=model_type, input_value=[0, 0], input_type=list]\\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type\\npoints.1\\n  Input should be a valid dictionary or instance of Point2D [type=model_type, input_value=[80, 0], input_type=list]\\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type\\npoints.2\\n  Input should be a valid dictionary or instance of Point2D [type=model_type, input_value=[80, 8], input_type=list]\\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type\\npoints.3\\n  Input should be a valid dictionary or instance of Point2D [type=model_type, input_value=[50, 8], input_type=list]\\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type\\npoints.4\\n  Input should be a valid dictionary or instance of Point2D [type=model_type, input_value=[50, 40], input_type=list]\\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type\\npoints.5\\n  Input should be a valid dictionary or instance of Point2D [type=model_type, input_value=[42, 40], input_type=list]\\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type\\npoints.6\\n  Input should be a valid dictionary or instance of Point2D [type=model_type, input_value=[42, 8], input_type=list]\\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type\\npoints.7\\n  Input should be a valid dictionary or instance of Point2D [type=model_type, input_value=[0, 8], input_type=list]\\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type\\npoints.8\\n  Input should be a valid dictionary or instance of Point2D [type=model_type, input_value=[0, 0], input_type=list]\\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type\", \"node 'node_extrude' params invalid for op 'extrude_profile': 3 validation errors for ExtrudeProfileParams\\ndepth_mm\\n  Field required [type=missing, input_value={'direction': '+Z', 'distance': 50.0}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\ndirection\\n  Input should be '+' or '-' [type=literal_error, input_value='+Z', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.12/v/literal_error\\ndistance\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=50.0, input_type=float]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\"]",
+      "stages_completed": [
+        "llm_raw_generation"
+      ],
+      "files": [
+        "prompt.txt"
+      ],
+      "elapsed_s": -1,
+      "route": "generative_cad_ir",
+      "validation_report": {
+        "ok": false,
+        "stage": "params",
+        "issues": [
+          {
+            "code": "invalid_params",
+            "message": "node 'node_polyline' params invalid for op 'add_polyline': 9 validation errors for AddPolylineParams\npoints.0\n  Input should be a valid dictionary or instance of Point2D [type=model_type, input_value=[0, 0], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type\npoints.1\n  Input should be a valid dictionary or instance of Point2D [type=model_type, input_value=[80, 0], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type\npoints.2\n  Input should be a valid dictionary or instance of Point2D [type=model_type, input_value=[80, 8], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type\npoints.3\n  Input should be a valid dictionary or instance of Point2D [type=model_type, input_value=[50, 8], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type\npoints.4\n  Input should be a valid dictionary or instance of Point2D [type=model_type, input_value=[50, 40], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type\npoints.5\n  Input should be a valid dictionary or instance of Point2D [type=model_type, input_value=[42, 40], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type\npoints.6\n  Input should be a valid dictionary or instance of Point2D [type=model_type, input_value=[42, 8], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type\npoints.7\n  Input should be a valid dictionary or instance of Point2D [type=model_type, input_value=[0, 8], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type\npoints.8\n  Input should be a valid dictionary or instance of Point2D [type=model_type, input_value=[0, 0], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.12/v/model_type",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "node_polyline",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'node_extrude' params invalid for op 'extrude_profile': 3 validation errors for ExtrudeProfileParams\ndepth_mm\n  Field required [type=missing, input_value={'direction': '+Z', 'distance': 50.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ndirection\n  Input should be '+' or '-' [type=literal_error, input_value='+Z', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/literal_error\ndistance\n  Extra inputs are not permitted [type=extra_forbidden, input_value=50.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "node_extrude",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          }
+        ],
+        "stages_run": [
+          "structure",
+          "registry",
+          "params"
+        ]
+      }
+    },
+    {
+      "case_id": "stage4_hub_plate_assembly",
+      "name": "轴套+底板组合 (Hub + Plate Assembly)",
+      "stage": 4,
+      "ok": false,
+      "error": "Validation failed: [\"node 'hub_revolve' params invalid for op 'revolve_profile': 4 validation errors for RevolveProfileParams\\nprofile_stations\\n  Field required [type=missing, input_value={'outer_diameter': 50, 'i...eter': 25, 'height': 40}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nouter_diameter\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=50, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ninner_diameter\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nheight\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=40, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'plate_extrude' params invalid for op 'extrude_rectangle': 6 validation errors for ExtrudeRectangleParams\\nwidth_mm\\n  Field required [type=missing, input_value={'width': 100, 'depth': 80, 'height': 10}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nheight_mm\\n  Field required [type=missing, input_value={'width': 100, 'depth': 80, 'height': 10}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\ndepth_mm\\n  Field required [type=missing, input_value={'width': 100, 'depth': 80, 'height': 10}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\nwidth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=100, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ndepth\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=80, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\nheight\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=10, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\", \"node 'place_hub' params invalid for op 'place_component': 4 validation errors for PlaceComponentParams\\ncenter_on_target\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=True, input_type=bool]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ntarget_x\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=50, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ntarget_y\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=40, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\\ntarget_z\\n  Extra inputs are not permitted [type=extra_forbidden, input_value=10, input_type=int]\\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\"]",
+      "stages_completed": [
+        "llm_raw_generation"
+      ],
+      "files": [
+        "prompt.txt"
+      ],
+      "elapsed_s": -1,
+      "route": "generative_cad_ir",
+      "validation_report": {
+        "ok": false,
+        "stage": "params",
+        "issues": [
+          {
+            "code": "invalid_params",
+            "message": "node 'hub_revolve' params invalid for op 'revolve_profile': 4 validation errors for RevolveProfileParams\nprofile_stations\n  Field required [type=missing, input_value={'outer_diameter': 50, 'i...eter': 25, 'height': 40}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nouter_diameter\n  Extra inputs are not permitted [type=extra_forbidden, input_value=50, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ninner_diameter\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nheight\n  Extra inputs are not permitted [type=extra_forbidden, input_value=40, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "hub_revolve",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'plate_extrude' params invalid for op 'extrude_rectangle': 6 validation errors for ExtrudeRectangleParams\nwidth_mm\n  Field required [type=missing, input_value={'width': 100, 'depth': 80, 'height': 10}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nheight_mm\n  Field required [type=missing, input_value={'width': 100, 'depth': 80, 'height': 10}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ndepth_mm\n  Field required [type=missing, input_value={'width': 100, 'depth': 80, 'height': 10}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nwidth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=100, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ndepth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=80, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nheight\n  Extra inputs are not permitted [type=extra_forbidden, input_value=10, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "plate_extrude",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          },
+          {
+            "code": "invalid_params",
+            "message": "node 'place_hub' params invalid for op 'place_component': 4 validation errors for PlaceComponentParams\ncenter_on_target\n  Extra inputs are not permitted [type=extra_forbidden, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ntarget_x\n  Extra inputs are not permitted [type=extra_forbidden, input_value=50, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ntarget_y\n  Extra inputs are not permitted [type=extra_forbidden, input_value=40, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\ntarget_z\n  Extra inputs are not permitted [type=extra_forbidden, input_value=10, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+            "severity": "error",
+            "stage": "params",
+            "node_id": "place_hub",
+            "component_id": null,
+            "path": null,
+            "expected": null,
+            "actual": null
+          }
+        ],
+        "stages_run": [
+          "structure",
+          "registry",
+          "params"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+Create an L-bracket using sketch_profile dialect:
+- create_2d_sketch on XY plane
+- add_polyline with points forming an L-shape:
+  [x=0,y=0], [x=80,y=0], [x=80,y=8], [x=50,y=8], [x=50,y=40], [x=42,y=40], [x=42,y=8], [x=0,y=8]
+- close_profile
+- extrude_profile depth=50 direction=+
+Units mm. Reference geometry only. Not for manufacturing.

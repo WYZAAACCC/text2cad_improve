@@ -1,0 +1,3 @@
+Create a simple reference washer: outer diameter 80mm, center bore 30mm, thickness 12mm.
+Use revolve_profile with profile_stations and cut_center_bore with diameter_mm.
+Units mm. Reference geometry only. Not for manufacturing.

@@ -1,0 +1,6 @@
+Create a rectangular base plate 120mm wide (X), 80mm tall (Y), 12mm thick (Z).
+- 4 mounting holes of diameter 8mm at corners, 15mm from each edge
+  (use cut_hole_pattern_linear with count_x=2, count_y=2, spacing_x=90, spacing_y=50)
+- Central rectangular pocket 50mm wide, 30mm tall, 4mm deep
+- Apply 1mm fillet on all external edges
+Units mm. Reference geometry only. Not for manufacturing.

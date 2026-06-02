@@ -102,8 +102,24 @@ def build_level2_authoring_prompt(
     selection_plan: DialectSelectionPlan | dict,
     contracts: dict[str, dict] | None = None,
     usage_skills: dict[str, str] | None = None,
+    *,
+    strict_usage_skill: bool = True,
 ) -> dict:
-    """Build a Level-2 authoring prompt for RawGcadDocument generation."""
+    """Build a Level-2 authoring prompt for RawGcadDocument generation.
+
+    When *usage_skills* is None (the default), Level-2 usage skills are
+    automatically loaded from registered BasePackages. This ensures the
+    LLM always has accurate, contract-synchronized operation guidance.
+
+    Args:
+        user_request: The original user request text.
+        selection_plan: The Level-1 DialectSelectionPlan.
+        contracts: Optional pre-loaded contracts dict. Auto-loaded if None.
+        usage_skills: Optional pre-built usage skills dict. Auto-generated
+            from BasePackages if None.
+        strict_usage_skill: If True (default), fail when a selected dialect
+            has no registered BasePackage. Set False for developer mode.
+    """
     if isinstance(selection_plan, dict):
         selection_plan = DialectSelectionPlan.model_validate(selection_plan)
 
@@ -113,6 +129,28 @@ def build_level2_authoring_prompt(
             dialect = DIALECT_REGISTRY.get(sd.dialect)
             if dialect is not None:
                 contracts[sd.dialect] = dialect.contract()
+
+    if usage_skills is None:
+        usage_skills = {}
+        from seekflow_engineering_tools.generative_cad.base_packages.registry import (
+            default_base_package_registry,
+        )
+        from seekflow_engineering_tools.generative_cad.dialects.default_registry import (
+            default_registry,
+        )
+        bp_reg = default_base_package_registry()
+        d_reg = default_registry()
+        for sd in selection_plan.selected_dialects:
+            pkg = bp_reg.get(sd.dialect)
+            dialect = d_reg.get(sd.dialect)
+            if pkg is not None and dialect is not None:
+                usage_skills[sd.dialect] = pkg.level2_usage_markdown
+            elif strict_usage_skill:
+                raise ValueError(
+                    f"Selected dialect {sd.dialect!r} has no registered "
+                    f"BasePackage. In strict mode, every selected dialect "
+                    f"must have a BasePackage. Available: {bp_reg.list_ids()}"
+                )
 
     return {
         "system": LEVEL2_AUTHORING_SYSTEM_PROMPT,

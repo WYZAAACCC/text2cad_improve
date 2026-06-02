@@ -1,0 +1,1 @@
+Validation: [root_node_no_body_solid] component 'comp_l_bracket' root_node 'node_extrude' must output body:solid

@@ -1,6 +1,12 @@
-"""Axisymmetric base contract — detailed op definitions for LLM graph authoring.
+"""Axisymmetric base contract — DEPRECATED v0.1.
+
+This module is part of the legacy bases/ package. It is superseded by:
+- ``generative_cad.base_packages.axisymmetric`` (LLM-facing authoring package)
+- ``generative_cad.dialects.axisymmetric`` (compiler/runtime ABI)
 
 Does NOT include CadQuery code. LLM sees this to emit valid feature graphs.
+
+Do NOT use in new code.
 """
 
 AXISYMMETRIC_CONTRACT = {

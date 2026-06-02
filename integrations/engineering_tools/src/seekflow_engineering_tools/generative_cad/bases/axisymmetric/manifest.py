@@ -1,4 +1,11 @@
-"""Axisymmetric base manifest — small, always safe to include in LLM prompt."""
+"""Axisymmetric base manifest — DEPRECATED v0.1.
+
+This module is part of the legacy bases/ package. It is superseded by:
+- ``generative_cad.base_packages.axisymmetric`` (LLM-facing authoring package)
+- ``generative_cad.dialects.axisymmetric`` (compiler/runtime ABI)
+
+Do NOT use in new code. This file is retained for backward compatibility only.
+"""
 
 AXISYMMETRIC_MANIFEST = {
     "base_id": "axisymmetric_base",

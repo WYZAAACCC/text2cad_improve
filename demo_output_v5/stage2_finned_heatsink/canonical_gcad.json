@@ -1,0 +1,509 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "finned-heatsink-v1",
+  "part_name": "finned_heatsink",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+    }
+  ],
+  "components": [
+    {
+      "id": "heatsink",
+      "owner_dialect": "sketch_extrude",
+      "kind_hint": null,
+      "root_node": "fillet",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "base",
+      "component": "heatsink",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:heatsink:base:body"
+        }
+      ],
+      "params": {
+        "width_mm": 100,
+        "height_mm": 60,
+        "depth_mm": 5,
+        "plane": "XY",
+        "centered": true
+      },
+      "typed_params": {
+        "width_mm": 100.0,
+        "height_mm": 60.0,
+        "depth_mm": 5.0,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "fin1",
+      "component": "heatsink",
+      "dialect": "sketch_extrude",
+      "op": "add_rectangular_boss",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "base",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:heatsink:fin1:body"
+        }
+      ],
+      "params": {
+        "width_mm": 2,
+        "height_mm": 25,
+        "depth_mm": 60,
+        "position_mm": [
+          -42,
+          0,
+          5
+        ],
+        "plane": "XY",
+        "centered": true
+      },
+      "typed_params": {
+        "width_mm": 2.0,
+        "height_mm": 25.0,
+        "depth_mm": 60.0,
+        "position_mm": [
+          -42.0,
+          0.0,
+          5.0
+        ],
+        "plane": "XY",
+        "centered": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "fin2",
+      "component": "heatsink",
+      "dialect": "sketch_extrude",
+      "op": "add_rectangular_boss",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "fin1",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:heatsink:fin2:body"
+        }
+      ],
+      "params": {
+        "width_mm": 2,
+        "height_mm": 25,
+        "depth_mm": 60,
+        "position_mm": [
+          -28,
+          0,
+          5
+        ],
+        "plane": "XY",
+        "centered": true
+      },
+      "typed_params": {
+        "width_mm": 2.0,
+        "height_mm": 25.0,
+        "depth_mm": 60.0,
+        "position_mm": [
+          -28.0,
+          0.0,
+          5.0
+        ],
+        "plane": "XY",
+        "centered": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "fin3",
+      "component": "heatsink",
+      "dialect": "sketch_extrude",
+      "op": "add_rectangular_boss",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "fin2",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:heatsink:fin3:body"
+        }
+      ],
+      "params": {
+        "width_mm": 2,
+        "height_mm": 25,
+        "depth_mm": 60,
+        "position_mm": [
+          -14,
+          0,
+          5
+        ],
+        "plane": "XY",
+        "centered": true
+      },
+      "typed_params": {
+        "width_mm": 2.0,
+        "height_mm": 25.0,
+        "depth_mm": 60.0,
+        "position_mm": [
+          -14.0,
+          0.0,
+          5.0
+        ],
+        "plane": "XY",
+        "centered": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "fin4",
+      "component": "heatsink",
+      "dialect": "sketch_extrude",
+      "op": "add_rectangular_boss",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "fin3",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:heatsink:fin4:body"
+        }
+      ],
+      "params": {
+        "width_mm": 2,
+        "height_mm": 25,
+        "depth_mm": 60,
+        "position_mm": [
+          0,
+          0,
+          5
+        ],
+        "plane": "XY",
+        "centered": true
+      },
+      "typed_params": {
+        "width_mm": 2.0,
+        "height_mm": 25.0,
+        "depth_mm": 60.0,
+        "position_mm": [
+          0.0,
+          0.0,
+          5.0
+        ],
+        "plane": "XY",
+        "centered": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "fin5",
+      "component": "heatsink",
+      "dialect": "sketch_extrude",
+      "op": "add_rectangular_boss",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "fin4",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:heatsink:fin5:body"
+        }
+      ],
+      "params": {
+        "width_mm": 2,
+        "height_mm": 25,
+        "depth_mm": 60,
+        "position_mm": [
+          14,
+          0,
+          5
+        ],
+        "plane": "XY",
+        "centered": true
+      },
+      "typed_params": {
+        "width_mm": 2.0,
+        "height_mm": 25.0,
+        "depth_mm": 60.0,
+        "position_mm": [
+          14.0,
+          0.0,
+          5.0
+        ],
+        "plane": "XY",
+        "centered": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "fin6",
+      "component": "heatsink",
+      "dialect": "sketch_extrude",
+      "op": "add_rectangular_boss",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "fin5",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:heatsink:fin6:body"
+        }
+      ],
+      "params": {
+        "width_mm": 2,
+        "height_mm": 25,
+        "depth_mm": 60,
+        "position_mm": [
+          28,
+          0,
+          5
+        ],
+        "plane": "XY",
+        "centered": true
+      },
+      "typed_params": {
+        "width_mm": 2.0,
+        "height_mm": 25.0,
+        "depth_mm": 60.0,
+        "position_mm": [
+          28.0,
+          0.0,
+          5.0
+        ],
+        "plane": "XY",
+        "centered": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "fin7",
+      "component": "heatsink",
+      "dialect": "sketch_extrude",
+      "op": "add_rectangular_boss",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "fin6",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:heatsink:fin7:body"
+        }
+      ],
+      "params": {
+        "width_mm": 2,
+        "height_mm": 25,
+        "depth_mm": 60,
+        "position_mm": [
+          42,
+          0,
+          5
+        ],
+        "plane": "XY",
+        "centered": true
+      },
+      "typed_params": {
+        "width_mm": 2.0,
+        "height_mm": 25.0,
+        "depth_mm": 60.0,
+        "position_mm": [
+          42.0,
+          0.0,
+          5.0
+        ],
+        "plane": "XY",
+        "centered": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "fillet",
+      "component": "heatsink",
+      "dialect": "sketch_extrude",
+      "op": "apply_safe_fillet",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "producer_node": "fin7",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:heatsink:fillet:body"
+        }
+      ],
+      "params": {
+        "radius_mm": 0.5,
+        "target": "all_external_edges"
+      },
+      "typed_params": {
+        "radius_mm": 0.5,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "modifies_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:1666d108615dbce5740e8d2393edd5e1dfc7ee5e655ec53a090613d6a0d0031d",
+  "raw_graph_hash": "sha256:7e706f97c4e7f2a4a15c14b2898ea598a43d65e23bb87b1d49e48b612732a177"
+}

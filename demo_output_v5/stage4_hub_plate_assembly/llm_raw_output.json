@@ -1,0 +1,194 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "hub-base-assembly-001",
+  "part_name": "hub_base_assembly",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0"
+    },
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "hub_body",
+      "owner_dialect": "axisymmetric",
+      "root_node": "hub_union"
+    },
+    {
+      "id": "base_plate",
+      "owner_dialect": "sketch_extrude",
+      "root_node": "bp_extrude"
+    },
+    {
+      "id": "__assembly__",
+      "owner_dialect": "composition",
+      "root_node": "asm_union"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub_revolve",
+      "component": "hub_body",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "profile_stations": [
+          {
+            "r": 25.0,
+            "z": 0.0
+          },
+          {
+            "r": 25.0,
+            "z": 40.0
+          }
+        ],
+        "axis": "Z"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "hub_bore",
+      "component": "hub_body",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "hub_revolve",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 25.0,
+        "through_all": true,
+        "axis": "Z"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "hub_union",
+      "component": "hub_body",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "profile_stations": [
+          {
+            "r": 0.0,
+            "z": 0.0
+          }
+        ],
+        "axis": "Z"
+      },
+      "required": false,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "bp_extrude",
+      "component": "base_plate",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 100.0,
+        "height_mm": 80.0,
+        "depth_mm": 10.0,
+        "centered": true,
+        "plane": "XY"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "asm_union",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "node": "hub_bore",
+          "output": "body"
+        },
+        {
+          "node": "bp_extrude",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {},
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {}
+}

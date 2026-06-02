@@ -1,0 +1,1 @@
+Validation: [reverse_phase_dependency] node 'center_pocket' (phase='primary_cut', rank=1) depends on 'corner_holes' (phase='hole_pattern', 

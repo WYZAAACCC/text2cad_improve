@@ -1,0 +1,49 @@
+{
+  "nlcad_version": "0.1",
+  "name": "渐开线齿轮 Spur Gear",
+  "units": "mm",
+  "target_backend": [
+    "cadquery"
+  ],
+  "parameters": {},
+  "features": [
+    {
+      "id": "gear1",
+      "type": "primitive",
+      "primitive_name": "involute_spur_gear",
+      "parameters": {
+        "module_mm": 2.0,
+        "teeth": 20,
+        "pressure_angle_deg": 20.0,
+        "face_width_mm": 15.0,
+        "bore_dia_mm": 10.0,
+        "quality_grade": "industrial_brep"
+      },
+      "placement": {},
+      "operation": "new_body"
+    }
+  ],
+  "validation": {
+    "expected_bbox_mm": null,
+    "expected_body_count": 1,
+    "expected_hole_count": null,
+    "expected_through_hole_count": null,
+    "expected_feature_count_min": null,
+    "tolerance_mm": 0.5,
+    "expected_tooth_count": null,
+    "expected_pitch_diameter_mm": null,
+    "expected_outer_diameter_mm": null,
+    "expected_root_diameter_mm": null,
+    "expected_base_diameter_mm": null,
+    "expected_bore_diameter_mm": null,
+    "expected_face_width_mm": null,
+    "expected_kernel": null,
+    "primitive_validation": {}
+  },
+  "outputs": {
+    "native": true,
+    "step": true,
+    "stl": false,
+    "preview_png": false
+  }
+}

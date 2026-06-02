@@ -1,0 +1,18 @@
+RC=1
+STDOUT=^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\auto_detection_process\integrations\engineering_tools\src\seekflow_engineering_tools\generative_cad\dialects\executor.py", line 41, in execute_operation
+    raw_result = op_spec.handler(node, ctx)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\auto_detection_process\integrations\engineering_tools\src\seekflow_engineering_tools\generative_cad\dialects\axisymmetric\handlers.py", line 136, in handle_apply_safe_chamfer
+    body = body.chamfer(distance)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\auto_detection_process\.conda\Lib\site-packages\cadquery\cq.py", line 1278, in chamfer
+    s = solid.chamfer(length, length2, edgeList)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\auto_detection_process\.conda\Lib\site-packages\cadquery\occ_impl\shapes.py", line 3768, in chamfer
+    return self.__class__(chamfer_builder.Shape())
+                          ^^^^^^^^^^^^^^^^^^^^^^^
+OCP.OCP.StdFail.StdFail_NotDone: BRep_API: command not done
+
+
+STDERR=

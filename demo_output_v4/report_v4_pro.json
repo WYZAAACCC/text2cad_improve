@@ -1,0 +1,191 @@
+{
+  "01_hole_plate": {
+    "cid": "01_hole_plate",
+    "name": "带孔矩形板",
+    "ok": true,
+    "stage": "",
+    "error": null,
+    "step_size": 28034
+  },
+  "02_washer": {
+    "cid": "02_washer",
+    "name": "垫片",
+    "ok": false,
+    "stage": "build",
+    "error": "Runner failed (rc=1). BUILD FAILED: BRep_API: command not done\nTraceback (most recent call last):\n  File \"E:\\auto_detection_process\\integrations\\engineering_tools\\src\\seekflow_engineering_tools\\genera"
+  },
+  "03_flange": {
+    "cid": "03_flange",
+    "name": "法兰",
+    "ok": false,
+    "stage": "build",
+    "error": "Runner failed (rc=1). BUILD FAILED: ChFi3d_Builder:only 2 faces\nTraceback (most recent call last):\n  File \"E:\\auto_detection_process\\integrations\\engineering_tools\\src\\seekflow_engineering_tools\\gener"
+  },
+  "04_l_bracket": {
+    "cid": "04_l_bracket",
+    "name": "L型支架",
+    "ok": false,
+    "stage": "parse",
+    "error": "missing_required_field; missing_required_field; missing_required_field"
+  },
+  "05_ribbed_bracket": {
+    "cid": "05_ribbed_bracket",
+    "name": "加强筋支架",
+    "ok": false,
+    "stage": "validate",
+    "error": "reverse_phase_dependency"
+  },
+  "06_stepped_shaft": {
+    "cid": "06_stepped_shaft",
+    "name": "阶梯轴",
+    "ok": false,
+    "stage": "parse",
+    "error": "missing_required_field; missing_required_field; missing_required_field"
+  },
+  "07_keyed_shaft": {
+    "cid": "07_keyed_shaft",
+    "name": "键槽轴",
+    "ok": false,
+    "stage": "build",
+    "error": "Runner failed (rc=1). BUILD FAILED: ChFi3d_Builder:only 2 faces\nTraceback (most recent call last):\n  File \"E:\\auto_detection_process\\integrations\\engineering_tools\\src\\seekflow_engineering_tools\\gener"
+  },
+  "08_bearing_housing": {
+    "cid": "08_bearing_housing",
+    "name": "轴承座",
+    "ok": false,
+    "stage": "parse",
+    "error": "missing_required_field; missing_required_field; missing_required_field"
+  },
+  "09_slide_rail": {
+    "cid": "09_slide_rail",
+    "name": "滑块座",
+    "ok": false,
+    "stage": "parse",
+    "error": "missing_required_field; missing_required_field; missing_required_field"
+  },
+  "10_pulley": {
+    "cid": "10_pulley",
+    "name": "皮带轮",
+    "ok": false,
+    "stage": "validate",
+    "error": "invalid_params"
+  },
+  "11_gear_approx": {
+    "cid": "11_gear_approx",
+    "name": "齿轮近似",
+    "ok": false,
+    "stage": "build",
+    "error": "Runner failed (rc=1). BUILD FAILED: ChFi3d_Builder:only 2 faces\nTraceback (most recent call last):\n  File \"E:\\auto_detection_process\\integrations\\engineering_tools\\src\\seekflow_engineering_tools\\gener"
+  },
+  "12_heatsink": {
+    "cid": "12_heatsink",
+    "name": "散热器",
+    "ok": true,
+    "stage": "",
+    "error": null,
+    "step_size": 455211
+  },
+  "13_clamp_block": {
+    "cid": "13_clamp_block",
+    "name": "夹具块",
+    "ok": true,
+    "stage": "",
+    "error": null,
+    "step_size": 217053
+  },
+  "14_motor_mount": {
+    "cid": "14_motor_mount",
+    "name": "电机座",
+    "ok": true,
+    "stage": "",
+    "error": null,
+    "step_size": 101498
+  },
+  "15_pump_body": {
+    "cid": "15_pump_body",
+    "name": "泵体",
+    "ok": false,
+    "stage": "validate",
+    "error": "invalid_params"
+  },
+  "16_thinwall_box": {
+    "cid": "16_thinwall_box",
+    "name": "薄壁盒",
+    "ok": true,
+    "stage": "",
+    "error": null,
+    "step_size": 15499
+  },
+  "17_electronics_case": {
+    "cid": "17_electronics_case",
+    "name": "电子外壳",
+    "ok": false,
+    "stage": "parse",
+    "error": "missing_required_field; missing_required_field; missing_required_field"
+  },
+  "18_hinge": {
+    "cid": "18_hinge",
+    "name": "铰链叶片",
+    "ok": true,
+    "stage": "",
+    "error": null,
+    "step_size": 91545
+  },
+  "19_clamp": {
+    "cid": "19_clamp",
+    "name": "夹钳",
+    "ok": false,
+    "stage": "parse",
+    "error": "missing_required_field; missing_required_field; missing_required_field"
+  },
+  "20_ujoint": {
+    "cid": "20_ujoint",
+    "name": "万向节",
+    "ok": false,
+    "stage": "validate",
+    "error": "invalid_params"
+  },
+  "21_flange_b": {
+    "cid": "21_flange_b",
+    "name": "法兰B",
+    "ok": false,
+    "stage": "build",
+    "error": "Runner failed (rc=1). BUILD FAILED: ChFi3d_Builder:only 2 faces\nTraceback (most recent call last):\n  File \"E:\\auto_detection_process\\integrations\\engineering_tools\\src\\seekflow_engineering_tools\\gener"
+  },
+  "22_hexnut": {
+    "cid": "22_hexnut",
+    "name": "六角螺母",
+    "ok": false,
+    "stage": "validate",
+    "error": "invalid_params"
+  },
+  "23_bracket_b": {
+    "cid": "23_bracket_b",
+    "name": "L支架B",
+    "ok": true,
+    "stage": "",
+    "error": null,
+    "step_size": 86983
+  },
+  "24_bushing": {
+    "cid": "24_bushing",
+    "name": "轴套",
+    "ok": false,
+    "stage": "parse",
+    "error": "missing_required_field; missing_required_field; missing_required_field"
+  },
+  "25_disk": {
+    "cid": "25_disk",
+    "name": "阶梯盘",
+    "ok": false,
+    "stage": "parse",
+    "error": "missing_required_field; missing_required_field; missing_required_field"
+  },
+  "26_ribbed_b": {
+    "cid": "26_ribbed_b",
+    "name": "筋支架",
+    "ok": false,
+    "stage": "build",
+    "error": "Runner failed (rc=1). BUILD FAILED: BRep_API: command not done\nTraceback (most recent call last):\n  File \"E:\\auto_detection_process\\integrations\\engineering_tools\\src\\seekflow_engineering_tools\\genera"
+  }
+}

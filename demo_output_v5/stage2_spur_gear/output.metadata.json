@@ -1,0 +1,62 @@
+{
+  "primitive_metadata": {
+    "involute_spur_gear": {
+      "metadata_version": "primitive_metadata_v1",
+      "kernel": "cq_gears",
+      "is_standard_involute": true,
+      "primitive": "involute_spur_gear",
+      "parameters": {
+        "module_mm": 2.0,
+        "teeth": 20,
+        "pressure_angle_deg": 20.0,
+        "face_width_mm": 15.0,
+        "bore_dia_mm": 10.0,
+        "quality_grade": "industrial_brep"
+      },
+      "reference_dimensions": {
+        "module_mm": 2.0,
+        "teeth": 20,
+        "pressure_angle_deg": 20.0,
+        "face_width_mm": 15.0,
+        "bore_dia_mm": 10.0,
+        "pitch_diameter_mm": 40.0,
+        "base_diameter_mm": 37.58770483143634,
+        "outer_diameter_mm": 44.0,
+        "root_diameter_mm": 35.0,
+        "circular_pitch_mm": 6.283185307179586,
+        "tooth_thickness_pitch_mm": 3.141592653589793
+      },
+      "warnings": []
+    }
+  },
+  "build_warnings": [],
+  "validation": {
+    "inspection_validation": {
+      "ok": true,
+      "issues": []
+    },
+    "mechanical_validation": {
+      "ok": true,
+      "results": [
+        {
+          "ok": true,
+          "issues": [],
+          "reference_dimensions": {
+            "module_mm": 2.0,
+            "teeth": 20,
+            "pressure_angle_deg": 20.0,
+            "face_width_mm": 15.0,
+            "bore_dia_mm": 10.0,
+            "pitch_diameter_mm": 40.0,
+            "base_diameter_mm": 37.58770483143634,
+            "outer_diameter_mm": 44.0,
+            "root_diameter_mm": 35.0,
+            "circular_pitch_mm": 6.283185307179586,
+            "tooth_thickness_pitch_mm": 3.141592653589793
+          },
+          "kernel": "cq_gears"
+        }
+      ]
+    }
+  }
+}

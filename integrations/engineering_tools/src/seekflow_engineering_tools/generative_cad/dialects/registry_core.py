@@ -14,6 +14,17 @@ FORBIDDEN_PART_TOKENS = {
     "bracket",
     "gearbox",
     "bearing",
+    "bearing_seat",
+    "mounting_plate",
+    "shaft_with_keyway",
+    "impeller",
+    "pump_housing",
+    "pulley",
+    "rotor",
+    "stator",
+    "motor_mount",
+    "clamp_block",
+    "heatsink",
 }
 
 

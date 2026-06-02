@@ -1,0 +1,26 @@
+{
+  "ok": false,
+  "stage": "phase",
+  "issues": [
+    {
+      "code": "reverse_phase_dependency",
+      "message": "node 'center_pocket' (phase='primary_cut', rank=1) depends on 'corner_holes' (phase='hole_pattern', rank=2), producer phase rank must be <= consumer",
+      "severity": "error",
+      "stage": "phase",
+      "node_id": "center_pocket",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "registry",
+    "params",
+    "ownership",
+    "graph",
+    "typecheck",
+    "phase"
+  ]
+}

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from seekflow_engineering_tools.generative_cad.ir.canonical import CanonicalNode, ValueType
 from seekflow_engineering_tools.generative_cad.runtime.context import RuntimeContext
@@ -48,6 +48,17 @@ class OperationSpec(BaseModel):
 
     handler: OperationHandler
     handler_kind: Literal["v1_dict", "v2_result"] = "v1_dict"
+
+    # ── LLM-facing metadata (for skill generation / docs only) ──
+    # These fields do NOT affect validation semantics.
+    # They are used by Level-2 skill generators and tool schema compilers
+    # to produce rich, accurate LLM guidance without hard-coding in the orchestrator.
+    summary: str | None = None
+    usage_notes: list[str] = Field(default_factory=list)
+    common_mistakes: list[str] = Field(default_factory=list)
+    examples: list[dict] = Field(default_factory=list)
+    anti_examples: list[dict] = Field(default_factory=list)
+    llm_param_hints: dict[str, str] = Field(default_factory=dict)
 
     def validate_params(self, raw_params: dict[str, Any]) -> BaseModel:
         return self.params_model.model_validate(raw_params)

@@ -1,0 +1,10 @@
+RC=1
+STDOUT=
+STDERR=Traceback (most recent call last):
+  File "E:\auto_detection_process\demo_output_v5\stage2_spur_gear\_build_gear.py", line 10, in <module>
+    spec_json = json.loads(Path(r"E:/auto_detection_process/demo_output_v5/stage2_spur_gear/cad_part_spec.json").read_text())
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\auto_detection_process\.conda\Lib\pathlib.py", line 1059, in read_text
+    return f.read()
+           ^^^^^^^^
+UnicodeDecodeError: 'gbk' codec can't decode byte 0xae in position 55: illegal multibyte sequence

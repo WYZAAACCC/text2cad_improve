@@ -1,0 +1,30 @@
+{
+  "ok": false,
+  "stage": "dialect_semantics",
+  "issues": [
+    {
+      "code": "se_base_solid_count",
+      "message": "sketch_extrude requires exactly 1 base_solid node, got 2",
+      "severity": "error",
+      "stage": "dialect_semantics",
+      "node_id": null,
+      "component_id": "bracket",
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "registry",
+    "params",
+    "ownership",
+    "graph",
+    "typecheck",
+    "phase",
+    "composition",
+    "safety",
+    "canonicalize",
+    "dialect_semantics"
+  ]
+}

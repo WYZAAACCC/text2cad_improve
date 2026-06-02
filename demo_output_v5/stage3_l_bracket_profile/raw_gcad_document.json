@@ -1,0 +1,172 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "l-bracket-sketch-profile-001",
+  "part_name": "L-Bracket",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_profile",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "comp1",
+      "owner_dialect": "sketch_profile",
+      "kind_hint": null,
+      "root_node": "extrude1"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sketch1",
+      "component": "comp1",
+      "dialect": "sketch_profile",
+      "op": "create_2d_sketch",
+      "op_version": "1.0.0",
+      "phase": "sketch",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "sketch",
+          "type": "sketch"
+        }
+      ],
+      "params": {
+        "plane": "XY"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "poly1",
+      "component": "comp1",
+      "dialect": "sketch_profile",
+      "op": "add_polyline",
+      "op_version": "1.0.0",
+      "phase": "profile",
+      "inputs": [
+        {
+          "node": "sketch1",
+          "component": null,
+          "output": "sketch"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "profile",
+          "type": "profile"
+        }
+      ],
+      "params": {
+        "points": [
+          {
+            "x_mm": 0,
+            "y_mm": 0
+          },
+          {
+            "x_mm": 80,
+            "y_mm": 0
+          },
+          {
+            "x_mm": 80,
+            "y_mm": 8
+          },
+          {
+            "x_mm": 50,
+            "y_mm": 8
+          },
+          {
+            "x_mm": 50,
+            "y_mm": 40
+          },
+          {
+            "x_mm": 42,
+            "y_mm": 40
+          },
+          {
+            "x_mm": 42,
+            "y_mm": 8
+          },
+          {
+            "x_mm": 0,
+            "y_mm": 8
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "close1",
+      "component": "comp1",
+      "dialect": "sketch_profile",
+      "op": "close_profile",
+      "op_version": "1.0.0",
+      "phase": "profile",
+      "inputs": [
+        {
+          "node": "poly1",
+          "component": null,
+          "output": "profile"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "profile",
+          "type": "profile"
+        }
+      ],
+      "params": {},
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "extrude1",
+      "component": "comp1",
+      "dialect": "sketch_profile",
+      "op": "extrude_profile",
+      "op_version": "1.0.0",
+      "phase": "feature",
+      "inputs": [
+        {
+          "node": "close1",
+          "component": null,
+          "output": "profile"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "depth_mm": 50,
+        "direction": "+"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {}
+}

@@ -5,8 +5,8 @@
     "schema_version": "g_cad_core_v0.2",
     "canonical_version": "canonical_gcad_v0.2",
     "trust_level": "reference_geometry",
-    "document_id": "base_plate_100x60x5_o3_10x4",
-    "part_name": "100x60x5mm Base Plate with 10x4 O3 Cooling Holes",
+    "document_id": "baseplate-100x60x5-o3-heat-dissipation",
+    "part_name": "100x60x5mm_Baseplate_O3_Heat_Dissipation",
     "selected_dialects": [
       {
         "dialect": "sketch_extrude",
@@ -16,23 +16,29 @@
     ],
     "op_versions": [
       {
-        "node_id": "n1",
+        "node_id": "n_base",
         "dialect": "sketch_extrude",
         "op": "extrude_rectangle",
         "op_version": "1.0.0"
       },
       {
-        "node_id": "n2",
+        "node_id": "n_holes",
         "dialect": "sketch_extrude",
         "op": "cut_hole_pattern_linear",
         "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_final",
+        "dialect": "sketch_extrude",
+        "op": "apply_safe_chamfer",
+        "op_version": "1.0.0"
       }
     ],
-    "raw_graph_hash": "sha256:d5e5b3c41933b131960b6d4524b255fd10f236a90490f77223e2005cd6cc02a6",
-    "canonical_graph_hash": "sha256:7db9738c19f3fbedc5783f36babd11d25cdfaa2a8c2aac641508850ed55097b4",
+    "raw_graph_hash": "sha256:ed626d890fb9b70a11e007cd3c2139ffd156672d954ddc0f005c5352bb7d3cb1",
+    "canonical_graph_hash": "sha256:9f0b13c532a72697df6d996b4b49945364a69188a3f549e47e70dfae02ee867f",
     "paths": {
-      "canonical_ir_path": "E:\\auto_detection_process\\demo_output_v4\\.generative_cad_graphs\\gcad_971ca729a523.json",
-      "validation_seed_path": "E:\\auto_detection_process\\demo_output_v4\\.generative_cad_graphs\\gcad_971ca729a523.validation.json",
+      "canonical_ir_path": "E:\\auto_detection_process\\demo_output_v4\\.generative_cad_graphs\\gcad_0c3d7bf898f5.json",
+      "validation_seed_path": "E:\\auto_detection_process\\demo_output_v4\\.generative_cad_graphs\\gcad_0c3d7bf898f5.validation.json",
       "step_path": "E:\\auto_detection_process\\demo_output_v4\\12_heatsink\\output.step",
       "metadata_path": "E:\\auto_detection_process\\demo_output_v4\\12_heatsink\\output.metadata.json"
     },
@@ -42,7 +48,7 @@
       "geometry_runtime_version": "cadquery_runtime_v1"
     },
     "artifact": {
-      "step_sha256": "sha256:e3f4a3dba313f3eec71aa9136cd875ff4c91fa7789240c343803de40e88e328a",
+      "step_sha256": "sha256:11f0b52e9931e30cdc9df03eb60b0f5da03473291e9e21eb0ce7eeca66411791",
       "metadata_schema_hash": null
     },
     "import_policy": {
@@ -57,13 +63,18 @@
     "degraded_features": [],
     "operation_metrics": [
       {
-        "node_id": "n1",
+        "node_id": "n_base",
         "op": "extrude_rectangle",
         "status": "ok"
       },
       {
-        "node_id": "n2",
+        "node_id": "n_holes",
         "op": "cut_hole_pattern_linear",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_final",
+        "op": "apply_safe_chamfer",
         "status": "ok"
       }
     ],

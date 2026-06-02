@@ -1,4 +1,11 @@
-"""Sketch-extrude base manifest — small, always safe to include in LLM prompt."""
+"""Sketch-extrude base manifest — DEPRECATED v0.1.
+
+This module is part of the legacy bases/ package. It is superseded by:
+- ``generative_cad.base_packages.sketch_extrude`` (LLM-facing authoring package)
+- ``generative_cad.dialects.sketch_extrude`` (compiler/runtime ABI)
+
+Do NOT use in new code. This file is retained for backward compatibility only.
+"""
 
 SKETCH_EXTRUDE_MANIFEST = {
     "base_id": "sketch_extrude_base",

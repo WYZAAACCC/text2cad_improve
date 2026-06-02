@@ -1,0 +1,6 @@
+Create a rectangular base plate 120x80x12mm using extrude_rectangle.
+Add 4 mounting holes diameter 6mm at corners using cut_hole_pattern_linear:
+count_x=2 count_y=2 spacing_x_mm=90 spacing_y_mm=50.
+Add a central rectangular pocket 50x30x4mm using cut_rectangular_pocket.
+Apply 1mm fillet on all external edges using apply_safe_fillet.
+Units mm. Reference geometry only. Not for manufacturing.

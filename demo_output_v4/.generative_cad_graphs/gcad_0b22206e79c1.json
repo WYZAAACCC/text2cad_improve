@@ -1,0 +1,236 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "plate_100x60x8_4holes",
+  "part_name": "100x60x8mm Plate with 4 Corner Holes",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+    }
+  ],
+  "components": [
+    {
+      "id": "plate",
+      "owner_dialect": "sketch_extrude",
+      "kind_hint": null,
+      "root_node": "n4",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n1",
+      "component": "plate",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:plate:n1:body"
+        }
+      ],
+      "params": {
+        "width_mm": 100,
+        "height_mm": 60,
+        "depth_mm": 8,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+"
+      },
+      "typed_params": {
+        "width_mm": 100.0,
+        "height_mm": 60.0,
+        "depth_mm": 8.0,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n2",
+      "component": "plate",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n1",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:plate:n2:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 8,
+        "position_mm": [
+          -42,
+          22
+        ],
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 8.0,
+        "position_mm": [
+          -42.0,
+          22.0
+        ],
+        "axis": "Z",
+        "through_all": true,
+        "depth_mm": null
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n3",
+      "component": "plate",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n2",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:plate:n3:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 8,
+        "position_mm": [
+          42,
+          22
+        ],
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 8.0,
+        "position_mm": [
+          42.0,
+          22.0
+        ],
+        "axis": "Z",
+        "through_all": true,
+        "depth_mm": null
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n4",
+      "component": "plate",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n3",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:plate:n4:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 8,
+        "position_mm": [
+          42,
+          -22
+        ],
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 8.0,
+        "position_mm": [
+          42.0,
+          -22.0
+        ],
+        "axis": "Z",
+        "through_all": true,
+        "depth_mm": null
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:9fbf81ab63ea5e998a253ec90ce11991c22dacc8987cd7a3f567591f7ecfe385",
+  "raw_graph_hash": "sha256:c473fc3a44c795918ab474ab706ccb1bbbe7fe3bb23d785214f5f0cd7ee92294"
+}

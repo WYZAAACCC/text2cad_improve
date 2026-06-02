@@ -12,6 +12,7 @@ ValueType = Literal[
     "point",
     "curve",
     "profile",
+    "sketch",
     "face_set",
     "edge_set",
     "component_ref",

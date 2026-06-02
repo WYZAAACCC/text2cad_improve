@@ -1,0 +1,394 @@
+"""End-to-end authoring pipeline — mocked LLM, real validation.
+
+For production use, inject a real LlmToolCaller implementation.
+For testing, use mock callers that return pre-scripted ToolCallResults.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from seekflow_engineering_tools.generative_cad.authoring.context_builder import (
+    AuthoringContext,
+    build_authoring_context,
+)
+from seekflow_engineering_tools.generative_cad.authoring.failure_taxonomy import (
+    AuthoringFailure,
+    AuthoringFailureCode,
+    map_validation_issue_to_failure,
+)
+from seekflow_engineering_tools.generative_cad.authoring.metrics import (
+    AuthoringRunMetrics,
+)
+from seekflow_engineering_tools.generative_cad.authoring.raw_assembler import (
+    assemble_raw_gcad_document,
+)
+from seekflow_engineering_tools.generative_cad.authoring.schemas import (
+    FeatureSequenceDraft,
+    NodeParamsDraft,
+    RawAssemblyResult,
+    RoutePlan,
+)
+from seekflow_engineering_tools.generative_cad.llm.models import AuthoringLlmConfig
+from seekflow_engineering_tools.generative_cad.llm.provider import (
+    LlmToolCaller,
+    ToolCallResult,
+)
+
+
+class AuthoringPipelineResult:
+    """Result of a full authoring pipeline run."""
+
+    def __init__(self):
+        self.route_plan: RoutePlan | None = None
+        self.feature_sequence: FeatureSequenceDraft | None = None
+        self.node_params: dict[str, NodeParamsDraft] = {}
+        self.raw_assembly: RawAssemblyResult | None = None
+        self.canonical_document: Any = None
+        self.validation_bundle: Any = None
+        self.metrics: AuthoringRunMetrics = AuthoringRunMetrics()
+        self.failures: list[AuthoringFailure] = []
+
+
+# ── Mock callers for testing ────────────────────────────────────────────────
+
+
+class MockRouteCaller:
+    """Returns a fixed RoutePlan."""
+
+    def __init__(self, route_plan: RoutePlan):
+        self._plan = route_plan
+
+    def call_strict_tool(self, **kwargs) -> ToolCallResult:
+        return ToolCallResult(
+            tool_name="emit_route_plan",
+            arguments=self._plan.model_dump(),
+            model="mock-router",
+            provider="mock",
+        )
+
+
+class MockFeatureSequenceCaller:
+    """Returns a fixed FeatureSequenceDraft."""
+
+    def __init__(self, fs: FeatureSequenceDraft):
+        self._fs = fs
+
+    def call_strict_tool(self, **kwargs) -> ToolCallResult:
+        return ToolCallResult(
+            tool_name="emit_feature_sequence",
+            arguments=self._fs.model_dump(),
+            model="mock-author",
+            provider="mock",
+        )
+
+
+class MockNodeParamsCaller:
+    """Returns fixed NodeParamsDrafts keyed by node_id."""
+
+    def __init__(self, param_map: dict[str, NodeParamsDraft]):
+        self._map = param_map
+        self._call_count = 0
+        self._keys = list(param_map.keys())
+
+    def call_strict_tool(self, **kwargs) -> ToolCallResult:
+        if self._call_count >= len(self._keys):
+            raise RuntimeError("MockNodeParamsCaller exhausted")
+        key = self._keys[self._call_count]
+        self._call_count += 1
+        np = self._map[key]
+        return ToolCallResult(
+            tool_name="emit_node_params",
+            arguments=np.model_dump(),
+            model="mock-author",
+            provider="mock",
+        )
+
+
+class MockRepairCaller:
+    """Returns empty repair (give_up)."""
+
+    def call_strict_tool(self, **kwargs) -> ToolCallResult:
+        return ToolCallResult(
+            tool_name="emit_repair_patch",
+            arguments={"give_up": True, "reason": "mock repair", "changes": []},
+            model="mock-repair",
+            provider="mock",
+        )
+
+
+# ── Pipeline ────────────────────────────────────────────────────────────────
+
+
+def generate_gcad_from_user_request(
+    *,
+    user_request: str,
+    llm_config: AuthoringLlmConfig,
+    dialect_registry,
+    base_package_registry,
+    route_caller: LlmToolCaller | None = None,
+    feature_sequence_caller: LlmToolCaller | None = None,
+    node_params_caller: LlmToolCaller | None = None,
+    repair_caller: LlmToolCaller | None = None,
+    primitive_catalog_summary: dict | None = None,
+    max_repair_attempts: int = 3,
+) -> AuthoringPipelineResult:
+    """Run the full staged authoring pipeline.
+
+    If callers are not provided, the pipeline validates pre-loaded data
+    from route_plan, feature_sequence, and node_params in metrics only.
+    Production usage requires injecting real LlmToolCaller instances.
+    """
+    result = AuthoringPipelineResult()
+    metrics = result.metrics
+    metrics.model_router = llm_config.router.model
+    metrics.model_author = llm_config.author.model
+    metrics.model_repair = llm_config.repair.model
+
+    # ── Stage 1: Route ──
+    if route_caller is not None:
+        try:
+            tc_result = route_caller.call_strict_tool(
+                messages=[{"role": "user", "content": user_request}],
+                tool_name="emit_route_plan",
+                tool_description="Select CAD route and dialects",
+                tool_schema={},
+                model_config=llm_config.router,
+            )
+            route_plan = RoutePlan.model_validate(tc_result.arguments)
+            metrics.route_success = True
+        except Exception as exc:
+            result.failures.append(AuthoringFailure(
+                code=AuthoringFailureCode.PROVIDER_NO_TOOL_CALL,
+                stage="route", message=str(exc),
+            ))
+            return result
+    else:
+        route_plan = None  # type: ignore[assignment]
+
+    result.route_plan = route_plan
+
+    if route_plan is None:
+        result.failures.append(AuthoringFailure(
+            code=AuthoringFailureCode.LOCAL_SCHEMA_ERROR,
+            stage="route", message="No route_plan produced",
+        ))
+        return result
+
+    # Stop early for non-generative routes
+    if route_plan.route_decision.value != "generative_cad_ir":
+        return result
+
+    # ── Stage 2: Build context ──
+    try:
+        ctx = build_authoring_context(
+            route_plan=route_plan,
+            dialect_registry=dialect_registry,
+            base_package_registry=base_package_registry,
+        )
+        metrics.context_hash = ctx.context_hash
+        metrics.selected_base_packages = ctx.selected_dialects
+    except Exception as exc:
+        result.failures.append(AuthoringFailure(
+            code=AuthoringFailureCode.CONTEXT_BUILD_ERROR,
+            stage="context", message=str(exc),
+        ))
+        return result
+
+    # ── Stage 3: Feature sequence ──
+    if feature_sequence_caller is not None:
+        try:
+            tc_result = feature_sequence_caller.call_strict_tool(
+                messages=[{"role": "user", "content": user_request}],
+                tool_name="emit_feature_sequence",
+                tool_description="Plan operation sequence",
+                tool_schema={},
+                model_config=llm_config.author,
+            )
+            fs = FeatureSequenceDraft.model_validate(tc_result.arguments)
+            metrics.feature_sequence_success = True
+        except Exception as exc:
+            result.failures.append(AuthoringFailure(
+                code=AuthoringFailureCode.LOCAL_SCHEMA_ERROR,
+                stage="feature_sequence", message=str(exc),
+            ))
+            return result
+    else:
+        fs = None  # type: ignore[assignment]
+
+    result.feature_sequence = fs
+    if fs is None:
+        return result
+
+    # ── Stage 4: Node params (per node) ──
+    if node_params_caller is not None:
+        param_map: dict[str, NodeParamsDraft] = {}
+        total = len(fs.node_sequence)
+        ok_count = 0
+        for node_plan in fs.node_sequence:
+            try:
+                tc_result = node_params_caller.call_strict_tool(
+                    messages=[{"role": "user", "content": user_request}],
+                    tool_name="emit_node_params",
+                    tool_description=f"Fill params for {node_plan.op}",
+                    tool_schema={},
+                    model_config=llm_config.author,
+                )
+                np = NodeParamsDraft.model_validate(tc_result.arguments)
+                # Validate params against OperationSpec
+                dialect = dialect_registry.get(np.dialect)
+                if dialect:
+                    spec = dialect.get_op_spec(np.op, np.op_version)
+                    spec.validate_params(np.params)
+                param_map[node_plan.node_id] = np
+                ok_count += 1
+            except Exception as exc:
+                result.failures.append(AuthoringFailure(
+                    code=AuthoringFailureCode.PARAMS_TYPE_ERROR,
+                    stage=f"node_params:{node_plan.node_id}",
+                    message=str(exc),
+                    node_id=node_plan.node_id,
+                    dialect=node_plan.dialect,
+                    op=node_plan.op,
+                ))
+
+        result.node_params = param_map
+        metrics.params_success_rate = ok_count / total if total > 0 else 0.0
+
+    # ── Stage 5: Assemble RawGcadDocument ──
+    try:
+        assembly = assemble_raw_gcad_document(
+            user_request=user_request,
+            route_plan=route_plan,
+            feature_sequence=fs,
+            node_params=result.node_params,
+            dialect_registry=dialect_registry,
+        )
+        result.raw_assembly = assembly
+        metrics.raw_assembly_success = True
+    except Exception as exc:
+        result.failures.append(AuthoringFailure(
+            code=AuthoringFailureCode.LOCAL_SCHEMA_ERROR,
+            stage="assembly", message=str(exc),
+        ))
+        return result
+
+    # ── Stage 6: Parse + Validate + Canonicalize ──
+    from seekflow_engineering_tools.generative_cad.validation.pipeline import (
+        validate_and_canonicalize_with_bundle,
+    )
+
+    canonical, report, bundle = validate_and_canonicalize_with_bundle(
+        assembly.raw_document,
+    )
+    metrics.parse_success = canonical is not None or (report is not None)
+    metrics.validation_success = report.ok if report else False
+    metrics.canonicalize_success = canonical is not None
+
+    if canonical:
+        result.canonical_document = canonical
+        result.validation_bundle = bundle
+
+    if not metrics.validation_success and report:
+        for issue in (report.issues or []):
+            failure = map_validation_issue_to_failure(
+                issue.model_dump() if hasattr(issue, "model_dump") else issue,
+                stage=getattr(issue, "stage", "validation"),
+            )
+            result.failures.append(failure)
+
+    # ── Stage 7: Repair loop ──
+    if not metrics.validation_success and repair_caller is not None:
+        from seekflow_engineering_tools.generative_cad.repair.governor import (
+            RepairStateV2,
+            STAGE_RANK,
+            can_repair_v2,
+            update_repair_state_v2,
+        )
+        from seekflow_engineering_tools.generative_cad.repair.patch import (
+            RepairPatchV2,
+            apply_repair_patch_v2,
+        )
+
+        state = RepairStateV2(max_attempts=max_repair_attempts)
+        current_doc = assembly.raw_document
+
+        for _attempt in range(max_repair_attempts):
+            metrics.repair_attempts += 1
+
+            # Compute repair state hashes
+            from seekflow_engineering_tools.generative_cad.ir.hashing import stable_hash
+            raw_hash = stable_hash(current_doc)
+            error_sig = stable_hash(
+                [(i.code if hasattr(i, 'code') else i.get('code', ''))
+                 for i in (report.issues if report else [])]
+            )
+
+            # Determine stage rank
+            stage_name = report.stage if report and hasattr(report, 'stage') else "structure"
+            stage_rank = STAGE_RANK.get(stage_name, 0)
+
+            # Check if repair is still allowed
+            can, reason = can_repair_v2(
+                state,
+                raw_graph_hash=raw_hash,
+                error_sig_hash=error_sig,
+                current_stage_rank=stage_rank,
+            )
+            if not can:
+                result.failures.append(AuthoringFailure(
+                    code=AuthoringFailureCode.LOCAL_SCHEMA_ERROR,
+                    stage="repair", message=f"Repair stopped: {reason}",
+                ))
+                break
+
+            # Get repair patch from LLM
+            try:
+                tc_result = repair_caller.call_strict_tool(
+                    messages=[{"role": "user", "content": str(current_doc)}],
+                    tool_name="emit_repair_patch",
+                    tool_description="Local repair patch",
+                    tool_schema={},
+                    model_config=llm_config.repair,
+                )
+                if tc_result.arguments.get("give_up"):
+                    break
+                patch = RepairPatchV2.model_validate(tc_result.arguments)
+            except Exception as exc:
+                result.failures.append(AuthoringFailure(
+                    code=AuthoringFailureCode.LOCAL_SCHEMA_ERROR,
+                    stage="repair", message=str(exc),
+                ))
+                break
+
+            # Apply patch
+            try:
+                current_doc = apply_repair_patch_v2(current_doc, patch)
+            except Exception as exc:
+                result.failures.append(AuthoringFailure(
+                    code=AuthoringFailureCode.LOCAL_SCHEMA_ERROR,
+                    stage="repair:apply", message=str(exc),
+                ))
+                break
+
+            # Revalidate
+            canonical, report, bundle = validate_and_canonicalize_with_bundle(current_doc)
+            if canonical and report.ok:
+                metrics.validation_success = True
+                metrics.canonicalize_success = True
+                result.canonical_document = canonical
+                result.validation_bundle = bundle
+                break
+
+            state = update_repair_state_v2(
+                state,
+                raw_graph_hash=raw_hash,
+                error_sig_hash=error_sig,
+                stage_rank=stage_rank,
+            )
+
+    # Final failure code
+    if result.failures:
+        metrics.final_failure_code = result.failures[-1].code.value
+
+    return result

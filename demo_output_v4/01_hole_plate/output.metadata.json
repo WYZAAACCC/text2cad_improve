@@ -5,8 +5,8 @@
     "schema_version": "g_cad_core_v0.2",
     "canonical_version": "canonical_gcad_v0.2",
     "trust_level": "reference_geometry",
-    "document_id": "plate-100x60x8-4hole",
-    "part_name": "plate_100x60x8_4corner_holes",
+    "document_id": "plate_100x60x8_4holes",
+    "part_name": "100x60x8mm Plate with 4 Corner Holes",
     "selected_dialects": [
       {
         "dialect": "sketch_extrude",
@@ -24,15 +24,27 @@
       {
         "node_id": "n2",
         "dialect": "sketch_extrude",
-        "op": "cut_hole_pattern_linear",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n3",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n4",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
         "op_version": "1.0.0"
       }
     ],
-    "raw_graph_hash": "sha256:e9bd8a041fa1c5a167598b9b4dac501847288cbb872fdfb4de407d6099bf1fe7",
-    "canonical_graph_hash": "sha256:0d86843e63c3b515fa5100997d150c8af6f83d6a45a37fac44473ec9e6c5a1a0",
+    "raw_graph_hash": "sha256:c473fc3a44c795918ab474ab706ccb1bbbe7fe3bb23d785214f5f0cd7ee92294",
+    "canonical_graph_hash": "sha256:9fbf81ab63ea5e998a253ec90ce11991c22dacc8987cd7a3f567591f7ecfe385",
     "paths": {
-      "canonical_ir_path": "E:\\auto_detection_process\\demo_output_v4\\.generative_cad_graphs\\gcad_d2ba71d05565.json",
-      "validation_seed_path": "E:\\auto_detection_process\\demo_output_v4\\.generative_cad_graphs\\gcad_d2ba71d05565.validation.json",
+      "canonical_ir_path": "E:\\auto_detection_process\\demo_output_v4\\.generative_cad_graphs\\gcad_0b22206e79c1.json",
+      "validation_seed_path": "E:\\auto_detection_process\\demo_output_v4\\.generative_cad_graphs\\gcad_0b22206e79c1.validation.json",
       "step_path": "E:\\auto_detection_process\\demo_output_v4\\01_hole_plate\\output.step",
       "metadata_path": "E:\\auto_detection_process\\demo_output_v4\\01_hole_plate\\output.metadata.json"
     },
@@ -42,7 +54,7 @@
       "geometry_runtime_version": "cadquery_runtime_v1"
     },
     "artifact": {
-      "step_sha256": "sha256:7d191b87dccefce21951b7aa5b5925d984d5a12344c72d3137a9a183ef776483",
+      "step_sha256": "sha256:1ad33db4714d261617675d2b649349eb1bc53ef299bd337b3f0376cb8a1b5573",
       "metadata_schema_hash": null
     },
     "import_policy": {
@@ -63,7 +75,17 @@
       },
       {
         "node_id": "n2",
-        "op": "cut_hole_pattern_linear",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n3",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n4",
+        "op": "cut_hole",
         "status": "ok"
       }
     ],

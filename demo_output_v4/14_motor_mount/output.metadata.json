@@ -5,8 +5,8 @@
     "schema_version": "g_cad_core_v0.2",
     "canonical_version": "canonical_gcad_v0.2",
     "trust_level": "reference_geometry",
-    "document_id": "base_plate_120x80x10_4hole",
-    "part_name": "base_plate_120x80x10mm_4xO8",
+    "document_id": "baseplate-120x80x10-4xO8",
+    "part_name": "底板 120x80x10mm 四角4xØ8安装孔",
     "selected_dialects": [
       {
         "dialect": "sketch_extrude",
@@ -16,23 +16,47 @@
     ],
     "op_versions": [
       {
-        "node_id": "n1",
+        "node_id": "n_base",
         "dialect": "sketch_extrude",
         "op": "extrude_rectangle",
         "op_version": "1.0.0"
       },
       {
-        "node_id": "n2",
+        "node_id": "n_hole1",
         "dialect": "sketch_extrude",
-        "op": "cut_hole_pattern_linear",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_hole2",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_hole3",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_hole4",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_chamfer",
+        "dialect": "sketch_extrude",
+        "op": "apply_safe_chamfer",
         "op_version": "1.0.0"
       }
     ],
-    "raw_graph_hash": "sha256:f2b413ae5af29f2849b7330b93a5e99fb83b1b6077a6148f907b1ae0dfa1fb16",
-    "canonical_graph_hash": "sha256:1e45f562517c4e34b9bc415a2091b21308409a929281991c475cc719cb717888",
+    "raw_graph_hash": "sha256:18e620dcba5819ba9fb69d8b071f11e0b7a997754b2dac3455a775d9e56bb82f",
+    "canonical_graph_hash": "sha256:92a3a0bcd4d858ecfe76015e787cb4f9c2bf99e600bf172452f395fde99dc59d",
     "paths": {
-      "canonical_ir_path": "E:\\auto_detection_process\\demo_output_v4\\.generative_cad_graphs\\gcad_fe6a54340b1d.json",
-      "validation_seed_path": "E:\\auto_detection_process\\demo_output_v4\\.generative_cad_graphs\\gcad_fe6a54340b1d.validation.json",
+      "canonical_ir_path": "E:\\auto_detection_process\\demo_output_v4\\.generative_cad_graphs\\gcad_91b94baf0ec2.json",
+      "validation_seed_path": "E:\\auto_detection_process\\demo_output_v4\\.generative_cad_graphs\\gcad_91b94baf0ec2.validation.json",
       "step_path": "E:\\auto_detection_process\\demo_output_v4\\14_motor_mount\\output.step",
       "metadata_path": "E:\\auto_detection_process\\demo_output_v4\\14_motor_mount\\output.metadata.json"
     },
@@ -42,7 +66,7 @@
       "geometry_runtime_version": "cadquery_runtime_v1"
     },
     "artifact": {
-      "step_sha256": "sha256:bfc396a5dd5320787c36c908c78cd49a3fa82e19f0bebaa9413554a5f411eac3",
+      "step_sha256": "sha256:633bccc5605e73532ac11b540d65590b2eb8869c075a60ee25f70fc1628b7705",
       "metadata_schema_hash": null
     },
     "import_policy": {
@@ -57,13 +81,33 @@
     "degraded_features": [],
     "operation_metrics": [
       {
-        "node_id": "n1",
+        "node_id": "n_base",
         "op": "extrude_rectangle",
         "status": "ok"
       },
       {
-        "node_id": "n2",
-        "op": "cut_hole_pattern_linear",
+        "node_id": "n_hole1",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_hole2",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_hole3",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_hole4",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_chamfer",
+        "op": "apply_safe_chamfer",
         "status": "ok"
       }
     ],

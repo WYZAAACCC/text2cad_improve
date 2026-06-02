@@ -1,0 +1,5 @@
+Create assembly of a cylindrical hub and base plate:
+Component 1 'hub_body' (axisymmetric): revolve_profile to create hub OD=50mm, then cut_center_bore diameter=25mm. Height 40mm.
+Component 2 'base_plate' (sketch_extrude): extrude_rectangle width=100, height=80, depth=10.
+Assembly '__assembly__' (composition): boolean_union the two component outputs.
+Units mm. Reference geometry only. Not for manufacturing.

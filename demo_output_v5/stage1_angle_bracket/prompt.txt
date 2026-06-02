@@ -1,0 +1,8 @@
+Create an L-shaped mounting bracket as a single solid body:
+- Base plate: extrude_rectangle width=80, height=50, depth=8 (on XY plane)
+- Vertical plate: extrude_rectangle width=8, height=40, depth=80 (on YZ plane)
+  position the vertical plate at one edge of the base
+- Add a triangular rib: add_rib thickness=6, height=20, length=40 at the inner corner
+- Add two 6mm mounting holes in the base plate
+- Apply 1mm fillet on all external edges
+Units mm. Reference geometry only. Not for manufacturing.

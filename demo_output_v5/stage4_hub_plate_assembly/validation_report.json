@@ -1,0 +1,33 @@
+{
+  "ok": false,
+  "stage": "params",
+  "issues": [
+    {
+      "code": "invalid_params",
+      "message": "node 'hub_revolve' params invalid for op 'revolve_profile': 10 validation errors for RevolveProfileParams\nprofile_stations.0.r_mm\n  Field required [type=missing, input_value={'r': 25.0, 'z': 0.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nprofile_stations.0.z_front_mm\n  Field required [type=missing, input_value={'r': 25.0, 'z': 0.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nprofile_stations.0.z_rear_mm\n  Field required [type=missing, input_value={'r': 25.0, 'z': 0.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nprofile_stations.0.r\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nprofile_stations.0.z\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nprofile_stations.1.r_mm\n  Field required [type=missing, input_value={'r': 25.0, 'z': 40.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nprofile_stations.1.z_front_mm\n  Field required [type=missing, input_value={'r': 25.0, 'z': 40.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nprofile_stations.1.z_rear_mm\n  Field required [type=missing, input_value={'r': 25.0, 'z': 40.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nprofile_stations.1.r\n  Extra inputs are not permitted [type=extra_forbidden, input_value=25.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nprofile_stations.1.z\n  Extra inputs are not permitted [type=extra_forbidden, input_value=40.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "hub_revolve",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'hub_union' params invalid for op 'revolve_profile': 5 validation errors for RevolveProfileParams\nprofile_stations.0.r_mm\n  Field required [type=missing, input_value={'r': 0.0, 'z': 0.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nprofile_stations.0.z_front_mm\n  Field required [type=missing, input_value={'r': 0.0, 'z': 0.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nprofile_stations.0.z_rear_mm\n  Field required [type=missing, input_value={'r': 0.0, 'z': 0.0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nprofile_stations.0.r\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nprofile_stations.0.z\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "hub_union",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "registry",
+    "params"
+  ]
+}

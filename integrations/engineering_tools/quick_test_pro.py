@@ -78,10 +78,9 @@ for idx, (cid, name, prompt) in enumerate(PROMPTS):
         rp = build_level1_routing_prompt(user_request=prompt, dialect_catalog=export_dialect_catalog())
         resp1 = client.chat.completions.create(model='deepseek-v4-pro', messages=[
             {'role':'system','content':rp['system']},{'role':'user','content':rp['user']}
-        ], tools=[l1_tool], max_tokens=2048, temperature=0.1)  # NO tool_choice!
-        plan = extract_json(resp1.choices[0].message)
-        if plan is None:
-            r['stage'] = 'L1_no_output'; results[cid] = r; print(f'  [{idx+1:2d}] {cid}: L1 NO OUTPUT'); continue
+        ], tools=[l1_tool], tool_choice='required', max_tokens=2048, temperature=0.1,
+            extra_body={"thinking": {"type": "disabled"}})
+        plan = json.loads(resp1.choices[0].message.tool_calls[0].function.arguments)
         rd = plan.get('route_decision','?')
         if rd != 'generative_cad_ir':
             r['stage'] = f'L1_{rd}'; results[cid] = r; print(f'  [{idx+1:2d}] {cid}: {rd}'); continue
@@ -96,8 +95,9 @@ for idx, (cid, name, prompt) in enumerate(PROMPTS):
         ap = build_level2_authoring_prompt(prompt, sel, contracts)
         resp2 = client.chat.completions.create(model='deepseek-v4-pro', messages=[
             {'role':'system','content':ap['system']},{'role':'user','content':ap['user']}
-        ], tools=[l2_tool], max_tokens=4096, temperature=0.1)  # NO tool_choice!
-        raw = extract_json(resp2.choices[0].message)
+        ], tools=[l2_tool], tool_choice='required', max_tokens=8192, temperature=0.1,
+            extra_body={"thinking": {"type": "disabled"}})
+        raw = json.loads(resp2.choices[0].message.tool_calls[0].function.arguments)
         if raw is None:
             r['stage'] = 'L2_no_output'; results[cid] = r; print(f'  [{idx+1:2d}] {cid}: L2 NO OUTPUT'); continue
 
