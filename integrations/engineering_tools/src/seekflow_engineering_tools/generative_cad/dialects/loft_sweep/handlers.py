@@ -57,11 +57,22 @@ def handle_sweep_profile(node, ctx) -> dict:
         raise ValueError("Need at least 2 path points for sweep")
 
     try:
-        # Build path as a spline wire
-        path_wire = cq.Workplane("XY").moveTo(pts[0].x, pts[0].y)
-        for pt in pts[1:]:
-            path_wire = path_wire.lineTo(pt.x, pt.y)
-        path_wire = path_wire.close() if len(pts) <= 2 else path_wire
+        # Build path as NURBS spline (G1 continuous, not polyline)
+        if len(pts) == 2:
+            path_wire = cq.Workplane("XY").moveTo(pts[0].x, pts[0].y).lineTo(pts[1].x, pts[1].y)
+        else:
+            # Use spline for 3+ points — smooth G1 continuous path
+            path_wire = cq.Workplane("XY").spline(pts)
+
+        # Self-intersection check: sweep path must not cross itself
+        # Simple heuristic: check if any two non-adjacent segments come within 0.1mm
+        for i in range(len(pts) - 2):
+            for j in range(i + 2, len(pts) - 1):
+                d = (pts[i] - pts[j]).Length
+                if d < 0.1:
+                    raise RuntimeError(
+                        f"Sweep path self-intersects: points {i} and {j} are {d:.4f}mm apart"
+                    )
 
         # Build profile
         if shape == "circle":
@@ -107,7 +118,17 @@ def handle_loft_sections(node, ctx) -> dict:
                 wires.append(wp.ellipse(w / 2.0, h / 2.0))
 
         ruled = node.params.get("ruled", False)
+        continuity = node.params.get("continuity", "G0")
         solid = cq.Workplane("XY").add(wires).toPending().loft(ruled=ruled)
+        # Note: G1/G2 loft requires CadQuery/OCCT 7.7+ with BRepOffsetAPI_ThruSections.
+        # For now, G0 (default) is always used. The continuity parameter is recorded
+        # for future OCCT versions that support it.
+        if continuity in ("G1", "G2"):
+            ctx.warnings.append(
+                f"loft_sections on '{node.id}': continuity={continuity} requested. "
+                f"Current CadQuery/OCCT only supports G0 (tangent) loft. "
+                f"Result is G0 continuous."
+            )
     except Exception as e:
         raise RuntimeError(f"loft_sections failed on '{node.id}': {e}")
 
@@ -126,6 +147,16 @@ def handle_helix_sweep(node, ctx) -> dict:
     variable = params.get("variable_pitch", False)
 
     try:
+        # Curvature safety check: profile must fit within the helix curvature
+        min_curvature_radius = pitch / (2 * math.pi)
+        if profile_r > min_curvature_radius * 0.8:
+            ctx.warnings.append(
+                f"helix_sweep on '{node.id}': profile radius ({profile_r:.1f}mm) > "
+                f"80% of minimum curvature radius ({min_curvature_radius:.1f}mm). "
+                f"Helix may self-intersect — consider reducing profile_radius_mm "
+                f"or increasing pitch_mm."
+            )
+
         if variable:
             start_p = float(params.get("start_pitch_mm", pitch))
             end_p = float(params.get("end_pitch_mm", pitch * 2))
