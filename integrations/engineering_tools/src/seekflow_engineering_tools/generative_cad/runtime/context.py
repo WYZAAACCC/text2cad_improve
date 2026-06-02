@@ -10,6 +10,7 @@ from seekflow_engineering_tools.generative_cad.runtime.cadquery_runtime import C
 from seekflow_engineering_tools.generative_cad.runtime.geometry_runtime import GeometryRuntime
 from seekflow_engineering_tools.generative_cad.runtime.object_store import RuntimeObjectStore
 from seekflow_engineering_tools.generative_cad.runtime.tolerance import DEFAULT_TOLERANCE, GeometryTolerance
+from seekflow_engineering_tools.generative_cad.runtime.cache import OperationCache
 
 
 @dataclass
@@ -20,6 +21,7 @@ class RuntimeContext:
     object_store: RuntimeObjectStore = field(default_factory=RuntimeObjectStore)
     geometry_runtime: GeometryRuntime = field(default_factory=CadQueryRuntime)
     tolerance: GeometryTolerance = field(default=DEFAULT_TOLERANCE)
+    cache: OperationCache = field(default_factory=OperationCache)
 
     node_outputs: dict[str, dict[str, str]] = field(default_factory=dict)
     component_outputs: dict[str, dict[str, str]] = field(default_factory=dict)

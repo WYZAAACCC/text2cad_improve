@@ -38,7 +38,21 @@ def execute_operation(
     4. Propagate warnings, degraded_features, metrics
     5. Bind node outputs and return ExecutedNode
     """
-    raw_result = op_spec.handler(node, ctx)
+    # Check cache before executing handler
+    cached = ctx.cache.get(node)
+    if cached is not None:
+        # Re-wrap cached result — it was already validated
+        if isinstance(cached, OperationResult):
+            raw_result = cached
+        elif isinstance(cached, dict) and op_spec.handler_kind == "v1_dict":
+            raw_result = cached
+        else:
+            raw_result = op_spec.handler(node, ctx)
+    else:
+        raw_result = op_spec.handler(node, ctx)
+        # Cache the result for future incremental rebuilds
+        if isinstance(raw_result, (OperationResult, dict)):
+            ctx.cache.put(node, raw_result)
 
     # Normalize to OperationResult
     if isinstance(raw_result, OperationResult):
