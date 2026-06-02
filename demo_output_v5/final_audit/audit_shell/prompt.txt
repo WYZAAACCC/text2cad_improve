@@ -1,0 +1,1 @@
+Create a cup: revolve_profile r_mm=30 z=0-40, cut_center_bore diameter_mm=25 depth_mm=35. Then shell_body thickness_mm=2 to make it hollow. Units mm. Reference only. Not for manufacturing.

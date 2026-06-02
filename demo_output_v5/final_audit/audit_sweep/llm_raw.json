@@ -1,0 +1,105 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "c8f2e1a3-7b4d-4f9a-9e2c-5d1b6a8f0c3e",
+  "part_name": "u_shaped_pipe",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "pipe_component",
+      "owner_dialect": "loft_sweep",
+      "root_node": "sweep_profile_node"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "create_sweep_path_node",
+      "component": "pipe_component",
+      "dialect": "loft_sweep",
+      "op": "create_sweep_path",
+      "op_version": "0.2.0",
+      "phase": "path",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "sweep_path",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "path_points": [
+          {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          {
+            "x": 0,
+            "y": 0,
+            "z": 50
+          },
+          {
+            "x": 30,
+            "y": 0,
+            "z": 50
+          },
+          {
+            "x": 30,
+            "y": 0,
+            "z": 0
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "sweep_profile_node",
+      "component": "pipe_component",
+      "dialect": "loft_sweep",
+      "op": "sweep_profile",
+      "op_version": "0.2.0",
+      "phase": "sweep",
+      "inputs": [
+        {
+          "node": "create_sweep_path_node",
+          "output": "sweep_path"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "shape": "circle",
+        "radius_mm": 5
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {}
+}

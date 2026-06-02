@@ -1,0 +1,1 @@
+Create a coil spring: helix_sweep radius_mm=15 height_mm=40 pitch_mm=8 profile_radius_mm=2 turns=5. Units mm. Reference only. Not for manufacturing.

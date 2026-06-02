@@ -111,6 +111,8 @@ def auto_fix(raw_doc: dict, dialect_registry=None) -> dict:
     doc = _fix_dialect_names(doc, dialect_registry)
     doc = _fix_qualified_op_names(doc)
     doc = _fix_param_names(doc)
+    doc = _fix_param_values(doc)
+    doc = _fix_unknown_ops(doc, dialect_registry)
     doc = _fix_target_values(doc)
     doc = _fix_root_node(doc)
     doc = _fix_phase_ordering(doc, dialect_registry)
@@ -258,6 +260,49 @@ def _fix_root_node(doc: dict) -> dict:
     return doc
 
 
+def _fix_unknown_ops(doc: dict, dialect_registry=None) -> dict:
+    """删除 LLM 虚造的不存在的 op 节点 (如 'cleanup', 'compose')。
+    同时移除非 op 节点的引用。"""
+    if dialect_registry is None:
+        from seekflow_engineering_tools.generative_cad.dialects.default_registry import default_registry
+        dialect_registry = default_registry()
+
+    valid_ops: set[tuple[str, str]] = set()
+    for did in dialect_registry.list_ids():
+        d = dialect_registry.get(did)
+        if d:
+            for (op_name, op_ver) in d.op_specs().keys():
+                valid_ops.add((did, op_name))
+
+    nodes = doc.get("nodes", [])
+    removed_ids = set()
+    kept_nodes = []
+    for node in nodes:
+        did = node.get("dialect", "")
+        op = node.get("op", "")
+        # Allow nodes with known dialects even if op lookup fails
+        is_valid = (did, op) in valid_ops
+        if not is_valid:
+            # Try matching: if op name exists in ANY dialect, keep it
+            found = any((d, op) in valid_ops for d in dialect_registry.list_ids())
+            if not found:
+                removed_ids.add(node.get("id", ""))
+                continue
+        kept_nodes.append(node)
+
+    if removed_ids:
+        doc["nodes"] = kept_nodes
+        # Fix root_node references
+        node_ids = {n["id"] for n in kept_nodes}
+        for comp in doc.get("components", []):
+            rn = comp.get("root_node", "")
+            if rn in removed_ids:
+                comp_nodes = [n for n in kept_nodes if n.get("component") == comp.get("id")]
+                if comp_nodes:
+                    comp["root_node"] = comp_nodes[-1]["id"]
+    return doc
+
+
 def _fix_phase_ordering(doc: dict, dialect_registry=None) -> dict:
     """按 phase 顺序重排 nodes。LLM 经常不遵守 phase order 导致验证失败。"""
     if dialect_registry is None:
@@ -356,6 +401,44 @@ def _fix_profile_stations(doc: dict) -> dict:
 
             node["params"]["profile_stations"] = new_stations
 
+    return doc
+
+
+def _fix_param_values(doc: dict) -> dict:
+    """修正 LLM 常见的参数值偏差 (如 direction='positive' → '+')。"""
+    DIRECTION_FIXES = {
+        "positive": "+", "pos": "+", "up": "+", "outward": "+",
+        "negative": "-", "neg": "-", "down": "-", "inward": "-",
+        "+z": "+", "-z": "-", "z+": "+", "z-": "-", "both": "+",
+    }
+    AXIS_FIXES = {"z+": "Z", "+z": "Z", "z-": "Z", "-z": "Z", "+Z": "Z", "-Z": "Z"}
+    STANDARD_FIXES = {"metric": "ISO_metric", "iso": "ISO_metric", "iso_metric": "ISO_metric",
+                       "metric_coarse": "ISO_metric", "coarse": "ISO_metric"}
+    CLASS_FIXES = {"6h": "6H", "6g": "6H", "7h": "7H", "8g": "6g"}
+
+    for node in doc.get("nodes", []):
+        params = node.get("params", {})
+        # direction
+        if "direction" in params:
+            d = str(params["direction"]).lower().strip()
+            if d in DIRECTION_FIXES:
+                params["direction"] = DIRECTION_FIXES[d]
+        # axis
+        for key in ("axis",):
+            if key in params:
+                a = str(params[key]).strip()
+                if a in AXIS_FIXES:
+                    params[key] = AXIS_FIXES[a]
+        # standard
+        if "standard" in params:
+            s = str(params["standard"]).lower().strip().replace(" ", "_")
+            if s in STANDARD_FIXES:
+                params["standard"] = STANDARD_FIXES[s]
+        # thread_class
+        if "thread_class" in params:
+            c = str(params["thread_class"]).strip()
+            if c in CLASS_FIXES:
+                params["thread_class"] = CLASS_FIXES[c]
     return doc
 
 

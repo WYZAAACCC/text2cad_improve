@@ -1,0 +1,51 @@
+[
+  {
+    "id": "audit_axisymmetric",
+    "name": "Axisymmetric Full",
+    "ok": false,
+    "stages": [
+      "llm"
+    ]
+  },
+  {
+    "id": "audit_sketch_extrude",
+    "name": "SketchExtrude Full",
+    "ok": false,
+    "stages": [
+      "llm"
+    ]
+  },
+  {
+    "id": "audit_composition",
+    "name": "Composition Multi-Body",
+    "ok": false,
+    "stages": [
+      "llm"
+    ]
+  },
+  {
+    "id": "audit_sweep",
+    "name": "Sweep Pipe",
+    "ok": false,
+    "stages": [
+      "llm"
+    ]
+  },
+  {
+    "id": "audit_helix",
+    "name": "Helix Spring",
+    "ok": false,
+    "stages": [
+      "llm"
+    ],
+    "elapsed": 7.9
+  },
+  {
+    "id": "audit_shell",
+    "name": "Shell Housing",
+    "ok": false,
+    "stages": [
+      "llm"
+    ]
+  }
+]

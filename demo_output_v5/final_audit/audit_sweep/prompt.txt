@@ -1,0 +1,1 @@
+Create a U-shaped pipe: create_sweep_path with path_points: [x=0,y=0,z=0], [x=0,y=0,z=50], [x=30,y=0,z=50], [x=30,y=0,z=0]. Then sweep_profile shape=circle radius_mm=5 along the path. Units mm. Reference only. Not for manufacturing.

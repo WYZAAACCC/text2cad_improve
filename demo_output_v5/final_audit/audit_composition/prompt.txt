@@ -1,0 +1,1 @@
+Component 'hub' (axisymmetric): revolve_profile r_mm=25 z=0-40, cut_center_bore diameter_mm=15 through_all. Component 'plate' (sketch_extrude): extrude_rectangle width_mm=80 height_mm=60 depth_mm=10. Component '__assembly__' (composition): boolean_union hub and plate. Units mm. Reference only. Not for manufacturing.
