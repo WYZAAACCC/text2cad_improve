@@ -36,7 +36,7 @@
       "geometry_runtime_version": "cadquery_runtime_v1"
     },
     "artifact": {
-      "step_sha256": "sha256:60f161cfd618feb37b63ce610a1eea41e009c242d3ed7cbaad93bc4c5c082428",
+      "step_sha256": "sha256:0e0b1304caab7b05fc0d589b2cc55216db7c19a80618a289293569a516bf9cc4",
       "metadata_schema_hash": null
     },
     "import_policy": {

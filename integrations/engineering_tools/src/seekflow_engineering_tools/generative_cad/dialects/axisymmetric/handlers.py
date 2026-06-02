@@ -28,7 +28,10 @@ def handle_revolve_profile(node: CanonicalNode, ctx: RuntimeContext) -> dict[str
     for s in stations:
         pts_2d.append((float(s["r_mm"]), float(s.get("z_front_mm", 0))))
         pts_2d.append((float(s["r_mm"]), float(s.get("z_rear_mm", 0))))
-    pts_2d.sort(key=lambda p: (p[1], p[0]))
+    # Sort by z only (stable sort preserves input order for same z).
+    # Using (p[1], p[0]) was WRONG — sorting by r within same z
+    # destroyed the sequential profile wire, producing zero-volume revolve.
+    pts_2d.sort(key=lambda p: p[1])
 
     # Deduplicate consecutive identical points (prevent degenerate zero-length edges)
     unique_pts = [pts_2d[0]]
@@ -36,14 +39,21 @@ def handle_revolve_profile(node: CanonicalNode, ctx: RuntimeContext) -> dict[str
         if pt != unique_pts[-1]:
             unique_pts.append(pt)
 
-    result = cq.Workplane("XZ").moveTo(unique_pts[0][0], unique_pts[0][1])
-    for (r, z) in unique_pts[1:]:
+    # Build a proper axisymmetric revolve.
+    # Profile is on XZ plane (X=radius, Z=height). Must start from Z axis
+    # (r=0) at the bottom, trace the outer profile, return to Z axis at
+    # the top, then close. Use default revolve() — explicit axis (0,0,0)-(0,0,1)
+    # produces zero-volume on XZ workplane due to CadQuery internal behavior.
+    z_min = unique_pts[0][1]
+    z_max = unique_pts[-1][1]
+    result = cq.Workplane("XZ").moveTo(0, z_min)
+    for (r, z) in unique_pts:
         result = result.lineTo(r, z)
-    result = result.lineTo(0, unique_pts[-1][1]).lineTo(0, unique_pts[0][1]).close()
-    result = result.revolve(360, (0, 0, 0), (0, 0, 1))
+    result = result.lineTo(0, z_max).close()
+    solid = result.revolve(360)
 
     result_map = {}
-    sid = _store_solid(node, ctx, result)
+    sid = _store_solid(node, ctx, solid)
     result_map["body"] = sid
 
     if any(o.name == "outer_frame" for o in node.outputs):

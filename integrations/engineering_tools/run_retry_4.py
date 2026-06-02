@@ -51,14 +51,18 @@ def build_contract(dialect_ids):
             # Explicit examples for hallucination-prone ops
             if op_name == "revolve_profile":
                 lines.append(
-                    '    EXAMPLE: {"axis":"Z","profile_stations":['
+                    '    EXAMPLE WASHER: {"axis":"Z","profile_stations":['
                     '{"r_mm":40.0,"z_front_mm":0.0,"z_rear_mm":12.0},'
                     '{"r_mm":15.0,"z_front_mm":12.0,"z_rear_mm":13.0}]}'
                 )
                 lines.append(
-                    "    CRITICAL: r_mm=RADIUS(half of diameter). "
-                    "z_rear_mm MUST be > z_front_mm. "
-                    "profile_stations is a list of OBJECTS with r_mm,z_front_mm,z_rear_mm fields."
+                    "    CRITICAL: profile_stations is a SEQUENTIAL polyline in r-z plane. "
+                    "Stations go from BOTTOM to TOP. Each station is a VERTICAL segment. "
+                    "z_rear_mm of station N MUST EQUAL z_front_mm of station N+1. "
+                    "First station = outer wall (full thickness). "
+                    "Last station = inner bore (if needed, with tiny z delta). "
+                    "r_mm is RADIUS (half of diameter). "
+                    "ALL stations must have DIFFERENT z ranges — they chain sequentially!"
                 )
             if op_name == "cut_center_bore":
                 lines.append('    EXAMPLE: {"diameter_mm":30.0,"axis":"Z","through_all":true}')

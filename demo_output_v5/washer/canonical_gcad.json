@@ -51,14 +51,14 @@
         "axis": "Z",
         "profile_stations": [
           {
-            "r_mm": 15.0,
+            "r_mm": 40.0,
             "z_front_mm": 0.0,
             "z_rear_mm": 12.0
           },
           {
-            "r_mm": 40.0,
-            "z_front_mm": 0.0,
-            "z_rear_mm": 12.0
+            "r_mm": 15.0,
+            "z_front_mm": 12.0,
+            "z_rear_mm": 13.0
           }
         ]
       },
@@ -66,15 +66,15 @@
         "axis": "Z",
         "profile_stations": [
           {
-            "r_mm": 15.0,
+            "r_mm": 40.0,
             "z_front_mm": 0.0,
             "z_rear_mm": 12.0,
             "label": null
           },
           {
-            "r_mm": 40.0,
-            "z_front_mm": 0.0,
-            "z_rear_mm": 12.0,
+            "r_mm": 15.0,
+            "z_front_mm": 12.0,
+            "z_rear_mm": 13.0,
             "label": null
           }
         ]
@@ -149,6 +149,6 @@
     "no_structural_validation": true,
     "no_life_prediction": true
   },
-  "canonical_graph_hash": "sha256:14feff9ba5f6cf1b287a2a695d579e28d1cd79a46137c53a8a18dab9dac3c184",
-  "raw_graph_hash": "sha256:8bbc44a19023fadd15335988093ab4f2d3be6d4b71bd4db8168df9b45fbb0c5b"
+  "canonical_graph_hash": "sha256:e6dfc3ea1c8518f8b29a9af23aefdbe243695230785f7a073c594ed07d08b1a3",
+  "raw_graph_hash": "sha256:3dcdfb5771b205b5d00626f6ad3a96cabf012613acec63be8935dc511478dcd8"
 }

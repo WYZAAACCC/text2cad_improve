@@ -238,29 +238,74 @@ def _fix_root_node(doc: dict) -> dict:
 
 
 def _fix_profile_stations(doc: dict) -> dict:
-    """确保 revolve_profile 的 profile_stations 至少有 2 个 station。
-    LLM 经常只输出 1 个 station 来定义圆柱体，但 validator 要求 ≥2。
-    修复方法：复制第一个 station 并给 z 加 0.5mm 偏移。"""
+    """修复 revolve_profile 的 profile_stations 结构问题。
+
+    问题1: 只有 1 个 station → 复制并加微小 z 偏移。
+    问题2 (关键): 所有 station 有相同的 z_front_mm 和 z_rear_mm。
+        LLM 把它们当作"横截面描述"，但实际应该是"顺序多段线"。
+        修复: 按 r_mm 降序排列，分配顺序 z 范围。"""
     for node in doc.get("nodes", []):
         if node.get("op") != "revolve_profile":
             continue
         stations = node.get("params", {}).get("profile_stations", [])
-        if not isinstance(stations, list):
+        if not isinstance(stations, list) or len(stations) == 0:
+            node["params"]["profile_stations"] = [
+                {"r_mm": 10.0, "z_front_mm": 0.0, "z_rear_mm": 5.0},
+                {"r_mm": 5.0, "z_front_mm": 5.0, "z_rear_mm": 6.0},
+            ]
             continue
+
         if len(stations) < 2:
-            if len(stations) == 1:
-                s0 = dict(stations[0])
-                # 创建一个微小偏移的第二个 station
-                s1 = dict(s0)
-                s1["z_front_mm"] = s0["z_rear_mm"]
-                s1["z_rear_mm"] = s0["z_rear_mm"] + 0.5
-                node["params"]["profile_stations"] = [s0, s1]
-            else:
-                # 空列表 → 添加默认 station
-                node["params"]["profile_stations"] = [
-                    {"r_mm": 10.0, "z_front_mm": 0.0, "z_rear_mm": 5.0},
-                    {"r_mm": 5.0, "z_front_mm": 5.0, "z_rear_mm": 6.0},
-                ]
+            s0 = dict(stations[0])
+            s1 = dict(s0)
+            s1["z_front_mm"] = s0["z_rear_mm"]
+            s1["z_rear_mm"] = s0["z_rear_mm"] + 0.5
+            node["params"]["profile_stations"] = [s0, s1]
+            continue
+
+        # 检测: 所有 station 的 z_front_mm 相同 AND z_rear_mm 相同？
+        z_fronts = {s.get("z_front_mm") for s in stations}
+        z_rears = {s.get("z_rear_mm") for s in stations}
+
+        if len(z_fronts) == 1 and len(z_rears) == 1:
+            # 这是一个扁平 profile — LLM 错误地把所有 station 放在同一高度
+            z_start = list(z_fronts)[0]
+            z_end = list(z_rears)[0]
+            thickness = z_end - z_start
+            if thickness <= 0:
+                thickness = 10.0  # 默认 10mm 厚度
+
+            # 按 r_mm 降序排列 (外 → 内)
+            sorted_stations = sorted(stations, key=lambda s: s.get("r_mm", 0), reverse=True)
+
+            new_stations = []
+            for i, s in enumerate(sorted_stations):
+                if i == 0:
+                    # 第一个 station: 外壁, 全厚度
+                    new_stations.append({
+                        "r_mm": s["r_mm"],
+                        "z_front_mm": z_start,
+                        "z_rear_mm": z_end,
+                    })
+                elif i == len(sorted_stations) - 1:
+                    # 最后一个 station: 内孔, 微小 z 偏移
+                    prev_z = new_stations[-1]["z_rear_mm"]
+                    new_stations.append({
+                        "r_mm": s["r_mm"],
+                        "z_front_mm": prev_z,
+                        "z_rear_mm": prev_z + 1.0,
+                    })
+                else:
+                    # 中间 station: 阶梯
+                    prev_z = new_stations[-1]["z_rear_mm"]
+                    new_stations.append({
+                        "r_mm": s["r_mm"],
+                        "z_front_mm": prev_z,
+                        "z_rear_mm": prev_z + 1.0,
+                    })
+
+            node["params"]["profile_stations"] = new_stations
+
     return doc
 
 

@@ -33,8 +33,8 @@
         "op_version": "1.0.0"
       }
     ],
-    "raw_graph_hash": "sha256:8bbc44a19023fadd15335988093ab4f2d3be6d4b71bd4db8168df9b45fbb0c5b",
-    "canonical_graph_hash": "sha256:14feff9ba5f6cf1b287a2a695d579e28d1cd79a46137c53a8a18dab9dac3c184",
+    "raw_graph_hash": "sha256:3dcdfb5771b205b5d00626f6ad3a96cabf012613acec63be8935dc511478dcd8",
+    "canonical_graph_hash": "sha256:e6dfc3ea1c8518f8b29a9af23aefdbe243695230785f7a073c594ed07d08b1a3",
     "paths": {
       "canonical_ir_path": "E:\\auto_detection_process\\demo_output_v5\\washer\\canonical_gcad.json",
       "validation_seed_path": "E:\\auto_detection_process\\demo_output_v5\\washer\\validation_bundle.json",
@@ -47,7 +47,7 @@
       "geometry_runtime_version": "cadquery_runtime_v1"
     },
     "artifact": {
-      "step_sha256": "sha256:007e4081e5610826099e141e601e72a54616e93c21536f8650707a9d37c949ca",
+      "step_sha256": "sha256:7c5fb491f46c96b93f5646964bd83aa9509476fba2b877ed85f82f14efe3ab9b",
       "metadata_schema_hash": null
     },
     "import_policy": {

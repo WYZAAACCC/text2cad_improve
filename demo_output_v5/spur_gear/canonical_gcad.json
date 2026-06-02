@@ -52,8 +52,8 @@
           },
           {
             "r_mm": 5.0,
-            "z_front_mm": 0.0,
-            "z_rear_mm": 15.0
+            "z_front_mm": 15.0,
+            "z_rear_mm": 16.0
           }
         ]
       },
@@ -68,8 +68,8 @@
           },
           {
             "r_mm": 5.0,
-            "z_front_mm": 0.0,
-            "z_rear_mm": 15.0,
+            "z_front_mm": 15.0,
+            "z_rear_mm": 16.0,
             "label": null
           }
         ]
@@ -144,6 +144,6 @@
     "no_structural_validation": true,
     "no_life_prediction": true
   },
-  "canonical_graph_hash": "sha256:588f690903b00e1d8a1c0b0764b5e27375d769ffd81bf556b44a597b10baad30",
-  "raw_graph_hash": "sha256:4da78713ecc0a97d3ec050d41bf2e640f594457abaa58a4ca4f2fa151c7b739f"
+  "canonical_graph_hash": "sha256:e003080ef239f48f435180c2a823b0c018603f3e64948caf33bcd49b8c4a4aa3",
+  "raw_graph_hash": "sha256:00652365099005d9d1d42790919ed9dc2c73fc9f973729952bec17e07a44fa54"
 }
