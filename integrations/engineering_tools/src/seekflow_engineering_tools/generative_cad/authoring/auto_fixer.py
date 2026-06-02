@@ -117,6 +117,7 @@ def auto_fix(raw_doc: dict, dialect_registry=None) -> dict:
     doc = _fix_target_values(doc)
     doc = _fix_cross_component_refs(doc)
     doc = _fix_root_node(doc)
+    doc = _fix_phase_names(doc, dialect_registry)
     doc = _fix_phase_ordering(doc, dialect_registry)
     doc = _fix_profile_stations(doc)
     doc = _fill_default_params(doc)
@@ -393,6 +394,26 @@ def _fix_unknown_ops(doc: dict, dialect_registry=None) -> dict:
     return doc
 
 
+def _fix_phase_names(doc: dict, dialect_registry=None) -> dict:
+    """修正 LLM 虚造的 phase 名。根据 op 的实际 phase 替换。"""
+    if dialect_registry is None:
+        from seekflow_engineering_tools.generative_cad.dialects.default_registry import default_registry
+        dialect_registry = default_registry()
+    for node in doc.get("nodes", []):
+        did = node.get("dialect", "")
+        op = node.get("op", "")
+        phase = node.get("phase", "")
+        d = dialect_registry.get(did)
+        if d and phase:
+            try:
+                spec = d.get_op_spec(op, node.get("op_version", "1.0.0"))
+                if phase != spec.phase:
+                    node["phase"] = spec.phase
+            except Exception:
+                pass
+    return doc
+
+
 def _fix_phase_ordering(doc: dict, dialect_registry=None) -> dict:
     """按 phase 顺序重排 nodes。LLM 经常不遵守 phase order 导致验证失败。"""
     if dialect_registry is None:
@@ -502,6 +523,9 @@ def _fix_param_values(doc: dict) -> dict:
         "+z": "+", "-z": "-", "z+": "+", "z-": "-", "both": "+",
     }
     AXIS_FIXES = {"z+": "Z", "+z": "Z", "z-": "Z", "-z": "Z", "+Z": "Z", "-Z": "Z", "z": "Z", "x": "X", "y": "Y"}
+    PLANE_FIXES = {"xy": "XY", "yz": "YZ", "xz": "XZ", "yx": "XY", "zy": "YZ", "zx": "XZ"}
+    # add_rib uses X/Y for direction, NOT +/-. Fix only for add_rib.
+    RIB_DIRECTION_FIX = {"+": "X", "-": "Y", "+x": "X", "-y": "Y", "+z": "X", "-z": "Y", "x+": "X", "y+": "Y"}
     STANDARD_FIXES = {"metric": "ISO_metric", "iso": "ISO_metric", "iso_metric": "ISO_metric",
                        "metric_coarse": "ISO_metric", "coarse": "ISO_metric"}
     CLASS_FIXES = {"6h": "6H", "6g": "6H", "7h": "7H", "8g": "6g"}
@@ -511,7 +535,10 @@ def _fix_param_values(doc: dict) -> dict:
         # direction
         if "direction" in params:
             d = str(params["direction"]).lower().strip()
-            if d in DIRECTION_FIXES:
+            op = node.get("op", "")
+            if op == "add_rib" and d in RIB_DIRECTION_FIX:
+                params["direction"] = RIB_DIRECTION_FIX[d]
+            elif op != "add_rib" and d in DIRECTION_FIXES:
                 params["direction"] = DIRECTION_FIXES[d]
         # axis
         for key in ("axis",):
@@ -519,6 +546,11 @@ def _fix_param_values(doc: dict) -> dict:
                 a = str(params[key]).strip()
                 if a in AXIS_FIXES:
                     params[key] = AXIS_FIXES[a]
+        # plane
+        if "plane" in params:
+            p = str(params["plane"]).strip().lower()
+            if p in PLANE_FIXES:
+                params["plane"] = PLANE_FIXES[p]
         # standard
         if "standard" in params:
             s = str(params["standard"]).lower().strip().replace(" ", "_")

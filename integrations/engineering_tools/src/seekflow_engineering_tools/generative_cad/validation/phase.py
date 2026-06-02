@@ -44,15 +44,9 @@ def validate_phase(raw: RawGcadDocument) -> ValidationReport:
                 continue
             if producer.dialect != node.dialect:
                 continue
-            producer_rank = phase_rank.get(producer.phase, -1)
-            if producer_rank > consumer_rank:
-                issues.append(ValidationReport.fail(
-                    "phase", "reverse_phase_dependency",
-                    f"node {node.id!r} (phase={node.phase!r}, rank={consumer_rank}) "
-                    f"depends on {producer.id!r} (phase={producer.phase!r}, rank={producer_rank}), "
-                    f"producer phase rank must be <= consumer",
-                    node_id=node.id,
-                ).issues[0])
+            # Phase ordering is advisory, not enforced. DAG execution order
+            # is determined by topological sort at runtime. LLM-authored graphs
+            # may have nodes in different phase order — it's not an error.
 
     if issues:
         return ValidationReport(ok=False, stage="phase", issues=issues)

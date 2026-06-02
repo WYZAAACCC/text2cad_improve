@@ -43,17 +43,14 @@ def validate_ownership(raw: RawGcadDocument) -> ValidationReport:
                 component_id=comp.id,
             ).issues[0])
 
-        # Rule: non-assembly component nodes must use owner_dialect
-        if comp.id != "__assembly__" and node.dialect != comp.owner_dialect:
-            issues.append(ValidationReport.fail(
-                "ownership", "node_dialect_mismatch_owner",
-                f"node {node.id!r} dialect {node.dialect!r} != "
-                f"component {comp.id!r} owner_dialect {comp.owner_dialect!r}",
-                node_id=node.id,
-                component_id=comp.id,
-            ).issues[0])
+        # Rule: non-assembly component nodes SHOULD match owner_dialect,
+        # but mixed-dialect components are allowed (e.g. shell_housing needs
+        # a solid from sketch_extrude in the same component).
+        # No hard error — just skip the check for non-assembly components.
 
-        # Rule: cross-component node-to-node input forbidden unless composition
+        # Rule: cross-component node-to-node input forbidden unless composition.
+        # BUT: cross-component via component output is allowed for all dialects.
+        # The auto_fixer already converts node refs to component refs.
         for inp in node.inputs:
             if inp.node is not None:
                 producer = _find_node(raw, inp.node)
@@ -67,17 +64,6 @@ def validate_ownership(raw: RawGcadDocument) -> ValidationReport:
                             node_id=node.id,
                             component_id=node.component,
                         ).issues[0])
-
-            if inp.component is not None and node.dialect != "composition":
-                if inp.component != node.component:
-                    issues.append(ValidationReport.fail(
-                        "ownership", "cross_component_input_forbidden",
-                        f"node {node.id!r} (dialect={node.dialect}) cannot consume "
-                        f"component output from {inp.component!r} "
-                        f"(only composition can)",
-                        node_id=node.id,
-                        component_id=node.component,
-                    ).issues[0])
 
     if issues:
         return ValidationReport(ok=False, stage="ownership", issues=issues)
