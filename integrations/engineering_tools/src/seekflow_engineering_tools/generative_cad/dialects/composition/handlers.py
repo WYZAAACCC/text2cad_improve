@@ -154,15 +154,32 @@ def handle_boolean_union(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, 
         raise ValueError(f"boolean_union requires exactly 2 inputs, got {len(node.inputs)}")
     a = resolve_input_object(node, ctx, 0)
     b = resolve_input_object(node, ctx, 1)
+
+    # Pre-boolean diagnostic
+    from seekflow_engineering_tools.generative_cad.validation.geometry_validate import pre_boolean_check
+    pre = pre_boolean_check(a, b, ctx.tolerance)
+    if pre.reason:
+        ctx.warnings.append(f"boolean_union pre-check on '{node.id}': {pre.reason}")
+
     try:
         result = a.union(b)
     except Exception:
         try:
             result = a.fuse(b)
         except Exception:
+            # Structured degradation record — no silent data loss
+            ctx.degraded_features.append({
+                "node_id": node.id, "op": "boolean_union",
+                "reason": "union_failed_returning_first_solid",
+                "clearance_mm": pre.clearance_mm,
+                "lost_volume_mm3": pre.b_volume_mm3,
+                "lost_bbox_mm": pre.b_bbox_mm,
+                "kept_volume_mm3": pre.a_volume_mm3,
+            })
             ctx.warnings.append(
-                f"boolean_union failed on '{node.id}': returning first solid. "
-                f"Assembly may be incomplete."
+                f"boolean_union FAILED on '{node.id}': "
+                f"solid B ({_fmt_vol(pre.b_volume_mm3)}) was NOT merged. "
+                f"Assembly is INCOMPLETE. Clearance={_fmt_clr(pre.clearance_mm)}."
             )
             return {"body": _store_solid(node, ctx, a)}
     return {"body": _store_solid(node, ctx, result)}
@@ -173,15 +190,37 @@ def handle_boolean_cut(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, st
         raise ValueError(f"boolean_cut requires exactly 2 inputs, got {len(node.inputs)}")
     target = resolve_input_object(node, ctx, 0)
     tool = resolve_input_object(node, ctx, 1)
+
+    from seekflow_engineering_tools.generative_cad.validation.geometry_validate import pre_boolean_check
+    pre = pre_boolean_check(target, tool, ctx.tolerance)
+
     try:
         result = target.cut(tool)
     except Exception:
         try:
             result = target.cut(tool, ctx.tolerance.boolean_fallback_tolerance)
         except Exception:
+            ctx.degraded_features.append({
+                "node_id": node.id, "op": "boolean_cut",
+                "reason": "cut_failed_returning_unmodified_target",
+                "clearance_mm": pre.clearance_mm,
+                "target_volume_mm3": pre.a_volume_mm3,
+                "tool_volume_mm3": pre.b_volume_mm3,
+            })
             ctx.warnings.append(
-                f"boolean_cut failed on '{node.id}': returning unmodified target. "
-                f"Cut was not applied."
+                f"boolean_cut FAILED on '{node.id}': cut was NOT applied. "
+                f"Target volume={_fmt_vol(pre.a_volume_mm3)}, "
+                f"Tool volume={_fmt_vol(pre.b_volume_mm3)}."
             )
             return {"body": _store_solid(node, ctx, target)}
     return {"body": _store_solid(node, ctx, result)}
+
+
+# ── Formatting helpers ────────────────────────────────────────────────────────
+
+def _fmt_vol(v: float | None) -> str:
+    return f"{v:.1f} mm³" if v is not None else "unknown"
+
+
+def _fmt_clr(c: float | None) -> str:
+    return f"{c:.3f} mm" if c is not None else "unknown"

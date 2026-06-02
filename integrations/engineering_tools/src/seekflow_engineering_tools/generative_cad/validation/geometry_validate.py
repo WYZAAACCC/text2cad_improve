@@ -122,3 +122,86 @@ def validate_solid_geometry(
 
     errors = [i for i in issues if i.severity == "error"]
     return GeometryValidationReport(ok=len(errors) == 0, issues=issues)
+
+
+# ── Boolean pre-check ─────────────────────────────────────────────────────────
+
+
+@dataclass
+class BooleanPreCheckResult:
+    ok: bool
+    reason: str = ""
+    clearance_mm: float | None = None
+    a_volume_mm3: float | None = None
+    b_volume_mm3: float | None = None
+    a_bbox_mm: tuple[float, float, float] | None = None
+    b_bbox_mm: tuple[float, float, float] | None = None
+
+
+def pre_boolean_check(a: Any, b: Any, tolerance: Any) -> BooleanPreCheckResult:
+    """Pre-boolean diagnostic: check bounding box intersection, clearance, volumes.
+
+    Returns a result even if the check itself fails — always provides as much
+    diagnostic data as possible for debugging.
+    """
+    result = BooleanPreCheckResult(ok=True)
+
+    try:
+        bb_a = a.val().BoundingBox()
+        bb_b = b.val().BoundingBox()
+        result.a_bbox_mm = (bb_a.xlen, bb_a.ylen, bb_a.zlen)
+        result.b_bbox_mm = (bb_b.xlen, bb_b.ylen, bb_b.zlen)
+
+        # Check bounding box intersection
+        ix = _interval_overlap(
+            (bb_a.xmin, bb_a.xmax), (bb_b.xmin, bb_b.xmax)
+        )
+        iy = _interval_overlap(
+            (bb_a.ymin, bb_a.ymax), (bb_b.ymin, bb_b.ymax)
+        )
+        iz = _interval_overlap(
+            (bb_a.zmin, bb_a.zmax), (bb_b.zmin, bb_b.zmax)
+        )
+
+        if not (ix and iy and iz):
+            result.ok = True  # Not an error — just informational
+            result.reason = "Bounding boxes do not intersect — boolean may have no effect"
+            return result
+
+        # Check clearance
+        clearance = _min_box_clearance(bb_a, bb_b)
+        result.clearance_mm = clearance
+        if clearance < tolerance.min_boolean_clearance_mm and clearance >= 0:
+            result.ok = True
+            result.reason = (
+                f"Near-coincident faces detected (clearance={clearance:.4f}mm < "
+                f"minimum {tolerance.min_boolean_clearance_mm}mm). "
+                f"Boolean operation may fail — ensure components are properly separated."
+            )
+    except Exception as e:
+        result.reason = f"Pre-check failed: {e}"
+        return result
+
+    try:
+        result.a_volume_mm3 = a.val().Volume()
+    except Exception:
+        pass
+    try:
+        result.b_volume_mm3 = b.val().Volume()
+    except Exception:
+        pass
+
+    return result
+
+
+def _interval_overlap(a: tuple[float, float], b: tuple[float, float]) -> bool:
+    """Check if two intervals overlap."""
+    return a[0] <= b[1] and b[0] <= a[1]
+
+
+def _min_box_clearance(bb_a, bb_b) -> float:
+    """Minimum clearance between two bounding boxes (negative if overlapping)."""
+    dx = max(bb_a.xmin - bb_b.xmax, bb_b.xmin - bb_a.xmax, 0.0)
+    dy = max(bb_a.ymin - bb_b.ymax, bb_b.ymin - bb_a.ymax, 0.0)
+    dz = max(bb_a.zmin - bb_b.zmax, bb_b.zmin - bb_a.zmax, 0.0)
+    return (dx**2 + dy**2 + dz**2) ** 0.5
