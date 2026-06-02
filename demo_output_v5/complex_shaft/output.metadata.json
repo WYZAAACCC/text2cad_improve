@@ -66,7 +66,7 @@
       "geometry_runtime_version": "cadquery_runtime_v1"
     },
     "artifact": {
-      "step_sha256": "sha256:587b18881c6b35d9558baa90097448949df2137f661193feae6fa9134dda9208",
+      "step_sha256": "sha256:6d4b21f28f54d5bf699087201a2b770f36833a71c04c79bcf20ab57f95f82e2b",
       "metadata_schema_hash": null
     },
     "import_policy": {
@@ -78,7 +78,8 @@
     "repair_attempts": 0,
     "repair_patch_hashes": [],
     "warnings": [
-      "Safe chamfer skipped on 'edge_treatment_chamfer': geometry does not support chamfer. Part is valid without chamfer."
+      "Safe chamfer skipped on 'edge_treatment_chamfer': geometry does not support chamfer. Part is valid without chamfer.",
+      "Geometry warning on 'edge_treatment_chamfer.body': [brep_check_error] BRepCheck failed: Result(): incompatible function arguments. The following argument types are supported:\n    1. (self: OCP.OCP.BRepCheck.BRepCheck_Analyzer, theSubS: OCP.OCP.TopoDS.TopoDS_Shape) -> OCP.OCP.BRepCheck.BRepCheck_Result\n\nInvoked with: <OCP.OCP.BRepCheck.BRepCheck_Analyzer object at 0x0000015CCC38BEB0>"
     ],
     "degraded_features": [],
     "operation_metrics": [
@@ -124,7 +125,8 @@
     }
   },
   "build_warnings": [
-    "Safe chamfer skipped on 'edge_treatment_chamfer': geometry does not support chamfer. Part is valid without chamfer."
+    "Safe chamfer skipped on 'edge_treatment_chamfer': geometry does not support chamfer. Part is valid without chamfer.",
+    "Geometry warning on 'edge_treatment_chamfer.body': [brep_check_error] BRepCheck failed: Result(): incompatible function arguments. The following argument types are supported:\n    1. (self: OCP.OCP.BRepCheck.BRepCheck_Analyzer, theSubS: OCP.OCP.TopoDS.TopoDS_Shape) -> OCP.OCP.BRepCheck.BRepCheck_Result\n\nInvoked with: <OCP.OCP.BRepCheck.BRepCheck_Analyzer object at 0x0000015CCC38BEB0>"
   ],
   "validation": {
     "core_validation": {

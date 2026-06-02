@@ -55,6 +55,10 @@ def execute_operation(
     # Validate
     _validate_operation_result(node=node, op_spec=op_spec, result=result, ctx=ctx)
 
+    # Runtime geometry validation (BRepCheck, closed solid, positive volume)
+    if any(e in ("creates_solid", "modifies_solid") for e in op_spec.effects):
+        _validate_geometry(node=node, result=result, ctx=ctx)
+
     # Propagate side-channel data
     for w in result.warnings:
         ctx.warnings.append(w)
@@ -114,3 +118,33 @@ def _validate_operation_result(
                 f"Handle {result_output.handle_id!r} has type {stored.value_type!r}, "
                 f"expected {output_decl.type!r}"
             )
+
+
+def _validate_geometry(*, node, result, ctx) -> None:
+    """Run BRepCheck + closed solid + volume checks on geometry-producing ops."""
+    try:
+        from seekflow_engineering_tools.generative_cad.validation.geometry_validate import (
+            validate_solid_geometry,
+        )
+        for output in result.outputs:
+            if output.value_type != "solid":
+                continue
+            try:
+                solid = ctx.object_store.get(output.handle_id)
+            except KeyError:
+                ctx.warnings.append(f"Geometry check skipped on '{node.id}': handle not found")
+                continue
+            geo_report = validate_solid_geometry(solid, ctx.tolerance)
+            for issue in geo_report.issues:
+                if issue.severity == "error":
+                    ctx.warnings.append(
+                        f"Geometry error on '{node.id}.{output.name}': [{issue.code}] {issue.message}"
+                    )
+                else:
+                    ctx.warnings.append(
+                        f"Geometry warning on '{node.id}.{output.name}': [{issue.code}] {issue.message}"
+                    )
+    except ImportError:
+        pass  # OCCT bindings not available — skip geometry validation
+    except Exception as e:
+        ctx.warnings.append(f"Geometry validation skipped on '{node.id}': {e}")

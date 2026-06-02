@@ -177,7 +177,7 @@ def handle_boolean_cut(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, st
         result = target.cut(tool)
     except Exception:
         try:
-            result = target.cut(tool, 0.01)  # try with small tolerance
+            result = target.cut(tool, ctx.tolerance.boolean_fallback_tolerance)
         except Exception:
             ctx.warnings.append(
                 f"boolean_cut failed on '{node.id}': returning unmodified target. "
