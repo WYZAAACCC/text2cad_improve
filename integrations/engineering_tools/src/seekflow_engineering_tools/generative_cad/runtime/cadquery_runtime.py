@@ -13,8 +13,22 @@ class CadQueryRuntime:
     runtime_id = "cadquery"
     runtime_version = "cadquery_runtime_v1"
 
-    def export_step(self, solid_obj: Any, out_step: Path) -> None:
+    def export_step(self, solid_obj: Any, out_step: Path, part_name: str = "") -> None:
+        """Export solid to STEP. Embeds part name as product name when OCCT available."""
         import cadquery as cq
+        if part_name:
+            try:
+                from OCP.STEPControl import STEPControl_Writer, STEPControl_AsIs
+                writer = STEPControl_Writer()
+                writer.Transfer(solid_obj.wrapped, STEPControl_AsIs)
+                # Set product name in STEP header
+                if hasattr(writer, 'SetName'):
+                    from OCP.TCollection import TCollection_HAsciiString
+                    writer.SetName(TCollection_HAsciiString(part_name))
+                writer.Write(str(out_step))
+                return
+            except (ImportError, AttributeError):
+                pass
         cq.exporters.export(solid_obj, str(out_step))
 
     def inspect_solid(self, solid_obj: Any) -> dict:
