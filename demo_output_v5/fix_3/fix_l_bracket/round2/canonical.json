@@ -1,8 +1,8 @@
 {
   "schema_version": "g_cad_core_v0.2",
   "canonical_version": "canonical_gcad_v0.2",
-  "document_id": "l-bracket-v1",
-  "part_name": "L-Bracket",
+  "document_id": "lbracket",
+  "part_name": "l_bracket",
   "units": "mm",
   "trust_level": "reference_geometry",
   "selected_dialects": [
@@ -14,17 +14,17 @@
   ],
   "components": [
     {
-      "id": "comp1",
+      "id": "main",
       "owner_dialect": "sketch_profile",
       "kind_hint": null,
-      "root_node": "extrude_1",
+      "root_node": "ext",
       "output_aliases": {}
     }
   ],
   "nodes": [
     {
-      "id": "sketch_1",
-      "component": "comp1",
+      "id": "sk",
+      "component": "main",
       "dialect": "sketch_profile",
       "op": "create_2d_sketch",
       "op_version": "1.0.0",
@@ -34,7 +34,7 @@
         {
           "name": "sketch",
           "type": "sketch",
-          "value_id": "sketch:comp1:sketch_1:sketch"
+          "value_id": "sketch:main:sk:sketch"
         }
       ],
       "params": {
@@ -53,15 +53,15 @@
       "postconditions": []
     },
     {
-      "id": "polyline_1",
-      "component": "comp1",
+      "id": "pl",
+      "component": "main",
       "dialect": "sketch_profile",
       "op": "add_polyline",
       "op_version": "1.0.0",
       "phase": "profile",
       "inputs": [
         {
-          "producer_node": "sketch_1",
+          "producer_node": "sk",
           "producer_component": null,
           "output": "sketch",
           "resolved_type": "sketch"
@@ -71,7 +71,7 @@
         {
           "name": "profile",
           "type": "profile",
-          "value_id": "profile:comp1:polyline_1:profile"
+          "value_id": "profile:main:pl:profile"
         }
       ],
       "params": {
@@ -154,15 +154,15 @@
       "postconditions": []
     },
     {
-      "id": "close_1",
-      "component": "comp1",
+      "id": "cl",
+      "component": "main",
       "dialect": "sketch_profile",
       "op": "close_profile",
       "op_version": "1.0.0",
       "phase": "profile",
       "inputs": [
         {
-          "producer_node": "polyline_1",
+          "producer_node": "pl",
           "producer_component": null,
           "output": "profile",
           "resolved_type": "profile"
@@ -170,9 +170,9 @@
       ],
       "outputs": [
         {
-          "name": "closed_profile",
+          "name": "profile",
           "type": "profile",
-          "value_id": "profile:comp1:close_1:closed_profile"
+          "value_id": "profile:main:cl:profile"
         }
       ],
       "params": {},
@@ -185,17 +185,17 @@
       "postconditions": []
     },
     {
-      "id": "extrude_1",
-      "component": "comp1",
+      "id": "ext",
+      "component": "main",
       "dialect": "sketch_profile",
       "op": "extrude_profile",
       "op_version": "1.0.0",
       "phase": "feature",
       "inputs": [
         {
-          "producer_node": "close_1",
+          "producer_node": "cl",
           "producer_component": null,
-          "output": "closed_profile",
+          "output": "profile",
           "resolved_type": "profile"
         }
       ],
@@ -203,13 +203,12 @@
         {
           "name": "body",
           "type": "solid",
-          "value_id": "solid:comp1:extrude_1:body"
+          "value_id": "solid:main:ext:body"
         }
       ],
       "params": {
         "depth_mm": 50,
-        "direction": "+",
-        "taper_deg": 0
+        "direction": "+"
       },
       "typed_params": {
         "depth_mm": 50.0,
@@ -242,6 +241,6 @@
     "no_structural_validation": true,
     "no_life_prediction": true
   },
-  "canonical_graph_hash": "sha256:9a167ba9a69b42252148e888ead73e630ee6dedce8576ad7a704f887f7442d2b",
-  "raw_graph_hash": "sha256:2f4bb5f3ffe77c17b02c549d957bf9d734f672909fe7b3f7aa33a67d5b404fda"
+  "canonical_graph_hash": "sha256:ba4efcb34c1fa6d656e59b323e66b51f0c20652e73c4ab70812a590070f8cc93",
+  "raw_graph_hash": "sha256:2948fa08407d1a9b9d6c666abd3612197ed792242c295ba3904ebbcdf6649323"
 }

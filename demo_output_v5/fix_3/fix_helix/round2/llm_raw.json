@@ -1,7 +1,7 @@
 {
   "schema_version": "g_cad_core_v0.2",
-  "document_id": "u-pipe-sweep",
-  "part_name": "u_pipe",
+  "document_id": "coil-spring-helix",
+  "part_name": "coil_spring",
   "units": "mm",
   "trust_level": "reference_geometry",
   "selected_dialects": [
@@ -12,15 +12,15 @@
   ],
   "components": [
     {
-      "id": "pipe",
+      "id": "spring",
       "owner_dialect": "loft_sweep",
-      "root_node": "swp"
+      "root_node": "helix_swp"
     }
   ],
   "nodes": [
     {
-      "id": "path1",
-      "component": "pipe",
+      "id": "helix_path",
+      "component": "spring",
       "dialect": "loft_sweep",
       "op": "create_sweep_path",
       "op_version": "1.0.0",
@@ -35,24 +35,14 @@
       "params": {
         "path_points": [
           {
-            "x_mm": 0,
+            "x_mm": 15,
             "y_mm": 0,
             "z_mm": 0
           },
           {
-            "x_mm": 0,
+            "x_mm": 15,
             "y_mm": 0,
-            "z_mm": 50
-          },
-          {
-            "x_mm": 30,
-            "y_mm": 0,
-            "z_mm": 50
-          },
-          {
-            "x_mm": 30,
-            "y_mm": 0,
-            "z_mm": 0
+            "z_mm": 40
           }
         ]
       },
@@ -60,18 +50,13 @@
       "degradation_policy": "fail"
     },
     {
-      "id": "swp",
-      "component": "pipe",
+      "id": "helix_swp",
+      "component": "spring",
       "dialect": "loft_sweep",
-      "op": "sweep_profile",
+      "op": "helix_sweep",
       "op_version": "1.0.0",
-      "phase": "sweep",
-      "inputs": [
-        {
-          "node": "path1",
-          "output": "path"
-        }
-      ],
+      "phase": "helix",
+      "inputs": [],
       "outputs": [
         {
           "name": "body",
@@ -79,8 +64,12 @@
         }
       ],
       "params": {
-        "shape": "circle",
-        "radius_mm": 5
+        "radius_mm": 15,
+        "height_mm": 40,
+        "pitch_mm": 8,
+        "profile_radius_mm": 2,
+        "turns": 5,
+        "variable_pitch": false
       },
       "required": true,
       "degradation_policy": "fail"

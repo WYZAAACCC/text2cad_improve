@@ -1,19 +1,25 @@
 {
-  "ok": true,
-  "stage": "complete",
-  "issues": [],
+  "ok": false,
+  "stage": "typecheck",
+  "issues": [
+    {
+      "code": "input_type_unresolved",
+      "message": "node 'helix_swp' input[0]: cannot resolve producer type",
+      "severity": "error",
+      "stage": "typecheck",
+      "node_id": "helix_swp",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
   "stages_run": [
     "structure",
     "registry",
     "params",
     "ownership",
     "graph",
-    "typecheck",
-    "phase",
-    "composition",
-    "safety",
-    "canonicalize",
-    "dialect_semantics",
-    "geometry_preflight"
+    "typecheck"
   ]
 }

@@ -1,54 +1,19 @@
 {
-  "ok": false,
-  "stage": "registry",
-  "issues": [
-    {
-      "code": "unknown_op",
-      "message": "node 'sketch_plane': unknown op 'create_2d_sketch' in 'sketch_profile': 'Unknown op/version: create_2d_sketch v0.2.0'",
-      "severity": "error",
-      "stage": "registry",
-      "node_id": "sketch_plane",
-      "component_id": null,
-      "path": null,
-      "expected": null,
-      "actual": null
-    },
-    {
-      "code": "unknown_op",
-      "message": "node 'polyline': unknown op 'add_polyline' in 'sketch_profile': 'Unknown op/version: add_polyline v0.2.0'",
-      "severity": "error",
-      "stage": "registry",
-      "node_id": "polyline",
-      "component_id": null,
-      "path": null,
-      "expected": null,
-      "actual": null
-    },
-    {
-      "code": "unknown_op",
-      "message": "node 'close': unknown op 'close_profile' in 'sketch_profile': 'Unknown op/version: close_profile v0.2.0'",
-      "severity": "error",
-      "stage": "registry",
-      "node_id": "close",
-      "component_id": null,
-      "path": null,
-      "expected": null,
-      "actual": null
-    },
-    {
-      "code": "unknown_op",
-      "message": "node 'extrude': unknown op 'extrude_profile' in 'sketch_profile': 'Unknown op/version: extrude_profile v0.2.0'",
-      "severity": "error",
-      "stage": "registry",
-      "node_id": "extrude",
-      "component_id": null,
-      "path": null,
-      "expected": null,
-      "actual": null
-    }
-  ],
+  "ok": true,
+  "stage": "complete",
+  "issues": [],
   "stages_run": [
     "structure",
-    "registry"
+    "registry",
+    "params",
+    "ownership",
+    "graph",
+    "typecheck",
+    "phase",
+    "composition",
+    "safety",
+    "canonicalize",
+    "dialect_semantics",
+    "geometry_preflight"
   ]
 }

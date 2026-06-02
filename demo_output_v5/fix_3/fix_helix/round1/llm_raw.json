@@ -1,6 +1,6 @@
 {
   "schema_version": "g_cad_core_v0.2",
-  "document_id": "coil-spring-helix-001",
+  "document_id": "coil-spring-001",
   "part_name": "coil_spring",
   "units": "mm",
   "trust_level": "reference_geometry",
@@ -12,15 +12,15 @@
   ],
   "components": [
     {
-      "id": "spring",
+      "id": "coil_spring",
       "owner_dialect": "loft_sweep",
-      "root_node": "n1"
+      "root_node": "helix_swp"
     }
   ],
   "nodes": [
     {
-      "id": "n1",
-      "component": "spring",
+      "id": "helix_spring_path",
+      "component": "coil_spring",
       "dialect": "loft_sweep",
       "op": "helix_sweep",
       "op_version": "1.0.0",
@@ -28,8 +28,8 @@
       "inputs": [],
       "outputs": [
         {
-          "name": "body",
-          "type": "solid"
+          "name": "path",
+          "type": "curve"
         }
       ],
       "params": {
@@ -39,6 +39,32 @@
         "profile_radius_mm": 2,
         "turns": 5,
         "variable_pitch": false
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "helix_swp",
+      "component": "coil_spring",
+      "dialect": "loft_sweep",
+      "op": "sweep_profile",
+      "op_version": "1.0.0",
+      "phase": "sweep",
+      "inputs": [
+        {
+          "node": "helix_spring_path",
+          "output": "path"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "shape": "circle",
+        "radius_mm": 2
       },
       "required": true,
       "degradation_policy": "fail"

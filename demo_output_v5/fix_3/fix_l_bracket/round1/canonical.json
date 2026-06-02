@@ -1,8 +1,8 @@
 {
   "schema_version": "g_cad_core_v0.2",
   "canonical_version": "canonical_gcad_v0.2",
-  "document_id": "lbracket-xy-001",
-  "part_name": "L-Bracket",
+  "document_id": "lbracket",
+  "part_name": "l_bracket",
   "units": "mm",
   "trust_level": "reference_geometry",
   "selected_dialects": [
@@ -14,17 +14,17 @@
   ],
   "components": [
     {
-      "id": "comp_lbracket",
+      "id": "main",
       "owner_dialect": "sketch_profile",
       "kind_hint": null,
-      "root_node": "n_extrude",
+      "root_node": "ext",
       "output_aliases": {}
     }
   ],
   "nodes": [
     {
-      "id": "n_sketch",
-      "component": "comp_lbracket",
+      "id": "sk",
+      "component": "main",
       "dialect": "sketch_profile",
       "op": "create_2d_sketch",
       "op_version": "1.0.0",
@@ -34,7 +34,7 @@
         {
           "name": "sketch",
           "type": "sketch",
-          "value_id": "sketch:comp_lbracket:n_sketch:sketch"
+          "value_id": "sketch:main:sk:sketch"
         }
       ],
       "params": {
@@ -53,15 +53,15 @@
       "postconditions": []
     },
     {
-      "id": "n_polyline",
-      "component": "comp_lbracket",
+      "id": "pl",
+      "component": "main",
       "dialect": "sketch_profile",
       "op": "add_polyline",
       "op_version": "1.0.0",
       "phase": "profile",
       "inputs": [
         {
-          "producer_node": "n_sketch",
+          "producer_node": "sk",
           "producer_component": null,
           "output": "sketch",
           "resolved_type": "sketch"
@@ -71,7 +71,7 @@
         {
           "name": "profile",
           "type": "profile",
-          "value_id": "profile:comp_lbracket:n_polyline:profile"
+          "value_id": "profile:main:pl:profile"
         }
       ],
       "params": {
@@ -154,15 +154,15 @@
       "postconditions": []
     },
     {
-      "id": "n_close",
-      "component": "comp_lbracket",
+      "id": "cl",
+      "component": "main",
       "dialect": "sketch_profile",
       "op": "close_profile",
       "op_version": "1.0.0",
       "phase": "profile",
       "inputs": [
         {
-          "producer_node": "n_polyline",
+          "producer_node": "pl",
           "producer_component": null,
           "output": "profile",
           "resolved_type": "profile"
@@ -170,9 +170,9 @@
       ],
       "outputs": [
         {
-          "name": "closed_profile",
+          "name": "profile",
           "type": "profile",
-          "value_id": "profile:comp_lbracket:n_close:closed_profile"
+          "value_id": "profile:main:cl:profile"
         }
       ],
       "params": {},
@@ -185,17 +185,17 @@
       "postconditions": []
     },
     {
-      "id": "n_extrude",
-      "component": "comp_lbracket",
+      "id": "ext",
+      "component": "main",
       "dialect": "sketch_profile",
       "op": "extrude_profile",
       "op_version": "1.0.0",
       "phase": "feature",
       "inputs": [
         {
-          "producer_node": "n_close",
+          "producer_node": "cl",
           "producer_component": null,
-          "output": "closed_profile",
+          "output": "profile",
           "resolved_type": "profile"
         }
       ],
@@ -203,13 +203,12 @@
         {
           "name": "body",
           "type": "solid",
-          "value_id": "solid:comp_lbracket:n_extrude:body"
+          "value_id": "solid:main:ext:body"
         }
       ],
       "params": {
         "depth_mm": 50,
-        "direction": "+",
-        "taper_deg": 0
+        "direction": "+"
       },
       "typed_params": {
         "depth_mm": 50.0,
@@ -242,6 +241,6 @@
     "no_structural_validation": true,
     "no_life_prediction": true
   },
-  "canonical_graph_hash": "sha256:8e96cf7fc17738a474e1ed299498d2c3328b0e1737901658d559bfaa7ec75e66",
-  "raw_graph_hash": "sha256:ae480915eae5fe80fa1d61cf2386afd31013584399fd46fe0f6ff74cf862cec7"
+  "canonical_graph_hash": "sha256:ba4efcb34c1fa6d656e59b323e66b51f0c20652e73c4ab70812a590070f8cc93",
+  "raw_graph_hash": "sha256:2948fa08407d1a9b9d6c666abd3612197ed792242c295ba3904ebbcdf6649323"
 }

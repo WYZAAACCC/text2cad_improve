@@ -1,7 +1,7 @@
 {
-  "document_id": "lbracket-01",
-  "part_name": "L-Bracket",
   "schema_version": "g_cad_core_v0.2",
+  "document_id": "lbracket",
+  "part_name": "l_bracket",
   "units": "mm",
   "trust_level": "reference_geometry",
   "selected_dialects": [
@@ -14,16 +14,16 @@
     {
       "id": "main",
       "owner_dialect": "sketch_profile",
-      "root_node": "extrude"
+      "root_node": "ext"
     }
   ],
   "nodes": [
     {
-      "id": "sketch_plane",
+      "id": "sk",
       "component": "main",
       "dialect": "sketch_profile",
       "op": "create_2d_sketch",
-      "op_version": "0.2.0",
+      "op_version": "1.0.0",
       "phase": "sketch",
       "inputs": [],
       "outputs": [
@@ -39,22 +39,22 @@
       "degradation_policy": "fail"
     },
     {
-      "id": "polyline",
+      "id": "pl",
       "component": "main",
       "dialect": "sketch_profile",
       "op": "add_polyline",
-      "op_version": "0.2.0",
+      "op_version": "1.0.0",
       "phase": "profile",
       "inputs": [
         {
-          "node": "sketch_plane",
+          "node": "sk",
           "output": "sketch"
         }
       ],
       "outputs": [
         {
-          "name": "profile_segments",
-          "type": "profile_segments"
+          "name": "profile",
+          "type": "profile"
         }
       ],
       "params": {
@@ -97,16 +97,16 @@
       "degradation_policy": "fail"
     },
     {
-      "id": "close",
+      "id": "cl",
       "component": "main",
       "dialect": "sketch_profile",
       "op": "close_profile",
-      "op_version": "0.2.0",
+      "op_version": "1.0.0",
       "phase": "profile",
       "inputs": [
         {
-          "node": "polyline",
-          "output": "profile_segments"
+          "node": "pl",
+          "output": "profile"
         }
       ],
       "outputs": [
@@ -120,15 +120,15 @@
       "degradation_policy": "fail"
     },
     {
-      "id": "extrude",
+      "id": "ext",
       "component": "main",
       "dialect": "sketch_profile",
       "op": "extrude_profile",
-      "op_version": "0.2.0",
+      "op_version": "1.0.0",
       "phase": "feature",
       "inputs": [
         {
-          "node": "close",
+          "node": "cl",
           "output": "profile"
         }
       ],
@@ -161,7 +161,5 @@
     "no_structural_validation": true,
     "no_life_prediction": true
   },
-  "llm_validation_hints": {
-    "_": ""
-  }
+  "llm_validation_hints": {}
 }

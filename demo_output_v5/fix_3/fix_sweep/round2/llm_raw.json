@@ -1,7 +1,7 @@
 {
   "schema_version": "g_cad_core_v0.2",
-  "document_id": "8eef6c0b-c70f-4faa-b4aa-74aec3c18c5e",
-  "part_name": "U-shaped Pipe",
+  "document_id": "u-pipe-sweep",
+  "part_name": "u_pipe",
   "units": "mm",
   "trust_level": "reference_geometry",
   "selected_dialects": [
@@ -14,12 +14,12 @@
     {
       "id": "u_pipe",
       "owner_dialect": "loft_sweep",
-      "root_node": "sweep_profile_node"
+      "root_node": "swp"
     }
   ],
   "nodes": [
     {
-      "id": "path_node",
+      "id": "path1",
       "component": "u_pipe",
       "dialect": "loft_sweep",
       "op": "create_sweep_path",
@@ -28,8 +28,8 @@
       "inputs": [],
       "outputs": [
         {
-          "name": "sweep_path",
-          "type": "path"
+          "name": "path",
+          "type": "curve"
         }
       ],
       "params": {
@@ -60,7 +60,7 @@
       "degradation_policy": "fail"
     },
     {
-      "id": "sweep_profile_node",
+      "id": "swp",
       "component": "u_pipe",
       "dialect": "loft_sweep",
       "op": "sweep_profile",
@@ -68,8 +68,8 @@
       "phase": "sweep",
       "inputs": [
         {
-          "node": "path_node",
-          "output": "sweep_path"
+          "node": "path1",
+          "output": "path"
         }
       ],
       "outputs": [

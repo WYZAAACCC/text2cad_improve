@@ -1,25 +1,14 @@
 {
   "ok": false,
-  "stage": "params",
+  "stage": "ownership",
   "issues": [
     {
-      "code": "invalid_params",
-      "message": "node 'revolve_profile_op' params invalid for op 'revolve_profile': 1 validation error for RevolveProfileParams\naxis\n  Input should be 'Z' [type=literal_error, input_value='z', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/literal_error",
+      "code": "node_dialect_mismatch_owner",
+      "message": "node 'ext' dialect 'sketch_extrude' != component 'cup' owner_dialect 'shell_housing'",
       "severity": "error",
-      "stage": "params",
-      "node_id": "revolve_profile_op",
-      "component_id": null,
-      "path": null,
-      "expected": null,
-      "actual": null
-    },
-    {
-      "code": "invalid_params",
-      "message": "node 'cut_center_bore_op' params invalid for op 'cut_center_bore': 1 validation error for CutCenterBoreParams\naxis\n  Input should be 'Z' [type=literal_error, input_value='z', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/literal_error",
-      "severity": "error",
-      "stage": "params",
-      "node_id": "cut_center_bore_op",
-      "component_id": null,
+      "stage": "ownership",
+      "node_id": "ext",
+      "component_id": "cup",
       "path": null,
       "expected": null,
       "actual": null
@@ -28,6 +17,7 @@
   "stages_run": [
     "structure",
     "registry",
-    "params"
+    "params",
+    "ownership"
   ]
 }

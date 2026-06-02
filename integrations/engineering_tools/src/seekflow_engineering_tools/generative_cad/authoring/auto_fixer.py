@@ -108,17 +108,38 @@ def auto_fix(raw_doc: dict, dialect_registry=None) -> dict:
       8. 多余参数清理
     """
     doc = _fix_output_names(raw_doc)
+    doc = _fix_op_versions(doc, dialect_registry)
     doc = _fix_dialect_names(doc, dialect_registry)
     doc = _fix_qualified_op_names(doc)
     doc = _fix_param_names(doc)
     doc = _fix_param_values(doc)
     doc = _fix_unknown_ops(doc, dialect_registry)
     doc = _fix_target_values(doc)
+    doc = _fix_cross_component_refs(doc)
     doc = _fix_root_node(doc)
     doc = _fix_phase_ordering(doc, dialect_registry)
     doc = _fix_profile_stations(doc)
     doc = _fill_default_params(doc)
     doc = _remove_extra_params(doc)
+    return doc
+
+
+def _fix_op_versions(doc: dict, dialect_registry=None) -> dict:
+    """修正 op_version: LLM 常把 dialect.version 当做 op.version (如 0.2.0→1.0.0)。"""
+    if dialect_registry is None:
+        from seekflow_engineering_tools.generative_cad.dialects.default_registry import default_registry
+        dialect_registry = default_registry()
+    for node in doc.get("nodes", []):
+        did = node.get("dialect", "")
+        op = node.get("op", "")
+        ver = node.get("op_version", "")
+        if ver in ("0.2.0", "0.1.0"):  # LLM used dialect version as op version
+            d = dialect_registry.get(did)
+            if d:
+                try:
+                    node["op_version"] = d.default_op_version(op)
+                except Exception:
+                    node["op_version"] = "1.0.0"
     return doc
 
 
@@ -268,6 +289,28 @@ def _fix_target_values(doc: dict) -> dict:
             tgt = node.get("params", {}).get("target", "")
             if tgt in TARGET_VALUE_FIXES:
                 node["params"]["target"] = TARGET_VALUE_FIXES[tgt]
+    return doc
+
+
+def _fix_cross_component_refs(doc: dict) -> dict:
+    """将跨 component 的 node ref 转为 component ref。
+    LLM 常用 {node: X, output: body} 引用另一个 component 的节点，
+    但跨 component 引用必须用 {component: X, output: body}。"""
+    # 建立 node_id → component_id 的映射
+    node_comp: dict[str, str] = {}
+    for n in doc.get("nodes", []):
+        node_comp[n.get("id", "")] = n.get("component", "")
+
+    for node in doc.get("nodes", []):
+        cid = node.get("component", "")
+        for inp in node.get("inputs", []):
+            ref_node = inp.get("node", "")
+            if ref_node and ref_node in node_comp:
+                ref_comp = node_comp[ref_node]
+                if ref_comp != cid:
+                    # Cross-component: convert to component reference
+                    inp["component"] = ref_comp
+                    inp.pop("node", None)
     return doc
 
 
@@ -458,7 +501,7 @@ def _fix_param_values(doc: dict) -> dict:
         "negative": "-", "neg": "-", "down": "-", "inward": "-",
         "+z": "+", "-z": "-", "z+": "+", "z-": "-", "both": "+",
     }
-    AXIS_FIXES = {"z+": "Z", "+z": "Z", "z-": "Z", "-z": "Z", "+Z": "Z", "-Z": "Z"}
+    AXIS_FIXES = {"z+": "Z", "+z": "Z", "z-": "Z", "-z": "Z", "+Z": "Z", "-Z": "Z", "z": "Z", "x": "X", "y": "Y"}
     STANDARD_FIXES = {"metric": "ISO_metric", "iso": "ISO_metric", "iso_metric": "ISO_metric",
                        "metric_coarse": "ISO_metric", "coarse": "ISO_metric"}
     CLASS_FIXES = {"6h": "6H", "6g": "6H", "7h": "7H", "8g": "6g"}
@@ -518,6 +561,8 @@ def _remove_extra_params(doc: dict) -> dict:
         "extrude_rectangle": {"length", "thickness", "material"},
         "boolean_union": {"clean_after", "merge_result", "keep_tool"},
         "boolean_cut": {"clean_after", "merge_result", "keep_tool"},
+        "cut_center_bore": {"depth_mm", "bore_depth", "length"},
+        "shell_body": {"open_faces"},  # open_faces defaults to []
     }
     for node in doc.get("nodes", []):
         op = node.get("op", "")

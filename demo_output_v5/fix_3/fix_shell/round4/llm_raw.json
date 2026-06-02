@@ -1,48 +1,34 @@
 {
   "schema_version": "g_cad_core_v0.2",
-  "document_id": "cup_and_shell_v1",
-  "part_name": "cup_with_shell",
+  "document_id": "cup",
+  "part_name": "thin_walled_cup",
   "units": "mm",
   "trust_level": "reference_geometry",
   "selected_dialects": [
-    {
-      "dialect": "axisymmetric",
-      "version": "0.2.0"
-    },
     {
       "dialect": "shell_housing",
       "version": "0.2.0"
     },
     {
-      "dialect": "composition",
+      "dialect": "sketch_extrude",
       "version": "1.0.0"
     }
   ],
   "components": [
     {
       "id": "cup",
-      "owner_dialect": "axisymmetric",
-      "root_node": "revolve_profile_op"
-    },
-    {
-      "id": "shell",
       "owner_dialect": "shell_housing",
-      "root_node": "shell_body_op"
-    },
-    {
-      "id": "__assembly__",
-      "owner_dialect": "composition",
-      "root_node": "assembly_root"
+      "root_node": "hollow"
     }
   ],
   "nodes": [
     {
-      "id": "revolve_profile_op",
+      "id": "ext",
       "component": "cup",
-      "dialect": "axisymmetric",
-      "op": "revolve_profile",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
       "op_version": "1.0.0",
-      "phase": "base_solid",
+      "phase": "extrude",
       "inputs": [],
       "outputs": [
         {
@@ -51,56 +37,23 @@
         }
       ],
       "params": {
-        "axis": "z",
-        "profile_stations": [
-          {
-            "r_mm": 30,
-            "z_front_mm": 0,
-            "z_rear_mm": 40
-          }
-        ]
+        "width_mm": 60,
+        "height_mm": 60,
+        "depth_mm": 40
       },
       "required": true,
       "degradation_policy": "fail"
     },
     {
-      "id": "cut_center_bore_op",
+      "id": "hollow",
       "component": "cup",
-      "dialect": "axisymmetric",
-      "op": "cut_center_bore",
-      "op_version": "1.0.0",
-      "phase": "primary_cut",
-      "inputs": [
-        {
-          "node": "revolve_profile_op",
-          "output": "body"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "body",
-          "type": "solid"
-        }
-      ],
-      "params": {
-        "diameter_mm": 25,
-        "axis": "z",
-        "depth_mm": 35,
-        "through_all": false
-      },
-      "required": true,
-      "degradation_policy": "fail"
-    },
-    {
-      "id": "shell_body_op",
-      "component": "shell",
       "dialect": "shell_housing",
-      "op": "shell_body",
+      "op": "hollow_body",
       "op_version": "1.0.0",
-      "phase": "shell",
+      "phase": "hollow",
       "inputs": [
         {
-          "node": "cut_center_bore_op",
+          "node": "ext",
           "output": "body"
         }
       ],
@@ -111,32 +64,8 @@
         }
       ],
       "params": {
-        "thickness_mm": 2,
-        "open_faces": []
+        "wall_thickness_mm": 2
       },
-      "required": true,
-      "degradation_policy": "fail"
-    },
-    {
-      "id": "assembly_root",
-      "component": "__assembly__",
-      "dialect": "composition",
-      "op": "compose",
-      "op_version": "1.0.0",
-      "phase": "assemble",
-      "inputs": [
-        {
-          "node": "shell_body_op",
-          "output": "body"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "body",
-          "type": "solid"
-        }
-      ],
-      "params": {},
       "required": true,
       "degradation_policy": "fail"
     }

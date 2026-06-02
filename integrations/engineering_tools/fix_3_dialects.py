@@ -65,6 +65,92 @@ def build_enhanced_contract(dialect_ids):
             if op_name == "cut_profile":
                 lines.append('    EXAMPLE: {"depth_mm":10,"direction":"-"}')
         lines.append("")
+
+    # Add FULL RawGcadDocument examples for less-tested dialects
+    if "loft_sweep" in dialect_ids:
+        lines.append("FULL EXAMPLE for sweep (copy this structure):")
+        lines.append(json.dumps({
+            "schema_version": "g_cad_core_v0.2", "document_id": "sweep-example",
+            "part_name": "pipe", "units": "mm", "trust_level": "reference_geometry",
+            "selected_dialects": [{"dialect": "loft_sweep", "version": "0.2.0"}],
+            "components": [{"id": "pipe", "owner_dialect": "loft_sweep", "root_node": "swp"}],
+            "nodes": [
+                {"id": "path1", "component": "pipe", "dialect": "loft_sweep", "op": "create_sweep_path",
+                 "op_version": "1.0.0", "phase": "path", "inputs": [],
+                 "outputs": [{"name": "path", "type": "curve"}],
+                 "params": {"path_points": [{"x_mm": 0, "y_mm": 0, "z_mm": 0}, {"x_mm": 0, "y_mm": 0, "z_mm": 50}]},
+                 "required": True, "degradation_policy": "fail"},
+                {"id": "swp", "component": "pipe", "dialect": "loft_sweep", "op": "sweep_profile",
+                 "op_version": "1.0.0", "phase": "sweep",
+                 "inputs": [{"node": "path1", "output": "path"}],
+                 "outputs": [{"name": "body", "type": "solid"}],
+                 "params": {"shape": "circle", "radius_mm": 5},
+                 "required": True, "degradation_policy": "fail"},
+            ],
+            "constraints": {"require_step_file": True, "require_metadata_sidecar": True, "require_closed_solid": True, "expected_body_count": 1},
+            "safety": {"non_flight_reference_only": True, "not_airworthy": True, "not_certified": True, "not_for_manufacturing": True, "not_for_installation": True, "no_structural_validation": True, "no_life_prediction": True},
+            "llm_validation_hints": {},
+        }, indent=2))
+        lines.append("")
+
+    if "sketch_profile" in dialect_ids:
+        lines.append("FULL EXAMPLE for sketch_profile (copy this exact structure, change only dimensions):")
+        lines.append(json.dumps({
+            "schema_version": "g_cad_core_v0.2", "document_id": "lbracket",
+            "part_name": "l_bracket", "units": "mm", "trust_level": "reference_geometry",
+            "selected_dialects": [{"dialect": "sketch_profile", "version": "0.2.0"}],
+            "components": [{"id": "main", "owner_dialect": "sketch_profile", "root_node": "ext"}],
+            "nodes": [
+                {"id": "sk", "component": "main", "dialect": "sketch_profile", "op": "create_2d_sketch",
+                 "op_version": "1.0.0", "phase": "sketch", "inputs": [],
+                 "outputs": [{"name": "sketch", "type": "sketch"}],
+                 "params": {"plane": "XY"}, "required": True, "degradation_policy": "fail"},
+                {"id": "pl", "component": "main", "dialect": "sketch_profile", "op": "add_polyline",
+                 "op_version": "1.0.0", "phase": "profile",
+                 "inputs": [{"node": "sk", "output": "sketch"}],
+                 "outputs": [{"name": "profile", "type": "profile"}],
+                 "params": {"points": [{"x_mm": 0, "y_mm": 0}, {"x_mm": 80, "y_mm": 0}]},
+                 "required": True, "degradation_policy": "fail"},
+                {"id": "cl", "component": "main", "dialect": "sketch_profile", "op": "close_profile",
+                 "op_version": "1.0.0", "phase": "profile",
+                 "inputs": [{"node": "pl", "output": "profile"}],
+                 "outputs": [{"name": "profile", "type": "profile"}],
+                 "params": {}, "required": True, "degradation_policy": "fail"},
+                {"id": "ext", "component": "main", "dialect": "sketch_profile", "op": "extrude_profile",
+                 "op_version": "1.0.0", "phase": "feature",
+                 "inputs": [{"node": "cl", "output": "profile"}],
+                 "outputs": [{"name": "body", "type": "solid"}],
+                 "params": {"depth_mm": 50, "direction": "+"},
+                 "required": True, "degradation_policy": "fail"},
+            ],
+            "constraints": {"require_step_file": True, "require_metadata_sidecar": True, "require_closed_solid": True, "expected_body_count": 1},
+            "safety": {"non_flight_reference_only": True, "not_airworthy": True, "not_certified": True, "not_for_manufacturing": True, "not_for_installation": True, "no_structural_validation": True, "no_life_prediction": True},
+            "llm_validation_hints": {},
+        }, indent=2))
+        lines.append("")
+
+    if "shell_housing" in dialect_ids:
+        lines.append("FULL EXAMPLE for shell_housing (ALL nodes in ONE component):")
+        lines.append(json.dumps({
+            "schema_version": "g_cad_core_v0.2", "document_id": "cup",
+            "part_name": "thin_walled_cup", "units": "mm", "trust_level": "reference_geometry",
+            "selected_dialects": [{"dialect": "shell_housing", "version": "0.2.0"}],
+            "components": [{"id": "cup", "owner_dialect": "shell_housing", "root_node": "sh"}],
+            "nodes": [
+                {"id": "sh", "component": "cup", "dialect": "shell_housing", "op": "shell_body",
+                 "op_version": "1.0.0", "phase": "shell", "inputs": [],
+                 "outputs": [{"name": "body", "type": "solid"}],
+                 "params": {"thickness_mm": 2},
+                 "required": True, "degradation_policy": "fail"},
+            ],
+            "constraints": {"require_step_file": True, "require_metadata_sidecar": True, "require_closed_solid": True, "expected_body_count": 1},
+            "safety": {"non_flight_reference_only": True, "not_airworthy": True, "not_certified": True, "not_for_manufacturing": True, "not_for_installation": True, "no_structural_validation": True, "no_life_prediction": True},
+            "llm_validation_hints": {},
+        }, indent=2))
+        lines.append("NOTE: shell_body needs a solid input from a previous node. Put shell_body LAST in the chain. "
+                      "If you need a base solid, use extrude_rectangle from sketch_extrude in the SAME component first.")
+        lines.append("")
+
     return "\n".join(lines)
 
 
@@ -94,12 +180,13 @@ CASES = [
     },
     {
         "id": "fix_shell", "name": "Shell Housing",
-        "dialects": ["axisymmetric", "shell_housing"],
+        "dialects": ["shell_housing"],
         "prompt": (
-            "Create a cup: Component 'cup' (axisymmetric): revolve_profile with profile_stations "
-            "r_mm=30 z_front_mm=0 z_rear_mm=40. Then cut_center_bore diameter_mm=25 depth_mm=35. "
-            "Component 'shell' (shell_housing): shell_body thickness_mm=2. "
-            "shell_body inputs: [{component: cup, output: body}]. "
+            "Create a thin-walled cup. All nodes in ONE component with owner_dialect=shell_housing. "
+            "Use hollow_body wall_thickness_mm=2. "
+            "Since hollow_body needs a solid input, first create a solid cylinder using "
+            "sketch_extrude: extrude_rectangle width_mm=60 height_mm=60 depth_mm=40. "
+            "Then hollow_body takes the solid as input: [{node: extrude_node_id, output: body}]. "
             "Units mm. Reference only. Not for manufacturing."
         ),
     },
@@ -107,10 +194,15 @@ CASES = [
         "id": "fix_l_bracket", "name": "SketchProfile L-Bracket",
         "dialects": ["sketch_profile"],
         "prompt": (
-            "Create an L-bracket: create_2d_sketch plane=XY. "
-            "add_polyline with points forming L-shape: "
-            "[x=0,y=0], [x=80,y=0], [x=80,y=8], [x=50,y=8], [x=50,y=40], [x=42,y=40], [x=42,y=8], [x=0,y=8]. "
+            "Create an L-bracket. ALL nodes in ONE component with owner_dialect=sketch_profile. "
+            "create_2d_sketch plane=XY. "
+            "add_polyline points: [x_mm=0,y_mm=0], [x_mm=80,y_mm=0], [x_mm=80,y_mm=8], "
+            "[x_mm=50,y_mm=8], [x_mm=50,y_mm=40], [x_mm=42,y_mm=40], [x_mm=42,y_mm=8], [x_mm=0,y_mm=8]. "
             "close_profile. extrude_profile depth_mm=50 direction=+. "
+            "Output names: sketch for create_2d_sketch, profile for add_polyline/close_profile, body:solid for extrude_profile. "
+            "Input chain: add_polyline input from create_2d_sketch output sketch. "
+            "close_profile input from add_polyline output profile. "
+            "extrude_profile input from close_profile output profile. "
             "Units mm. Reference only. Not for manufacturing."
         ),
     },

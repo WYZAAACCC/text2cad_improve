@@ -1,6 +1,6 @@
 {
   "schema_version": "g_cad_core_v0.2",
-  "document_id": "c9ebfc1b-3e61-4cae-99c0-05b6588b7dd6",
+  "document_id": "u-pipe-sweep",
   "part_name": "u_pipe",
   "units": "mm",
   "trust_level": "reference_geometry",
@@ -14,12 +14,12 @@
     {
       "id": "pipe",
       "owner_dialect": "loft_sweep",
-      "root_node": "sweep_body"
+      "root_node": "swp"
     }
   ],
   "nodes": [
     {
-      "id": "create_path",
+      "id": "path1",
       "component": "pipe",
       "dialect": "loft_sweep",
       "op": "create_sweep_path",
@@ -28,7 +28,7 @@
       "inputs": [],
       "outputs": [
         {
-          "name": "path_curve",
+          "name": "path",
           "type": "curve"
         }
       ],
@@ -60,7 +60,7 @@
       "degradation_policy": "fail"
     },
     {
-      "id": "sweep_body",
+      "id": "swp",
       "component": "pipe",
       "dialect": "loft_sweep",
       "op": "sweep_profile",
@@ -68,8 +68,8 @@
       "phase": "sweep",
       "inputs": [
         {
-          "node": "create_path",
-          "output": "path_curve"
+          "node": "path1",
+          "output": "path"
         }
       ],
       "outputs": [

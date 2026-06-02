@@ -1,8 +1,8 @@
 {
   "schema_version": "g_cad_core_v0.2",
   "canonical_version": "canonical_gcad_v0.2",
-  "document_id": "l-bracket-001",
-  "part_name": "L-Bracket",
+  "document_id": "lbracket",
+  "part_name": "l_bracket",
   "units": "mm",
   "trust_level": "reference_geometry",
   "selected_dialects": [
@@ -10,26 +10,21 @@
       "dialect": "sketch_profile",
       "version": "0.2.0",
       "contract_hash": "sha256:533659ffd2044fa17070909e36a5550995d9165e496d3bd1d4608578ef3dc3bf"
-    },
-    {
-      "dialect": "composition",
-      "version": "0.2.0",
-      "contract_hash": "sha256:1ff66c680d94f60891bf00260f365ffa2a0d213d5571a2366a3f1c27748f5382"
     }
   ],
   "components": [
     {
-      "id": "l_bracket_comp",
+      "id": "main",
       "owner_dialect": "sketch_profile",
       "kind_hint": null,
-      "root_node": "extrude",
+      "root_node": "ext",
       "output_aliases": {}
     }
   ],
   "nodes": [
     {
-      "id": "sketch",
-      "component": "l_bracket_comp",
+      "id": "sk",
+      "component": "main",
       "dialect": "sketch_profile",
       "op": "create_2d_sketch",
       "op_version": "1.0.0",
@@ -39,7 +34,7 @@
         {
           "name": "sketch",
           "type": "sketch",
-          "value_id": "sketch:l_bracket_comp:sketch:sketch"
+          "value_id": "sketch:main:sk:sketch"
         }
       ],
       "params": {
@@ -58,15 +53,15 @@
       "postconditions": []
     },
     {
-      "id": "polyline",
-      "component": "l_bracket_comp",
+      "id": "pl",
+      "component": "main",
       "dialect": "sketch_profile",
       "op": "add_polyline",
       "op_version": "1.0.0",
       "phase": "profile",
       "inputs": [
         {
-          "producer_node": "sketch",
+          "producer_node": "sk",
           "producer_component": null,
           "output": "sketch",
           "resolved_type": "sketch"
@@ -76,7 +71,7 @@
         {
           "name": "profile",
           "type": "profile",
-          "value_id": "profile:l_bracket_comp:polyline:profile"
+          "value_id": "profile:main:pl:profile"
         }
       ],
       "params": {
@@ -159,15 +154,15 @@
       "postconditions": []
     },
     {
-      "id": "close",
-      "component": "l_bracket_comp",
+      "id": "cl",
+      "component": "main",
       "dialect": "sketch_profile",
       "op": "close_profile",
       "op_version": "1.0.0",
       "phase": "profile",
       "inputs": [
         {
-          "producer_node": "polyline",
+          "producer_node": "pl",
           "producer_component": null,
           "output": "profile",
           "resolved_type": "profile"
@@ -177,7 +172,7 @@
         {
           "name": "profile",
           "type": "profile",
-          "value_id": "profile:l_bracket_comp:close:profile"
+          "value_id": "profile:main:cl:profile"
         }
       ],
       "params": {},
@@ -190,15 +185,15 @@
       "postconditions": []
     },
     {
-      "id": "extrude",
-      "component": "l_bracket_comp",
+      "id": "ext",
+      "component": "main",
       "dialect": "sketch_profile",
       "op": "extrude_profile",
       "op_version": "1.0.0",
       "phase": "feature",
       "inputs": [
         {
-          "producer_node": "close",
+          "producer_node": "cl",
           "producer_component": null,
           "output": "profile",
           "resolved_type": "profile"
@@ -208,7 +203,7 @@
         {
           "name": "body",
           "type": "solid",
-          "value_id": "solid:l_bracket_comp:extrude:body"
+          "value_id": "solid:main:ext:body"
         }
       ],
       "params": {
@@ -246,6 +241,6 @@
     "no_structural_validation": true,
     "no_life_prediction": true
   },
-  "canonical_graph_hash": "sha256:a49773cf8b34aa2b66c996461a6da457748fccaf9abaf156e114df414317d407",
-  "raw_graph_hash": "sha256:b83373a6e3913454b7cd471563b575de2e3ae1a85e22bbc360199dd4bfc533bd"
+  "canonical_graph_hash": "sha256:ba4efcb34c1fa6d656e59b323e66b51f0c20652e73c4ab70812a590070f8cc93",
+  "raw_graph_hash": "sha256:2948fa08407d1a9b9d6c666abd3612197ed792242c295ba3904ebbcdf6649323"
 }

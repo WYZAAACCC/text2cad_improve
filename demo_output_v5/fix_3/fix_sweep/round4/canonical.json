@@ -1,8 +1,8 @@
 {
   "schema_version": "g_cad_core_v0.2",
   "canonical_version": "canonical_gcad_v0.2",
-  "document_id": "d4c3b2a1-8e7f-4a6c-b9d0-1f2e3a4b5c6d",
-  "part_name": "U_Pipe",
+  "document_id": "u-pipe-sweep",
+  "part_name": "u_pipe",
   "units": "mm",
   "trust_level": "reference_geometry",
   "selected_dialects": [
@@ -151,5 +151,5 @@
     "no_life_prediction": true
   },
   "canonical_graph_hash": "sha256:df2d4d095d342bf2a0b1f4a732a69852e453cbbecda37911e2c882e9e5da186e",
-  "raw_graph_hash": "sha256:ba68d10b371c9cc45003f5b8e5082997dfbb699580486f04b9aabb8ec827a8b3"
+  "raw_graph_hash": "sha256:c903daa54cef12b5a6f990184a95783adeea18ca60b0b73cafa391546a10c606"
 }

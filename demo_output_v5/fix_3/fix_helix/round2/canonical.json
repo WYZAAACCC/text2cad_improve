@@ -1,7 +1,7 @@
 {
   "schema_version": "g_cad_core_v0.2",
   "canonical_version": "canonical_gcad_v0.2",
-  "document_id": "coil-spring-001",
+  "document_id": "coil-spring-helix",
   "part_name": "coil_spring",
   "units": "mm",
   "trust_level": "reference_geometry",
@@ -14,17 +14,67 @@
   ],
   "components": [
     {
-      "id": "spring_comp",
+      "id": "spring",
       "owner_dialect": "loft_sweep",
       "kind_hint": null,
-      "root_node": "n1",
+      "root_node": "helix_swp",
       "output_aliases": {}
     }
   ],
   "nodes": [
     {
-      "id": "n1",
-      "component": "spring_comp",
+      "id": "helix_path",
+      "component": "spring",
+      "dialect": "loft_sweep",
+      "op": "create_sweep_path",
+      "op_version": "1.0.0",
+      "phase": "path",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "path",
+          "type": "curve",
+          "value_id": "curve:spring:helix_path:path"
+        }
+      ],
+      "params": {
+        "path_points": [
+          {
+            "x_mm": 15,
+            "y_mm": 0,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 15,
+            "y_mm": 0,
+            "z_mm": 40
+          }
+        ]
+      },
+      "typed_params": {
+        "path_points": [
+          {
+            "x_mm": 15.0,
+            "y_mm": 0.0,
+            "z_mm": 0.0
+          },
+          {
+            "x_mm": 15.0,
+            "y_mm": 0.0,
+            "z_mm": 40.0
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_frame"
+      ],
+      "postconditions": []
+    },
+    {
+      "id": "helix_swp",
+      "component": "spring",
       "dialect": "loft_sweep",
       "op": "helix_sweep",
       "op_version": "1.0.0",
@@ -34,7 +84,7 @@
         {
           "name": "body",
           "type": "solid",
-          "value_id": "solid:spring_comp:n1:body"
+          "value_id": "solid:spring:helix_swp:body"
         }
       ],
       "params": {
@@ -81,6 +131,6 @@
     "no_structural_validation": true,
     "no_life_prediction": true
   },
-  "canonical_graph_hash": "sha256:fe31d36357b277e096b626eaec3addf82fb19b870cfac80b674eb9794db651c2",
-  "raw_graph_hash": "sha256:390d993ded8ebf8ec593203af9b08e29a873a612e76b3bb8635ac854e9c32299"
+  "canonical_graph_hash": "sha256:63c93c799ece4b4de73db51152c6dd464c1d2c9dec0e814b12927d91c99885b8",
+  "raw_graph_hash": "sha256:8d86671329bbe9fb80bbcaa58056f249c56f5df58147ec261af83f569c16b633"
 }

@@ -1,8 +1,8 @@
 {
   "schema_version": "g_cad_core_v0.2",
   "canonical_version": "canonical_gcad_v0.2",
-  "document_id": "u-pipe-001",
-  "part_name": "u_shaped_pipe",
+  "document_id": "u-pipe-sweep",
+  "part_name": "u_pipe",
   "units": "mm",
   "trust_level": "reference_geometry",
   "selected_dialects": [
@@ -17,13 +17,13 @@
       "id": "pipe",
       "owner_dialect": "loft_sweep",
       "kind_hint": null,
-      "root_node": "sweep_profile_node",
+      "root_node": "swp",
       "output_aliases": {}
     }
   ],
   "nodes": [
     {
-      "id": "create_sweep_path_node",
+      "id": "path1",
       "component": "pipe",
       "dialect": "loft_sweep",
       "op": "create_sweep_path",
@@ -34,7 +34,7 @@
         {
           "name": "path",
           "type": "curve",
-          "value_id": "curve:pipe:create_sweep_path_node:path"
+          "value_id": "curve:pipe:path1:path"
         }
       ],
       "params": {
@@ -93,7 +93,7 @@
       "postconditions": []
     },
     {
-      "id": "sweep_profile_node",
+      "id": "swp",
       "component": "pipe",
       "dialect": "loft_sweep",
       "op": "sweep_profile",
@@ -101,7 +101,7 @@
       "phase": "sweep",
       "inputs": [
         {
-          "producer_node": "create_sweep_path_node",
+          "producer_node": "path1",
           "producer_component": null,
           "output": "path",
           "resolved_type": "curve"
@@ -111,7 +111,7 @@
         {
           "name": "body",
           "type": "solid",
-          "value_id": "solid:pipe:sweep_profile_node:body"
+          "value_id": "solid:pipe:swp:body"
         }
       ],
       "params": {
@@ -150,6 +150,6 @@
     "no_structural_validation": true,
     "no_life_prediction": true
   },
-  "canonical_graph_hash": "sha256:7d68683d0f5580b62803e9b447806b21fed8c0ce9f0055580171580a1445f122",
-  "raw_graph_hash": "sha256:96742373c78d41519ab6bb87583fa2917b5dc8e3f2dc6e33d45589c5edd666bf"
+  "canonical_graph_hash": "sha256:30a5c86fe285218a29fe93a19573c929159965b1efec2dffec7552f5776f28e8",
+  "raw_graph_hash": "sha256:e786f2a246515d05c4dd96a55ae7dd44ee5e3120c8c21ed081587da991e1ba07"
 }

@@ -1,7 +1,7 @@
 {
   "schema_version": "g_cad_core_v0.2",
-  "document_id": "d4c3b2a1-8e7f-4a6c-b9d0-1f2e3a4b5c6d",
-  "part_name": "U_Pipe",
+  "document_id": "u-pipe-sweep",
+  "part_name": "u_pipe",
   "units": "mm",
   "trust_level": "reference_geometry",
   "selected_dialects": [
@@ -29,7 +29,7 @@
       "outputs": [
         {
           "name": "path",
-          "type": "solid"
+          "type": "curve"
         }
       ],
       "params": {

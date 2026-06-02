@@ -1,8 +1,8 @@
 {
   "schema_version": "g_cad_core_v0.2",
   "canonical_version": "canonical_gcad_v0.2",
-  "document_id": "8eef6c0b-c70f-4faa-b4aa-74aec3c18c5e",
-  "part_name": "U-shaped Pipe",
+  "document_id": "u-pipe-sweep",
+  "part_name": "u_pipe",
   "units": "mm",
   "trust_level": "reference_geometry",
   "selected_dialects": [
@@ -17,13 +17,13 @@
       "id": "u_pipe",
       "owner_dialect": "loft_sweep",
       "kind_hint": null,
-      "root_node": "sweep_profile_node",
+      "root_node": "swp",
       "output_aliases": {}
     }
   ],
   "nodes": [
     {
-      "id": "path_node",
+      "id": "path1",
       "component": "u_pipe",
       "dialect": "loft_sweep",
       "op": "create_sweep_path",
@@ -32,9 +32,9 @@
       "inputs": [],
       "outputs": [
         {
-          "name": "sweep_path",
+          "name": "path",
           "type": "curve",
-          "value_id": "curve:u_pipe:path_node:sweep_path"
+          "value_id": "curve:u_pipe:path1:path"
         }
       ],
       "params": {
@@ -93,7 +93,7 @@
       "postconditions": []
     },
     {
-      "id": "sweep_profile_node",
+      "id": "swp",
       "component": "u_pipe",
       "dialect": "loft_sweep",
       "op": "sweep_profile",
@@ -101,9 +101,9 @@
       "phase": "sweep",
       "inputs": [
         {
-          "producer_node": "path_node",
+          "producer_node": "path1",
           "producer_component": null,
-          "output": "sweep_path",
+          "output": "path",
           "resolved_type": "curve"
         }
       ],
@@ -111,7 +111,7 @@
         {
           "name": "body",
           "type": "solid",
-          "value_id": "solid:u_pipe:sweep_profile_node:body"
+          "value_id": "solid:u_pipe:swp:body"
         }
       ],
       "params": {
@@ -150,6 +150,6 @@
     "no_structural_validation": true,
     "no_life_prediction": true
   },
-  "canonical_graph_hash": "sha256:81bd101db6d8c1f141b97c8edb3fd675dfd748211ae39fc4747ff19a703acf95",
-  "raw_graph_hash": "sha256:24dec39707f6dc68ea9df58fb12a6f0e9fb291c659bd30d64f0e65556a27eda9"
+  "canonical_graph_hash": "sha256:df2d4d095d342bf2a0b1f4a732a69852e453cbbecda37911e2c882e9e5da186e",
+  "raw_graph_hash": "sha256:c903daa54cef12b5a6f990184a95783adeea18ca60b0b73cafa391546a10c606"
 }

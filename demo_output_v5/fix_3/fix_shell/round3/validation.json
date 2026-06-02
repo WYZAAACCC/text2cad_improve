@@ -1,20 +1,22 @@
 {
   "ok": false,
-  "stage": "structure",
+  "stage": "params",
   "issues": [
     {
-      "code": "root_node_wrong_component",
-      "message": "component '__assembly__' root_node 'shell_body_op' belongs to 'shell'",
+      "code": "invalid_params",
+      "message": "node 'ext' params invalid for op 'extrude_rectangle': 'NoneType' object has no attribute 'validate_params'",
       "severity": "error",
-      "stage": "structure",
-      "node_id": "shell_body_op",
-      "component_id": "__assembly__",
+      "stage": "params",
+      "node_id": "ext",
+      "component_id": null,
       "path": null,
       "expected": null,
       "actual": null
     }
   ],
   "stages_run": [
-    "structure"
+    "structure",
+    "registry",
+    "params"
   ]
 }

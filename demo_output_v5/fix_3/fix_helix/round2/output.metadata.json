@@ -5,7 +5,7 @@
     "schema_version": "g_cad_core_v0.2",
     "canonical_version": "canonical_gcad_v0.2",
     "trust_level": "reference_geometry",
-    "document_id": "coil-spring-001",
+    "document_id": "coil_spring_001",
     "part_name": "coil_spring",
     "selected_dialects": [
       {
@@ -16,19 +16,19 @@
     ],
     "op_versions": [
       {
-        "node_id": "n1",
+        "node_id": "helix_node",
         "dialect": "loft_sweep",
         "op": "helix_sweep",
         "op_version": "1.0.0"
       }
     ],
-    "raw_graph_hash": "sha256:390d993ded8ebf8ec593203af9b08e29a873a612e76b3bb8635ac854e9c32299",
-    "canonical_graph_hash": "sha256:fe31d36357b277e096b626eaec3addf82fb19b870cfac80b674eb9794db651c2",
+    "raw_graph_hash": "sha256:69f22753e45b38dcea0b07095a05e901df799c7611018ac4ad537f79e4b3e2cb",
+    "canonical_graph_hash": "sha256:1c2e43d3ca21b4fa9994ed9421764d0b5be8531d59dc7e746772050039abc055",
     "paths": {
-      "canonical_ir_path": "E:\\auto_detection_process\\demo_output_v5\\fix_3\\fix_helix\\round1\\canonical.json",
-      "validation_seed_path": "E:\\auto_detection_process\\demo_output_v5\\fix_3\\fix_helix\\round1\\bundle.json",
-      "step_path": "E:\\auto_detection_process\\demo_output_v5\\fix_3\\fix_helix\\round1\\output.step",
-      "metadata_path": "E:\\auto_detection_process\\demo_output_v5\\fix_3\\fix_helix\\round1\\output.metadata.json"
+      "canonical_ir_path": "E:\\auto_detection_process\\demo_output_v5\\fix_3\\fix_helix\\round2\\canonical.json",
+      "validation_seed_path": "E:\\auto_detection_process\\demo_output_v5\\fix_3\\fix_helix\\round2\\bundle.json",
+      "step_path": "E:\\auto_detection_process\\demo_output_v5\\fix_3\\fix_helix\\round2\\output.step",
+      "metadata_path": "E:\\auto_detection_process\\demo_output_v5\\fix_3\\fix_helix\\round2\\output.metadata.json"
     },
     "runtime": {
       "runner_version": "0.2.0",
@@ -36,7 +36,7 @@
       "geometry_runtime_version": "cadquery_runtime_v1"
     },
     "artifact": {
-      "step_sha256": "sha256:4dad72ea9bf9c8af4a0580c2c2c4ed1b289ef18a238d350469f69be239a3b8fb",
+      "step_sha256": "sha256:cd9016f808ae264ca168ace5bc6694f9be936b8fa653120b3c6f397079c989f5",
       "metadata_schema_hash": null
     },
     "import_policy": {
@@ -48,7 +48,7 @@
     "repair_attempts": 0,
     "repair_patch_hashes": [],
     "warnings": [
-      "helix_sweep on 'n1': profile radius (2.0mm) > 80% of minimum curvature radius (1.3mm). Helix may self-intersect — consider reducing profile_radius_mm or increasing pitch_mm."
+      "helix_sweep on 'helix_node': profile radius (2.0mm) > 80% of minimum curvature radius (1.3mm). Helix may self-intersect — consider reducing profile_radius_mm or increasing pitch_mm."
     ],
     "degraded_features": [],
     "operation_metrics": [],
@@ -63,7 +63,7 @@
     }
   },
   "build_warnings": [
-    "helix_sweep on 'n1': profile radius (2.0mm) > 80% of minimum curvature radius (1.3mm). Helix may self-intersect — consider reducing profile_radius_mm or increasing pitch_mm."
+    "helix_sweep on 'helix_node': profile radius (2.0mm) > 80% of minimum curvature radius (1.3mm). Helix may self-intersect — consider reducing profile_radius_mm or increasing pitch_mm."
   ],
   "validation": {
     "core_validation": {
