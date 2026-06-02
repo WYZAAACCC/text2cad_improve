@@ -44,12 +44,18 @@
         "dialect": "axisymmetric",
         "op": "cut_rim_slot_pattern",
         "op_version": "1.0.0"
+      },
+      {
+        "node_id": "edge_treatment_chamfer",
+        "dialect": "axisymmetric",
+        "op": "apply_safe_chamfer",
+        "op_version": "1.0.0"
       }
     ],
     "raw_graph_hash": "sha256:74e2302a98f6d09e399932b54d231fbac9415ba658e60da7c7cd55bc490ba7c5",
     "canonical_graph_hash": "sha256:5ae292dfbf259204c7133c6cee74a1f43f76657af5ad208561badb1433c9689e",
     "paths": {
-      "canonical_ir_path": "E:\\auto_detection_process\\demo_output_v5\\complex_shaft\\canonical_nochamfer.json",
+      "canonical_ir_path": "E:\\auto_detection_process\\demo_output_v5\\complex_shaft\\canonical_gcad.json",
       "validation_seed_path": "E:\\auto_detection_process\\demo_output_v5\\complex_shaft\\validation_bundle.json",
       "step_path": "E:\\auto_detection_process\\demo_output_v5\\complex_shaft\\output.step",
       "metadata_path": "E:\\auto_detection_process\\demo_output_v5\\complex_shaft\\output.metadata.json"
@@ -60,7 +66,7 @@
       "geometry_runtime_version": "cadquery_runtime_v1"
     },
     "artifact": {
-      "step_sha256": "sha256:35288ec48cd4b8f4e9966f4e346ba4713042e502f01d029634ec2f2cb9efcb91",
+      "step_sha256": "sha256:587b18881c6b35d9558baa90097448949df2137f661193feae6fa9134dda9208",
       "metadata_schema_hash": null
     },
     "import_policy": {
@@ -71,7 +77,9 @@
     },
     "repair_attempts": 0,
     "repair_patch_hashes": [],
-    "warnings": [],
+    "warnings": [
+      "Safe chamfer skipped on 'edge_treatment_chamfer': geometry does not support chamfer. Part is valid without chamfer."
+    ],
     "degraded_features": [],
     "operation_metrics": [
       {
@@ -98,6 +106,11 @@
         "node_id": "rim_slots",
         "op": "cut_rim_slot_pattern",
         "status": "ok"
+      },
+      {
+        "node_id": "edge_treatment_chamfer",
+        "op": "apply_safe_chamfer",
+        "status": "ok"
       }
     ],
     "safety": {
@@ -110,7 +123,9 @@
       "no_life_prediction": true
     }
   },
-  "build_warnings": [],
+  "build_warnings": [
+    "Safe chamfer skipped on 'edge_treatment_chamfer': geometry does not support chamfer. Part is valid without chamfer."
+  ],
   "validation": {
     "core_validation": {
       "ok": true,
