@@ -127,10 +127,42 @@ def _fix_output_names(doc: dict) -> dict:
     同时补全缺失的 output (如 revolve_profile 缺少 outer_frame)。"""
     # 每个 op 的标准 outputs
     OP_OUTPUT_TEMPLATES: dict[str, list[dict]] = {
-        "revolve_profile": [
-            {"name": "body", "type": "solid"},
-            {"name": "outer_frame", "type": "frame"},
-        ],
+        "revolve_profile": [{"name": "body", "type": "solid"}, {"name": "outer_frame", "type": "frame"}],
+        "create_sweep_path": [{"name": "path", "type": "curve"}],
+        "sweep_profile": [{"name": "body", "type": "solid"}],
+        "loft_sections": [{"name": "body", "type": "solid"}],
+        "helix_sweep": [{"name": "body", "type": "solid"}],
+        "create_2d_sketch": [{"name": "sketch", "type": "sketch"}],
+        "add_line_segment": [{"name": "profile", "type": "profile"}],
+        "add_polyline": [{"name": "profile", "type": "profile"}],
+        "add_arc_segment": [{"name": "profile", "type": "profile"}],
+        "add_circle": [{"name": "profile", "type": "profile"}],
+        "close_profile": [{"name": "profile", "type": "profile"}],
+        "extrude_profile": [{"name": "body", "type": "solid"}],
+        "cut_profile": [{"name": "body", "type": "solid"}],
+        "shell_body": [{"name": "body", "type": "solid"}],
+        "hollow_body": [{"name": "body", "type": "solid"}],
+        "extrude_rectangle": [{"name": "body", "type": "solid"}],
+        "cut_center_bore": [{"name": "body", "type": "solid"}],
+        "cut_circular_hole_pattern": [{"name": "body", "type": "solid"}],
+        "cut_annular_groove": [{"name": "body", "type": "solid"}],
+        "cut_rim_slot_pattern": [{"name": "body", "type": "solid"}],
+        "cut_rectangular_pocket": [{"name": "body", "type": "solid"}],
+        "cut_hole": [{"name": "body", "type": "solid"}],
+        "cut_hole_pattern_linear": [{"name": "body", "type": "solid"}],
+        "add_rectangular_boss": [{"name": "body", "type": "solid"}],
+        "add_rib": [{"name": "body", "type": "solid"}],
+        "apply_safe_fillet": [{"name": "body", "type": "solid"}],
+        "apply_safe_chamfer": [{"name": "body", "type": "solid"}],
+        "cut_internal_thread": [{"name": "body", "type": "solid"}],
+        "cut_external_thread": [{"name": "body", "type": "solid"}],
+        "boolean_union": [{"name": "body", "type": "solid"}],
+        "boolean_cut": [{"name": "body", "type": "solid"}],
+        "translate_solid": [{"name": "body", "type": "solid"}],
+        "rotate_solid": [{"name": "body", "type": "solid"}],
+        "place_component": [{"name": "body", "type": "solid"}],
+        "circular_pattern_component": [{"name": "body", "type": "solid"}],
+        "linear_pattern_component": [{"name": "body", "type": "solid"}],
     }
     for node in doc.get("nodes", []):
         op = node.get("op", "")
@@ -139,19 +171,23 @@ def _fix_output_names(doc: dict) -> dict:
         for o in outputs:
             name = o.get("name", "")
             otype = o.get("type", "")
-            if name == "solid" and otype == "solid":
-                o["name"] = "body"
-            elif name == "frame" and otype == "frame":
-                o["name"] = "outer_frame"
-            elif name == "solid_body":
-                o["name"] = "body"
-        # 补全缺失的 standard output
+            if name == "solid" and otype == "solid": o["name"] = "body"
+            elif name == "frame" and otype == "frame": o["name"] = "outer_frame"
+            elif name == "solid_body": o["name"] = "body"
+            # Fix common output type errors: wire→curve, wire→profile, shape→solid
+            if o.get("type") == "wire":
+                o["type"] = "profile" if op in ("add_polyline","add_line_segment","add_arc_segment","add_circle","close_profile") else "curve"
+            if o.get("type") == "path":
+                o["type"] = "curve"
+            if o.get("type") == "shape":
+                o["type"] = "solid"
+        # 根据 template 修正 output (count 或 type 不匹配时完全替换)
         template = OP_OUTPUT_TEMPLATES.get(op)
-        if template and len(outputs) < len(template):
-            existing_names = {o.get("name") for o in outputs}
-            for t in template:
-                if t["name"] not in existing_names:
-                    outputs.append(dict(t))
+        if template:
+            if len(outputs) != len(template) or any(
+                o.get("type") != t["type"] for o, t in zip(outputs, template)
+            ):
+                node["outputs"] = [dict(t) for t in template]
     return doc
 
 
@@ -292,14 +328,25 @@ def _fix_unknown_ops(doc: dict, dialect_registry=None) -> dict:
 
     if removed_ids:
         doc["nodes"] = kept_nodes
-        # Fix root_node references
         node_ids = {n["id"] for n in kept_nodes}
+        # Fix root_node references + remove empty components
+        kept_comps = []
         for comp in doc.get("components", []):
+            cid = comp.get("id", "")
+            comp_nodes = [n for n in kept_nodes if n.get("component") == cid]
+            if not comp_nodes and cid != "__assembly__":
+                continue  # Remove empty non-assembly components
             rn = comp.get("root_node", "")
-            if rn in removed_ids:
-                comp_nodes = [n for n in kept_nodes if n.get("component") == comp.get("id")]
+            if rn not in node_ids:
                 if comp_nodes:
-                    comp["root_node"] = comp_nodes[-1]["id"]
+                    body_nodes = [n for n in comp_nodes
+                                  if any(o.get("name") == "body" and o.get("type") == "solid"
+                                         for o in n.get("outputs", []))]
+                    comp["root_node"] = body_nodes[-1]["id"] if body_nodes else comp_nodes[-1]["id"]
+                elif cid == "__assembly__":
+                    continue  # Remove empty assembly too
+            kept_comps.append(comp)
+        doc["components"] = kept_comps
     return doc
 
 

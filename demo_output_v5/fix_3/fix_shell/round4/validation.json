@@ -1,0 +1,33 @@
+{
+  "ok": false,
+  "stage": "params",
+  "issues": [
+    {
+      "code": "invalid_params",
+      "message": "node 'revolve_profile_op' params invalid for op 'revolve_profile': 1 validation error for RevolveProfileParams\naxis\n  Input should be 'Z' [type=literal_error, input_value='z', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "revolve_profile_op",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'cut_center_bore_op' params invalid for op 'cut_center_bore': 1 validation error for CutCenterBoreParams\naxis\n  Input should be 'Z' [type=literal_error, input_value='z', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "cut_center_bore_op",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "registry",
+    "params"
+  ]
+}

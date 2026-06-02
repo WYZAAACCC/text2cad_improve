@@ -1,0 +1,27 @@
+{
+  "fix_sweep": {
+    "status": "pending",
+    "rounds": 4,
+    "final_ok": false,
+    "last_error": "STEP: "
+  },
+  "fix_helix": {
+    "status": "pending",
+    "rounds": 1,
+    "final_ok": true,
+    "last_error": "",
+    "step_bytes": 25644
+  },
+  "fix_shell": {
+    "status": "pending",
+    "rounds": 4,
+    "final_ok": false,
+    "last_error": "Validate: [invalid_params] node 'revolve_profile_op' params invalid for op 'revolve_profile': 1 validation error for RevolvePro; [invalid_params] node 'cut_center_bore_op' params invalid for op 'cut_center_bore': 1 validation error for CutCenterB"
+  },
+  "fix_l_bracket": {
+    "status": "pending",
+    "rounds": 4,
+    "final_ok": false,
+    "last_error": "Validate: [unknown_op] node 'sketch_plane': unknown op 'create_2d_sketch' in 'sketch_profile': 'Unknown op/version: create_; [unknown_op] node 'polyline': unknown op 'add_polyline' in 'sketch_profile': 'Unknown op/version: add_polyline v0; [unknown_op] node 'close': unknown op 'close_profile' in 'sketch_profile': 'Unknown op/version: close_profile v0.; [unknown_op] node 'extrude': unknown op 'extrude_profile' in 'sketch_profile': 'Unknown op/version: extrude_profi"
+  }
+}

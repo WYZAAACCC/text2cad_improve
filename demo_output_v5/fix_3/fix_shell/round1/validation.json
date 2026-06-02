@@ -1,0 +1,44 @@
+{
+  "ok": false,
+  "stage": "params",
+  "issues": [
+    {
+      "code": "invalid_params",
+      "message": "node 'cup_revolve' params invalid for op 'revolve_profile': 1 validation error for RevolveProfileParams\naxis\n  Input should be 'Z' [type=literal_error, input_value='z', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "cup_revolve",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'cup_center_bore' params invalid for op 'cut_center_bore': 1 validation error for CutCenterBoreParams\naxis\n  Input should be 'Z' [type=literal_error, input_value='z', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "cup_center_bore",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'cup_rear_cut' params invalid for op 'cut_center_bore': 1 validation error for CutCenterBoreParams\naxis\n  Input should be 'Z' [type=literal_error, input_value='z', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "cup_rear_cut",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "registry",
+    "params"
+  ]
+}

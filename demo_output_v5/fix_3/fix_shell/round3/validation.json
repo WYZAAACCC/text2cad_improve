@@ -1,0 +1,20 @@
+{
+  "ok": false,
+  "stage": "structure",
+  "issues": [
+    {
+      "code": "root_node_wrong_component",
+      "message": "component '__assembly__' root_node 'shell_body_op' belongs to 'shell'",
+      "severity": "error",
+      "stage": "structure",
+      "node_id": "shell_body_op",
+      "component_id": "__assembly__",
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure"
+  ]
+}

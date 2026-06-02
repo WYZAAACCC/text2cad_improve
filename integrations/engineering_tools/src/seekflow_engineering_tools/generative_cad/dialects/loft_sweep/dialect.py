@@ -51,7 +51,7 @@ class LoftSweepDialect:
         }
 
     def manifest(self): return {"dialect_id": self.dialect_id, "version": self.version, "phase_order": list(self.phase_order), "op_count": len(self._specs)}
-    def contract(self): return {"dialect_id": self.dialect_id, "version": self.version, "phase_order": list(self.phase_order), "allowed_ops": {(n,): {"phase": s.phase, "op_version": s.op_version} for (n, _), s in self._specs.items()}}
+    def contract(self): return {"dialect_id": self.dialect_id, "version": self.version, "phase_order": list(self.phase_order), "allowed_ops": {n: {"phase": s.phase, "op_version": s.op_version} for (n, _), s in self._specs.items()}}
     def op_specs(self): return dict(self._specs)
     def default_op_version(self, op): return "1.0.0"
     def get_op_spec(self, op, v=None): return self._specs.get((op, v or "1.0.0"))
