@@ -8,12 +8,16 @@ from typing import Any
 from seekflow_engineering_tools.generative_cad.dialects.axisymmetric.contract import AXISYMMETRIC_CONTRACT
 from seekflow_engineering_tools.generative_cad.dialects.axisymmetric.handlers import (
     handle_apply_safe_chamfer, handle_cut_annular_groove, handle_cut_center_bore,
-    handle_cut_circular_hole_pattern, handle_cut_rim_slot_pattern, handle_revolve_profile,
+    handle_cut_circular_hole_pattern, handle_cut_external_thread,
+    handle_cut_internal_thread, handle_cut_rim_slot_pattern, handle_revolve_profile,
 )
 from seekflow_engineering_tools.generative_cad.dialects.axisymmetric.manifest import AXISYMMETRIC_MANIFEST
 from seekflow_engineering_tools.generative_cad.dialects.axisymmetric.params import (
     ApplySafeChamferParams, CutAnnularGrooveParams, CutCenterBoreParams,
     CutCircularHolePatternParams, CutRimSlotPatternParams, RevolveProfileParams,
+)
+from seekflow_engineering_tools.generative_cad.dialects.axisymmetric.thread_params import (
+    CutExternalThreadParams, CutInternalThreadParams,
 )
 from seekflow_engineering_tools.generative_cad.dialects.operation import OperationSpec
 from seekflow_engineering_tools.generative_cad.ir.canonical import CanonicalComponent, CanonicalNode
@@ -24,11 +28,12 @@ from seekflow_engineering_tools.generative_cad.validation.reports import Validat
 class AxisymmetricDialect:
     dialect_id = "axisymmetric"
     version = "0.2.0"
-    phase_order = ("base_solid", "primary_cut", "annular_detail", "pattern_cut", "rim_detail", "edge_treatment", "cleanup")
+    phase_order = ("base_solid", "primary_cut", "annular_detail", "pattern_cut", "rim_detail", "edge_treatment", "thread", "cleanup")
 
     _op_version_map = {k: "1.0.0" for k in [
         "revolve_profile", "cut_center_bore", "cut_annular_groove",
         "cut_circular_hole_pattern", "cut_rim_slot_pattern", "apply_safe_chamfer",
+        "cut_internal_thread", "cut_external_thread",
     ]}
 
     def manifest(self): return dict(AXISYMMETRIC_MANIFEST)
@@ -42,6 +47,8 @@ class AxisymmetricDialect:
             ("cut_circular_hole_pattern", "1.0.0"): OperationSpec(dialect="axisymmetric", op="cut_circular_hole_pattern", op_version="1.0.0", phase="pattern_cut", input_types=["solid"], output_types=["solid"], params_model=CutCircularHolePatternParams, effects=["cuts_material"], postconditions=["valid_solid"], handler=handle_cut_circular_hole_pattern),
             ("cut_rim_slot_pattern", "1.0.0"): OperationSpec(dialect="axisymmetric", op="cut_rim_slot_pattern", op_version="1.0.0", phase="rim_detail", input_types=["solid"], output_types=["solid"], params_model=CutRimSlotPatternParams, effects=["cuts_material"], postconditions=["valid_solid"], handler=handle_cut_rim_slot_pattern),
             ("apply_safe_chamfer", "1.0.0"): OperationSpec(dialect="axisymmetric", op="apply_safe_chamfer", op_version="1.0.0", phase="edge_treatment", input_types=["solid"], output_types=["solid"], params_model=ApplySafeChamferParams, effects=["modifies_solid"], postconditions=["valid_solid"], handler=handle_apply_safe_chamfer),
+            ("cut_internal_thread", "1.0.0"): OperationSpec(dialect="axisymmetric", op="cut_internal_thread", op_version="1.0.0", phase="thread", input_types=["solid"], output_types=["solid"], params_model=CutInternalThreadParams, effects=["cuts_material"], postconditions=["valid_solid"], handler=handle_cut_internal_thread, summary="Cut an ISO metric internal thread (tapped hole) using helical sweep."),
+            ("cut_external_thread", "1.0.0"): OperationSpec(dialect="axisymmetric", op="cut_external_thread", op_version="1.0.0", phase="thread", input_types=["solid"], output_types=["solid"], params_model=CutExternalThreadParams, effects=["cuts_material"], postconditions=["valid_solid"], handler=handle_cut_external_thread, summary="Cut an ISO metric external thread on a cylindrical surface."),
         }
 
     def default_op_version(self, op): return self._op_version_map[op]

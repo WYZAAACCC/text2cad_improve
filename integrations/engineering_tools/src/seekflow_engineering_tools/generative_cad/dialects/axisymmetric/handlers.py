@@ -235,3 +235,79 @@ def _fillet_by_target(body, radius: float, target: str):
         try: result = result.edges(e.edge_index).fillet(radius)
         except Exception: continue
     return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Thread operations
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def handle_cut_internal_thread(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
+    """Cut an internal thread (tapped hole) using helical sweep."""
+    import cadquery as cq, math
+    body = resolve_input_object(node, ctx, 0)
+    p = node.typed_params if node.typed_params else node.params
+    nom_dia = float(p.get("nominal_dia_mm", 8))
+    pitch = float(p.get("pitch_mm", 1.25))
+    depth = float(p.get("depth_mm", 20))
+    start_angle = float(p.get("start_angle_deg", 0))
+
+    if nom_dia <= 0 or pitch <= 0 or depth <= 0:
+        ctx.warnings.append(f"cut_internal_thread on '{node.id}': invalid params. Skipping.")
+        return {"body": _store_solid(node, ctx, body)}
+
+    try:
+        # V-thread profile: 60-degree triangular cutter
+        thread_depth = 0.866 * pitch  # ISO metric thread depth
+        # Build helical path
+        turns = depth / pitch
+        helix = cq.Workplane("XY").parametricCurve(
+            lambda t: (
+                (nom_dia / 2.0) * math.cos(2 * math.pi * t + math.radians(start_angle)),
+                (nom_dia / 2.0) * math.sin(2 * math.pi * t + math.radians(start_angle)),
+                pitch * t,
+            ),
+            N=max(20, int(turns * 30)),
+        )
+        # Triangular cutter profile
+        cutter = cq.Workplane("XZ").moveTo(0, 0).lineTo(thread_depth, pitch / 4.0).lineTo(-thread_depth, pitch / 4.0).close()
+        thread_solid = cutter.sweep(helix)
+        result = body.cut(thread_solid)
+    except Exception as e:
+        ctx.warnings.append(f"cut_internal_thread failed on '{node.id}': {e}")
+        return {"body": _store_solid(node, ctx, body)}
+    return {"body": _store_solid(node, ctx, result)}
+
+
+def handle_cut_external_thread(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
+    """Cut an external thread on a cylindrical surface."""
+    import cadquery as cq, math
+    body = resolve_input_object(node, ctx, 0)
+    p = node.typed_params if node.typed_params else node.params
+    nom_dia = float(p.get("nominal_dia_mm", 8))
+    pitch = float(p.get("pitch_mm", 1.25))
+    length = float(p.get("length_mm", 20))
+    start_z = float(p.get("start_z_mm", 0))
+    start_angle = float(p.get("start_angle_deg", 0))
+
+    if nom_dia <= 0 or pitch <= 0 or length <= 0:
+        ctx.warnings.append(f"cut_external_thread on '{node.id}': invalid params. Skipping.")
+        return {"body": _store_solid(node, ctx, body)}
+
+    try:
+        thread_depth = 0.866 * pitch
+        turns = length / pitch
+        helix = cq.Workplane("XY").parametricCurve(
+            lambda t: (
+                (nom_dia / 2.0 - thread_depth / 2.0) * math.cos(2 * math.pi * t + math.radians(start_angle)),
+                (nom_dia / 2.0 - thread_depth / 2.0) * math.sin(2 * math.pi * t + math.radians(start_angle)),
+                start_z + pitch * t,
+            ),
+            N=max(20, int(turns * 30)),
+        )
+        cutter = cq.Workplane("XZ").moveTo(0, 0).lineTo(thread_depth, pitch / 4.0).lineTo(-thread_depth, pitch / 4.0).close()
+        thread_solid = cutter.sweep(helix)
+        result = body.cut(thread_solid)
+    except Exception as e:
+        ctx.warnings.append(f"cut_external_thread failed on '{node.id}': {e}")
+        return {"body": _store_solid(node, ctx, body)}
+    return {"body": _store_solid(node, ctx, result)}
