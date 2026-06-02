@@ -1,0 +1,11 @@
+Create an assembly of three components united into one solid:
+
+Component A 'flange' (axisymmetric): a flange with outer diameter 150mm (r_mm=75), thickness 18mm (z=0 to 18), center bore diameter 50mm, and 6 bolt holes on PCD 120mm with hole_dia_mm=10. Use revolve_profile with proper sequential profile_stations.
+
+Component B 'boss' (axisymmetric): a cylindrical boss with outer diameter 60mm (r_mm=30), height 40mm (z=18 to 58), and a center bore diameter 30mm matching the flange bore. Use revolve_profile.
+
+Component C 'rib_plate' (sketch_extrude): a rectangular reinforcing plate width_mm=150 height_mm=10 depth_mm=40 using extrude_rectangle, positioned to brace between the flange and boss.
+
+Component '__assembly__' (composition): use boolean_union to merge all three component outputs. Each boolean_union input must reference {component: <id>, output: body}.
+Use multiple boolean_union nodes if needed: first union(A, B), then union(result, C).
+Units mm. Reference geometry only. Not for manufacturing.

@@ -1,0 +1,218 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "flange-multi-stage-industrial",
+  "part_name": "Multi-Stage Industrial Flange",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "main",
+      "owner_dialect": "axisymmetric",
+      "root_node": "n_chamfer"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_revolve",
+      "component": "main",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 100.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 20.0
+          },
+          {
+            "r_mm": 40.0,
+            "z_front_mm": 20.0,
+            "z_rear_mm": 55.0
+          },
+          {
+            "r_mm": 20.0,
+            "z_front_mm": 55.0,
+            "z_rear_mm": 56.0
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_bore",
+      "component": "main",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "n_revolve",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 40.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_groove",
+      "component": "main",
+      "dialect": "axisymmetric",
+      "op": "cut_annular_groove",
+      "op_version": "1.0.0",
+      "phase": "annular_detail",
+      "inputs": [
+        {
+          "node": "n_bore",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "side": "front",
+        "inner_dia_mm": 120.0,
+        "outer_dia_mm": 140.0,
+        "depth_mm": 4.0
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_bolt_pattern",
+      "component": "main",
+      "dialect": "axisymmetric",
+      "op": "cut_circular_hole_pattern",
+      "op_version": "1.0.0",
+      "phase": "pattern_cut",
+      "inputs": [
+        {
+          "node": "n_groove",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "count": 8,
+        "pcd_mm": 160.0,
+        "hole_dia_mm": 10.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_hub_pattern",
+      "component": "main",
+      "dialect": "axisymmetric",
+      "op": "cut_circular_hole_pattern",
+      "op_version": "1.0.0",
+      "phase": "pattern_cut",
+      "inputs": [
+        {
+          "node": "n_bolt_pattern",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "count": 4,
+        "pcd_mm": 60.0,
+        "hole_dia_mm": 6.0,
+        "axis": "Z",
+        "through_all": false
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_chamfer",
+      "component": "main",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "n_hub_pattern",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 2.0,
+        "target": "all_external"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {}
+}

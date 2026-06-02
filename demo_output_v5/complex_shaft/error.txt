@@ -1,0 +1,1 @@
+Validation failed after all repairs: [invalid_params] node 'n_rim_slots' params invalid for op 'cut_rim_slot_pattern': 1 validation er

@@ -1,0 +1,326 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "gear-blank-lightening-v1",
+  "part_name": "gear_blank_with_lightening_features",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "contract_hash": "sha256:1ff66c680d94f60891bf00260f365ffa2a0d213d5571a2366a3f1c27748f5382"
+    }
+  ],
+  "components": [
+    {
+      "id": "gear_blank",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": null,
+      "root_node": "edge_treatment_node",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "revolve_node",
+      "component": "gear_blank",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:gear_blank:revolve_node:body"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame",
+          "value_id": "frame:gear_blank:revolve_node:outer_frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 60.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 25.0
+          },
+          {
+            "r_mm": 25.0,
+            "z_front_mm": 25.0,
+            "z_rear_mm": 40.0
+          }
+        ]
+      },
+      "typed_params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 60.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 25.0,
+            "label": null
+          },
+          {
+            "r_mm": 25.0,
+            "z_front_mm": 25.0,
+            "z_rear_mm": 40.0,
+            "label": null
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid",
+        "creates_frame"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "center_bore_node",
+      "component": "gear_blank",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "revolve_node",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:gear_blank:center_bore_node:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 20.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 20.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "annular_groove_node",
+      "component": "gear_blank",
+      "dialect": "axisymmetric",
+      "op": "cut_annular_groove",
+      "op_version": "1.0.0",
+      "phase": "annular_detail",
+      "inputs": [
+        {
+          "producer_node": "center_bore_node",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:gear_blank:annular_groove_node:body"
+        }
+      ],
+      "params": {
+        "side": "rear",
+        "inner_dia_mm": 80.0,
+        "outer_dia_mm": 100.0,
+        "depth_mm": 5.0
+      },
+      "typed_params": {
+        "side": "rear",
+        "inner_dia_mm": 80.0,
+        "outer_dia_mm": 100.0,
+        "depth_mm": 5.0
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "lightening_holes_node",
+      "component": "gear_blank",
+      "dialect": "axisymmetric",
+      "op": "cut_circular_hole_pattern",
+      "op_version": "1.0.0",
+      "phase": "pattern_cut",
+      "inputs": [
+        {
+          "producer_node": "annular_groove_node",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:gear_blank:lightening_holes_node:body"
+        }
+      ],
+      "params": {
+        "count": 6,
+        "pcd_mm": 90.0,
+        "hole_dia_mm": 15.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "count": 6,
+        "pcd_mm": 90.0,
+        "hole_dia_mm": 15.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "bolt_holes_node",
+      "component": "gear_blank",
+      "dialect": "axisymmetric",
+      "op": "cut_circular_hole_pattern",
+      "op_version": "1.0.0",
+      "phase": "pattern_cut",
+      "inputs": [
+        {
+          "producer_node": "lightening_holes_node",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:gear_blank:bolt_holes_node:body"
+        }
+      ],
+      "params": {
+        "count": 4,
+        "pcd_mm": 38.0,
+        "hole_dia_mm": 6.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "count": 4,
+        "pcd_mm": 38.0,
+        "hole_dia_mm": 6.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "edge_treatment_node",
+      "component": "gear_blank",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "producer_node": "bolt_holes_node",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:gear_blank:edge_treatment_node:body"
+        }
+      ],
+      "params": {
+        "distance_mm": 1.0,
+        "target": "all_external_edges"
+      },
+      "typed_params": {
+        "distance_mm": 1.0,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "modifies_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:1d17c347e62a0ea126466e300fbfad89df12b15f74cac3920b1ef71a7bc244a4",
+  "raw_graph_hash": "sha256:b2e4648410a865b2b3299713a7a07d3da8b01f6fb856198c54638c9752872ee0"
+}

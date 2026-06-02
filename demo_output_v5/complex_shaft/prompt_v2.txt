@@ -1,0 +1,14 @@
+TASK: Create complex stepped shaft with 5 sections (z=0-30 r=40, z=30-55 r=30, z=55-75 r=22.5, z=75-110 r=15, z=110-130 r=10), center bore dia=12mm through_all, annular groove on section3 (inner_dia=28 outer_dia=38 depth=3 side=front), rim slots on section1 (count=6 depth=4 with slot_profile using symmetric_station_profile), chamfer 1.5mm on external edges.
+
+=== axisymmetric v0.2.0 | phases: base_solid -> primary_cut -> annular_detail -> pattern_cut -> rim_detail -> edge_treatment -> cleanup ===
+  revolve_profile phase=base_solid params: axis:string | profile_stations:array
+    EXAMPLE: {"axis":"Z","profile_stations":[{"r_mm":40,"z_front_mm":0,"z_rear_mm":30},{"r_mm":30,"z_front_mm":30,"z_rear_mm":55}]}
+  cut_center_bore phase=primary_cut params: diameter_mm:number | axis:string | through_all:boolean
+  cut_annular_groove phase=annular_detail params: side:string | inner_dia_mm:number | outer_dia_mm:number | depth_mm:number
+  cut_circular_hole_pattern phase=pattern_cut params: count:integer | pcd_mm:number | hole_dia_mm:number | axis:string | through_all:boolean
+  cut_rim_slot_pattern phase=rim_detail params: count:integer | slot_depth_mm:number | slot_profile:?
+    EXAMPLE: {"count":6,"slot_depth_mm":4,"slot_profile":{"kind":"symmetric_station_profile","stations":[{"depth_mm":0,"half_width_mm":3},{"depth_mm":4,"half_width_mm":3}]}}
+    NOTE: slot_profile is OBJECT not list! kind=string, stations=list of {depth_mm, half_width_mm}.
+  apply_safe_chamfer phase=edge_treatment params: distance_mm:number | target:string
+
+CRITICAL: Phase order MUST be respected (base_solid->primary_cut->annular_detail->pattern_cut->rim_detail->edge_treatment). Use EXACT param field names from examples above. slot_profile must be OBJECT with kind and stations. All safety flags true. trust_level=reference_geometry. llm_validation_hints={}

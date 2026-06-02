@@ -1,0 +1,12 @@
+Create a complex multi-section stepped shaft with the following features from bottom (z=0) to top:
+Section 1: diameter 80mm (r_mm=40), height 30mm (z=0 to 30).
+Section 2: diameter 60mm (r_mm=30), height 25mm (z=30 to 55).
+Section 3: diameter 45mm (r_mm=22.5), height 20mm (z=55 to 75).
+Section 4: diameter 30mm (r_mm=15), height 35mm (z=75 to 110).
+Section 5: diameter 20mm (r_mm=10), height 20mm (z=110 to 130).
+Add a center bore of diameter 12mm through the entire shaft (through_all=true).
+Add an annular groove on section 3: side='front', inner_dia_mm=28, outer_dia_mm=38, depth_mm=3.
+Add a rim slot pattern on section 1 outer rim: count=6, slot_depth_mm=4, with symmetric_station_profile: stations=[{depth_mm:0, half_width_mm:3}, {depth_mm:4, half_width_mm:3}].
+Apply 1.5mm chamfer on all external edges.
+Use revolve_profile with 5 profile_stations. Each station describes one vertical segment. z_rear_mm of station N MUST equal z_front_mm of station N+1.
+Units mm. Reference geometry only. Not for manufacturing.

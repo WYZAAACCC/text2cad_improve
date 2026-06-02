@@ -88,7 +88,9 @@ TARGET_VALUE_FIXES: dict[str, str] = {
     "all_external": "all_external_edges",
     "all": "all_external_edges",
     "external": "all_external_edges",
+    "external_edges": "all_external_edges",
     "all_edges": "all_external_edges",
+    "outer_edges": "all_external_edges",
 }
 
 
@@ -111,6 +113,7 @@ def auto_fix(raw_doc: dict, dialect_registry=None) -> dict:
     doc = _fix_param_names(doc)
     doc = _fix_target_values(doc)
     doc = _fix_root_node(doc)
+    doc = _fix_phase_ordering(doc, dialect_registry)
     doc = _fix_profile_stations(doc)
     doc = _fill_default_params(doc)
     doc = _remove_extra_params(doc)
@@ -118,9 +121,20 @@ def auto_fix(raw_doc: dict, dialect_registry=None) -> dict:
 
 
 def _fix_output_names(doc: dict) -> dict:
-    """output name: solid→body, frame→outer_frame, solid_body→body"""
+    """output name: solid→body, frame→outer_frame, solid_body→body。
+    同时补全缺失的 output (如 revolve_profile 缺少 outer_frame)。"""
+    # 每个 op 的标准 outputs
+    OP_OUTPUT_TEMPLATES: dict[str, list[dict]] = {
+        "revolve_profile": [
+            {"name": "body", "type": "solid"},
+            {"name": "outer_frame", "type": "frame"},
+        ],
+    }
     for node in doc.get("nodes", []):
-        for o in node.get("outputs", []):
+        op = node.get("op", "")
+        outputs = node.get("outputs", [])
+        # 修正已有 output name
+        for o in outputs:
             name = o.get("name", "")
             otype = o.get("type", "")
             if name == "solid" and otype == "solid":
@@ -129,6 +143,13 @@ def _fix_output_names(doc: dict) -> dict:
                 o["name"] = "outer_frame"
             elif name == "solid_body":
                 o["name"] = "body"
+        # 补全缺失的 standard output
+        template = OP_OUTPUT_TEMPLATES.get(op)
+        if template and len(outputs) < len(template):
+            existing_names = {o.get("name") for o in outputs}
+            for t in template:
+                if t["name"] not in existing_names:
+                    outputs.append(dict(t))
     return doc
 
 
@@ -234,6 +255,35 @@ def _fix_root_node(doc: dict) -> dict:
                     comp["root_node"] = body_nodes[-1]["id"]
                 else:
                     comp["root_node"] = comp_nodes[-1]["id"]
+    return doc
+
+
+def _fix_phase_ordering(doc: dict, dialect_registry=None) -> dict:
+    """按 phase 顺序重排 nodes。LLM 经常不遵守 phase order 导致验证失败。"""
+    if dialect_registry is None:
+        from seekflow_engineering_tools.generative_cad.dialects.default_registry import default_registry
+        dialect_registry = default_registry()
+
+    # 收集每个 component 的 phase rank
+    comp_phase_map: dict[str, dict[str, int]] = {}
+    for node in doc.get("nodes", []):
+        did = node.get("dialect", "")
+        cid = node.get("component", "")
+        if cid not in comp_phase_map:
+            d = dialect_registry.get(did)
+            if d and hasattr(d, "phase_order"):
+                comp_phase_map[cid] = {p: i for i, p in enumerate(d.phase_order)}
+            else:
+                comp_phase_map[cid] = {}
+
+    # 按 phase rank 排序 (同 phase 保持原顺序 — stable sort)
+    def sort_key(node):
+        cid = node.get("component", "")
+        phase = node.get("phase", "")
+        rank_map = comp_phase_map.get(cid, {})
+        return rank_map.get(phase, 999)
+
+    doc["nodes"] = sorted(doc.get("nodes", []), key=sort_key)
     return doc
 
 

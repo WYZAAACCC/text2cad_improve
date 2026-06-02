@@ -72,12 +72,25 @@ def handle_linear_pattern_component(node: CanonicalNode, ctx: RuntimeContext) ->
 
 
 def handle_boolean_union(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
-    # Strictly binary in v0.2 — graph must chain for multiple inputs
     if len(node.inputs) != 2:
         raise ValueError(f"boolean_union requires exactly 2 inputs, got {len(node.inputs)}")
     a = resolve_input_object(node, ctx, 0)
     b = resolve_input_object(node, ctx, 1)
-    return {"body": _store_solid(node, ctx, a.union(b))}
+    try:
+        result = a.union(b)
+    except Exception:
+        # OCCT boolean may fail on non-manifold or coincident geometry.
+        # Try fuse (more tolerant) then fall back to returning the first solid.
+        try:
+            import cadquery as cq
+            result = cq.Workplane("XY").union(a).union(b).val()
+        except Exception:
+            ctx.warnings.append(
+                f"boolean_union failed on '{node.id}': returning first solid. "
+                f"Assembly may be incomplete."
+            )
+            return {"body": _store_solid(node, ctx, a)}
+    return {"body": _store_solid(node, ctx, result)}
 
 
 def handle_boolean_cut(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:

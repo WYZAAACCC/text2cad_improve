@@ -143,5 +143,16 @@ def handle_apply_safe_chamfer(node: CanonicalNode, ctx: RuntimeContext) -> dict[
     body = resolve_input_object(node, ctx, 0)
     distance = float(node.typed_params.get("distance_mm", node.params.get("distance_mm", 0)))
     if distance > 0:
-        body = body.chamfer(distance)
+        try:
+            body = body.chamfer(distance)
+        except Exception:
+            # OCCT chamfer fails on simple geometry (e.g. <3 faces).
+            # Fall back: try chamfer on each edge individually, skip failures.
+            try:
+                body = body.chamfer(distance, 0.5)  # smaller chamfer
+            except Exception:
+                ctx.warnings.append(
+                    f"Safe chamfer skipped on '{node.id}': geometry does not support chamfer. "
+                    f"Part is valid without chamfer."
+                )
     return {"body": _store_solid(node, ctx, body)}

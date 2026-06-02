@@ -1,0 +1,10 @@
+Create a complex mounting base plate with multiple machined features:
+1. Main plate: extrude_rectangle width_mm=200 height_mm=150 depth_mm=20 centered=true.
+2. Four corner mounting holes (M8 clearance): cut_hole_pattern_linear hole_dia_mm=9 count_x=2 count_y=2 spacing_x_mm=170 spacing_y_mm=120, through_all=true.
+3. A large central rectangular pocket: cut_rectangular_pocket width_mm=120 height_mm=80 depth_mm=8 centered=true.
+4. Two additional M6 threaded holes on the left side: use two cut_hole operations with diameter_mm=6.8, position_mm=[-70, 30] and position_mm=[-70, -30], through_all=true.
+5. A rectangular boss on the right side: add_rectangular_boss width_mm=40 height_mm=30 depth_mm=10 position_mm=[70, 0, 10] centered=true.
+6. A reinforcing rib across the center: add_rib thickness_mm=6 height_mm=15 length_mm=120 position_mm=[0, 0, 10].
+7. Apply a 2mm fillet on all external edges: apply_safe_fillet radius_mm=2 target=all_external_edges.
+Only ONE base_solid node. Cut holes BEFORE pocket, and add boss and rib in boss_rib phase.
+Units mm. Reference geometry only. Not for manufacturing.

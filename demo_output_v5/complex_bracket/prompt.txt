@@ -1,0 +1,10 @@
+Create a heavily reinforced L-shaped angle bracket:
+1. Vertical wall: extrude_rectangle width_mm=100 height_mm=80 depth_mm=12 centered=true (the main base_solid).
+2. Horizontal base flange: add_rectangular_boss width_mm=100 height_mm=60 depth_mm=12 position_mm=[0, -40, 0] plane=YZ centered=false.
+3. Left triangular gusset rib: add_rib thickness_mm=8 height_mm=35 length_mm=50 position_mm=[-40, 0, 6].
+4. Right triangular gusset rib: add_rib thickness_mm=8 height_mm=35 length_mm=50 position_mm=[40, 0, 6].
+5. Four mounting holes in the base flange: cut_hole_pattern_linear hole_dia_mm=9 count_x=2 count_y=2 spacing_x_mm=70 spacing_y_mm=40.
+6. Two alignment holes in the vertical wall: cut_hole diameter_mm=6 position_mm=[-30, 40] and position_mm=[30, 40], through_all=true.
+7. Apply 3mm fillet on all edges: apply_safe_fillet radius_mm=3 target=all_external_edges.
+Only ONE base_solid (extrude_rectangle). All other features modify it.
+Units mm. Reference geometry only. Not for manufacturing.

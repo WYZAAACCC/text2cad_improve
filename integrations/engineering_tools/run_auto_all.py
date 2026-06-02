@@ -84,6 +84,17 @@ def build_contract_text(dialect_ids: list[str]) -> str:
                 lines.append("    EXAMPLE: {{\"width_mm\":100,\"height_mm\":80,\"depth_mm\":10,\"plane\":\"XY\",\"centered\":true}}")
             if op_name == "boolean_union":
                 lines.append("    NOTE: boolean_union takes no params (empty dict). Inputs must reference component outputs, not node outputs.")
+            if op_name == "cut_rim_slot_pattern":
+                lines.append(
+                    '    EXAMPLE: {"count":4,"slot_depth_mm":3.0,'
+                    '"slot_profile":{"kind":"symmetric_station_profile",'
+                    '"stations":[{"depth_mm":0.0,"half_width_mm":2.0},'
+                    '{"depth_mm":3.0,"half_width_mm":2.0}]}}'
+                )
+                lines.append(
+                    "    NOTE: slot_profile is an OBJECT with kind and stations. "
+                    "NOT a list! stations is a list of {depth_mm, half_width_mm} objects."
+                )
         lines.append("")
     return "\n".join(lines)
 
@@ -187,91 +198,150 @@ print(f"SW_OK" if ok and sldprt.exists() else "SW_FAIL")
 # ═══════════════════════════════════════════════════════════════════════════════
 
 CASES = [
+    # ═══ 案例1: 复杂多级法兰 — 测试 axisymmetric 极限 ═══
     {
-        "id": "washer", "name": "Washer 垫圈",
+        "id": "complex_flange",
+        "name": "多级法兰 Multi-Stage Flange",
         "dialects": ["axisymmetric"],
         "prompt": (
-            "Create a simple reference washer: outer diameter 80mm, center bore 30mm, thickness 12mm.\n"
-            "Use revolve_profile with profile_stations and cut_center_bore with diameter_mm.\n"
+            "Create a complex multi-stage industrial flange with the following features, all modeled as one axisymmetric solid:\n"
+            "1. Base flange disc: outer diameter 200mm, thickness 20mm, with profile starting at z=0.\n"
+            "2. Central hub boss rising from the disc: outer diameter 80mm, height 35mm above the disc (z=20 to z=55).\n"
+            "3. Center bore through the entire part: diameter 40mm, through_all=true.\n"
+            "4. An annular groove on the front face of the flange disc: inner_dia_mm=120, outer_dia_mm=140, depth_mm=4, side='front'.\n"
+            "5. A circular bolt hole pattern on the flange: 8 holes, diameter 10mm each, on PCD (pitch circle diameter) 160mm.\n"
+            "6. A second circular hole pattern on the hub top face: 4 holes, diameter 6mm each, on PCD 60mm.\n"
+            "7. Apply a 2mm chamfer on all external edges.\n"
+            "Use revolve_profile with properly sequenced profile_stations (each station is a vertical segment from bottom to top). "
+            "The profile must trace: base disc outer wall (r=100, z=0 to 20), hub outer wall (r=40, z=20 to 55), "
+            "then step down to bore (r=20, z=55 to 56). r_mm is RADIUS (half of diameter). "
+            "z_rear_mm of each station MUST equal z_front_mm of the next station.\n"
             "Units mm. Reference geometry only. Not for manufacturing."
         ),
     },
+    # ═══ 案例2: 多级阶梯轴带环槽 — 测试 axisymmetric 多特征组合 ═══
     {
-        "id": "stepped_shaft", "name": "Stepped Shaft 阶梯轴",
+        "id": "complex_shaft",
+        "name": "多级阶梯轴 Multi-Step Shaft",
         "dialects": ["axisymmetric"],
         "prompt": (
-            "Create a stepped shaft with three cylindrical sections along Z axis:\n"
-            "Bottom: diameter 60mm (r_mm=30), height 20mm (z=0 to 20).\n"
-            "Middle: diameter 40mm (r_mm=20), height 30mm (z=20 to 50).\n"
-            "Top: diameter 25mm (r_mm=12.5), height 25mm (z=50 to 75).\n"
-            "Use revolve_profile with profile_stations defining each section.\n"
-            "Apply 1mm chamfer on all external edges using apply_safe_chamfer.\n"
+            "Create a complex multi-section stepped shaft with the following features from bottom (z=0) to top:\n"
+            "Section 1: diameter 80mm (r_mm=40), height 30mm (z=0 to 30).\n"
+            "Section 2: diameter 60mm (r_mm=30), height 25mm (z=30 to 55).\n"
+            "Section 3: diameter 45mm (r_mm=22.5), height 20mm (z=55 to 75).\n"
+            "Section 4: diameter 30mm (r_mm=15), height 35mm (z=75 to 110).\n"
+            "Section 5: diameter 20mm (r_mm=10), height 20mm (z=110 to 130).\n"
+            "Add a center bore of diameter 12mm through the entire shaft (through_all=true).\n"
+            "Add an annular groove on section 3: side='front', inner_dia_mm=28, outer_dia_mm=38, depth_mm=3.\n"
+            "Add a rim slot pattern on section 1 outer rim: count=6, slot_depth_mm=4, with symmetric_station_profile: "
+            "stations=[{depth_mm:0, half_width_mm:3}, {depth_mm:4, half_width_mm:3}].\n"
+            "Apply 1.5mm chamfer on all external edges.\n"
+            "Use revolve_profile with 5 profile_stations. Each station describes one vertical segment. "
+            "z_rear_mm of station N MUST equal z_front_mm of station N+1.\n"
             "Units mm. Reference geometry only. Not for manufacturing."
         ),
     },
+    # ═══ 案例3: 复杂安装底板 — 测试 sketch_extrude 极限 ═══
     {
-        "id": "hole_plate", "name": "Plate with Holes 带孔板",
+        "id": "complex_baseplate",
+        "name": "复杂安装底板 Complex Mounting Plate",
         "dialects": ["sketch_extrude"],
         "prompt": (
-            "Create a rectangular base plate 120x80x12mm using extrude_rectangle.\n"
-            "Add 4 mounting holes diameter 6mm at corners using cut_hole_pattern_linear:\n"
-            "count_x=2 count_y=2 spacing_x_mm=90 spacing_y_mm=50.\n"
-            "Add a central rectangular pocket 50x30x4mm using cut_rectangular_pocket.\n"
-            "Apply 1mm fillet on all external edges using apply_safe_fillet.\n"
+            "Create a complex mounting base plate with multiple machined features:\n"
+            "1. Main plate: extrude_rectangle width_mm=200 height_mm=150 depth_mm=20 centered=true.\n"
+            "2. Four corner mounting holes (M8 clearance): cut_hole_pattern_linear hole_dia_mm=9 count_x=2 count_y=2 "
+            "spacing_x_mm=170 spacing_y_mm=120, through_all=true.\n"
+            "3. A large central rectangular pocket: cut_rectangular_pocket width_mm=120 height_mm=80 depth_mm=8 centered=true.\n"
+            "4. Two additional M6 threaded holes on the left side: use two cut_hole operations with diameter_mm=6.8, "
+            "position_mm=[-70, 30] and position_mm=[-70, -30], through_all=true.\n"
+            "5. A rectangular boss on the right side: add_rectangular_boss width_mm=40 height_mm=30 depth_mm=10 "
+            "position_mm=[70, 0, 10] centered=true.\n"
+            "6. A reinforcing rib across the center: add_rib thickness_mm=6 height_mm=15 length_mm=120 position_mm=[0, 0, 10].\n"
+            "7. Apply a 2mm fillet on all external edges: apply_safe_fillet radius_mm=2 target=all_external_edges.\n"
+            "Only ONE base_solid node. Cut holes BEFORE pocket, and add boss and rib in boss_rib phase.\n"
             "Units mm. Reference geometry only. Not for manufacturing."
         ),
     },
+    # ═══ 案例4: 加强筋角撑 — 测试多特征组合 ═══
     {
-        "id": "angle_bracket", "name": "Angle Bracket 直角支架",
+        "id": "complex_bracket",
+        "name": "加强筋角撑 Reinforced Angle Bracket",
         "dialects": ["sketch_extrude"],
         "prompt": (
-            "Create an L-shaped bracket using sketch_extrude dialect:\n"
-            "1. extrude_rectangle width_mm=80 height_mm=50 depth_mm=8 plane=XY centered=true (base plate)\n"
-            "2. add_rectangular_boss width_mm=8 height_mm=40 depth_mm=80 plane=YZ centered=false position_mm=[0,25,0] (vertical leg)\n"
-            "3. apply_safe_fillet radius_mm=2 target=all_external_edges\n"
-            "Only ONE base_solid (use extrude_rectangle once).\n"
+            "Create a heavily reinforced L-shaped angle bracket:\n"
+            "1. Vertical wall: extrude_rectangle width_mm=100 height_mm=80 depth_mm=12 centered=true (the main base_solid).\n"
+            "2. Horizontal base flange: add_rectangular_boss width_mm=100 height_mm=60 depth_mm=12 "
+            "position_mm=[0, -40, 0] plane=YZ centered=false.\n"
+            "3. Left triangular gusset rib: add_rib thickness_mm=8 height_mm=35 length_mm=50 position_mm=[-40, 0, 6].\n"
+            "4. Right triangular gusset rib: add_rib thickness_mm=8 height_mm=35 length_mm=50 position_mm=[40, 0, 6].\n"
+            "5. Four mounting holes in the base flange: cut_hole_pattern_linear hole_dia_mm=9 count_x=2 count_y=2 "
+            "spacing_x_mm=70 spacing_y_mm=40.\n"
+            "6. Two alignment holes in the vertical wall: cut_hole diameter_mm=6 "
+            "position_mm=[-30, 40] and position_mm=[30, 40], through_all=true.\n"
+            "7. Apply 3mm fillet on all edges: apply_safe_fillet radius_mm=3 target=all_external_edges.\n"
+            "Only ONE base_solid (extrude_rectangle). All other features modify it.\n"
             "Units mm. Reference geometry only. Not for manufacturing."
         ),
     },
+    # ═══ 案例5: 齿轮毛坯带减重孔 — 测试 axisymmetric 多 pattern ═══
     {
-        "id": "spur_gear", "name": "Spur Gear 齿轮",
+        "id": "complex_gear_blank",
+        "name": "齿轮毛坯带减重孔 Gear Blank with Lightening",
         "dialects": ["axisymmetric"],
         "prompt": (
-            "Create a gear blank (NOT the involute teeth — just the cylindrical blank):\n"
-            "Outer diameter 44mm, center bore 10mm, thickness 15mm.\n"
-            "Use revolve_profile for the blank and cut_center_bore for the bore.\n"
-            "This is a reference-geometry blank, not a manufacturing-ready gear.\n"
+            "Create a gear blank with lightening features:\n"
+            "1. Main gear body: outer diameter 120mm (r_mm=60), face width 25mm (z=0 to 25).\n"
+            "2. Hub on one side: diameter 50mm (r_mm=25), extending 15mm above (z=25 to 40).\n"
+            "3. Center bore: diameter 20mm (r_mm=10), through_all=true.\n"
+            "4. Six lightening holes on PCD 90mm: cut_circular_hole_pattern count=6 hole_dia_mm=15 pcd_mm=90 through_all=true.\n"
+            "5. Four bolt holes on the hub PCD 38mm: cut_circular_hole_pattern count=4 hole_dia_mm=6 pcd_mm=38 through_all=true.\n"
+            "6. Annular groove on the rear face: cut_annular_groove side='rear' inner_dia_mm=80 outer_dia_mm=100 depth_mm=5.\n"
+            "7. Apply 1mm chamfer on external edges.\n"
+            "Use revolve_profile with sequential profile_stations: first station for main body outer wall, "
+            "second for hub outer wall. r_mm=RADIUS not diameter.\n"
             "Units mm. Reference geometry only. Not for manufacturing."
         ),
     },
+    # ═══ 案例6: 变高度鳍片散热器 — 测试大量重复特征 ═══
     {
-        "id": "finned_heatsink", "name": "Finned Heatsink 散热器",
+        "id": "complex_heatsink",
+        "name": "变高度鳍片散热器 Variable-Fin Heatsink",
         "dialects": ["sketch_extrude"],
         "prompt": (
-            "Create a finned heatsink using sketch_extrude:\n"
-            "1. extrude_rectangle width_mm=100 height_mm=60 depth_mm=5 (base)\n"
-            "2. add_rectangular_boss width_mm=2 height_mm=25 depth_mm=60 position_mm=[-40,0,0] plane=XY centered=true (fin 1)\n"
-            "3. add_rectangular_boss width_mm=2 height_mm=25 depth_mm=60 position_mm=[-25,0,0] plane=XY centered=true (fin 2)\n"
-            "4. add_rectangular_boss width_mm=2 height_mm=25 depth_mm=60 position_mm=[-10,0,0] plane=XY centered=true (fin 3)\n"
-            "5. add_rectangular_boss width_mm=2 height_mm=25 depth_mm=60 position_mm=[5,0,0] plane=XY centered=true (fin 4)\n"
-            "6. add_rectangular_boss width_mm=2 height_mm=25 depth_mm=60 position_mm=[20,0,0] plane=XY centered=true (fin 5)\n"
-            "7. add_rectangular_boss width_mm=2 height_mm=25 depth_mm=60 position_mm=[35,0,0] plane=XY centered=true (fin 6)\n"
-            "8. apply_safe_fillet radius_mm=0.5 target=all_external_edges\n"
-            "Only ONE base_solid node (the first extrude_rectangle).\n"
+            "Create a heatsink with variable-height fins and a slotted base:\n"
+            "1. Base plate: extrude_rectangle width_mm=120 height_mm=80 depth_mm=8 centered=true.\n"
+            "2. Center fin (tallest): add_rectangular_boss width_mm=3 height_mm=40 depth_mm=80 "
+            "position_mm=[0, 0, 4] plane=XY centered=true.\n"
+            "3. Two mid-height fins: add_rectangular_boss width_mm=3 height_mm=30 depth_mm=80 "
+            "position_mm=[-25, 0, 4] and position_mm=[25, 0, 4] plane=XY centered=true.\n"
+            "4. Two short outer fins: add_rectangular_boss width_mm=3 height_mm=20 depth_mm=80 "
+            "position_mm=[-50, 0, 4] and position_mm=[50, 0, 4] plane=XY centered=true.\n"
+            "5. Two mounting slots in the base: cut_rectangular_pocket width_mm=10 height_mm=5 depth_mm=8 "
+            "centered=true, one at position_mm=[-50, -30, 0] and another at [50, -30, 0].\n"
+            "6. Apply 0.5mm fillet on all fin edges: apply_safe_fillet radius_mm=0.5 target=all_external_edges.\n"
+            "Only ONE base_solid (extrude_rectangle).\n"
             "Units mm. Reference geometry only. Not for manufacturing."
         ),
     },
+    # ═══ 案例7: 三组件装配 — 测试 composition 极限 ═══
     {
-        "id": "hub_plate", "name": "Hub+Plate Assembly 轴套底板",
+        "id": "complex_assembly",
+        "name": "三组件装配 Three-Component Assembly",
         "dialects": ["axisymmetric", "sketch_extrude", "composition"],
         "prompt": (
-            "Create an assembly of a hub and base plate:\n"
-            "Component 'hub' (axisymmetric): revolve_profile with profile_stations: "
-            "r_mm=25 z=0-5, r_mm=30 z=5-40. Then cut_center_bore diameter_mm=20.\n"
-            "Component 'plate' (sketch_extrude): extrude_rectangle width_mm=100 height_mm=80 depth_mm=10.\n"
-            "Component '__assembly__' (composition): boolean_union the hub and plate outputs.\n"
-            "The boolean_union node must use component references in inputs: "
-            "{component: hub, output: body} and {component: plate, output: body}.\n"
+            "Create an assembly of three components united into one solid:\n\n"
+            "Component A 'flange' (axisymmetric): a flange with outer diameter 150mm (r_mm=75), "
+            "thickness 18mm (z=0 to 18), center bore diameter 50mm, and 6 bolt holes on PCD 120mm "
+            "with hole_dia_mm=10. Use revolve_profile with proper sequential profile_stations.\n\n"
+            "Component B 'boss' (axisymmetric): a cylindrical boss with outer diameter 60mm (r_mm=30), "
+            "height 40mm (z=18 to 58), and a center bore diameter 30mm matching the flange bore. "
+            "Use revolve_profile.\n\n"
+            "Component C 'rib_plate' (sketch_extrude): a rectangular reinforcing plate "
+            "width_mm=150 height_mm=10 depth_mm=40 using extrude_rectangle, positioned to brace "
+            "between the flange and boss.\n\n"
+            "Component '__assembly__' (composition): use boolean_union to merge all three component "
+            "outputs. Each boolean_union input must reference {component: <id>, output: body}.\n"
+            "Use multiple boolean_union nodes if needed: first union(A, B), then union(result, C).\n"
             "Units mm. Reference geometry only. Not for manufacturing."
         ),
     },

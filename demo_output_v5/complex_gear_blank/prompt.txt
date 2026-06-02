@@ -1,0 +1,10 @@
+Create a gear blank with lightening features:
+1. Main gear body: outer diameter 120mm (r_mm=60), face width 25mm (z=0 to 25).
+2. Hub on one side: diameter 50mm (r_mm=25), extending 15mm above (z=25 to 40).
+3. Center bore: diameter 20mm (r_mm=10), through_all=true.
+4. Six lightening holes on PCD 90mm: cut_circular_hole_pattern count=6 hole_dia_mm=15 pcd_mm=90 through_all=true.
+5. Four bolt holes on the hub PCD 38mm: cut_circular_hole_pattern count=4 hole_dia_mm=6 pcd_mm=38 through_all=true.
+6. Annular groove on the rear face: cut_annular_groove side='rear' inner_dia_mm=80 outer_dia_mm=100 depth_mm=5.
+7. Apply 1mm chamfer on external edges.
+Use revolve_profile with sequential profile_stations: first station for main body outer wall, second for hub outer wall. r_mm=RADIUS not diameter.
+Units mm. Reference geometry only. Not for manufacturing.

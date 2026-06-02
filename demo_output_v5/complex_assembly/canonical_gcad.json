@@ -1,0 +1,608 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "9e7b3a1f-4c2d-4f8a-b5e6-1d3c7f8a2b0e",
+  "part_name": "flange_boss_rib_assembly",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+    },
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "contract_hash": "sha256:1ff66c680d94f60891bf00260f365ffa2a0d213d5571a2366a3f1c27748f5382"
+    }
+  ],
+  "components": [
+    {
+      "id": "flange",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": null,
+      "root_node": "flange_root",
+      "output_aliases": {}
+    },
+    {
+      "id": "boss",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": null,
+      "root_node": "boss_root",
+      "output_aliases": {}
+    },
+    {
+      "id": "rib_plate",
+      "owner_dialect": "sketch_extrude",
+      "kind_hint": null,
+      "root_node": "rib_root",
+      "output_aliases": {}
+    },
+    {
+      "id": "__assembly__",
+      "owner_dialect": "composition",
+      "kind_hint": null,
+      "root_node": "asm_root",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "flange_revolve",
+      "component": "flange",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:flange:flange_revolve:body"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame",
+          "value_id": "frame:flange:flange_revolve:outer_frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 50.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 18.0
+          },
+          {
+            "r_mm": 75.0,
+            "z_front_mm": 18.0,
+            "z_rear_mm": 18.5
+          }
+        ]
+      },
+      "typed_params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 50.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 18.0,
+            "label": null
+          },
+          {
+            "r_mm": 75.0,
+            "z_front_mm": 18.0,
+            "z_rear_mm": 18.5,
+            "label": null
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid",
+        "creates_frame"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "flange_bore",
+      "component": "flange",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "flange_revolve",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:flange:flange_bore:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 50.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 50.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "flange_holes",
+      "component": "flange",
+      "dialect": "axisymmetric",
+      "op": "cut_circular_hole_pattern",
+      "op_version": "1.0.0",
+      "phase": "pattern_cut",
+      "inputs": [
+        {
+          "producer_node": "flange_bore",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:flange:flange_holes:body"
+        }
+      ],
+      "params": {
+        "count": 6,
+        "pcd_mm": 120.0,
+        "hole_dia_mm": 10.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "count": 6,
+        "pcd_mm": 120.0,
+        "hole_dia_mm": 10.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "flange_root",
+      "component": "flange",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "producer_node": "flange_holes",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:flange:flange_root:body"
+        }
+      ],
+      "params": {
+        "distance_mm": 1.0,
+        "target": "all_external_edges"
+      },
+      "typed_params": {
+        "distance_mm": 1.0,
+        "target": "all_external_edges"
+      },
+      "required": false,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "modifies_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "boss_revolve",
+      "component": "boss",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:boss:boss_revolve:body"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame",
+          "value_id": "frame:boss:boss_revolve:outer_frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 20.0,
+            "z_front_mm": 18.0,
+            "z_rear_mm": 58.0
+          },
+          {
+            "r_mm": 30.0,
+            "z_front_mm": 58.0,
+            "z_rear_mm": 58.5
+          }
+        ]
+      },
+      "typed_params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 20.0,
+            "z_front_mm": 18.0,
+            "z_rear_mm": 58.0,
+            "label": null
+          },
+          {
+            "r_mm": 30.0,
+            "z_front_mm": 58.0,
+            "z_rear_mm": 58.5,
+            "label": null
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid",
+        "creates_frame"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "boss_bore",
+      "component": "boss",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "boss_revolve",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:boss:boss_bore:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 30.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 30.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "boss_root",
+      "component": "boss",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "producer_node": "boss_bore",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:boss:boss_root:body"
+        }
+      ],
+      "params": {
+        "distance_mm": 0.5,
+        "target": "all_external_edges"
+      },
+      "typed_params": {
+        "distance_mm": 0.5,
+        "target": "all_external_edges"
+      },
+      "required": false,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "modifies_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "rib_extrude",
+      "component": "rib_plate",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:rib_plate:rib_extrude:body"
+        }
+      ],
+      "params": {
+        "width_mm": 150.0,
+        "height_mm": 10.0,
+        "depth_mm": 40.0,
+        "plane": "XZ",
+        "centered": true,
+        "direction": "+"
+      },
+      "typed_params": {
+        "width_mm": 150.0,
+        "height_mm": 10.0,
+        "depth_mm": 40.0,
+        "plane": "XZ",
+        "centered": true,
+        "direction": "+"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "rib_root",
+      "component": "rib_plate",
+      "dialect": "sketch_extrude",
+      "op": "apply_safe_fillet",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "producer_node": "rib_extrude",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:rib_plate:rib_root:body"
+        }
+      ],
+      "params": {
+        "radius_mm": 2.0,
+        "target": "all_external_edges"
+      },
+      "typed_params": {
+        "radius_mm": 2.0,
+        "target": "all_external_edges"
+      },
+      "required": false,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "modifies_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "union_ab",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "producer_node": "flange_root",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        },
+        {
+          "producer_node": "boss_root",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:__assembly__:union_ab:body"
+        }
+      ],
+      "params": {},
+      "typed_params": {
+        "clean_after": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "boolean_union"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "union_abc",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "producer_node": "union_ab",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        },
+        {
+          "producer_node": "rib_root",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:__assembly__:union_abc:body"
+        }
+      ],
+      "params": {},
+      "typed_params": {
+        "clean_after": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "boolean_union"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "asm_root",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "producer_node": "union_abc",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        },
+        {
+          "producer_node": "union_abc",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:__assembly__:asm_root:body"
+        }
+      ],
+      "params": {},
+      "typed_params": {
+        "clean_after": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "boolean_union"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:e4815c6feba5558d25d5b1953bfa35c7fdff7042893dadc9a171094e84b25e79",
+  "raw_graph_hash": "sha256:8ad1e8ac9029274fcca42ca150c5b1604f115d714a62135ed7972fc522ee2b90"
+}

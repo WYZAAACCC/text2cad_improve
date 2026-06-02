@@ -1,0 +1,10 @@
+Create a complex multi-stage industrial flange with the following features, all modeled as one axisymmetric solid:
+1. Base flange disc: outer diameter 200mm, thickness 20mm, with profile starting at z=0.
+2. Central hub boss rising from the disc: outer diameter 80mm, height 35mm above the disc (z=20 to z=55).
+3. Center bore through the entire part: diameter 40mm, through_all=true.
+4. An annular groove on the front face of the flange disc: inner_dia_mm=120, outer_dia_mm=140, depth_mm=4, side='front'.
+5. A circular bolt hole pattern on the flange: 8 holes, diameter 10mm each, on PCD (pitch circle diameter) 160mm.
+6. A second circular hole pattern on the hub top face: 4 holes, diameter 6mm each, on PCD 60mm.
+7. Apply a 2mm chamfer on all external edges.
+Use revolve_profile with properly sequenced profile_stations (each station is a vertical segment from bottom to top). The profile must trace: base disc outer wall (r=100, z=0 to 20), hub outer wall (r=40, z=20 to 55), then step down to bore (r=20, z=55 to 56). r_mm is RADIUS (half of diameter). z_rear_mm of each station MUST equal z_front_mm of the next station.
+Units mm. Reference geometry only. Not for manufacturing.

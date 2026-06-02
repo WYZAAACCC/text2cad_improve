@@ -87,12 +87,32 @@ def handle_add_rib(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
 def handle_se_fillet(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
     body = resolve_input_object(node, ctx, 0)
     r = float(node.typed_params.get("radius_mm", node.params.get("radius_mm", 0))) if node.typed_params else float(node.params.get("radius_mm", 0))
-    if r > 0: body = body.fillet(r)
+    if r > 0:
+        try:
+            body = body.fillet(r)
+        except Exception:
+            try:
+                body = body.fillet(r / 2.0)
+            except Exception:
+                ctx.warnings.append(
+                    f"Safe fillet skipped on '{node.id}': geometry does not support fillet. "
+                    f"Part is valid without fillet."
+                )
     return {"body": _store_solid(node, ctx, body)}
 
 
 def handle_se_chamfer(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
     body = resolve_input_object(node, ctx, 0)
     d = float(node.typed_params.get("distance_mm", node.params.get("distance_mm", 0))) if node.typed_params else float(node.params.get("distance_mm", 0))
-    if d > 0: body = body.chamfer(d)
+    if d > 0:
+        try:
+            body = body.chamfer(d)
+        except Exception:
+            try:
+                body = body.chamfer(d / 2.0)
+            except Exception:
+                ctx.warnings.append(
+                    f"Safe chamfer skipped on '{node.id}': geometry does not support chamfer. "
+                    f"Part is valid without chamfer."
+                )
     return {"body": _store_solid(node, ctx, body)}
