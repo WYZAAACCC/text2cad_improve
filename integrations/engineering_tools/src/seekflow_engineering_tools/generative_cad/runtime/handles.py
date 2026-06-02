@@ -53,6 +53,20 @@ class ProfileHandle(RuntimeHandle):
     type: Literal["profile"] = "profile"
 
 
+class EdgeHandle(RuntimeHandle):
+    """Handle for a specific edge on a solid body."""
+    type: Literal["edge"] = "edge"
+    parent_solid_id: str | None = None
+    edge_index: int = 0
+
+
+class FaceHandle(RuntimeHandle):
+    """Handle for a specific face on a solid body."""
+    type: Literal["face"] = "face"
+    parent_solid_id: str | None = None
+    face_index: int = 0
+
+
 RuntimeValue = (
     SolidHandle
     | SolidArrayHandle
@@ -61,4 +75,6 @@ RuntimeValue = (
     | PointHandle
     | CurveHandle
     | ProfileHandle
+    | EdgeHandle
+    | FaceHandle
 )

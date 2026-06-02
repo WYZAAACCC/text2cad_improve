@@ -193,14 +193,45 @@ def handle_apply_safe_chamfer(node: CanonicalNode, ctx: RuntimeContext) -> dict[
     body = resolve_input_object(node, ctx, 0)
     distance = float(node.typed_params.get("distance_mm", node.params.get("distance_mm", 0)))
     if distance > 0:
+        target = node.params.get("target", "all_external_edges")
         try:
-            body = body.chamfer(distance)
+            body = _chamfer_by_target(body, distance, target)
         except Exception:
             try:
-                body = body.chamfer(distance / 2.0)  # try smaller chamfer
+                body = _chamfer_by_target(body, distance / 2.0, target)
             except Exception:
                 ctx.warnings.append(
                     f"Safe chamfer skipped on '{node.id}': geometry does not support chamfer. "
                     f"Part is valid without chamfer."
                 )
     return {"body": _store_solid(node, ctx, body)}
+
+
+# ── Shared topology helpers ───────────────────────────────────────────────────
+
+def _chamfer_by_target(body, distance: float, target: str):
+    if target == "all_external_edges":
+        return body.chamfer(distance)
+    from seekflow_engineering_tools.generative_cad.runtime.topology import select_edges
+    edges = select_edges(body, target)
+    if not edges:
+        return body.chamfer(distance)
+    result = body
+    for e in edges:
+        try: result = result.edges(e.edge_index).chamfer(distance)
+        except Exception: continue
+    return result
+
+
+def _fillet_by_target(body, radius: float, target: str):
+    if target == "all_external_edges":
+        return body.fillet(radius)
+    from seekflow_engineering_tools.generative_cad.runtime.topology import select_edges
+    edges = select_edges(body, target)
+    if not edges:
+        return body.fillet(radius)
+    result = body
+    for e in edges:
+        try: result = result.edges(e.edge_index).fillet(radius)
+        except Exception: continue
+    return result

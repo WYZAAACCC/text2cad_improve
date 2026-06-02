@@ -187,11 +187,13 @@ def handle_se_fillet(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]
     body = resolve_input_object(node, ctx, 0)
     r = float(node.typed_params.get("radius_mm", node.params.get("radius_mm", 0))) if node.typed_params else float(node.params.get("radius_mm", 0))
     if r > 0:
+        target = node.params.get("target", "all_external_edges")
+        from seekflow_engineering_tools.generative_cad.dialects.axisymmetric.handlers import _fillet_by_target
         try:
-            body = body.fillet(r)
+            body = _fillet_by_target(body, r, target)
         except Exception:
             try:
-                body = body.fillet(r / 2.0)
+                body = _fillet_by_target(body, r / 2.0, target)
             except Exception:
                 ctx.warnings.append(
                     f"Safe fillet skipped on '{node.id}': geometry does not support fillet. "
@@ -204,11 +206,13 @@ def handle_se_chamfer(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str
     body = resolve_input_object(node, ctx, 0)
     d = float(node.typed_params.get("distance_mm", node.params.get("distance_mm", 0))) if node.typed_params else float(node.params.get("distance_mm", 0))
     if d > 0:
+        target = node.params.get("target", "all_external_edges")
+        from seekflow_engineering_tools.generative_cad.dialects.axisymmetric.handlers import _chamfer_by_target
         try:
-            body = body.chamfer(d)
+            body = _chamfer_by_target(body, d, target)
         except Exception:
             try:
-                body = body.chamfer(d / 2.0)
+                body = _chamfer_by_target(body, d / 2.0, target)
             except Exception:
                 ctx.warnings.append(
                     f"Safe chamfer skipped on '{node.id}': geometry does not support chamfer. "
