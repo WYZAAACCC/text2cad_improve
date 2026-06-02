@@ -16,6 +16,7 @@ class ExtrudeRectangleParams(BaseModel):
     plane: Literal["XY", "YZ", "XZ"] = "XY"
     centered: bool = True
     direction: Literal["+", "-"] = "+"
+    draft_angle_deg: float = Field(default=0.0, ge=-45, le=45, description="Draft angle in degrees (positive=outward, negative=inward)")
 
 
 class CutRectangularPocketParams(BaseModel):
@@ -27,6 +28,7 @@ class CutRectangularPocketParams(BaseModel):
     plane: Literal["XY", "YZ", "XZ"] = "XY"
     centered: bool = True
     direction: Literal["+", "-"] = "+"
+    draft_angle_deg: float = Field(default=0.0, ge=-45, le=45, description="Draft angle in degrees")
 
 
 class CutHoleParams(BaseModel):

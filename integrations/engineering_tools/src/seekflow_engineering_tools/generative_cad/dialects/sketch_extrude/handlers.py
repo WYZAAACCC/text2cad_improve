@@ -44,13 +44,17 @@ def handle_extrude_rectangle(node: CanonicalNode, ctx: RuntimeContext) -> dict[s
     plane = p.get("plane", "XY")
     centered = p.get("centered", True)
     direction = p.get("direction", "+")
+    draft = float(p.get("draft_angle_deg", 0))
     try:
         wp = cq.Workplane(plane)
         if centered:
             wp = wp.center(0, 0)
         if direction == "-":
             d = -d
-        solid = wp.rect(w, h).extrude(d)
+        if abs(draft) > 0.01:
+            solid = wp.rect(w, h).taperedExtrude(d, draft)
+        else:
+            solid = wp.rect(w, h).extrude(d)
     except Exception as e:
         raise RuntimeError(f"extrude_rectangle failed: {e}")
     return {"body": _store_solid(node, ctx, solid)}
@@ -71,7 +75,11 @@ def handle_cut_rectangular_pocket(node: CanonicalNode, ctx: RuntimeContext) -> d
         return {"body": _degrade(node, ctx, body, "cut_rectangular_pocket")}
     try:
         plane = p.get("plane", "XY")
-        cutter = cq.Workplane(plane).rect(w, h).extrude(-d)
+        draft = float(p.get("draft_angle_deg", 0))
+        if abs(draft) > 0.01:
+            cutter = cq.Workplane(plane).rect(w, h).taperedExtrude(-d, draft)
+        else:
+            cutter = cq.Workplane(plane).rect(w, h).extrude(-d)
         result = body.cut(cutter)
     except Exception:
         return {"body": _degrade(node, ctx, body, "cut_rectangular_pocket")}
