@@ -1,0 +1,8 @@
+RC=0
+BUILD_OK
+OP:hub_revolve/revolve_profile:ok
+OP:hub_cut_bore/cut_center_bore:ok
+OP:base_extrude/extrude_rectangle:ok
+OP:base_cut_holes/cut_hole_pattern_linear:ok
+OP:assy_union/boolean_union:ok
+

@@ -197,13 +197,93 @@ def run_canonical_gcad(
 # ── Internal helpers ──
 
 def _run_components(canonical: CanonicalGcadDocument, ctx: RuntimeContext) -> None:
+    """Run each non-assembly component, dispatching nodes to their actual dialect.
+
+    v5.1: Mixed-dialect components (e.g. sketch_extrude + shell_housing)
+    are handled by dispatching each node to its node.dialect, not the
+    component's owner_dialect. Nodes are run in topological order within
+    the component so cross-dialect dependencies resolve correctly.
+    """
     components = [c for c in canonical.components if c.id != "__assembly__"]
     for component in components:
-        dialect = require_dialect(component.owner_dialect)
         nodes = [n for n in canonical.nodes if n.component == component.id]
-        component_outputs = dialect.run_component(component, nodes, ctx)
-        for name, handle_id in component_outputs.items():
-            ctx.bind_component_output(component.id, name, handle_id)
+        if not nodes:
+            continue
+        # Check if all nodes share the same dialect
+        dialects_in_use = set(n.dialect for n in nodes)
+        if len(dialects_in_use) == 1:
+            # Fast path: single dialect, delegate to dialect.run_component
+            dialect = require_dialect(component.owner_dialect)
+            component_outputs = dialect.run_component(component, nodes, ctx)
+            for name, handle_id in component_outputs.items():
+                ctx.bind_component_output(component.id, name, handle_id)
+        else:
+            # Mixed-dialect component: run each node individually via its own dialect
+            _run_mixed_dialect_component(component, nodes, ctx, dialects_in_use)
+
+
+def _run_mixed_dialect_component(component, nodes, ctx, dialects_in_use):
+    """Run a component containing nodes from multiple dialects.
+
+    Each node is dispatched to its own dialect for execution, in
+    topological order. Outputs are bound to the component after all
+    nodes complete.
+    """
+    from seekflow_engineering_tools.generative_cad.dialects.executor import execute_operation
+
+    # Topological sort: build in-degree map
+    node_map = {n.id: n for n in nodes}
+    in_degree = {n.id: sum(1 for i in n.inputs if i.producer_node and i.producer_node in node_map) for n in nodes}
+    queue = [n for n in nodes if in_degree[n.id] == 0]
+    processed = []
+
+    while queue:
+        # Stable sort by id for determinism
+        queue.sort(key=lambda n: n.id)
+        node = queue.pop(0)
+        processed.append(node)
+
+        for other in nodes:
+            for inp in other.inputs:
+                if inp.producer_node == node.id:
+                    in_degree[other.id] -= 1
+                    if in_degree[other.id] == 0 and other not in queue and other not in processed:
+                        queue.append(other)
+
+    if len(processed) != len(nodes):
+        unscheduled = [n.id for n in nodes if n not in processed]
+        raise RuntimeError(f"Mixed-dialect component {component.id!r}: unscheduled nodes: {unscheduled}")
+
+    # Execute each node using its own dialect
+    final_outputs = {}
+    for node in processed:
+        dialect = require_dialect(node.dialect)
+        op_spec = dialect.get_op_spec(node.op, node.op_version)
+        if op_spec is None:
+            raise RuntimeError(
+                f"Unknown op {node.op!r}/{node.op_version!r} "
+                f"in dialect {node.dialect!r} for node {node.id!r}"
+            )
+        try:
+            executed = execute_operation(node=node, op_spec=op_spec, ctx=ctx)
+        except Exception as exc:
+            if not node.required and node.degradation_policy == "may_skip_with_warning":
+                ctx.warnings.append(f"Optional {node.id!r} ({node.op}) skipped: {exc}")
+                ctx.degraded_features.append({"node_id": node.id, "op": node.op, "reason": str(exc)})
+                continue
+            raise
+        for name, hid in executed.outputs.items():
+            final_outputs[name] = hid
+
+    # Bind component outputs from the last solid-producing node
+    root_node_id = component.root_node
+    root = next((n for n in processed if n.id == root_node_id), processed[-1] if processed else None)
+    if root:
+        for o in root.outputs:
+            try:
+                ctx.bind_component_output(component.id, o.name, ctx.resolve_node_output(root.id, o.name))
+            except KeyError:
+                pass
 
 
 def _run_composition_or_select_final(

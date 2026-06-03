@@ -1,0 +1,7 @@
+L型安装支架, 单位 mm, 参考几何.
+extrude_rectangle width_mm=100 height_mm=80 depth_mm=10 centered=true.
+cut_hole_pattern_linear hole_dia_mm=9 count_x=2 count_y=2 spacing_x_mm=80 spacing_y_mm=60.
+add_rib thickness_mm=8 height_mm=40 length_mm=60 position_mm=[0,0,5] direction=Y.
+cut_hole diameter_mm=6 position_mm=[-35,0] through_all=true.
+cut_hole diameter_mm=6 position_mm=[35,0] through_all=true.
+apply_safe_fillet radius_mm=1.5 target=all_external_edges.

@@ -1,0 +1,4 @@
+微型轴套, 单位 mm.
+revolve_profile: station1 r=3 z=0-12.
+cut_center_bore diameter_mm=5 through_all=true.
+apply_safe_chamfer distance_mm=0.2 target=all_external_edges.

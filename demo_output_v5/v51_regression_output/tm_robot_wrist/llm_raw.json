@@ -1,0 +1,158 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "robot-wrist-attempt-5",
+  "part_name": "robot_wrist",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "1.0.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "__root__",
+      "owner_dialect": "axisymmetric",
+      "root_node": "safe_chamfer_node"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "revolve_node",
+      "component": "__root__",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        },
+        {
+          "name": "frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "direction": "+",
+        "profile_points": [
+          {
+            "r": 80.0,
+            "z": 0.0
+          },
+          {
+            "r": 80.0,
+            "z": 200.0
+          }
+        ],
+        "axis_point": {
+          "x_mm": 0.0,
+          "y_mm": 0.0,
+          "z_mm": 0.0
+        }
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "bore_node",
+      "component": "__root__",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "revolve_node",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 152.0,
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "hole_pattern_node",
+      "component": "__root__",
+      "dialect": "axisymmetric",
+      "op": "cut_circular_hole_pattern",
+      "op_version": "1.0.0",
+      "phase": "pattern_cut",
+      "inputs": [
+        {
+          "node": "bore_node",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "count": 6,
+        "pcd_mm": 140.0,
+        "hole_dia_mm": 8.0
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "safe_chamfer_node",
+      "component": "__root__",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "hole_pattern_node",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 0.5,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {
+    "_": "Attempt 5 - Fix revolve_profile params: use profile_points array with {r,z} objects, direction '+' for positive Z, axis_point for origin"
+  }
+}

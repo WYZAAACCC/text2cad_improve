@@ -130,10 +130,45 @@ def handle_cut_circular_hole_pattern(node: CanonicalNode, ctx: RuntimeContext) -
     try:
         bb = body.val().BoundingBox()
         z_len = bb.zlen + 10
-        # Native polarArray: place N copies on circle, extrude all at once (O(n)→O(1))
-        wp = cq.Workplane("XY").polarArray(pcd / 2.0, 0, 360, count)
-        holes = wp.circle(hole_dia / 2.0).extrude(z_len, both=True)
-        result = body.cut(holes)
+        hole_radius = hole_dia / 2.0
+
+        # Safety: check that holes are within body radial extent to avoid
+        # OCCT boolean crashes on near-tangent or missed intersections.
+        body_radius_min = float("inf")
+        try:
+            from OCP.BRepExtrema import BRepExtrema_DistShapeShape
+            from OCP.gp import gp_Pnt, gp_Ax1, gp_Dir, gp_Circ
+            from OCP.GC import GC_MakeCircle
+            from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeEdge, BRepBuilderAPI_MakeWire
+
+            # Rough radial check: does the hole PCD fit within the body?
+            # Build a test cylinder and check minimum distance
+            pcd_radius = pcd / 2.0
+            # If the body is narrow and holes would barely intersect, use individual cuts
+            is_narrow_body = bb.xlen < pcd + hole_dia or bb.ylen < pcd + hole_dia
+        except Exception:
+            is_narrow_body = False
+
+        # For narrow/complex bodies, cut each hole individually to avoid OCCT instability
+        if is_narrow_body or count > 6:
+            result = body
+            import math as _math
+            for k in range(count):
+                angle = 2.0 * _math.pi * k / count
+                cx = (pcd / 2.0) * _math.cos(angle)
+                cy = (pcd / 2.0) * _math.sin(angle)
+                try:
+                    hole = cq.Workplane("XY").center(cx, cy).circle(hole_radius).extrude(z_len, both=True)
+                    result = result.cut(hole)
+                except Exception:
+                    ctx.warnings.append(
+                        f"circular_hole_pattern on '{node.id}': hole {k} at "
+                        f"({cx:.1f},{cy:.1f}) failed, skipping."
+                    )
+        else:
+            wp = cq.Workplane("XY").polarArray(pcd / 2.0, 0, 360, count)
+            holes = wp.circle(hole_radius).extrude(z_len, both=True)
+            result = body.cut(holes)
     except Exception as e:
         ctx.warnings.append(f"circular_hole_pattern failed on '{node.id}': {e}")
         return {"body": _store_solid(node, ctx, body)}

@@ -1,0 +1,9 @@
+RC=0
+BUILD_OK
+OP:n_rect/extrude_rectangle:ok
+OP:n_hole_pattern/cut_hole_pattern_linear:ok
+OP:n_rib/add_rib:ok
+OP:n_hole1/cut_hole:ok
+OP:n_hole2/cut_hole:ok
+OP:n_fillet/apply_safe_fillet:ok
+

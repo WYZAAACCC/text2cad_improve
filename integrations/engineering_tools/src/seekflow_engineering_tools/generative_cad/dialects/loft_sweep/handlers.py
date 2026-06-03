@@ -32,8 +32,38 @@ def handle_create_sweep_path(node, ctx) -> dict:
     return {"curve": f"curve:{cid}:{node.id}:curve"}
 
 
+def _make_3d_polyline_wire(pts: list) -> "TopoDS_Wire":
+    """Build a true 3D wire from points using OCP native API.
+
+    CadQuery Workplane.lineTo/moveTo on XY plane drops the Z coordinate.
+    This helper uses OCP directly to preserve full 3D coordinates.
+    """
+    from OCP.gp import gp_Pnt
+    from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeEdge, BRepBuilderAPI_MakeWire
+    wire_builder = BRepBuilderAPI_MakeWire()
+    for i in range(len(pts) - 1):
+        p1 = gp_Pnt(pts[i].x, pts[i].y, pts[i].z)
+        p2 = gp_Pnt(pts[i + 1].x, pts[i + 1].y, pts[i + 1].z)
+        edge = BRepBuilderAPI_MakeEdge(p1, p2).Edge()
+        wire_builder.Add(edge)
+    return wire_builder.Wire()
+
+
+def _make_3d_spline_wire(pts: list) -> "TopoDS_Wire":
+    """Build a 3D BSpline wire through all points using OCP."""
+    from OCP.gp import gp_Pnt
+    from OCP.GeomAPI import GeomAPI_PointsToBSpline
+    from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeEdge, BRepBuilderAPI_MakeWire
+    ocp_pts = [gp_Pnt(p.x, p.y, p.z) for p in pts]
+    spline = GeomAPI_PointsToBSpline(ocp_pts).Curve()
+    edge = BRepBuilderAPI_MakeEdge(spline).Edge()
+    wire_builder = BRepBuilderAPI_MakeWire()
+    wire_builder.Add(edge)
+    return wire_builder.Wire()
+
+
 def handle_sweep_profile(node, ctx) -> dict:
-    """Sweep a 2D profile along a previously defined path."""
+    """Sweep a 2D profile along a previously defined 3D path."""
     import cadquery as cq
     from seekflow_engineering_tools.generative_cad.runtime.resolve import resolve_input_object
 
@@ -58,15 +88,13 @@ def handle_sweep_profile(node, ctx) -> dict:
         raise ValueError("Need at least 2 path points for sweep")
 
     try:
-        # Build path as NURBS spline (G1 continuous, not polyline)
+        # Build path — try CadQuery first (handles 2D and simple 3D)
         if len(pts) == 2:
             path_wire = cq.Workplane("XY").moveTo(pts[0].x, pts[0].y).lineTo(pts[1].x, pts[1].y)
         else:
-            # Use spline for 3+ points — smooth G1 continuous path
             path_wire = cq.Workplane("XY").spline(pts)
 
-        # Self-intersection check: sweep path must not cross itself
-        # Simple heuristic: check if any two non-adjacent segments come within 0.1mm
+        # Self-intersection check
         for i in range(len(pts) - 2):
             for j in range(i + 2, len(pts) - 1):
                 d = (pts[i] - pts[j]).Length
@@ -136,62 +164,150 @@ def handle_loft_sections(node, ctx) -> dict:
     return {"body": _store_solid(node, ctx, solid)}
 
 
+def _estimate_helix_sweep_volume(radius, profile_r, turns, total_z):
+    """Theoretical helix volume = profile area × centerline length."""
+    centerline_len = math.sqrt(
+        (2.0 * math.pi * radius * turns) ** 2 + total_z ** 2
+    )
+    return math.pi * profile_r ** 2 * centerline_len
+
+
+def _build_helix_wire_ocp(radius, total_z, turns, sample_n=720):
+    """Build a 3D helix as TopoDS_Wire using OCP native API.
+
+    Bypasses CadQuery parametricCurve which produces polyline-approximated
+    paths that cause BRepOffsetAPI_MakePipeShell to fail on multi-turn helices.
+    """
+    from OCP.gp import gp_Pnt
+    from OCP.TColgp import TColgp_Array1OfPnt
+    from OCP.GeomAPI import GeomAPI_PointsToBSpline
+    from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeEdge, BRepBuilderAPI_MakeWire
+
+    n_pts = sample_n + 1
+    arr = TColgp_Array1OfPnt(1, n_pts)
+    for i in range(n_pts):
+        t = i / sample_n
+        angle = 2.0 * math.pi * turns * t
+        z = total_z * t
+        arr.SetValue(i + 1, gp_Pnt(
+            radius * math.cos(angle),
+            radius * math.sin(angle),
+            z,
+        ))
+
+    spline_api = GeomAPI_PointsToBSpline(arr)
+    if not spline_api.IsDone():
+        raise RuntimeError("GeomAPI_PointsToBSpline failed")
+    spline = spline_api.Curve()
+    edge = BRepBuilderAPI_MakeEdge(spline).Edge()
+    wire_builder = BRepBuilderAPI_MakeWire()
+    wire_builder.Add(edge)
+    return wire_builder.Wire()
+
+
 def handle_helix_sweep(node, ctx) -> dict:
-    """Sweep a profile along a helical path (spring/thread)."""
+    """Sweep a profile along a helical path (spring/thread).
+
+    v5.2: Uses OCP native GeomAPI_PointsToBSpline + BRepOffsetAPI_MakePipe
+    to bypass CadQuery parametricCurve sweep bugs that produce ~2-5% volume.
+    """
     import cadquery as cq
 
     params = node.params
+    turns = float(params.get("turns", 1.0))
     radius = float(params.get("radius_mm", 10))
-    height = float(params.get("height_mm", 50))
-    pitch = float(params.get("pitch_mm", 5))
     profile_r = float(params.get("profile_radius_mm", 2))
-    turns = float(params.get("turns", 5))
+    pitch = float(params.get("pitch_mm", 0.0))
+    height_raw = params.get("height_mm")
     variable = params.get("variable_pitch", False)
 
-    # total_z = pitch * turns; use height if it differs from pitch*turns
-    total_z = height if abs(height - pitch * turns) > 0.01 else pitch * turns
+    # ── Parameter validation (fail-fast) ──
+    if turns <= 0:
+        raise RuntimeError("helix_sweep requires turns > 0")
+    if radius <= 0:
+        raise RuntimeError("helix_sweep requires radius_mm > 0")
+    if profile_r <= 0:
+        raise RuntimeError("helix_sweep requires profile_radius_mm > 0")
+
+    if height_raw is not None:
+        total_z = float(height_raw)
+    elif pitch > 0:
+        total_z = pitch * turns
+    else:
+        raise RuntimeError("helix_sweep requires height_mm or positive pitch_mm")
+    if total_z <= 0:
+        raise RuntimeError("helix_sweep requires positive total height")
+
+    # Coil self-intersection check
+    if pitch > 0 and profile_r >= pitch * 0.45:
+        ctx.warnings.append(
+            f"helix_sweep on '{node.id}': profile_radius_mm ({profile_r:.1f}) "
+            f">= 0.45*pitch_mm ({pitch*0.45:.1f}). Coils may self-intersect."
+        )
 
     try:
-        # Curvature safety check: profile must fit within the helix curvature.
-        # Known limitation: CadQuery parametricCurve + sweep produces reduced
-        # volume for multi-turn helices. The OCCT MakePipeShell kernel struggles
-        # with spline-based helix paths. Using parametricCurve is more stable
-        # but may produce self-intersecting geometry when profile_r approaches
-        # the minimum curvature radius.
-        min_curvature_radius = pitch / (2 * math.pi)
-        if profile_r > min_curvature_radius * 0.8:
-            ctx.warnings.append(
-                f"helix_sweep on '{node.id}': profile radius ({profile_r:.1f}mm) > "
-                f"80% of minimum curvature radius ({min_curvature_radius:.1f}mm). "
-                f"Helix may self-intersect — consider reducing profile_radius_mm "
-                f"or increasing pitch_mm."
-            )
+        # ── Build helix wire using OCP native API ──
+        sample_n = max(360, int(math.ceil(turns * 60)))
+        helix_wire = _build_helix_wire_ocp(radius, total_z, turns, sample_n)
 
-        if variable:
-            start_p = float(params.get("start_pitch_mm", pitch))
-            end_p = float(params.get("end_pitch_mm", pitch * 2))
-            helix = cq.Workplane("XY").parametricCurve(
-                lambda t: (
-                    radius * math.cos(2 * math.pi * turns * t),
-                    radius * math.sin(2 * math.pi * turns * t),
-                    (start_p + (end_p - start_p) * t / turns) * t,
-                ),
-                N=max(200, int(turns * 25)),
-            )
+        # ── Build profile as a face for BRepOffsetAPI_MakePipe ──
+        profile = cq.Workplane("XZ").center(radius, 0).circle(profile_r)
+        profile_face = profile.val()
+
+        # ── Try OCP BRepOffsetAPI_MakePipe first ──
+        from OCP.BRepOffsetAPI import BRepOffsetAPI_MakePipe
+        profile_shape = profile_face.wrapped if hasattr(profile_face, 'wrapped') else profile_face
+        pipe = BRepOffsetAPI_MakePipe(helix_wire, profile_shape)
+        pipe.Build()
+
+        if pipe.IsDone():
+            solid = cq.Solid(pipe.Shape())
         else:
-            # Constant pitch helix — parametricCurve for OCCT stability
+            # ── Fallback: CadQuery parametricCurve sweep ──
+            ctx.warnings.append(
+                f"helix_sweep on '{node.id}': OCP MakePipe failed, "
+                f"falling back to CadQuery sweep (may have reduced volume)"
+            )
             helix = cq.Workplane("XY").parametricCurve(
                 lambda t: (
-                    radius * math.cos(2 * math.pi * turns * t),
-                    radius * math.sin(2 * math.pi * turns * t),
+                    radius * math.cos(2.0 * math.pi * turns * t),
+                    radius * math.sin(2.0 * math.pi * turns * t),
                     total_z * t,
                 ),
-                N=max(200, int(turns * 25)),
+                N=max(200, int(math.ceil(turns * 25))),
+            )
+            profile = cq.Workplane("XZ").center(radius, 0).circle(profile_r)
+            solid = profile.sweep(helix)
+
+        # ── Volume verification ──
+        expected_v = _estimate_helix_sweep_volume(radius, profile_r, turns, total_z)
+        # solid may be CadQuery Solid or Workplane; get actual shape
+        actual_solid = solid.val() if hasattr(solid, 'val') else solid
+        actual_v = actual_solid.Volume() if hasattr(actual_solid, 'Volume') else 0.0
+
+        if actual_v <= 0:
+            raise RuntimeError(
+                f"helix_sweep on '{node.id}': non-positive volume ({actual_v:.2f})"
             )
 
-        # Profile at helix starting point on XZ plane
-        profile = cq.Workplane("XZ").center(radius, 0).circle(profile_r)
-        solid = profile.sweep(helix)
+        ratio = actual_v / expected_v if expected_v > 0 else 0
+        if ratio < 0.55 or ratio > 1.65:
+            ctx.warnings.append(
+                f"helix_sweep on '{node.id}': volume ratio={ratio:.3f} "
+                f"(actual={actual_v:.0f}, expected={expected_v:.0f})."
+            )
+            # Only fail-closed if strict_semantic is explicitly True
+            # (default is False to allow CadQuery fallback)
+            if params.get("strict_semantic", False):
+                raise RuntimeError(
+                    f"helix_sweep: volume deviation too large (ratio={ratio:.3f})"
+                )
+            else:
+                ctx.degraded_features.append({
+                    "node_id": node.id, "op": "helix_sweep",
+                    "reason": f"volume deviation (ratio={ratio:.3f})",
+                })
+
     except Exception as e:
         raise RuntimeError(f"helix_sweep failed on '{node.id}': {e}")
 

@@ -1,0 +1,110 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "b8257a2c-fcd9-48e2-9d20-6e1e7bb2e1a8",
+  "part_name": "变径扫掠管",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "main",
+      "owner_dialect": "loft_sweep",
+      "root_node": "sweep_node"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "path_node",
+      "component": "main",
+      "dialect": "loft_sweep",
+      "op": "create_sweep_path",
+      "op_version": "1.0.0",
+      "phase": "path",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "curve",
+          "type": "curve"
+        }
+      ],
+      "params": {
+        "path_points": [
+          {
+            "x_mm": 0,
+            "y_mm": 0,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 60,
+            "y_mm": 20,
+            "z_mm": 50
+          },
+          {
+            "x_mm": 80,
+            "y_mm": 0,
+            "z_mm": 100
+          },
+          {
+            "x_mm": 40,
+            "y_mm": -20,
+            "z_mm": 150
+          },
+          {
+            "x_mm": 0,
+            "y_mm": 0,
+            "z_mm": 200
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "sweep_node",
+      "component": "main",
+      "dialect": "loft_sweep",
+      "op": "sweep_profile",
+      "op_version": "1.0.0",
+      "phase": "sweep",
+      "inputs": [
+        {
+          "node": "path_node",
+          "output": "curve"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "shape": "circle",
+        "radius_mm": 10
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": null
+}

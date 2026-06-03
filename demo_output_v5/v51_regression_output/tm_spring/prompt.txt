@@ -1,0 +1,2 @@
+压缩螺旋弹簧, 单位 mm, 参考几何.
+helix_sweep: radius_mm=15 height_mm=80 pitch_mm=10 profile_radius_mm=2 turns=8.

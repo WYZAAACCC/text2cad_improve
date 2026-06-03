@@ -1,0 +1,16 @@
+{
+  "applied": true,
+  "before_hash": "sha256:44c6dc3be307472dc6d8a31744bb8b08eab2648edb07febc28438a3db304048e",
+  "after_hash": "sha256:3653f735cbeaaeb52c72482d74d716285139d6c5bd19aa664dd40cf68ec0bec7",
+  "entries": [
+    {
+      "rule_id": "fix_unknown_ops",
+      "path": "/",
+      "old_value": "<hash:sha256:44c6d>",
+      "new_value": "<hash:sha256:3653f>",
+      "severity": "destructive",
+      "confidence": 0.85,
+      "message": "Applied fix: fix_unknown_ops"
+    }
+  ]
+}

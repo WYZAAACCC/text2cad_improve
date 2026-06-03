@@ -1,0 +1,26 @@
+RC=0
+BUILD_FAILED: helix_sweep failed on 'helix_sweep_1': helix_sweep on 'helix_sweep_1': volume deviation too large (ratio=0.020). Set strict_semantic=False to allow.
+Traceback (most recent call last):
+  File "E:\auto_detection_process/integrations/engineering_tools/src\seekflow_engineering_tools\generative_cad\dialects\loft_sweep\handlers.py", line 245, in handle_helix_sweep
+    raise RuntimeError(
+RuntimeError: helix_sweep on 'helix_sweep_1': volume deviation too large (ratio=0.020). Set strict_semantic=False to allow.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\auto_detection_process/integrations/engineering_tools/src\seekflow_engineering_tools\generative_cad\pipeline\run.py", line 123, in run_canonical_gcad
+    _run_components(canonical, ctx)
+  File "E:\auto_detection_process/integrations/engineering_tools/src\seekflow_engineering_tools\generative_cad\pipeline\run.py", line 204, in _run_components
+    component_outputs = dialect.run_component(component, nodes, ctx)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\auto_detection_process/integrations/engineering_tools/src\seekflow_engineering_tools\generative_cad\dialects\loft_sweep\dialect.py", line 288, in run_component
+    executed = execute_operation(node=node, op_spec=op_spec, ctx=ctx)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\auto_detection_process/integrations/engineering_tools/src\seekflow_engineering_tools\generative_cad\dialects\executor.py", line 52, in execute_operation
+    raw_result = op_spec.handler(node, ctx)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\auto_detection_process/integrations/engineering_tools/src\seekflow_engineering_tools\generative_cad\dialects\loft_sweep\handlers.py", line 251, in handle_helix_sweep
+    raise RuntimeError(f"helix_sweep failed on '{node.id}': {e}")
+RuntimeError: helix_sweep failed on 'helix_sweep_1': helix_sweep on 'helix_sweep_1': volume deviation too large (ratio=0.020). Set strict_semantic=False to allow.
+
+

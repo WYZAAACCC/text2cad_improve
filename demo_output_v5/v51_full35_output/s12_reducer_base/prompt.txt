@@ -1,0 +1,5 @@
+减速器底座, 单位 mm.
+组件 'base' (sketch_extrude): extrude_rectangle width_mm=400 height_mm=250 depth_mm=30 centered=true. cut_rectangular_pocket width_mm=350 height_mm=200 depth_mm=15 centered=true. cut_hole_pattern_linear hole_dia_mm=14 count_x=2 count_y=2 spacing_x_mm=340 spacing_y_mm=190. add_rib thickness_mm=10 height_mm=25 length_mm=200 position_mm=[0,80,15] direction=Y.
+组件 'bearing_a' (axisymmetric): revolve_profile station1 r=45 z=0-50. cut_center_bore diameter_mm=30 through_all=true.
+组件 'bearing_b' (axisymmetric): revolve_profile station1 r=45 z=0-50. cut_center_bore diameter_mm=30 through_all=true.
+装配 '__assembly__' (composition): 依次boolean_union. 每组只2 inputs.

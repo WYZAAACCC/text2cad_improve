@@ -1,0 +1,8 @@
+RC=0
+BUILD_OK
+OP:n1/revolve_profile:ok
+OP:n2/cut_center_bore:ok
+OP:n3/cut_annular_groove:ok
+OP:n4/cut_circular_hole_pattern:ok
+OP:n5/apply_safe_chamfer:ok
+

@@ -1,0 +1,7 @@
+RC=0
+BUILD_OK
+OP:tube_revolve/revolve_profile:ok
+OP:tube_cut_cbore/cut_center_bore:ok
+OP:shaft_revolve/revolve_profile:ok
+OP:assem_union/boolean_union:ok
+

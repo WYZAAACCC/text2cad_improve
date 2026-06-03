@@ -1,0 +1,5 @@
+多端口阀块, 单位 mm.
+extrude_rectangle width_mm=120 height_mm=100 depth_mm=180 centered=true.
+P口T口A口B口多个不同方向孔.
+cut_hole_pattern_linear hole_dia_mm=11 count_x=2 count_y=2 spacing_x_mm=100 spacing_y_mm=80.
+apply_safe_chamfer distance_mm=0.3 target=all_external_edges.

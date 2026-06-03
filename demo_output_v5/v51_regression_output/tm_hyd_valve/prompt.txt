@@ -1,0 +1,7 @@
+液压阀体, 单位 mm.
+extrude_rectangle width_mm=80 height_mm=60 depth_mm=200 centered=true.
+cut_hole diameter_mm=20 position_mm=[0,0] through_all=true axis=Z.
+cut_hole diameter_mm=10 position_mm=[0,15] through_all=true axis=Y.
+cut_hole diameter_mm=10 position_mm=[0,-15] through_all=true axis=Y.
+cut_hole_pattern_linear hole_dia_mm=9 count_x=2 count_y=2 spacing_x_mm=60 spacing_y_mm=40.
+apply_safe_chamfer distance_mm=0.5 target=all_external_edges.

@@ -120,6 +120,37 @@ def validate_composition_requirements(raw: RawGcadDocument) -> ValidationReport:
 
     # C007: single non-assembly component without __assembly__ is allowed — no error
 
+    # C009: composition operations MUST only appear in __assembly__ component
+    for n in raw.nodes:
+        if n.dialect == "composition" and n.component != "__assembly__":
+            issues.append(ValidationIssue(
+                stage=stage, code="composition_op_in_leaf_component",
+                message=(
+                    f"Node {n.id!r} uses composition dialect in leaf component "
+                    f"{n.component!r}. Composition operations may only appear "
+                    f"in the __assembly__ component."
+                ),
+                severity="error",
+                node_id=n.id,
+                component_id=n.component,
+            ))
+
+    # C010: boolean_union must have exactly 2 inputs
+    for n in raw.nodes:
+        if n.op == "boolean_union":
+            if len(n.inputs) != 2:
+                issues.append(ValidationIssue(
+                    stage=stage, code="boolean_union_input_count",
+                    message=(
+                        f"Node {n.id!r} boolean_union has {len(n.inputs)} input(s), "
+                        f"requires exactly 2. Use pairwise chain for 3+ solids."
+                    ),
+                    severity="error",
+                    node_id=n.id,
+                    actual=len(n.inputs),
+                    expected=2,
+                ))
+
     return ValidationReport(
         ok=not any(i.severity == "error" for i in issues),
         stage=stage,

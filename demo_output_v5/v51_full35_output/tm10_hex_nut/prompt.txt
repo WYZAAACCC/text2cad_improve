@@ -1,0 +1,4 @@
+M10六角螺母轴对等近似, 单位 mm.
+revolve_profile: station1 r=9.5 z=0-8.
+cut_center_bore diameter_mm=8.5 through_all=true.
+apply_safe_chamfer distance_mm=1 target=all_external_edges.

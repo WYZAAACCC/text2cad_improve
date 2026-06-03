@@ -1,0 +1,201 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "differential-case-v5",
+  "part_name": "差速器壳体",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "1.0.0"
+    },
+    {
+      "dialect": "composition",
+      "version": "1.0.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "diff_case",
+      "owner_dialect": "axisymmetric",
+      "root_node": "n_chamfer"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_revolve",
+      "component": "diff_case",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        },
+        {
+          "name": "frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "profile_points": [
+          {
+            "r_mm": 75,
+            "z_mm": 0
+          },
+          {
+            "r_mm": 75,
+            "z_mm": 20
+          },
+          {
+            "r_mm": 60,
+            "z_mm": 20
+          },
+          {
+            "r_mm": 60,
+            "z_mm": 80
+          },
+          {
+            "r_mm": 75,
+            "z_mm": 80
+          },
+          {
+            "r_mm": 75,
+            "z_mm": 100
+          }
+        ],
+        "direction": "+"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_bore",
+      "component": "diff_case",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "n_revolve",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 100,
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_holes",
+      "component": "diff_case",
+      "dialect": "axisymmetric",
+      "op": "cut_circular_hole_pattern",
+      "op_version": "1.0.0",
+      "phase": "pattern_cut",
+      "inputs": [
+        {
+          "node": "n_bore",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "count": 8,
+        "pcd_mm": 130,
+        "hole_dia_mm": 10
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_groove",
+      "component": "diff_case",
+      "dialect": "axisymmetric",
+      "op": "cut_annular_groove",
+      "op_version": "1.0.0",
+      "phase": "annular_detail",
+      "inputs": [
+        {
+          "node": "n_holes",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "side": "front",
+        "inner_dia_mm": 120,
+        "outer_dia_mm": 140,
+        "depth_mm": 3
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_chamfer",
+      "component": "diff_case",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "n_groove",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 1,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {
+    "_": "Attempt 5/5. Previous failures: [a002_bore_too_large] center bore radius(50.0) >= profile max radius(10.0) — root cause: profile max r was 10 meaning profile was misread. Actual profile: r=75 at z=0-20, r=60 at z=20-80, r=75 at z=80-100 → min r=60, max r=75. Bore dia=100→r=50 < min_r=60, margin 1mm → 50 < 59 OK. [a004_groove_outside_profile] groove outer r=140/2=70 < 75 OK, inner r=60 < 75 OK. [hole_pattern_outside_profile] PCD r=130/2=65 + hole r=5=70 < 75 OK. All checks pass with correct profile."
+  }
+}

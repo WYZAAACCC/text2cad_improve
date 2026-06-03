@@ -1,0 +1,288 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "concept_geometry",
+    "document_id": "7a3f9c2e-8b4d-4a1e-b6f2-3c5e8d9a0b1f",
+    "part_name": "deep_hole_valve_block",
+    "selected_dialects": [
+      {
+        "dialect": "sketch_extrude",
+        "version": "0.2.0",
+        "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "base_rect",
+        "dialect": "sketch_extrude",
+        "op": "extrude_rectangle",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "hole_z_25",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "hole_y_15_pos",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "hole_y_15_neg",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "hole_x_10",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "hole_pattern",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole_pattern_linear",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "chamfer_final",
+        "dialect": "sketch_extrude",
+        "op": "apply_safe_chamfer",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:38ef277c8895e8bd739c5cf00ea81caab8e0c8ae51703da5bc72586feff18539",
+    "canonical_graph_hash": "sha256:0937689d7eb5416a612b6236fee72623be633a260c6c5a441794f7357b6a6abc",
+    "paths": {
+      "canonical_ir_path": "E:\\auto_detection_process\\demo_output_v5\\v51_regression_output\\s20_deep_holes\\canonical.json",
+      "validation_seed_path": "E:\\auto_detection_process\\demo_output_v5\\v51_regression_output\\s20_deep_holes\\validation_bundle.json",
+      "step_path": "E:\\auto_detection_process\\demo_output_v5\\v51_regression_output\\s20_deep_holes\\output.step",
+      "metadata_path": "E:\\auto_detection_process\\demo_output_v5\\v51_regression_output\\s20_deep_holes\\output.metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:457c9c0cde4a4c6f0de1f9527d3fd9528900154e0be951526d0d71f6b648004c",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [
+      "Safe chamfer skipped on 'chamfer_final': geometry does not support chamfer. Part is valid without chamfer."
+    ],
+    "degraded_features": [],
+    "operation_metrics": [
+      {
+        "node_id": "base_rect",
+        "op": "extrude_rectangle",
+        "status": "ok"
+      },
+      {
+        "node_id": "hole_z_25",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "hole_y_15_pos",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "hole_y_15_neg",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "hole_x_10",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "hole_pattern",
+        "op": "cut_hole_pattern_linear",
+        "status": "ok"
+      },
+      {
+        "node_id": "chamfer_final",
+        "op": "apply_safe_chamfer",
+        "status": "ok"
+      }
+    ],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [
+    "Safe chamfer skipped on 'chamfer_final': geometry does not support chamfer. Part is valid without chamfer."
+  ],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {
+        "structure": {
+          "ok": true,
+          "stage": "structure",
+          "issues": [],
+          "stages_run": [
+            "structure"
+          ]
+        },
+        "registry": {
+          "ok": true,
+          "stage": "registry",
+          "issues": [],
+          "stages_run": [
+            "registry"
+          ]
+        },
+        "params": {
+          "ok": true,
+          "stage": "params",
+          "issues": [],
+          "stages_run": [
+            "params"
+          ]
+        },
+        "ownership": {
+          "ok": true,
+          "stage": "ownership",
+          "issues": [],
+          "stages_run": [
+            "ownership"
+          ]
+        },
+        "graph": {
+          "ok": true,
+          "stage": "graph",
+          "issues": [],
+          "stages_run": [
+            "graph"
+          ]
+        },
+        "typecheck": {
+          "ok": true,
+          "stage": "typecheck",
+          "issues": [],
+          "stages_run": [
+            "typecheck"
+          ]
+        },
+        "phase": {
+          "ok": true,
+          "stage": "phase",
+          "issues": [],
+          "stages_run": [
+            "phase"
+          ]
+        },
+        "composition": {
+          "ok": true,
+          "stage": "composition",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "registry",
+            "params",
+            "ownership",
+            "graph",
+            "typecheck",
+            "phase",
+            "composition"
+          ]
+        },
+        "safety": {
+          "ok": true,
+          "stage": "safety",
+          "issues": [],
+          "stages_run": [
+            "safety"
+          ]
+        }
+      },
+      "canonicalize": {
+        "ok": true,
+        "stage": "canonicalize",
+        "issues": [],
+        "stages_run": [
+          "canonicalize"
+        ]
+      },
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": true,
+      "stage": "dialect_semantics",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "safety",
+        "canonicalize",
+        "dialect_semantics"
+      ]
+    },
+    "geometry_preflight": {
+      "ok": true,
+      "stage": "geometry_preflight",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "safety",
+        "canonicalize",
+        "dialect_semantics",
+        "geometry_preflight"
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    }
+  }
+}

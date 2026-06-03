@@ -1,0 +1,5 @@
+联轴器总成, 单位 mm.
+组件 'hub_a' (axisymmetric): revolve_profile station1 r=50 z=0-40. cut_center_bore diameter_mm=25 through_all=true. cut_circular_hole_pattern count=6 pcd_mm=70 hole_dia_mm=10.
+组件 'hub_b' (axisymmetric): revolve_profile station1 r=50 z=0-40. cut_center_bore diameter_mm=25 through_all=true. cut_circular_hole_pattern count=6 pcd_mm=70 hole_dia_mm=10.
+组件 'spider' (sketch_extrude): extrude_rectangle width_mm=80 height_mm=80 depth_mm=20 centered=true.
+装配 '__assembly__' (composition): 依次boolean_union合并. 每次boolean_union只能2个inputs.

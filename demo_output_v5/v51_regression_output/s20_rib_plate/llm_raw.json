@@ -1,0 +1,285 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "doc-001",
+  "part_name": "dense_ribbed_plate",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "1.0.0"
+    },
+    {
+      "dialect": "composition",
+      "version": "1.0.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "comp_plate",
+      "owner_dialect": "sketch_extrude",
+      "root_node": "n_fillet"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_base",
+      "component": "comp_plate",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 300,
+        "height_mm": 200,
+        "depth_mm": 15,
+        "centered": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_holes",
+      "component": "comp_plate",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_pattern_linear",
+      "op_version": "1.0.0",
+      "phase": "hole_pattern",
+      "inputs": [
+        {
+          "node": "n_base",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "hole_dia_mm": 11,
+        "count_x": 2,
+        "count_y": 2,
+        "spacing_x_mm": 260,
+        "spacing_y_mm": 160
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib1",
+      "component": "comp_plate",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_holes",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 6,
+        "height_mm": 20,
+        "length_mm": 150,
+        "position_mm": [
+          -80,
+          0,
+          7.5
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib2",
+      "component": "comp_plate",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_rib1",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 6,
+        "height_mm": 20,
+        "length_mm": 150,
+        "position_mm": [
+          -40,
+          0,
+          7.5
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib3",
+      "component": "comp_plate",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_rib2",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 6,
+        "height_mm": 20,
+        "length_mm": 150,
+        "position_mm": [
+          0,
+          0,
+          7.5
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib4",
+      "component": "comp_plate",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_rib3",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 6,
+        "height_mm": 20,
+        "length_mm": 150,
+        "position_mm": [
+          40,
+          0,
+          7.5
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib5",
+      "component": "comp_plate",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_rib4",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 6,
+        "height_mm": 20,
+        "length_mm": 150,
+        "position_mm": [
+          80,
+          0,
+          7.5
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_fillet",
+      "component": "comp_plate",
+      "dialect": "sketch_extrude",
+      "op": "apply_safe_fillet",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "n_rib5",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "radius_mm": 1.5,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": null
+}

@@ -1,0 +1,70 @@
+{
+  "applied": true,
+  "before_hash": "sha256:293bf9fabeb253a4f57310974e6aba2aeb926c2654ce528e8d1c8ce64564788a",
+  "after_hash": "sha256:d5d4adba3739a476e04d9579de405022a56c73402caa97bcb94182094e18e137",
+  "entries": [
+    {
+      "rule_id": "fix_output_names",
+      "path": "/",
+      "old_value": "<hash:sha256:293bf>",
+      "new_value": "<hash:sha256:b0b0f>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_output_names"
+    },
+    {
+      "rule_id": "fix_input_output_names",
+      "path": "/",
+      "old_value": "<hash:sha256:b0b0f>",
+      "new_value": "<hash:sha256:54356>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_input_output_names"
+    },
+    {
+      "rule_id": "fix_dialect_names",
+      "path": "/",
+      "old_value": "<hash:sha256:54356>",
+      "new_value": "<hash:sha256:49698>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_dialect_names"
+    },
+    {
+      "rule_id": "fix_cross_component_refs",
+      "path": "/",
+      "old_value": "<hash:sha256:49698>",
+      "new_value": "<hash:sha256:3c707>",
+      "severity": "semantic_guess",
+      "confidence": 0.9,
+      "message": "Applied fix: fix_cross_component_refs"
+    },
+    {
+      "rule_id": "fix_phase_names",
+      "path": "/",
+      "old_value": "<hash:sha256:3c707>",
+      "new_value": "<hash:sha256:f9db6>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_phase_names"
+    },
+    {
+      "rule_id": "fix_phase_ordering",
+      "path": "/",
+      "old_value": "<hash:sha256:f9db6>",
+      "new_value": "<hash:sha256:d9388>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_phase_ordering"
+    },
+    {
+      "rule_id": "fill_default_params",
+      "path": "/",
+      "old_value": "<hash:sha256:d9388>",
+      "new_value": "<hash:sha256:d5d4a>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fill_default_params"
+    }
+  ]
+}

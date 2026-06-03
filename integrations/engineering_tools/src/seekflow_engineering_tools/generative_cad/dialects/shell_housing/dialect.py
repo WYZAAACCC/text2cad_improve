@@ -3,7 +3,7 @@ from __future__ import annotations
 from seekflow_engineering_tools.generative_cad.dialects.operation import OperationSpec
 from seekflow_engineering_tools.generative_cad.ir.canonical import CanonicalComponent, CanonicalNode
 from seekflow_engineering_tools.generative_cad.runtime.context import RuntimeContext
-from seekflow_engineering_tools.generative_cad.validation.reports import ValidationReport
+from seekflow_engineering_tools.generative_cad.validation.reports import ValidationIssue, ValidationReport
 from seekflow_engineering_tools.generative_cad.dialects.shell_housing.handlers import (
     handle_shell_body, handle_hollow_body,
 )
@@ -42,7 +42,35 @@ class ShellHousingDialect:
     def get_op_spec(self, op, v=None): return self._specs.get((op, v or "1.0.0"))
 
     def validate_component(self, c, n): return ValidationReport(ok=True, stage="dialect_semantics")
-    def preflight_component(self, c, n): return ValidationReport(ok=True, stage="geometry_preflight")
+
+    def preflight_component(self, component, nodes):
+        """Preflight: thickness > 0, thickness < 40% of known base dimensions."""
+        issues = []
+        stage = "geometry_preflight"
+        ALLOWED_FACES = {"+Z", "-Z", "+X", "-X", "+Y", "-Y", ""}
+
+        for node in nodes:
+            thickness = node.typed_params.get("thickness_mm") or node.params.get("thickness_mm", 0)
+            if thickness <= 0:
+                issues.append(ValidationIssue(
+                    stage=stage, code="sh_thickness_non_positive",
+                    message=f"shell_body thickness_mm must be > 0, got {thickness}",
+                    severity="error", node_id=node.id,
+                ))
+
+            open_faces = node.typed_params.get("open_faces") or node.params.get("open_faces", [])
+            for face in (open_faces or []):
+                if face not in ALLOWED_FACES:
+                    issues.append(ValidationIssue(
+                        stage=stage, code="sh_invalid_open_face",
+                        message=f"open_faces value {face!r} not in {sorted(ALLOWED_FACES)}",
+                        severity="warning", node_id=node.id,
+                    ))
+
+        return ValidationReport(
+            ok=not any(i.severity == "error" for i in issues),
+            stage=stage, issues=issues,
+        )
 
     def run_component(self, component, nodes, ctx):
         from seekflow_engineering_tools.generative_cad.dialects.executor import execute_operation

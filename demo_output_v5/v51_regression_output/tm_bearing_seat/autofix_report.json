@@ -1,0 +1,52 @@
+{
+  "applied": true,
+  "before_hash": "sha256:972d83af640dbded618d7b549693bdcfe45c89d73840b1a0c714e5d19450bd48",
+  "after_hash": "sha256:1663025255c6de4b49ba6ab71c10a2cad8c028d539d1d97eee47e25ea6bf9fbd",
+  "entries": [
+    {
+      "rule_id": "fix_output_names",
+      "path": "/",
+      "old_value": "<hash:sha256:972d8>",
+      "new_value": "<hash:sha256:9f08e>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_output_names"
+    },
+    {
+      "rule_id": "fix_dialect_names",
+      "path": "/",
+      "old_value": "<hash:sha256:9f08e>",
+      "new_value": "<hash:sha256:f3f45>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_dialect_names"
+    },
+    {
+      "rule_id": "fix_cross_component_refs",
+      "path": "/",
+      "old_value": "<hash:sha256:f3f45>",
+      "new_value": "<hash:sha256:b42d2>",
+      "severity": "semantic_guess",
+      "confidence": 0.9,
+      "message": "Applied fix: fix_cross_component_refs"
+    },
+    {
+      "rule_id": "fix_phase_ordering",
+      "path": "/",
+      "old_value": "<hash:sha256:b42d2>",
+      "new_value": "<hash:sha256:48d5a>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_phase_ordering"
+    },
+    {
+      "rule_id": "remove_extra_params",
+      "path": "/",
+      "old_value": "<hash:sha256:48d5a>",
+      "new_value": "<hash:sha256:16630>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: remove_extra_params"
+    }
+  ]
+}

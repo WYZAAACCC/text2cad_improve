@@ -1,0 +1,1 @@
+长螺旋弹簧, 单位 mm. helix_sweep: radius_mm=20 height_mm=150 pitch_mm=12 profile_radius_mm=1.2 turns=12.

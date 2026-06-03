@@ -1,0 +1,16 @@
+{
+  "applied": true,
+  "before_hash": "sha256:bbc262e5a6a7f58e2fbb129e42b9de6284f896ba379b55a40eb335c49beef402",
+  "after_hash": "sha256:b003535b5e79d534d1c74f232762eca76c3e346db8161c60b817ab30cc0846d1",
+  "entries": [
+    {
+      "rule_id": "fix_unknown_ops",
+      "path": "/",
+      "old_value": "<hash:sha256:bbc26>",
+      "new_value": "<hash:sha256:b0035>",
+      "severity": "destructive",
+      "confidence": 0.85,
+      "message": "Applied fix: fix_unknown_ops"
+    }
+  ]
+}

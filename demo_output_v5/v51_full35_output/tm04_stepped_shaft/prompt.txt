@@ -1,0 +1,5 @@
+传动阶梯轴, 单位 mm, 参考几何.
+revolve_profile: station1 r=15 z=0-10, station2 r=22 z=10-50, station3 r=18 z=50-80, station4 r=15 z=80-110, station5 r=12 z=110-120.
+cut_center_bore diameter_mm=8 through_all=true.
+cut_external_thread nominal_dia_mm=12 pitch_mm=1.75 length_mm=10 standard=ISO_metric thread_class=6g.
+apply_safe_chamfer distance_mm=1 target=all_external_edges.

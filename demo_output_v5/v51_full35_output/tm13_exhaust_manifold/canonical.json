@@ -1,0 +1,165 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "exhaust-s-bend-001",
+  "part_name": "排气歧管S形弯管",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0",
+      "contract_hash": "sha256:e65e433162c910d28028903e691e48174e56dcc8b400a35f8f9f124adcc6ff17"
+    }
+  ],
+  "components": [
+    {
+      "id": "s_bend",
+      "owner_dialect": "loft_sweep",
+      "kind_hint": null,
+      "root_node": "sweep_op",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "path_op",
+      "component": "s_bend",
+      "dialect": "loft_sweep",
+      "op": "create_sweep_path",
+      "op_version": "1.0.0",
+      "phase": "path",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "curve",
+          "type": "curve",
+          "value_id": "curve:s_bend:path_op:curve"
+        }
+      ],
+      "params": {
+        "path_points": [
+          {
+            "x_mm": 0,
+            "y_mm": 0,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 0,
+            "y_mm": 30,
+            "z_mm": 80
+          },
+          {
+            "x_mm": 0,
+            "y_mm": 60,
+            "z_mm": 160
+          },
+          {
+            "x_mm": 0,
+            "y_mm": 30,
+            "z_mm": 240
+          },
+          {
+            "x_mm": 0,
+            "y_mm": 0,
+            "z_mm": 320
+          }
+        ]
+      },
+      "typed_params": {
+        "path_points": [
+          {
+            "x_mm": 0.0,
+            "y_mm": 0.0,
+            "z_mm": 0.0
+          },
+          {
+            "x_mm": 0.0,
+            "y_mm": 30.0,
+            "z_mm": 80.0
+          },
+          {
+            "x_mm": 0.0,
+            "y_mm": 60.0,
+            "z_mm": 160.0
+          },
+          {
+            "x_mm": 0.0,
+            "y_mm": 30.0,
+            "z_mm": 240.0
+          },
+          {
+            "x_mm": 0.0,
+            "y_mm": 0.0,
+            "z_mm": 320.0
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_frame"
+      ],
+      "postconditions": []
+    },
+    {
+      "id": "sweep_op",
+      "component": "s_bend",
+      "dialect": "loft_sweep",
+      "op": "sweep_profile",
+      "op_version": "1.0.0",
+      "phase": "sweep",
+      "inputs": [
+        {
+          "producer_node": "path_op",
+          "producer_component": null,
+          "output": "curve",
+          "resolved_type": "curve"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:s_bend:sweep_op:body"
+        }
+      ],
+      "params": {
+        "shape": "circle",
+        "radius_mm": 18
+      },
+      "typed_params": {
+        "shape": "circle",
+        "radius_mm": 18.0,
+        "width_mm": 10.0,
+        "height_mm": 10.0
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": []
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:072a78df3665f5c55033f35709b6f6dac39574b701171bddb032a0b26e580db8",
+  "raw_graph_hash": "sha256:00ffc38431004bca695a98664908594e9d385da0aba4338ab21b634c417062aa"
+}

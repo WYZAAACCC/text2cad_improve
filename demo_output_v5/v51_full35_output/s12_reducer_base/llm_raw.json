@@ -1,0 +1,352 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "reducer_base_assembly",
+  "part_name": "减速器底座",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0"
+    },
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "base",
+      "owner_dialect": "sketch_extrude",
+      "root_node": "base_rib"
+    },
+    {
+      "id": "bearing_a",
+      "owner_dialect": "axisymmetric",
+      "root_node": "ba_bore"
+    },
+    {
+      "id": "bearing_b",
+      "owner_dialect": "axisymmetric",
+      "root_node": "bb_bore"
+    },
+    {
+      "id": "__assembly__",
+      "owner_dialect": "composition",
+      "root_node": "asm_union_2"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "base_extrude",
+      "component": "base",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 400,
+        "height_mm": 250,
+        "depth_mm": 30,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "base_pocket",
+      "component": "base",
+      "dialect": "sketch_extrude",
+      "op": "cut_rectangular_pocket",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "base_extrude",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 350,
+        "height_mm": 200,
+        "depth_mm": 15,
+        "plane": "XY",
+        "centered": true,
+        "direction": "-"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "base_holes",
+      "component": "base",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_pattern_linear",
+      "op_version": "1.0.0",
+      "phase": "hole_pattern",
+      "inputs": [
+        {
+          "node": "base_pocket",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "hole_dia_mm": 14,
+        "count_x": 2,
+        "count_y": 2,
+        "spacing_x_mm": 340,
+        "spacing_y_mm": 190,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "base_rib",
+      "component": "base",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "base_holes",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 10,
+        "height_mm": 25,
+        "length_mm": 200,
+        "position_mm": [
+          0,
+          80,
+          15
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "ba_revolve",
+      "component": "bearing_a",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 45,
+            "z_front_mm": 0,
+            "z_rear_mm": 50
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "ba_bore",
+      "component": "bearing_a",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "ba_revolve",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 30,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "bb_revolve",
+      "component": "bearing_b",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 45,
+            "z_front_mm": 0,
+            "z_rear_mm": 50
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "bb_bore",
+      "component": "bearing_b",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "bb_revolve",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 30,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "asm_union_1",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "node": "base_rib",
+          "output": "body"
+        },
+        {
+          "node": "ba_bore",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {},
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "asm_union_2",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "node": "asm_union_1",
+          "output": "body"
+        },
+        {
+          "node": "bb_bore",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {},
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {
+    "_": "减速器底座三组件装配: base(sketch_extrude矩形+矩形口袋+线性孔阵+肋条), bearing_a和bearing_b(axisymmetric回转体+中心孔), 通过两个boolean_union依次合并"
+  }
+}

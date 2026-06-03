@@ -1,0 +1,52 @@
+{
+  "applied": true,
+  "before_hash": "sha256:9fce9954ff918669b4f03eed3efd45b6938c2058a402ee3c3596a13de0d6e9af",
+  "after_hash": "sha256:58d605c5b94d9d97bc6691ebd11c4e5406f33ca842de2cc7ac69e4ffa5d56eec",
+  "entries": [
+    {
+      "rule_id": "fix_output_names",
+      "path": "/",
+      "old_value": "<hash:sha256:9fce9>",
+      "new_value": "<hash:sha256:93ee2>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_output_names"
+    },
+    {
+      "rule_id": "fix_input_output_names",
+      "path": "/",
+      "old_value": "<hash:sha256:93ee2>",
+      "new_value": "<hash:sha256:89f57>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_input_output_names"
+    },
+    {
+      "rule_id": "fix_dialect_names",
+      "path": "/",
+      "old_value": "<hash:sha256:89f57>",
+      "new_value": "<hash:sha256:b45a6>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_dialect_names"
+    },
+    {
+      "rule_id": "fix_profile_stations",
+      "path": "/",
+      "old_value": "<hash:sha256:b45a6>",
+      "new_value": "<hash:sha256:629e5>",
+      "severity": "semantic_guess",
+      "confidence": 0.85,
+      "message": "Applied fix: fix_profile_stations"
+    },
+    {
+      "rule_id": "fill_default_params",
+      "path": "/",
+      "old_value": "<hash:sha256:629e5>",
+      "new_value": "<hash:sha256:58d60>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fill_default_params"
+    }
+  ]
+}

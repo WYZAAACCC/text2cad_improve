@@ -1,0 +1,12 @@
+{
+  "semantic_valid": true,
+  "measured": {
+    "bbox_x_mm": 36.0,
+    "bbox_y_mm": 68.587,
+    "bbox_z_mm": 355.446,
+    "volume_mm3": 43495.269,
+    "body_count": null,
+    "solid_count": null
+  },
+  "issues": []
+}

@@ -1,0 +1,17 @@
+RC=0
+BUILD_FAILED: "unknown op/version: 'shell_body'/'1.0.0'"
+Traceback (most recent call last):
+  File "E:\auto_detection_process/integrations/engineering_tools/src\seekflow_engineering_tools\generative_cad\pipeline\run.py", line 123, in run_canonical_gcad
+    _run_components(canonical, ctx)
+  File "E:\auto_detection_process/integrations/engineering_tools/src\seekflow_engineering_tools\generative_cad\pipeline\run.py", line 204, in _run_components
+    component_outputs = dialect.run_component(component, nodes, ctx)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\auto_detection_process/integrations/engineering_tools/src\seekflow_engineering_tools\generative_cad\dialects\sketch_extrude\dialect.py", line 283, in run_component
+    op_spec = self.get_op_spec(node.op, node.op_version)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\auto_detection_process/integrations/engineering_tools/src\seekflow_engineering_tools\generative_cad\dialects\sketch_extrude\dialect.py", line 54, in get_op_spec
+    if key not in self.op_specs(): raise KeyError(f"unknown op/version: {op!r}/{v!r}")
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyError: "unknown op/version: 'shell_body'/'1.0.0'"
+
+

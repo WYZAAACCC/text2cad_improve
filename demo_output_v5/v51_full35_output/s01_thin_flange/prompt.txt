@@ -1,0 +1,5 @@
+超大薄壁法兰, 单位 mm.
+revolve_profile: station1 r=250 z=0-8.
+cut_center_bore diameter_mm=480 through_all=true.
+cut_circular_hole_pattern count=24 pcd_mm=470 hole_dia_mm=12.
+apply_safe_chamfer distance_mm=0.5 target=all_external_edges.

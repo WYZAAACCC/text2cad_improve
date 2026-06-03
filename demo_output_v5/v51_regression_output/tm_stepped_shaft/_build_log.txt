@@ -1,0 +1,7 @@
+RC=0
+BUILD_OK
+OP:n_base/revolve_profile:ok
+OP:n_bore/cut_center_bore:ok
+OP:n_thread/cut_external_thread:ok
+OP:n_edge_treatment/apply_safe_chamfer:ok
+

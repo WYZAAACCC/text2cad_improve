@@ -1,0 +1,393 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "bearing_housing_assembly",
+  "part_name": "bearing_housing_assembly",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+    },
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "contract_hash": "sha256:1ff66c680d94f60891bf00260f365ffa2a0d213d5571a2366a3f1c27748f5382"
+    }
+  ],
+  "components": [
+    {
+      "id": "hub",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": null,
+      "root_node": "hub_cleanup",
+      "output_aliases": {}
+    },
+    {
+      "id": "base",
+      "owner_dialect": "sketch_extrude",
+      "kind_hint": null,
+      "root_node": "base_cleanup",
+      "output_aliases": {}
+    },
+    {
+      "id": "__assembly__",
+      "owner_dialect": "composition",
+      "kind_hint": null,
+      "root_node": "assy_union",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub_revolve",
+      "component": "hub",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:hub:hub_revolve:body"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame",
+          "value_id": "frame:hub:hub_revolve:outer_frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 35,
+            "z_front_mm": 0,
+            "z_rear_mm": 15
+          },
+          {
+            "r_mm": 28,
+            "z_front_mm": 15,
+            "z_rear_mm": 50
+          },
+          {
+            "r_mm": 20,
+            "z_front_mm": 50,
+            "z_rear_mm": 55
+          }
+        ]
+      },
+      "typed_params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 35.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 15.0,
+            "label": null
+          },
+          {
+            "r_mm": 28.0,
+            "z_front_mm": 15.0,
+            "z_rear_mm": 50.0,
+            "label": null
+          },
+          {
+            "r_mm": 20.0,
+            "z_front_mm": 50.0,
+            "z_rear_mm": 55.0,
+            "label": null
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid",
+        "creates_frame"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "base_extrude",
+      "component": "base",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:base:base_extrude:body"
+        }
+      ],
+      "params": {
+        "width_mm": 120,
+        "height_mm": 60,
+        "depth_mm": 15,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+"
+      },
+      "typed_params": {
+        "width_mm": 120.0,
+        "height_mm": 60.0,
+        "depth_mm": 15.0,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0.0
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "hub_bore",
+      "component": "hub",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "hub_revolve",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:hub:hub_bore:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 25,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 25.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "base_holes",
+      "component": "base",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_pattern_linear",
+      "op_version": "1.0.0",
+      "phase": "hole_pattern",
+      "inputs": [
+        {
+          "producer_node": "base_extrude",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:base:base_holes:body"
+        }
+      ],
+      "params": {
+        "hole_dia_mm": 10,
+        "count_x": 2,
+        "count_y": 2,
+        "spacing_x_mm": 90,
+        "spacing_y_mm": 40,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "hole_dia_mm": 10.0,
+        "count_x": 2,
+        "count_y": 2,
+        "spacing_x_mm": 90.0,
+        "spacing_y_mm": 40.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "assy_union",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "producer_node": null,
+          "producer_component": "hub",
+          "output": "body",
+          "resolved_type": "solid"
+        },
+        {
+          "producer_node": null,
+          "producer_component": "base",
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:__assembly__:assy_union:body"
+        }
+      ],
+      "params": {},
+      "typed_params": {
+        "clean_after": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "boolean_union"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "base_cleanup",
+      "component": "base",
+      "dialect": "sketch_extrude",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "producer_node": "base_holes",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:base:base_cleanup:body"
+        }
+      ],
+      "params": {
+        "distance_mm": 0.5,
+        "target": "all_external_edges"
+      },
+      "typed_params": {
+        "distance_mm": 0.5,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "modifies_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "hub_cleanup",
+      "component": "hub",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "producer_node": "hub_bore",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:hub:hub_cleanup:body"
+        }
+      ],
+      "params": {
+        "distance_mm": 0.5,
+        "target": "all_external_edges"
+      },
+      "typed_params": {
+        "distance_mm": 0.5,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "modifies_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:106c8c594156225ed4ebc6347138394e561c1201683df9c4fda3164f48ef3781",
+  "raw_graph_hash": "sha256:682c2e44ffbd220824c044a832e21b8bcda4ce70aa52172e650bf23f46e24b14"
+}

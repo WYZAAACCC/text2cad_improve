@@ -1,0 +1,5 @@
+全特征传动轴, 单位 mm.
+revolve_profile 7段: station1 r=18 z=0-12, station2 r=12 z=12-45, station3 r=16 z=45-55, station4 r=10 z=55-95, station5 r=14 z=95-105, station6 r=8 z=105-135, station7 r=6 z=135-145.
+cut_center_bore diameter_mm=6 through_all=true.
+cut_external_thread nominal_dia_mm=6 pitch_mm=1.0 length_mm=10 standard=ISO_metric thread_class=6g.
+apply_safe_chamfer distance_mm=0.5 target=all_external_edges.

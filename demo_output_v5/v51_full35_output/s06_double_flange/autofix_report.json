@@ -1,0 +1,34 @@
+{
+  "applied": true,
+  "before_hash": "sha256:948a7376ef523397f30ce45e033556c27d587df0c74c34ba7fdd1705c3611fdb",
+  "after_hash": "sha256:a8a0d46878494113c903b31e4e0e6addbe15ce36bbdf5f927da55e5d5508c5b9",
+  "entries": [
+    {
+      "rule_id": "fix_cross_component_refs",
+      "path": "/",
+      "old_value": "<hash:sha256:948a7>",
+      "new_value": "<hash:sha256:e767c>",
+      "severity": "semantic_guess",
+      "confidence": 0.9,
+      "message": "Applied fix: fix_cross_component_refs"
+    },
+    {
+      "rule_id": "fix_root_node",
+      "path": "/",
+      "old_value": "<hash:sha256:e767c>",
+      "new_value": "<hash:sha256:2eba8>",
+      "severity": "semantic_guess",
+      "confidence": 0.95,
+      "message": "Applied fix: fix_root_node"
+    },
+    {
+      "rule_id": "fix_phase_ordering",
+      "path": "/",
+      "old_value": "<hash:sha256:2eba8>",
+      "new_value": "<hash:sha256:a8a0d>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_phase_ordering"
+    }
+  ]
+}

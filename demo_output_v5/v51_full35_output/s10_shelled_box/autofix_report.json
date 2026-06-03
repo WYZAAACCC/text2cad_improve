@@ -1,0 +1,16 @@
+{
+  "applied": true,
+  "before_hash": "sha256:62c4289ac9f9da72255e911f13b05439bd4e47a90aa5d61e8c8a79d865a257ba",
+  "after_hash": "sha256:f8adc6dad4718fc6895a9190ee8abed5f8abfbca771849a39c97ec5208919dc8",
+  "entries": [
+    {
+      "rule_id": "remove_extra_params",
+      "path": "/",
+      "old_value": "<hash:sha256:62c42>",
+      "new_value": "<hash:sha256:f8adc>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: remove_extra_params"
+    }
+  ]
+}

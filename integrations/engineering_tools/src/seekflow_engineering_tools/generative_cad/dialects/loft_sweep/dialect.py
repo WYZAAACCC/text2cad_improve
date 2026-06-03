@@ -260,15 +260,16 @@ class LoftSweepDialect:
                         message=f"helix_sweep pitch_mm must be > 0, got {pitch}",
                         severity="error", node_id=n.id,
                     ))
-                # Self-intersection: profile_r must be < 0.45 * min_curvature_radius
+                # Self-intersection: wire diameter (2*profile_r) must not exceed
+                # the gap between turns. Gap = pitch - wire_diameter.
+                # Safe when: profile_r < 0.45 * pitch (i.e. wire_dia < 0.9 * pitch).
                 if is_finite(pitch) and pitch > 0 and is_finite(profile_r) and profile_r > 0:
-                    min_curvature_radius = pitch / (2 * math.pi)
-                    if profile_r >= min_curvature_radius * 0.45:
+                    if profile_r >= pitch * 0.45:
                         issues.append(ValidationIssue(
                             stage=stage, code="ls_helix_self_intersection",
                             message=f"helix_sweep profile_radius_mm ({profile_r:.1f}) >= "
-                            f"0.45 * min curvature radius ({min_curvature_radius:.1f}). "
-                            f"Helix will self-intersect. Increase pitch or reduce profile.",
+                            f"0.45 * pitch_mm ({pitch*0.45:.1f}). "
+                            f"Coils will self-intersect. Increase pitch or reduce profile.",
                             severity="error", node_id=n.id,
                         ))
 

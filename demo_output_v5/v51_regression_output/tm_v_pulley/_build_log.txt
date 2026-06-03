@@ -1,0 +1,7 @@
+RC=0
+BUILD_OK
+OP:revolve/revolve_profile:ok
+OP:center_bore/cut_center_bore:ok
+OP:hole_pattern/cut_circular_hole_pattern:ok
+OP:edge_treatment/apply_safe_chamfer:ok
+
