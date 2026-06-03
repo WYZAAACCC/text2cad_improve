@@ -1,0 +1,332 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "drive-shaft-protective-sleeve",
+  "part_name": "传动轴保护轴套",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+    }
+  ],
+  "components": [
+    {
+      "id": "sleeve",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": null,
+      "root_node": "n_chamfer",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_revolve",
+      "component": "sleeve",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:sleeve:n_revolve:body"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame",
+          "value_id": "frame:sleeve:n_revolve:outer_frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 30,
+            "z_front_mm": 0,
+            "z_rear_mm": 5
+          },
+          {
+            "r_mm": 22,
+            "z_front_mm": 5,
+            "z_rear_mm": 60
+          },
+          {
+            "r_mm": 28,
+            "z_front_mm": 60,
+            "z_rear_mm": 65
+          }
+        ]
+      },
+      "typed_params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 30.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 5.0,
+            "label": null
+          },
+          {
+            "r_mm": 22.0,
+            "z_front_mm": 5.0,
+            "z_rear_mm": 60.0,
+            "label": null
+          },
+          {
+            "r_mm": 28.0,
+            "z_front_mm": 60.0,
+            "z_rear_mm": 65.0,
+            "label": null
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid",
+        "creates_frame"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_bore",
+      "component": "sleeve",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n_revolve",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:sleeve:n_bore:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 16,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 16.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_groove",
+      "component": "sleeve",
+      "dialect": "axisymmetric",
+      "op": "cut_annular_groove",
+      "op_version": "1.0.0",
+      "phase": "annular_detail",
+      "inputs": [
+        {
+          "producer_node": "n_bore",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:sleeve:n_groove:body"
+        }
+      ],
+      "params": {
+        "side": "front",
+        "inner_dia_mm": 44,
+        "outer_dia_mm": 52,
+        "depth_mm": 2
+      },
+      "typed_params": {
+        "side": "front",
+        "inner_dia_mm": 44.0,
+        "outer_dia_mm": 52.0,
+        "depth_mm": 2.0
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_pattern_front",
+      "component": "sleeve",
+      "dialect": "axisymmetric",
+      "op": "cut_circular_hole_pattern",
+      "op_version": "1.0.0",
+      "phase": "pattern_cut",
+      "inputs": [
+        {
+          "producer_node": "n_groove",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:sleeve:n_pattern_front:body"
+        }
+      ],
+      "params": {
+        "count": 4,
+        "pcd_mm": 44,
+        "hole_dia_mm": 6.5,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "count": 4,
+        "pcd_mm": 44.0,
+        "hole_dia_mm": 6.5,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_pattern_rear",
+      "component": "sleeve",
+      "dialect": "axisymmetric",
+      "op": "cut_circular_hole_pattern",
+      "op_version": "1.0.0",
+      "phase": "pattern_cut",
+      "inputs": [
+        {
+          "producer_node": "n_pattern_front",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:sleeve:n_pattern_rear:body"
+        }
+      ],
+      "params": {
+        "count": 4,
+        "pcd_mm": 48,
+        "hole_dia_mm": 6.5,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "count": 4,
+        "pcd_mm": 48.0,
+        "hole_dia_mm": 6.5,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_chamfer",
+      "component": "sleeve",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "producer_node": "n_pattern_rear",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:sleeve:n_chamfer:body"
+        }
+      ],
+      "params": {
+        "distance_mm": 0.5,
+        "target": "all_external_edges"
+      },
+      "typed_params": {
+        "distance_mm": 0.5,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "modifies_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:cc52cb89862564105e40084ec01ac275792343450d00de62317468cf6e74a138",
+  "raw_graph_hash": "sha256:8b352ba258a2e68fa404d83c2cfa0bc5ea381877ba3b7f4f76df3910dd1f612a"
+}

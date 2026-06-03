@@ -1,0 +1,12 @@
+RC=0
+STDOUT:
+BUILD_OK
+OP:n_base/extrude_rectangle:ok
+OP:n_main_hole/cut_hole:ok
+OP:n_transverse_1/cut_hole:ok
+OP:n_transverse_2/cut_hole:ok
+OP:n_angled_hole/cut_hole:ok
+OP:n_mount_holes/cut_hole_pattern_linear:ok
+OP:n_chamfer/apply_safe_chamfer:ok
+
+STDERR:

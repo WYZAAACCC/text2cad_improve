@@ -1,0 +1,6 @@
+RC=0
+STDOUT:
+BUILD_OK
+OP:union_root/boolean_union:ok
+
+STDERR:

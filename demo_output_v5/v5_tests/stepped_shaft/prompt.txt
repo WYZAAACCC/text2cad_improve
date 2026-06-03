@@ -1,0 +1,10 @@
+精密阶梯轴, 单位 mm, 参考几何.
+使用 revolve_profile 定义 5 段阶梯轮廓:
+  station1 r=25 z=0-10 (左轴肩),
+  station2 r=18 z=10-50 (中段轴承位),
+  station3 r=25 z=50-60 (右轴肩),
+  station4 r=15 z=60-90 (右端轴颈),
+  station5 r=10 z=90-100 (右端螺纹段).
+左端面中心孔: cut_center_bore diameter_mm=8 depth_mm=15 through_all=false.
+右端螺纹段切外螺纹: cut_external_thread nominal_dia_mm=10 pitch_mm=1.5 depth_mm=10 standard=ISO_metric thread_class=6g.
+轴肩倒角 1mm: apply_safe_chamfer distance_mm=1 target=all_external_edges.

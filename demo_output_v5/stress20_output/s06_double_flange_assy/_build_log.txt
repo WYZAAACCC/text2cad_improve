@@ -1,0 +1,12 @@
+RC=0
+STDOUT:
+BUILD_OK
+OP:fa_revolve/revolve_profile:ok
+OP:fa_bore/cut_center_bore:ok
+OP:fa_holes/cut_circular_hole_pattern:ok
+OP:fb_revolve/revolve_profile:ok
+OP:fb_bore/cut_center_bore:ok
+OP:fb_holes/cut_circular_hole_pattern:ok
+OP:asm_union/boolean_union:ok
+
+STDERR:

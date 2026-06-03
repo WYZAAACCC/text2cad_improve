@@ -1,0 +1,9 @@
+传动轴焊接叉, 单位 mm, 参考几何.
+底板: extrude_rectangle width_mm=80 height_mm=50 depth_mm=15 centered=true.
+安装孔: cut_hole_pattern_linear hole_dia_mm=10 count_x=2 count_y=2 spacing_x_mm=60 spacing_y_mm=30.
+左叉臂: add_rectangular_boss width_mm=12 height_mm=60 depth_mm=15 position_mm=[-30,0,7.5] centered=true.
+右叉臂: add_rectangular_boss width_mm=12 height_mm=60 depth_mm=15 position_mm=[30,0,7.5] centered=true.
+左销孔: cut_hole diameter_mm=25 position_mm=[-30,25] through_all=true.
+右销孔: cut_hole diameter_mm=25 position_mm=[30,25] through_all=true.
+加强筋: add_rib thickness_mm=8 height_mm=15 length_mm=60 position_mm=[0,0,7.5] direction=X.
+圆角: apply_safe_fillet radius_mm=2 target=all_external_edges.

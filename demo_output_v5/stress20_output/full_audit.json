@@ -1,0 +1,716 @@
+[
+  {
+    "id": "s01_thin_large_flange",
+    "name": "超大薄壁法兰 Thin Large Flange",
+    "ok": false,
+    "msg": "VAL: [hole_pattern_intersects_center_bore] hole pattern PCD radius (235.0) - hole radius (6.0) <= bore radius (240.0) + margin (1.0)",
+    "attempts_elapsed": "90s",
+    "audit": {
+      "case": "s01_thin_large_flange",
+      "dialects": [
+        "axisymmetric"
+      ],
+      "test_dim": "极值参数: 外径500mm, 壁厚仅3mm, 测试大直径薄壁回转体",
+      "llm_nodes_raw": 4,
+      "llm_errors": [],
+      "af_applied": false,
+      "af_count": 0,
+      "af_rules": [],
+      "val_issues": [
+        {
+          "code": "hole_pattern_intersects_center_bore",
+          "msg": "hole pattern PCD radius (235.0) - hole radius (6.0) <= bore radius (240.0) + margin (1.0)"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s02_micro_bushing",
+    "name": "微型精密轴套 Micro Bushing",
+    "ok": false,
+    "msg": "VAL: [a002_bore_too_large] center bore radius (2.5) >= profile max radius (3.0) - margin (1.0)",
+    "attempts_elapsed": "63s",
+    "audit": {
+      "case": "s02_micro_bushing",
+      "dialects": [
+        "axisymmetric"
+      ],
+      "test_dim": "极小尺寸: 外径6mm, 壁厚0.5mm, 测试精度极限",
+      "llm_nodes_raw": 3,
+      "llm_errors": [],
+      "af_applied": false,
+      "af_count": 0,
+      "af_rules": [],
+      "val_issues": [
+        {
+          "code": "a002_bore_too_large",
+          "msg": "center bore radius (2.5) >= profile max radius (3.0) - margin (1.0)"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s03_dense_rib_plate",
+    "name": "密集加强筋板 Dense Rib Plate",
+    "ok": true,
+    "msg": "STEP=1474029B vol=1038472mm3 bbox=[370x250x25]",
+    "attempts_elapsed": "114s",
+    "audit": {
+      "case": "s03_dense_rib_plate",
+      "dialects": [
+        "sketch_extrude"
+      ],
+      "test_dim": "大量筋特征: 10条筋交叉排列, 测试特征交互与重叠",
+      "llm_nodes_raw": 13,
+      "llm_errors": [],
+      "af_applied": false,
+      "af_count": 0,
+      "af_rules": [],
+      "val_issues": [
+        {
+          "code": "unknown_op",
+          "msg": "node 'n_rib_union': unknown op 'boolean_union' in 'sketch_extrude': \"unknown op/version: 'boolean_union'/'1.0.0'\""
+        }
+      ],
+      "val_ok": true,
+      "build_rc": 0,
+      "build_ok": true,
+      "step_size": 1474029,
+      "geometry": {
+        "valid": true,
+        "vol_mm3": 1038472.5,
+        "bbox_x": 370.0,
+        "bbox_y": 250.0,
+        "bbox_z": 25.0
+      },
+      "flags": [],
+      "sw_size": 816172
+    }
+  },
+  {
+    "id": "s04_deep_hole_manifold",
+    "name": "深孔交叉阀块 Deep Hole Manifold",
+    "ok": true,
+    "msg": "STEP=60386B vol=1023403mm3 bbox=[100x80x150]",
+    "attempts_elapsed": "23s",
+    "audit": {
+      "case": "s04_deep_hole_manifold",
+      "dialects": [
+        "sketch_extrude"
+      ],
+      "test_dim": "多个深孔在内部交叉, 测试孔系布尔运算正确性",
+      "llm_nodes_raw": 7,
+      "llm_errors": [],
+      "af_applied": true,
+      "af_count": 1,
+      "af_rules": [
+        "fix_dialect_names"
+      ],
+      "val_ok": true,
+      "build_rc": 0,
+      "build_ok": true,
+      "step_size": 60386,
+      "geometry": {
+        "valid": true,
+        "vol_mm3": 1023403.22,
+        "bbox_x": 100.0,
+        "bbox_y": 80.0,
+        "bbox_z": 150.0
+      },
+      "flags": [],
+      "sw_size": 112016
+    }
+  },
+  {
+    "id": "s05_long_spring",
+    "name": "长螺旋弹簧 Long Helix Spring",
+    "ok": true,
+    "msg": "STEP=132872B vol=296mm3 bbox=[19x20x152]",
+    "attempts_elapsed": "26s",
+    "audit": {
+      "case": "s05_long_spring",
+      "dialects": [
+        "loft_sweep"
+      ],
+      "test_dim": "修复后的 helix_sweep: 15圈, 测试大圈数正确性",
+      "llm_nodes_raw": 1,
+      "llm_errors": [],
+      "af_applied": false,
+      "af_count": 0,
+      "af_rules": [],
+      "val_issues": [
+        {
+          "code": "ls_helix_self_intersection",
+          "msg": "helix_sweep profile_radius_mm (1.5) >= 0.45 * min curvature radius (1.6). Helix will self-intersect. Increase pitch or reduce profile."
+        }
+      ],
+      "val_ok": true,
+      "build_rc": 0,
+      "build_ok": true,
+      "step_size": 132872,
+      "geometry": {
+        "valid": true,
+        "vol_mm3": 295.75,
+        "bbox_x": 19.014,
+        "bbox_y": 19.641,
+        "bbox_z": 152.126
+      },
+      "flags": [],
+      "sw_size": 76055
+    }
+  },
+  {
+    "id": "s06_double_flange_assy",
+    "name": "双层法兰装配 Double Flange Assembly",
+    "ok": true,
+    "msg": "STEP=45525B vol=247777mm3 bbox=[160x160x15]",
+    "attempts_elapsed": "48s",
+    "audit": {
+      "case": "s06_double_flange_assy",
+      "dialects": [
+        "axisymmetric",
+        "composition"
+      ],
+      "test_dim": "两个独立回转体 + boolean_union, 测试装配对齐",
+      "llm_nodes_raw": 7,
+      "llm_errors": [],
+      "af_applied": true,
+      "af_count": 1,
+      "af_rules": [
+        "fix_phase_ordering"
+      ],
+      "val_issues": [
+        {
+          "code": "axisymmetric_base_solid_count",
+          "msg": "axisymmetric requires exactly 1 base_solid node, got 2"
+        },
+        {
+          "code": "axisymmetric_base_solid_count",
+          "msg": "axisymmetric requires exactly 1 base_solid node, got 2"
+        }
+      ],
+      "val_ok": true,
+      "build_rc": 0,
+      "build_ok": true,
+      "step_size": 45525,
+      "geometry": {
+        "valid": true,
+        "vol_mm3": 247777.41,
+        "bbox_x": 160.0,
+        "bbox_y": 160.0,
+        "bbox_z": 15.0
+      },
+      "flags": [],
+      "sw_size": 98800
+    }
+  },
+  {
+    "id": "s07_cross_rib_box",
+    "name": "十字交叉筋箱体 Cross-Rib Box",
+    "ok": true,
+    "msg": "STEP=2086409B vol=973802mm3 bbox=[285x210x28]",
+    "attempts_elapsed": "121s",
+    "audit": {
+      "case": "s07_cross_rib_box",
+      "dialects": [
+        "sketch_extrude"
+      ],
+      "test_dim": "大量X/Y筋在中心密集交叉, 测试重叠特征容错",
+      "llm_nodes_raw": 16,
+      "llm_errors": [],
+      "af_applied": true,
+      "af_count": 1,
+      "af_rules": [
+        "fix_phase_ordering"
+      ],
+      "val_issues": [
+        {
+          "code": "unknown_op",
+          "msg": "node 'base_plate_union': unknown op 'boolean_union' in 'sketch_extrude': \"unknown op/version: 'boolean_union'/'1.0.0'\""
+        }
+      ],
+      "val_ok": true,
+      "build_rc": 0,
+      "build_ok": true,
+      "step_size": 2086409,
+      "geometry": {
+        "valid": true,
+        "vol_mm3": 973802.38,
+        "bbox_x": 285.0,
+        "bbox_y": 210.0,
+        "bbox_z": 28.0
+      },
+      "flags": [],
+      "sw_size": 1134948
+    }
+  },
+  {
+    "id": "s08_multi_step_shaft_all_features",
+    "name": "全特征阶梯轴 Full-Feature Stepped Shaft",
+    "ok": true,
+    "msg": "STEP=80632B vol=56969mm3 bbox=[36x36x145]",
+    "attempts_elapsed": "39s",
+    "audit": {
+      "case": "s08_multi_step_shaft_all_features",
+      "dialects": [
+        "axisymmetric"
+      ],
+      "test_dim": "单零件最大特征密度: 8段轮廓+3种孔+螺纹+环槽+倒角",
+      "llm_nodes_raw": 5,
+      "llm_errors": [],
+      "af_applied": true,
+      "af_count": 2,
+      "af_rules": [
+        "fix_phase_ordering",
+        "remove_extra_params"
+      ],
+      "val_issues": [
+        {
+          "code": "invalid_params",
+          "msg": "node 'n_cleanup' params invalid for op 'apply_safe_chamfer': 1 validation error for ApplySafeChamferParams\ndistance_mm\n  Input should be greater than "
+        }
+      ],
+      "val_ok": true,
+      "build_rc": 0,
+      "build_ok": true,
+      "step_size": 80632,
+      "geometry": {
+        "valid": true,
+        "vol_mm3": 56968.81,
+        "bbox_x": 36.0,
+        "bbox_y": 36.0,
+        "bbox_z": 145.0
+      },
+      "flags": [],
+      "sw_size": 128857
+    }
+  },
+  {
+    "id": "s09_variable_sweep_pipe",
+    "name": "变径扫掠管 Variable Sweep Pipe",
+    "ok": true,
+    "msg": "STEP=166017B vol=173866mm3 bbox=[235x180x222]",
+    "attempts_elapsed": "24s",
+    "audit": {
+      "case": "s09_variable_sweep_pipe",
+      "dialects": [
+        "loft_sweep"
+      ],
+      "test_dim": "复杂3D路径+大曲率弯折, 测试sweep自交与曲率极限",
+      "llm_nodes_raw": 5,
+      "llm_errors": [],
+      "af_applied": true,
+      "af_count": 3,
+      "af_rules": [
+        "fix_dialect_names",
+        "fix_phase_names",
+        "fix_phase_ordering"
+      ],
+      "val_ok": true,
+      "build_rc": 0,
+      "build_ok": true,
+      "step_size": 166017,
+      "geometry": {
+        "valid": true,
+        "vol_mm3": 173866.04,
+        "bbox_x": 235.03,
+        "bbox_y": 179.86,
+        "bbox_z": 221.626
+      },
+      "flags": [],
+      "sw_size": 211091
+    }
+  },
+  {
+    "id": "s10_shelled_ribbed_housing",
+    "name": "薄壁筋壳体 Shelled Ribbed Housing",
+    "ok": false,
+    "msg": "STEP: ",
+    "attempts_elapsed": "48s",
+    "audit": {
+      "case": "s10_shelled_ribbed_housing",
+      "dialects": [
+        "sketch_extrude",
+        "shell_housing"
+      ],
+      "test_dim": "sketch_extrude基础 + shell_housing抽壳, 测试薄壁+筋共存",
+      "llm_nodes_raw": 10,
+      "llm_errors": [],
+      "af_applied": true,
+      "af_count": 4,
+      "af_rules": [
+        "fix_dialect_names",
+        "fix_phase_names",
+        "fix_phase_ordering",
+        "remove_extra_params"
+      ],
+      "val_issues": [
+        {
+          "code": "input_count_mismatch",
+          "msg": "node 'n_union_final': 1 inputs, op expects 2"
+        }
+      ],
+      "val_ok": true,
+      "build_rc": 0,
+      "build_ok": false,
+      "edge_ops_removed": true
+    }
+  },
+  {
+    "id": "s11_coupling_assembly",
+    "name": "联轴器总成 Coupling Assembly",
+    "ok": true,
+    "msg": "STEP=84349B vol=564395mm3 bbox=[100x100x80]",
+    "attempts_elapsed": "36s",
+    "audit": {
+      "case": "s11_coupling_assembly",
+      "dialects": [
+        "axisymmetric",
+        "sketch_extrude",
+        "composition"
+      ],
+      "test_dim": "3组件装配: 2个axisymmetric半联轴器+1个中间弹性体",
+      "llm_nodes_raw": 13,
+      "llm_errors": [],
+      "af_applied": true,
+      "af_count": 1,
+      "af_rules": [
+        "fix_phase_ordering"
+      ],
+      "val_ok": true,
+      "build_rc": 0,
+      "build_ok": true,
+      "step_size": 84349,
+      "geometry": {
+        "valid": true,
+        "vol_mm3": 564394.88,
+        "bbox_x": 100.0,
+        "bbox_y": 100.0,
+        "bbox_z": 80.0
+      },
+      "flags": [],
+      "sw_size": 111635
+    }
+  },
+  {
+    "id": "s12_reducer_base",
+    "name": "减速器底座 Reducer Base",
+    "ok": true,
+    "msg": "STEP=221553B vol=3125873mm3 bbox=[400x325x62]",
+    "attempts_elapsed": "65s",
+    "audit": {
+      "case": "s12_reducer_base",
+      "dialects": [
+        "sketch_extrude",
+        "axisymmetric",
+        "composition"
+      ],
+      "test_dim": "3组件: sketch_extrude底座+2个axisymmetric轴承座+多次boolean_union",
+      "llm_nodes_raw": 14,
+      "llm_errors": [],
+      "af_applied": true,
+      "af_count": 1,
+      "af_rules": [
+        "fix_phase_ordering"
+      ],
+      "val_issues": [
+        {
+          "code": "input_count_mismatch",
+          "msg": "node 'n_asm_final': 3 inputs, op expects 2"
+        }
+      ],
+      "val_ok": true,
+      "build_rc": 0,
+      "build_ok": true,
+      "step_size": 221553,
+      "geometry": {
+        "valid": true,
+        "vol_mm3": 3125872.59,
+        "bbox_x": 400.0,
+        "bbox_y": 325.0,
+        "bbox_z": 62.5
+      },
+      "flags": [],
+      "sw_size": 208340
+    }
+  },
+  {
+    "id": "s13_pipe_system",
+    "name": "多管路系统 Multi-Pipe System",
+    "ok": false,
+    "msg": "STEP: Traceback (most recent call last):\n  File \"E:\\auto_detection_process\\demo_output_v5\\stress20_output\\s13_pipe_system\\_build.py\", line 17, in <module>\n    for w in (r.warnings or []): print('WARN:' + st",
+    "attempts_elapsed": "30s",
+    "audit": {
+      "case": "s13_pipe_system",
+      "dialects": [
+        "loft_sweep",
+        "composition"
+      ],
+      "test_dim": "4条独立扫掠管道+composition合并, 测试多sweep共存",
+      "llm_nodes_raw": 11,
+      "llm_errors": [],
+      "af_applied": true,
+      "af_count": 2,
+      "af_rules": [
+        "fix_op_versions",
+        "fix_phase_ordering"
+      ],
+      "val_ok": true,
+      "build_rc": 1,
+      "build_ok": false
+    }
+  },
+  {
+    "id": "s14_bearing_housing_full",
+    "name": "完整轴承座总成 Full Bearing Housing",
+    "ok": true,
+    "msg": "STEP=89365B vol=663530mm3 bbox=[200x140x90]",
+    "attempts_elapsed": "29s",
+    "audit": {
+      "case": "s14_bearing_housing_full",
+      "dialects": [
+        "axisymmetric",
+        "sketch_extrude",
+        "composition"
+      ],
+      "test_dim": "复杂多体装配: 轴承座+底座+端盖+螺栓孔对齐",
+      "llm_nodes_raw": 8,
+      "llm_errors": [],
+      "af_applied": true,
+      "af_count": 2,
+      "af_rules": [
+        "fix_root_node",
+        "fix_phase_ordering"
+      ],
+      "val_ok": true,
+      "build_rc": 0,
+      "build_ok": true,
+      "step_size": 89365,
+      "geometry": {
+        "valid": true,
+        "vol_mm3": 663529.63,
+        "bbox_x": 200.0,
+        "bbox_y": 140.0,
+        "bbox_z": 90.0
+      },
+      "flags": [],
+      "sw_size": 102729
+    }
+  },
+  {
+    "id": "s15_multi_port_valve_block",
+    "name": "多端口液压阀块 Multi-Port Valve Block",
+    "ok": true,
+    "msg": "STEP=926743B vol=1900753mm3 bbox=[120x100x180]",
+    "attempts_elapsed": "44s",
+    "audit": {
+      "case": "s15_multi_port_valve_block",
+      "dialects": [
+        "sketch_extrude"
+      ],
+      "test_dim": "长方体上12个不同方向的孔, 测试孔系密集交叉",
+      "llm_nodes_raw": 16,
+      "llm_errors": [],
+      "af_applied": true,
+      "af_count": 1,
+      "af_rules": [
+        "fix_dialect_names"
+      ],
+      "val_ok": true,
+      "build_rc": 0,
+      "build_ok": true,
+      "step_size": 926743,
+      "geometry": {
+        "valid": true,
+        "vol_mm3": 1900753.37,
+        "bbox_x": 120.0,
+        "bbox_y": 100.0,
+        "bbox_z": 180.0
+      },
+      "flags": [],
+      "sw_size": 628842
+    }
+  },
+  {
+    "id": "s16_turbocharger_rotor",
+    "name": "涡轮增压器转子 Turbo Rotor",
+    "ok": true,
+    "msg": "STEP=151570B vol=182481mm3 bbox=[70x70x160]",
+    "attempts_elapsed": "24s",
+    "audit": {
+      "case": "s16_turbocharger_rotor",
+      "dialects": [
+        "axisymmetric"
+      ],
+      "test_dim": "超多站回转体(10+站), 测试轮廓处理极限",
+      "llm_nodes_raw": 4,
+      "llm_errors": [],
+      "af_applied": false,
+      "af_count": 0,
+      "af_rules": [],
+      "val_ok": true,
+      "build_rc": 0,
+      "build_ok": true,
+      "step_size": 151570,
+      "geometry": {
+        "valid": true,
+        "vol_mm3": 182481.32,
+        "bbox_x": 70.0,
+        "bbox_y": 70.0,
+        "bbox_z": 160.0
+      },
+      "flags": [],
+      "sw_size": 198292
+    }
+  },
+  {
+    "id": "s17_complex_3d_sweep",
+    "name": "三维空间弯管 3D Space Pipe",
+    "ok": true,
+    "msg": "STEP=791692B vol=57836mm3 bbox=[104x86x294]",
+    "attempts_elapsed": "80s",
+    "audit": {
+      "case": "s17_complex_3d_sweep",
+      "dialects": [
+        "loft_sweep"
+      ],
+      "test_dim": "全3D路径(非平面弯管), 测试sweep在3D空间的正确性",
+      "llm_nodes_raw": 2,
+      "llm_errors": [],
+      "af_applied": false,
+      "af_count": 0,
+      "af_rules": [],
+      "val_ok": true,
+      "build_rc": 0,
+      "build_ok": true,
+      "step_size": 791692,
+      "geometry": {
+        "valid": true,
+        "vol_mm3": 57835.61,
+        "bbox_x": 104.334,
+        "bbox_y": 85.885,
+        "bbox_z": 293.502
+      },
+      "flags": [],
+      "sw_size": 435382
+    }
+  },
+  {
+    "id": "s18_large_thin_shell_box",
+    "name": "大型薄壁壳体 Large Thin Shell Box",
+    "ok": false,
+    "msg": "VAL: [input_count_mismatch] node 'n07_flange': 0 inputs, op expects 1",
+    "attempts_elapsed": "98s",
+    "audit": {
+      "case": "s18_large_thin_shell_box",
+      "dialects": [
+        "sketch_extrude",
+        "shell_housing"
+      ],
+      "test_dim": "400mm大尺寸薄壁抽壳(壁厚2mm), 测试大尺寸+极薄壁稳定性",
+      "llm_nodes_raw": 8,
+      "llm_errors": [],
+      "af_applied": true,
+      "af_count": 3,
+      "af_rules": [
+        "fix_phase_names",
+        "fix_phase_ordering",
+        "remove_extra_params"
+      ],
+      "val_issues": [
+        {
+          "code": "input_count_mismatch",
+          "msg": "node 'n07_flange': 0 inputs, op expects 1"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s19_multi_body_base",
+    "name": "多体组合工作台 Multi-Body Workbench",
+    "ok": true,
+    "msg": "STEP=110513B vol=4809303mm3 bbox=[500x350x200] LOW_DENSITY",
+    "attempts_elapsed": "87s",
+    "audit": {
+      "case": "s19_multi_body_base",
+      "dialects": [
+        "sketch_extrude",
+        "axisymmetric",
+        "composition"
+      ],
+      "test_dim": "4组件装配: 2个sketch_extrude板+2个axisymmetric支柱",
+      "llm_nodes_raw": 16,
+      "llm_errors": [],
+      "af_applied": true,
+      "af_count": 2,
+      "af_rules": [
+        "fix_cross_component_refs",
+        "fix_phase_ordering"
+      ],
+      "val_issues": [
+        {
+          "code": "input_count_mismatch",
+          "msg": "node 'n_assy_union': 4 inputs, op expects 2"
+        }
+      ],
+      "val_ok": true,
+      "build_rc": 0,
+      "build_ok": true,
+      "step_size": 110513,
+      "geometry": {
+        "valid": true,
+        "vol_mm3": 4809302.57,
+        "bbox_x": 500.0,
+        "bbox_y": 350.0,
+        "bbox_z": 200.0
+      },
+      "flags": [
+        "LOW_DENSITY"
+      ],
+      "sw_size": 138592
+    }
+  },
+  {
+    "id": "s20_ultimate_composite",
+    "name": "终极综合测试件 Ultimate Composite",
+    "ok": true,
+    "msg": "STEP=348193B vol=1468850mm3 bbox=[250x190x140]",
+    "attempts_elapsed": "58s",
+    "audit": {
+      "case": "s20_ultimate_composite",
+      "dialects": [
+        "axisymmetric",
+        "sketch_extrude",
+        "loft_sweep",
+        "composition"
+      ],
+      "test_dim": "全部4个建模方言的综合装配, 系统极限压力测试",
+      "llm_nodes_raw": 13,
+      "llm_errors": [],
+      "af_applied": true,
+      "af_count": 1,
+      "af_rules": [
+        "fix_phase_ordering"
+      ],
+      "val_issues": [
+        {
+          "code": "input_count_mismatch",
+          "msg": "node 'assemble_all': 3 inputs, op expects 2"
+        }
+      ],
+      "val_ok": true,
+      "build_rc": 0,
+      "build_ok": true,
+      "step_size": 348193,
+      "geometry": {
+        "valid": true,
+        "vol_mm3": 1468849.93,
+        "bbox_x": 250.0,
+        "bbox_y": 190.0,
+        "bbox_z": 140.041
+      },
+      "flags": [],
+      "sw_size": 206865
+    }
+  }
+]

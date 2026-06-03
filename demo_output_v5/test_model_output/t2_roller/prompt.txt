@@ -1,0 +1,9 @@
+输送机托辊, 单位 mm, 参考几何.
+组件 'tube' (axisymmetric): revolve_profile 定义滚筒:
+  station1 r=44.5 z=0-600 (筒体外壁 r=内径+壁厚=40+4.5),
+  station2 r=40 z=600-601 (内缘).
+  cut_center_bore diameter_mm=80 through_all=true.
+组件 'shaft' (axisymmetric): revolve_profile 定义轴:
+  station1 r=15 z=0-650 (轴).
+装配 '__assembly__' (composition): boolean_union 合并 tube 和 shaft.
+boolean_union inputs: [{component: tube, output: body}, {component: shaft, output: body}].

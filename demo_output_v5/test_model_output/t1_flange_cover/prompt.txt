@@ -1,0 +1,8 @@
+法兰盖, 单位 mm, 参考几何.
+使用 revolve_profile 定义轮廓:
+  station1 r=75 z=0-15 (法兰盘),
+  station2 r=40 z=15-25 (凸台).
+切中心孔: cut_center_bore diameter_mm=20 through_all=true.
+8个螺栓孔 PCD 120mm: cut_circular_hole_pattern count=8 pcd_mm=120 hole_dia_mm=11.
+底面密封槽: cut_annular_groove side=front inner_dia_mm=85 outer_dia_mm=105 depth_mm=3.
+所有外边缘倒角 1mm: apply_safe_chamfer distance_mm=1 target=all_external_edges.

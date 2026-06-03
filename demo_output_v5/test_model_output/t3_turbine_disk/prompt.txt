@@ -1,0 +1,12 @@
+燃气轮机涡轮盘, 单位 mm, 参考几何.
+revolve_profile 5段轮廓:
+  station1 r=150 z=0-20 (轮缘),
+  station2 r=120 z=20-40 (锥段),
+  station3 r=80 z=40-65 (辐板),
+  station4 r=60 z=65-75 (过渡段),
+  station5 r=50 z=75-85 (轮毂).
+中心孔: cut_center_bore diameter_mm=30 through_all=true.
+螺栓孔PCD80: cut_circular_hole_pattern count=8 pcd_mm=80 hole_dia_mm=12.
+减重孔PCD180: cut_circular_hole_pattern count=6 pcd_mm=180 hole_dia_mm=25.
+环槽: cut_annular_groove side=front inner_dia_mm=200 outer_dia_mm=240 depth_mm=6.
+倒角: apply_safe_chamfer distance_mm=1.5 target=all_external_edges.

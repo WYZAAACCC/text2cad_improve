@@ -1,0 +1,8 @@
+长螺旋弹簧, 单位 mm, 参考几何.
+使用 helix_sweep:
+  radius_mm=20 (中径40mm),
+  height_mm=150 (自由长度),
+  pitch_mm=10 (节距),
+  profile_radius_mm=1.5 (簧丝直径3mm),
+  turns=15.
+注意: 这是helix_sweep操作, 不是sweep_profile。确保 profile_radius_mm < 0.45 * pitch/(2*pi).

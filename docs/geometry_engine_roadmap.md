@@ -296,7 +296,6 @@ return result
 | P2 | composition | linear_pattern | 同上 |
 
 ### 6.2 测试模板
-
 ```python
 def test_<handler>_produces_valid_geometry():
     """验证 <handler> 产生 CLOSED_SHELL + volume > 0"""

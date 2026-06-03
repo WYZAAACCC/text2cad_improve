@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from seekflow_engineering_tools.generative_cad.dialects.operation import OperationSpec
@@ -87,10 +88,15 @@ class SketchExtrudeDialect:
                         severity="error", node_id=rn.id, component_id=component.id))
         return ValidationReport(ok=not any(i.severity == "error" for i in issues),
                                stage=stage, issues=issues)
+    @staticmethod
+    def _is_finite(x) -> bool:
+        return isinstance(x, (int, float)) and math.isfinite(x)
+
     def preflight_component(self, component, nodes):
         issues = []
         stage = "geometry_preflight"
         MARGIN = 1.0  # mm
+        is_finite = SketchExtrudeDialect._is_finite
 
         # ── Envelope tracking ──
         base_width: float | None = None
@@ -117,6 +123,8 @@ class SketchExtrudeDialect:
                     base_height = h
                     base_depth = d if d > 0 else None
 
+        base_min_thickness = base_depth  # thickness = extrude depth
+
         # Second pass: validate features against envelope
         for n in nodes:
             if n.op == "cut_hole":
@@ -130,13 +138,29 @@ class SketchExtrudeDialect:
                         issues.append(ValidationIssue(stage=stage, code="se_hole_too_large",
                             message=f"hole diameter ({dia}) must be < min(base width, height) ({min_base}) - 2*margin",
                             severity="error", node_id=n.id))
+                # New: hole position within base rectangle
+                pos = n.typed_params.get("position_mm") or n.params.get("position_mm", [])
+                if base_width is not None and base_height is not None and len(pos) >= 2:
+                    px, py = float(pos[0]), float(pos[1])
+                    half_w, half_h = base_width / 2.0, base_height / 2.0
+                    if abs(px) + MARGIN > half_w or abs(py) + MARGIN > half_h:
+                        issues.append(ValidationIssue(
+                            stage=stage, code="se_hole_outside_base",
+                            message=f"hole position ({px}, {py}) outside base "
+                            f"(±{half_w}, ±{half_h})",
+                            severity="error", node_id=n.id,
+                        ))
 
             if n.op == "cut_rectangular_pocket":
                 pw = n.typed_params.get("width_mm") or n.params.get("width_mm", 0)
+                ph = n.typed_params.get("height_mm") or n.params.get("height_mm", 0)
                 pd = n.typed_params.get("depth_mm") or n.params.get("depth_mm", 0)
                 if pw <= 0:
                     issues.append(ValidationIssue(stage=stage, code="se_pocket_width",
                         message=f"pocket width must be > 0, got {pw}", severity="error", node_id=n.id))
+                if ph <= 0:
+                    issues.append(ValidationIssue(stage=stage, code="se_pocket_height",
+                        message=f"pocket height must be > 0, got {ph}", severity="error", node_id=n.id))
                 if pd <= 0:
                     issues.append(ValidationIssue(stage=stage, code="se_pocket_depth",
                         message=f"pocket depth must be > 0, got {pd}", severity="error", node_id=n.id))
@@ -144,6 +168,17 @@ class SketchExtrudeDialect:
                     issues.append(ValidationIssue(stage=stage, code="se_pocket_oversized",
                         message=f"pocket width ({pw}) must be < base width ({base_width})",
                         severity="error", node_id=n.id))
+                if base_height is not None and ph > 0 and ph >= base_height:
+                    issues.append(ValidationIssue(stage=stage, code="se_pocket_oversized_h",
+                        message=f"pocket height ({ph}) must be < base height ({base_height})",
+                        severity="error", node_id=n.id))
+                # New: pocket depth < base depth
+                if base_depth is not None and pd > 0 and pd >= base_depth:
+                    issues.append(ValidationIssue(
+                        stage=stage, code="se_pocket_deeper_than_base",
+                        message=f"pocket depth ({pd}) must be < base depth ({base_depth})",
+                        severity="error", node_id=n.id,
+                    ))
 
             if n.op == "add_rectangular_boss":
                 w = n.typed_params.get("width_mm") or n.params.get("width_mm", 0)
@@ -154,23 +189,71 @@ class SketchExtrudeDialect:
                 if h <= 0:
                     issues.append(ValidationIssue(stage=stage, code="se_boss_height",
                         message=f"boss height must be > 0, got {h}", severity="error", node_id=n.id))
+                # New: boss position within base
+                pos = n.typed_params.get("position_mm") or n.params.get("position_mm", [0, 0, 0])
+                if base_width is not None and base_height is not None and len(pos) >= 2 and w > 0 and h > 0:
+                    px, py = float(pos[0]), float(pos[1])
+                    half_w, half_h = base_width / 2.0, base_height / 2.0
+                    if abs(px) + w / 2.0 + MARGIN > half_w or abs(py) + h / 2.0 + MARGIN > half_h:
+                        issues.append(ValidationIssue(
+                            stage=stage, code="se_boss_outside_base",
+                            message=f"boss ({w}x{h} at {px},{py}) extends outside base "
+                            f"(±{half_w}, ±{half_h})",
+                            severity="warning", node_id=n.id,
+                        ))
 
             if n.op == "add_rib":
                 thickness = n.typed_params.get("thickness_mm") or n.params.get("thickness_mm", 0)
                 if thickness <= 0:
                     issues.append(ValidationIssue(stage=stage, code="se_rib_thickness",
                         message=f"rib thickness must be > 0, got {thickness}", severity="error", node_id=n.id))
+                # New: rib position within base
+                pos = n.typed_params.get("position_mm") or n.params.get("position_mm", [0, 0, 0])
+                length = n.typed_params.get("length_mm") or n.params.get("length_mm", 0)
+                if base_width is not None and base_height is not None and len(pos) >= 2:
+                    px, py = float(pos[0]), float(pos[1])
+                    half_w, half_h = base_width / 2.0, base_height / 2.0
+                    if abs(px) + MARGIN > half_w or abs(py) + MARGIN > half_h:
+                        issues.append(ValidationIssue(
+                            stage=stage, code="se_rib_outside_base",
+                            message=f"rib position ({px}, {py}) outside base "
+                            f"(±{half_w}, ±{half_h})",
+                            severity="error", node_id=n.id,
+                        ))
 
             if n.op == "cut_hole_pattern_linear":
-                count = n.typed_params.get("count") or n.params.get("count", 0)
-                spacing = n.typed_params.get("spacing_mm") or n.params.get("spacing_mm", 0)
-                dia = n.typed_params.get("diameter_mm") or n.params.get("diameter_mm", 0)
-                if base_width is not None and count > 0 and spacing > 0 and dia > 0:
-                    total_span = (count - 1) * spacing + dia
-                    if total_span >= base_width:
-                        issues.append(ValidationIssue(stage=stage, code="se_pattern_exceeds_base",
-                            message=f"hole pattern span ({total_span}) must be < base width ({base_width})",
+                count_x = n.typed_params.get("count_x") or n.params.get("count_x", 0)
+                count_y = n.typed_params.get("count_y") or n.params.get("count_y", 0)
+                spacing_x = n.typed_params.get("spacing_x_mm") or n.params.get("spacing_x_mm", 0)
+                spacing_y = n.typed_params.get("spacing_y_mm") or n.params.get("spacing_y_mm", 0)
+                dia = n.typed_params.get("hole_dia_mm") or n.params.get("hole_dia_mm", 0)
+                if base_width is not None and count_x > 0 and spacing_x > 0 and dia > 0:
+                    span_x = (count_x - 1) * spacing_x + dia
+                    if span_x >= base_width:
+                        issues.append(ValidationIssue(stage=stage, code="se_pattern_exceeds_base_x",
+                            message=f"hole pattern X span ({span_x}) must be < base width ({base_width})",
                             severity="error", node_id=n.id))
+                if base_height is not None and count_y > 0 and spacing_y > 0 and dia > 0:
+                    span_y = (count_y - 1) * spacing_y + dia
+                    if span_y >= base_height:
+                        issues.append(ValidationIssue(stage=stage, code="se_pattern_exceeds_base_y",
+                            message=f"hole pattern Y span ({span_y}) must be < base height ({base_height})",
+                            severity="error", node_id=n.id))
+
+            # New: fillet/chamfer radius/distance safety check
+            if n.op in ("apply_safe_fillet", "apply_safe_chamfer"):
+                if n.op == "apply_safe_fillet":
+                    r = n.typed_params.get("radius_mm") or n.params.get("radius_mm", 0)
+                else:
+                    r = n.typed_params.get("distance_mm") or n.params.get("distance_mm", 0)
+                if base_min_thickness is not None and is_finite(r) and r > 0:
+                    if r >= base_min_thickness * 0.45:
+                        issues.append(ValidationIssue(
+                            stage=stage, code="se_edge_treatment_too_large",
+                            message=f"{n.op} radius/distance ({r}) >= 0.45 * "
+                            f"base thickness ({base_min_thickness}). May fail.",
+                            severity="warning", node_id=n.id,
+                        ))
 
         return ValidationReport(ok=not any(i.severity == "error" for i in issues),
                                stage=stage, issues=issues)

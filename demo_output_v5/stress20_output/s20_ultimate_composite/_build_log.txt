@@ -1,0 +1,16 @@
+RC=0
+STDOUT:
+BUILD_OK
+OP:rotor_revolve/revolve_profile:ok
+OP:rotor_bore/cut_center_bore:ok
+OP:rotor_hole_pattern/cut_circular_hole_pattern:ok
+OP:rotor_chamfer/apply_safe_chamfer:ok
+OP:mount_base/extrude_rectangle:ok
+OP:mount_pocket/cut_rectangular_pocket:ok
+OP:mount_holes/cut_hole_pattern_linear:ok
+OP:mount_rib1/add_rib:ok
+OP:mount_rib2/add_rib:ok
+OP:assemble_union1/boolean_union:ok
+OP:assemble_union2/boolean_union:ok
+
+STDERR:

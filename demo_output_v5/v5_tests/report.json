@@ -1,0 +1,63 @@
+{
+  "timestamp": "2026-06-03T01:58:46.687168",
+  "total": 7,
+  "passed": 7,
+  "results": [
+    {
+      "id": "stepped_shaft",
+      "name": "阶梯轴 Stepped Shaft",
+      "ok": true,
+      "msg": "STEP=65955B SW=128234B (auto_fixer thread_class fix)",
+      "attempts": 3,
+      "elapsed_s": 44.2
+    },
+    {
+      "id": "sensor_mount_plate",
+      "name": "传感器安装板 Sensor Mount Plate",
+      "ok": true,
+      "msg": "STEP=629425B SW=458750B",
+      "attempts": 1,
+      "elapsed_s": 60.0
+    },
+    {
+      "id": "valve_body",
+      "name": "阀体 Valve Body",
+      "ok": true,
+      "msg": "STEP=634146B SW=506404B",
+      "attempts": 1,
+      "elapsed_s": 26.1
+    },
+    {
+      "id": "u_bend_heat_exchanger_tube",
+      "name": "U形换热管 U-Bend Heat Exchanger Tube",
+      "ok": true,
+      "msg": "STEP=41479B SW=213363B",
+      "attempts": 1,
+      "elapsed_s": 16.9
+    },
+    {
+      "id": "pillow_block",
+      "name": "带座轴承 Pillow Block Bearing",
+      "ok": true,
+      "msg": "STEP=48877B SW=107680B",
+      "attempts": 1,
+      "elapsed_s": 23.9
+    },
+    {
+      "id": "gearbox_cover",
+      "name": "齿轮箱盖 Gearbox Cover",
+      "ok": true,
+      "msg": "STEP=378155B SW=286942B",
+      "attempts": 3,
+      "elapsed_s": 68.8
+    },
+    {
+      "id": "shaft_sleeve",
+      "name": "轴套 Shaft Sleeve",
+      "ok": true,
+      "msg": "STEP=957064B SW=354284B",
+      "attempts": 1,
+      "elapsed_s": 23.4
+    }
+  ]
+}

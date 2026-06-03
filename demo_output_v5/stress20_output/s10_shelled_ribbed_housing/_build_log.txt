@@ -1,0 +1,13 @@
+RC=0
+STDOUT:
+BUILD_FAILED: "unknown op/version: 'shell_body'/'1.0.0'"
+Traceback (most recent call last):
+  File "E:\auto_detection_process/integrations/engineering_tools/src\seekflow_engineering_tools\generative_cad\pipeline\run.py", line 123, in run_canonical_gcad
+    _run_components(canonical, ctx)
+  File "E:\auto_detection_process/integrations/engineering_tools/src\seekflow_engineering_tools\generative_cad\pipeline\run.py", line 204, in _run_components
+    component_outputs = dialect.run_component(component, nodes, ctx
+WARN:runner exception traceback:
+Traceback (most recent call last):
+  File "E:\auto_detection_process/integrations/engineering_tools/src\seekflow_engineering_tools\generative_cad\pipeline\run.py", line 123
+
+STDERR:

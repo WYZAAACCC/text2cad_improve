@@ -1,0 +1,16 @@
+{
+  "applied": true,
+  "before_hash": "sha256:b018eadc119ee0a3c6654ae8557739897982b3d14c1897d65f0872a2f4633a5e",
+  "after_hash": "sha256:c9cae6b379a6b3e5757cabbcee6cb748041389fbd22a7f96782f7cc4c65345ea",
+  "entries": [
+    {
+      "rule_id": "fix_root_node",
+      "path": "/",
+      "old_value": "<hash:sha256:b018e>",
+      "new_value": "<hash:sha256:c9cae>",
+      "severity": "semantic_guess",
+      "confidence": 0.95,
+      "message": "Applied fix: fix_root_node"
+    }
+  ]
+}

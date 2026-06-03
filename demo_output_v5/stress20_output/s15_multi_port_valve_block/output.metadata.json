@@ -1,0 +1,388 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "reference_geometry",
+    "document_id": "doc-multi-port-manifold-001",
+    "part_name": "multi_port_hydraulic_manifold",
+    "selected_dialects": [
+      {
+        "dialect": "sketch_extrude",
+        "version": "0.2.0",
+        "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+      },
+      {
+        "dialect": "composition",
+        "version": "0.2.0",
+        "contract_hash": "sha256:1ff66c680d94f60891bf00260f365ffa2a0d213d5571a2366a3f1c27748f5382"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "n_block",
+        "dialect": "sketch_extrude",
+        "op": "extrude_rectangle",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_p_port",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_t_port",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_a1_port",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_a2_port",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_a3_port",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_a4_port",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_b1_port",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_b2_port",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_b3_port",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_b4_port",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_pilot_port",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_test_port",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_mount_holes",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole_pattern_linear",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_chamfer",
+        "dialect": "sketch_extrude",
+        "op": "apply_safe_chamfer",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_final",
+        "dialect": "sketch_extrude",
+        "op": "apply_safe_fillet",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:8d74999b15589fc68d99982867366fd0874b87c01e59fca565502fbc53a10649",
+    "canonical_graph_hash": "sha256:9be4060e6e66d0ac3a57b36765d6cfae86e2864f60a4316e5f22fe6c5a6df094",
+    "paths": {
+      "canonical_ir_path": "E:\\auto_detection_process\\demo_output_v5\\stress20_output\\s15_multi_port_valve_block\\canonical.json",
+      "validation_seed_path": "E:\\auto_detection_process\\demo_output_v5\\stress20_output\\s15_multi_port_valve_block\\validation_bundle.json",
+      "step_path": "E:\\auto_detection_process\\demo_output_v5\\stress20_output\\s15_multi_port_valve_block\\output.step",
+      "metadata_path": "E:\\auto_detection_process\\demo_output_v5\\stress20_output\\s15_multi_port_valve_block\\output.metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:fd6964e3fccb9679a1328dd42b0c93b9e62022d48968c5b2b8f8ae2b2aea0d9e",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [],
+    "degraded_features": [],
+    "operation_metrics": [
+      {
+        "node_id": "n_block",
+        "op": "extrude_rectangle",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_p_port",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_t_port",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_a1_port",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_a2_port",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_a3_port",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_a4_port",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_b1_port",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_b2_port",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_b3_port",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_b4_port",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_pilot_port",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_test_port",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_mount_holes",
+        "op": "cut_hole_pattern_linear",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_chamfer",
+        "op": "apply_safe_chamfer",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_final",
+        "op": "apply_safe_fillet",
+        "status": "ok"
+      }
+    ],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {
+        "structure": {
+          "ok": true,
+          "stage": "structure",
+          "issues": [],
+          "stages_run": [
+            "structure"
+          ]
+        },
+        "registry": {
+          "ok": true,
+          "stage": "registry",
+          "issues": [],
+          "stages_run": [
+            "registry"
+          ]
+        },
+        "params": {
+          "ok": true,
+          "stage": "params",
+          "issues": [],
+          "stages_run": [
+            "params"
+          ]
+        },
+        "ownership": {
+          "ok": true,
+          "stage": "ownership",
+          "issues": [],
+          "stages_run": [
+            "ownership"
+          ]
+        },
+        "graph": {
+          "ok": true,
+          "stage": "graph",
+          "issues": [],
+          "stages_run": [
+            "graph"
+          ]
+        },
+        "typecheck": {
+          "ok": true,
+          "stage": "typecheck",
+          "issues": [],
+          "stages_run": [
+            "typecheck"
+          ]
+        },
+        "phase": {
+          "ok": true,
+          "stage": "phase",
+          "issues": [],
+          "stages_run": [
+            "phase"
+          ]
+        },
+        "composition": {
+          "ok": true,
+          "stage": "composition",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "registry",
+            "params",
+            "ownership",
+            "graph",
+            "typecheck",
+            "phase",
+            "composition"
+          ]
+        },
+        "safety": {
+          "ok": true,
+          "stage": "safety",
+          "issues": [],
+          "stages_run": [
+            "safety"
+          ]
+        }
+      },
+      "canonicalize": {
+        "ok": true,
+        "stage": "canonicalize",
+        "issues": [],
+        "stages_run": [
+          "canonicalize"
+        ]
+      },
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": true,
+      "stage": "dialect_semantics",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "safety",
+        "canonicalize",
+        "dialect_semantics"
+      ]
+    },
+    "geometry_preflight": {
+      "ok": true,
+      "stage": "geometry_preflight",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "safety",
+        "canonicalize",
+        "dialect_semantics",
+        "geometry_preflight"
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    }
+  }
+}

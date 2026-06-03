@@ -1,0 +1,22 @@
+{
+  "ok": false,
+  "stage": "params",
+  "issues": [
+    {
+      "code": "invalid_params",
+      "message": "node 'n_thread' params invalid for op 'cut_external_thread': 1 validation error for CutExternalThreadParams\nthread_class\n  Input should be '6g', '6h' or '8g' [type=literal_error, input_value='6H', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_thread",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "registry",
+    "params"
+  ]
+}

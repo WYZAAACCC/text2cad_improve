@@ -1,0 +1,215 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "b0fe7e77-5a3c-46c3-8e6f-2c4e6d9f8a1c",
+  "part_name": "variable_sweep_pipe",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "pipe_1",
+      "owner_dialect": "loft_sweep",
+      "root_node": "pipe1_sweep"
+    },
+    {
+      "id": "pipe_2",
+      "owner_dialect": "loft_sweep",
+      "root_node": "pipe2_sweep"
+    },
+    {
+      "id": "__assembly__",
+      "owner_dialect": "composition",
+      "root_node": "union_root"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "pipe1_path",
+      "component": "pipe_1",
+      "dialect": "loft_sweep",
+      "op": "create_sweep_path",
+      "op_version": "1.0.0",
+      "phase": "path",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "curve",
+          "type": "curve"
+        }
+      ],
+      "params": {
+        "path_points": [
+          {
+            "x_mm": 0,
+            "y_mm": 0,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 60,
+            "y_mm": 20,
+            "z_mm": 50
+          },
+          {
+            "x_mm": 80,
+            "y_mm": 0,
+            "z_mm": 100
+          },
+          {
+            "x_mm": 40,
+            "y_mm": -20,
+            "z_mm": 150
+          },
+          {
+            "x_mm": 0,
+            "y_mm": 0,
+            "z_mm": 200
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "pipe2_path",
+      "component": "pipe_2",
+      "dialect": "loft_sweep",
+      "op": "create_sweep_path",
+      "op_version": "1.0.0",
+      "phase": "path",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "curve",
+          "type": "curve"
+        }
+      ],
+      "params": {
+        "path_points": [
+          {
+            "x_mm": 0,
+            "y_mm": 0,
+            "z_mm": 200
+          },
+          {
+            "x_mm": -40,
+            "y_mm": 20,
+            "z_mm": 250
+          },
+          {
+            "x_mm": -80,
+            "y_mm": 0,
+            "z_mm": 300
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "pipe1_sweep",
+      "component": "pipe_1",
+      "dialect": "loft_sweep",
+      "op": "sweep_profile",
+      "op_version": "1.0.0",
+      "phase": "sweep",
+      "inputs": [
+        {
+          "node": "pipe1_path",
+          "output": "curve"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "shape": "circle",
+        "radius_mm": 10
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "pipe2_sweep",
+      "component": "pipe_2",
+      "dialect": "loft_sweep",
+      "op": "sweep_profile",
+      "op_version": "1.0.0",
+      "phase": "sweep",
+      "inputs": [
+        {
+          "node": "pipe2_path",
+          "output": "curve"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "shape": "circle",
+        "radius_mm": 12
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "union_root",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "component": "pipe_1",
+          "output": "body"
+        },
+        {
+          "component": "pipe_2",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {},
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {
+    "_": "Two sweep pipes unioned: pipe1 radius 10mm along 5-point path ending at z=200; pipe2 radius 12mm along 3-point path starting at z=200. Both use loft_sweep v0.2.0 create_sweep_path + sweep_profile. Composition via boolean_union with component refs."
+  }
+}

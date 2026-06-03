@@ -1,0 +1,5 @@
+M10六角螺母轴对等近似, 单位 mm, 参考几何.
+正六边形外接圆直径约18.5mm (对边16mm时).
+使用 revolve_profile: station1 r=9.5 z=0-8.
+螺纹底孔: cut_center_bore diameter_mm=8.5 through_all=true.
+倒角: apply_safe_chamfer distance_mm=1 target=all_external_edges.

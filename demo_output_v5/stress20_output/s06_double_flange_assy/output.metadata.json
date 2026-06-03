@@ -1,0 +1,293 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "reference_geometry",
+    "document_id": "double-flange-assembly-v2",
+    "part_name": "double_flange_assembly",
+    "selected_dialects": [
+      {
+        "dialect": "axisymmetric",
+        "version": "0.2.0",
+        "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+      },
+      {
+        "dialect": "composition",
+        "version": "0.2.0",
+        "contract_hash": "sha256:1ff66c680d94f60891bf00260f365ffa2a0d213d5571a2366a3f1c27748f5382"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "fa_revolve",
+        "dialect": "axisymmetric",
+        "op": "revolve_profile",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "fb_revolve",
+        "dialect": "axisymmetric",
+        "op": "revolve_profile",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "fa_bore",
+        "dialect": "axisymmetric",
+        "op": "cut_center_bore",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "fb_bore",
+        "dialect": "axisymmetric",
+        "op": "cut_center_bore",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "asm_union",
+        "dialect": "composition",
+        "op": "boolean_union",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "fa_holes",
+        "dialect": "axisymmetric",
+        "op": "cut_circular_hole_pattern",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "fb_holes",
+        "dialect": "axisymmetric",
+        "op": "cut_circular_hole_pattern",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:0e79f799f7d0b37f54c26b95e2007364f8fb129e3550e8cba6ed69545f59da6d",
+    "canonical_graph_hash": "sha256:2004ca52b663ba9c0a0aac5aa9b0fec8133432eebec66ac083176089f48dd1ef",
+    "paths": {
+      "canonical_ir_path": "E:\\auto_detection_process\\demo_output_v5\\stress20_output\\s06_double_flange_assy\\canonical.json",
+      "validation_seed_path": "E:\\auto_detection_process\\demo_output_v5\\stress20_output\\s06_double_flange_assy\\validation_bundle.json",
+      "step_path": "E:\\auto_detection_process\\demo_output_v5\\stress20_output\\s06_double_flange_assy\\output.step",
+      "metadata_path": "E:\\auto_detection_process\\demo_output_v5\\stress20_output\\s06_double_flange_assy\\output.metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:ad7414d0a11c3e1f7aa9c3adf65055cda455de873529c2983c3c7bafcece1e99",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [
+      "boolean_union pre-check on 'asm_union': Near-coincident faces detected (clearance=0.0000mm < minimum 0.2mm). Boolean operation may fail — ensure components are properly separated."
+    ],
+    "degraded_features": [],
+    "operation_metrics": [
+      {
+        "node_id": "fa_revolve",
+        "op": "revolve_profile",
+        "status": "ok"
+      },
+      {
+        "node_id": "fa_bore",
+        "op": "cut_center_bore",
+        "status": "ok"
+      },
+      {
+        "node_id": "fa_holes",
+        "op": "cut_circular_hole_pattern",
+        "status": "ok"
+      },
+      {
+        "node_id": "fb_revolve",
+        "op": "revolve_profile",
+        "status": "ok"
+      },
+      {
+        "node_id": "fb_bore",
+        "op": "cut_center_bore",
+        "status": "ok"
+      },
+      {
+        "node_id": "fb_holes",
+        "op": "cut_circular_hole_pattern",
+        "status": "ok"
+      },
+      {
+        "node_id": "asm_union",
+        "op": "boolean_union",
+        "status": "ok"
+      }
+    ],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [
+    "boolean_union pre-check on 'asm_union': Near-coincident faces detected (clearance=0.0000mm < minimum 0.2mm). Boolean operation may fail — ensure components are properly separated."
+  ],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {
+        "structure": {
+          "ok": true,
+          "stage": "structure",
+          "issues": [],
+          "stages_run": [
+            "structure"
+          ]
+        },
+        "registry": {
+          "ok": true,
+          "stage": "registry",
+          "issues": [],
+          "stages_run": [
+            "registry"
+          ]
+        },
+        "params": {
+          "ok": true,
+          "stage": "params",
+          "issues": [],
+          "stages_run": [
+            "params"
+          ]
+        },
+        "ownership": {
+          "ok": true,
+          "stage": "ownership",
+          "issues": [],
+          "stages_run": [
+            "ownership"
+          ]
+        },
+        "graph": {
+          "ok": true,
+          "stage": "graph",
+          "issues": [],
+          "stages_run": [
+            "graph"
+          ]
+        },
+        "typecheck": {
+          "ok": true,
+          "stage": "typecheck",
+          "issues": [],
+          "stages_run": [
+            "typecheck"
+          ]
+        },
+        "phase": {
+          "ok": true,
+          "stage": "phase",
+          "issues": [],
+          "stages_run": [
+            "phase"
+          ]
+        },
+        "composition": {
+          "ok": true,
+          "stage": "composition",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "registry",
+            "params",
+            "ownership",
+            "graph",
+            "typecheck",
+            "phase",
+            "composition"
+          ]
+        },
+        "safety": {
+          "ok": true,
+          "stage": "safety",
+          "issues": [],
+          "stages_run": [
+            "safety"
+          ]
+        }
+      },
+      "canonicalize": {
+        "ok": true,
+        "stage": "canonicalize",
+        "issues": [],
+        "stages_run": [
+          "canonicalize"
+        ]
+      },
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": true,
+      "stage": "dialect_semantics",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "safety",
+        "canonicalize",
+        "dialect_semantics"
+      ]
+    },
+    "geometry_preflight": {
+      "ok": true,
+      "stage": "geometry_preflight",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "safety",
+        "canonicalize",
+        "dialect_semantics",
+        "geometry_preflight"
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    }
+  }
+}

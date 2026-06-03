@@ -1,0 +1,154 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "m10-hex-nut-axisymmetric-v1",
+  "part_name": "M10_Hex_Nut_Axisymmetric",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "comp_nut",
+      "owner_dialect": "axisymmetric",
+      "root_node": "n_cleanup"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_base",
+      "component": "comp_nut",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 9.25,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 8.0
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_bore",
+      "component": "comp_nut",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "n_base",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 8.5,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_chamfer",
+      "component": "comp_nut",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "n_bore",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 1.0,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_cleanup",
+      "component": "comp_nut",
+      "dialect": "axisymmetric",
+      "op": "cut_internal_thread",
+      "op_version": "1.0.0",
+      "phase": "thread",
+      "inputs": [
+        {
+          "node": "n_chamfer",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "nominal_dia_mm": 10.0,
+        "pitch_mm": 1.5,
+        "depth_mm": 8.0,
+        "standard": "ISO_metric",
+        "thread_class": "6H",
+        "start_angle_deg": 0.0
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {
+    "_": "M10 hex nut axisymmetric approximation: revolve_profile r=9.25mm (circumscribed circle ≈18.5mm for hex flat-to-flat 16mm), Z=0-8mm body, M10x1.5 internal thread through, 1mm chamfer on all external edges."
+  }
+}

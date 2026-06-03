@@ -1,0 +1,10 @@
+RC=0
+STDOUT:
+BUILD_OK
+OP:tube_revolve/revolve_profile:ok
+OP:tube_bore/cut_center_bore:ok
+OP:tube_chamfer/apply_safe_chamfer:ok
+OP:shaft_revolve/revolve_profile:ok
+OP:assem_blend/boolean_union:ok
+
+STDERR:

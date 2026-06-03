@@ -1,0 +1,10 @@
+工业阀门阀体, 单位 mm, 参考几何.
+使用 revolve_profile 定义阀体轮廓:
+  station1 r=45 z=0-15 (法兰),
+  station2 r=35 z=15-60 (阀腔外壁),
+  station3 r=30 z=60-65 (缩径段),
+  station4 r=22 z=65-80 (出口颈).
+中心通孔: cut_center_bore diameter_mm=25 through_all=true.
+法兰上 6 个螺栓孔 PCD 70mm: cut_circular_hole_pattern count=6 pcd_mm=70 hole_dia_mm=10.
+进口端面环槽: cut_annular_groove side=front inner_dia_mm=55 outer_dia_mm=70 depth_mm=4.
+所有外边缘倒角 1mm: apply_safe_chamfer distance_mm=1 target=all_external_edges.

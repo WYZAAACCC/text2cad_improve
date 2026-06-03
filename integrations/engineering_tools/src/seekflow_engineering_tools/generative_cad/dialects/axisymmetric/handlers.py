@@ -39,31 +39,51 @@ def _degrade(node: CanonicalNode, ctx: RuntimeContext, body, op_name: str) -> st
 def handle_revolve_profile(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
     import cadquery as cq
     stations = node.typed_params.get("profile_stations", node.params.get("profile_stations", []))
-    if not stations or len(stations) < 2:
-        raise ValueError("Need at least 2 profile stations")
+    if not stations or len(stations) < 1:
+        raise ValueError("Need at least 1 profile station")
 
-    pts_2d: list[tuple[float, float]] = []
-    for s in stations:
-        pts_2d.append((float(s["r_mm"]), float(s.get("z_front_mm", 0))))
-        pts_2d.append((float(s["r_mm"]), float(s.get("z_rear_mm", 0))))
+    # ── Single station: simple cylinder ──
+    if len(stations) == 1:
+        s = stations[0]
+        r = float(s["r_mm"])
+        zf = float(s.get("z_front_mm", 0))
+        zr = float(s.get("z_rear_mm", 0))
+        if zr <= zf:
+            raise ValueError(f"z_rear_mm ({zr}) must be > z_front_mm ({zf})")
+        result = (
+            cq.Workplane("XZ")
+            .moveTo(r, zf)
+            .lineTo(r, zr)
+            .lineTo(0, zr)
+            .lineTo(0, zf)
+            .close()
+            .revolve(360)
+        )
+        solid = result
+    else:
+        # ── Multi station: piecewise linear profile ──
+        pts_2d: list[tuple[float, float]] = []
+        for s in stations:
+            pts_2d.append((float(s["r_mm"]), float(s.get("z_front_mm", 0))))
+            pts_2d.append((float(s["r_mm"]), float(s.get("z_rear_mm", 0))))
 
-    pts_2d.sort(key=lambda p: p[1])  # sort by z only — stable preserve at same z
+        pts_2d.sort(key=lambda p: p[1])  # sort by z only — stable preserve at same z
 
-    unique_pts = [pts_2d[0]]
-    for pt in pts_2d[1:]:
-        if pt != unique_pts[-1]:
-            unique_pts.append(pt)
+        unique_pts = [pts_2d[0]]
+        for pt in pts_2d[1:]:
+            if pt != unique_pts[-1]:
+                unique_pts.append(pt)
 
-    if len(unique_pts) < 2:
-        raise ValueError(f"Profile degenerates to {len(unique_pts)} unique point(s) after dedup")
+        if len(unique_pts) < 2:
+            raise ValueError(f"Profile degenerates to {len(unique_pts)} unique point(s) after dedup")
 
-    z_min = unique_pts[0][1]
-    z_max = unique_pts[-1][1]
-    result = cq.Workplane("XZ").moveTo(0, z_min)
-    for (r, z) in unique_pts:
-        result = result.lineTo(r, z)
-    result = result.lineTo(0, z_max).close()
-    solid = result.revolve(360)
+        z_min = unique_pts[0][1]
+        z_max = unique_pts[-1][1]
+        result = cq.Workplane("XZ").moveTo(0, z_min)
+        for (r, z) in unique_pts:
+            result = result.lineTo(r, z)
+        result = result.lineTo(0, z_max).close()
+        solid = result.revolve(360)
 
     result_map = {"body": _store_solid(node, ctx, solid)}
 

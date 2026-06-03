@@ -1,0 +1,279 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "large-thin-wall-electronics-enclosure",
+  "part_name": "large_thin_wall_electronics_enclosure",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0"
+    },
+    {
+      "dialect": "shell_housing",
+      "version": "0.2.0"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "comp_body",
+      "owner_dialect": "sketch_extrude",
+      "root_node": "n06_pocket_top"
+    },
+    {
+      "id": "comp_flange",
+      "owner_dialect": "sketch_extrude",
+      "root_node": "n08_holes"
+    },
+    {
+      "id": "__assembly__",
+      "owner_dialect": "composition",
+      "root_node": "n09_union_final"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n01_extrude",
+      "component": "comp_body",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 400,
+        "height_mm": 300,
+        "depth_mm": 150,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n02_cut_cavity",
+      "component": "comp_body",
+      "dialect": "sketch_extrude",
+      "op": "cut_rectangular_pocket",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "n01_extrude",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 380,
+        "height_mm": 280,
+        "depth_mm": 140,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n06_pocket_top",
+      "component": "comp_body",
+      "dialect": "sketch_extrude",
+      "op": "cut_rectangular_pocket",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "n04_fillet",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 200,
+        "height_mm": 150,
+        "depth_mm": 5,
+        "plane": "XY",
+        "centered": true,
+        "direction": "-"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n08_holes",
+      "component": "comp_flange",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_pattern_linear",
+      "op_version": "1.0.0",
+      "phase": "hole_pattern",
+      "inputs": [
+        {
+          "node": "n07_flange",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "hole_dia_mm": 6,
+        "count_x": 3,
+        "count_y": 3,
+        "spacing_x_mm": 180,
+        "spacing_y_mm": 130,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n09_union_final",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "component": "comp_body",
+          "output": "body"
+        },
+        {
+          "component": "comp_flange",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {},
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n07_flange",
+      "component": "comp_flange",
+      "dialect": "sketch_extrude",
+      "op": "add_rectangular_boss",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 420,
+        "height_mm": 320,
+        "depth_mm": 8,
+        "position_mm": [
+          0,
+          0,
+          -71
+        ],
+        "plane": "XY",
+        "centered": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n04_fillet",
+      "component": "comp_body",
+      "dialect": "sketch_extrude",
+      "op": "apply_safe_fillet",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "n03_shell",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "radius_mm": 3,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n03_shell",
+      "component": "comp_body",
+      "dialect": "shell_housing",
+      "op": "shell_body",
+      "op_version": "1.0.0",
+      "phase": "shell",
+      "inputs": [
+        {
+          "node": "n02_cut_cavity",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 2
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": null
+}

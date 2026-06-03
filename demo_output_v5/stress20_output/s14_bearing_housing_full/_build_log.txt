@@ -1,0 +1,13 @@
+RC=0
+STDOUT:
+BUILD_OK
+OP:housing_revolve/revolve_profile:ok
+OP:housing_bore/cut_center_bore:ok
+OP:housing_hole_pattern/cut_circular_hole_pattern:ok
+OP:base_extrude/extrude_rectangle:ok
+OP:base_hole_pattern/cut_hole_pattern_linear:ok
+OP:base_rib_1/add_rib:ok
+OP:base_rib_2/add_rib:ok
+OP:assembly_union/boolean_union:ok
+
+STDERR:

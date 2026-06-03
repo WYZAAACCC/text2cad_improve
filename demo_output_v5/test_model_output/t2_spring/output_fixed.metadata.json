@@ -1,0 +1,216 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "reference_geometry",
+    "document_id": "compression_helical_spring_001",
+    "part_name": "compression_helical_spring",
+    "selected_dialects": [
+      {
+        "dialect": "loft_sweep",
+        "version": "0.2.0",
+        "contract_hash": "sha256:e65e433162c910d28028903e691e48174e56dcc8b400a35f8f9f124adcc6ff17"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "n1",
+        "dialect": "loft_sweep",
+        "op": "helix_sweep",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:df947076695aebbee2bb99f62ed52aae94efc69dc6b99b4631ff00e89b9c5116",
+    "canonical_graph_hash": "sha256:bf8a44ad8c6b60c613a08d9ceec17faea9002e93a7abba1cbbcbccff5590e5a5",
+    "paths": {
+      "canonical_ir_path": "E:\\auto_detection_process\\demo_output_v5\\test_model_output\\t2_spring\\canonical.json",
+      "validation_seed_path": "E:\\auto_detection_process\\demo_output_v5\\test_model_output\\t2_spring\\validation_bundle.json",
+      "step_path": "E:\\auto_detection_process\\demo_output_v5\\test_model_output\\t2_spring\\output_fixed.step",
+      "metadata_path": "E:\\auto_detection_process\\demo_output_v5\\test_model_output\\t2_spring\\output_fixed.metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:d139523ad6e7401cc322ad0f7072d71ffb63eb214437fe8ba9cf72d2037d7d4c",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [
+      "helix_sweep on 'n1': profile radius (2.0mm) > 80% of minimum curvature radius (1.6mm). Helix may self-intersect — consider reducing profile_radius_mm or increasing pitch_mm."
+    ],
+    "degraded_features": [],
+    "operation_metrics": [],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [
+    "helix_sweep on 'n1': profile radius (2.0mm) > 80% of minimum curvature radius (1.6mm). Helix may self-intersect — consider reducing profile_radius_mm or increasing pitch_mm."
+  ],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {
+        "structure": {
+          "ok": true,
+          "stage": "structure",
+          "issues": [],
+          "stages_run": [
+            "structure"
+          ]
+        },
+        "registry": {
+          "ok": true,
+          "stage": "registry",
+          "issues": [],
+          "stages_run": [
+            "registry"
+          ]
+        },
+        "params": {
+          "ok": true,
+          "stage": "params",
+          "issues": [],
+          "stages_run": [
+            "params"
+          ]
+        },
+        "ownership": {
+          "ok": true,
+          "stage": "ownership",
+          "issues": [],
+          "stages_run": [
+            "ownership"
+          ]
+        },
+        "graph": {
+          "ok": true,
+          "stage": "graph",
+          "issues": [],
+          "stages_run": [
+            "graph"
+          ]
+        },
+        "typecheck": {
+          "ok": true,
+          "stage": "typecheck",
+          "issues": [],
+          "stages_run": [
+            "typecheck"
+          ]
+        },
+        "phase": {
+          "ok": true,
+          "stage": "phase",
+          "issues": [],
+          "stages_run": [
+            "phase"
+          ]
+        },
+        "composition": {
+          "ok": true,
+          "stage": "composition",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "registry",
+            "params",
+            "ownership",
+            "graph",
+            "typecheck",
+            "phase",
+            "composition"
+          ]
+        },
+        "safety": {
+          "ok": true,
+          "stage": "safety",
+          "issues": [],
+          "stages_run": [
+            "safety"
+          ]
+        }
+      },
+      "canonicalize": {
+        "ok": true,
+        "stage": "canonicalize",
+        "issues": [],
+        "stages_run": [
+          "canonicalize"
+        ]
+      },
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": true,
+      "stage": "dialect_semantics",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "safety",
+        "canonicalize",
+        "dialect_semantics"
+      ]
+    },
+    "geometry_preflight": {
+      "ok": true,
+      "stage": "geometry_preflight",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "safety",
+        "canonicalize",
+        "dialect_semantics",
+        "geometry_preflight"
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    }
+  }
+}

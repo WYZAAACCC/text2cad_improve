@@ -1,0 +1,12 @@
+RC=0
+STDOUT:
+BUILD_OK
+OP:n1/revolve_profile:ok
+OP:n2/cut_center_bore:ok
+OP:n3/cut_external_thread:ok
+OP:n4/cut_center_bore:ok
+OP:n5/apply_safe_chamfer:ok
+OP:n6/cut_center_bore:ok
+OP:n7/apply_safe_chamfer:ok
+
+STDERR:

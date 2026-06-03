@@ -1,0 +1,861 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "cross-rib-reinforced-box-v3",
+  "part_name": "十字交叉筋加强箱体",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+    }
+  ],
+  "components": [
+    {
+      "id": "box",
+      "owner_dialect": "sketch_extrude",
+      "kind_hint": null,
+      "root_node": "fillet_final",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "base_plate",
+      "component": "box",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:box:base_plate:body"
+        }
+      ],
+      "params": {
+        "width_mm": 250,
+        "height_mm": 180,
+        "depth_mm": 20,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0
+      },
+      "typed_params": {
+        "width_mm": 250.0,
+        "height_mm": 180.0,
+        "depth_mm": 20.0,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0.0
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "center_pocket",
+      "component": "box",
+      "dialect": "sketch_extrude",
+      "op": "cut_rectangular_pocket",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "base_plate",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:box:center_pocket:body"
+        }
+      ],
+      "params": {
+        "width_mm": 200,
+        "height_mm": 130,
+        "depth_mm": 12,
+        "plane": "XY",
+        "centered": true,
+        "direction": "-",
+        "draft_angle_deg": 0
+      },
+      "typed_params": {
+        "width_mm": 200.0,
+        "height_mm": 130.0,
+        "depth_mm": 12.0,
+        "plane": "XY",
+        "centered": true,
+        "direction": "-",
+        "draft_angle_deg": 0.0
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "holes",
+      "component": "box",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_pattern_linear",
+      "op_version": "1.0.0",
+      "phase": "hole_pattern",
+      "inputs": [
+        {
+          "producer_node": "rib_cross_6",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:box:holes:body"
+        }
+      ],
+      "params": {
+        "hole_dia_mm": 10,
+        "count_x": 2,
+        "count_y": 2,
+        "spacing_x_mm": 210,
+        "spacing_y_mm": 140,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "hole_dia_mm": 10.0,
+        "count_x": 2,
+        "count_y": 2,
+        "spacing_x_mm": 210.0,
+        "spacing_y_mm": 140.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "rib_long_1",
+      "component": "box",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "center_pocket",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:box:rib_long_1:body"
+        }
+      ],
+      "params": {
+        "thickness_mm": 5,
+        "height_mm": 16,
+        "length_mm": 120,
+        "position_mm": [
+          -60,
+          0,
+          0
+        ],
+        "direction": "Y"
+      },
+      "typed_params": {
+        "thickness_mm": 5.0,
+        "height_mm": 16.0,
+        "length_mm": 120.0,
+        "position_mm": [
+          -60.0,
+          0.0,
+          0.0
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "rib_long_2",
+      "component": "box",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "rib_long_1",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:box:rib_long_2:body"
+        }
+      ],
+      "params": {
+        "thickness_mm": 5,
+        "height_mm": 16,
+        "length_mm": 120,
+        "position_mm": [
+          -35,
+          0,
+          0
+        ],
+        "direction": "Y"
+      },
+      "typed_params": {
+        "thickness_mm": 5.0,
+        "height_mm": 16.0,
+        "length_mm": 120.0,
+        "position_mm": [
+          -35.0,
+          0.0,
+          0.0
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "rib_long_3",
+      "component": "box",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "rib_long_2",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:box:rib_long_3:body"
+        }
+      ],
+      "params": {
+        "thickness_mm": 5,
+        "height_mm": 16,
+        "length_mm": 120,
+        "position_mm": [
+          -10,
+          0,
+          0
+        ],
+        "direction": "Y"
+      },
+      "typed_params": {
+        "thickness_mm": 5.0,
+        "height_mm": 16.0,
+        "length_mm": 120.0,
+        "position_mm": [
+          -10.0,
+          0.0,
+          0.0
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "rib_long_4",
+      "component": "box",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "rib_long_3",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:box:rib_long_4:body"
+        }
+      ],
+      "params": {
+        "thickness_mm": 5,
+        "height_mm": 16,
+        "length_mm": 120,
+        "position_mm": [
+          15,
+          0,
+          0
+        ],
+        "direction": "Y"
+      },
+      "typed_params": {
+        "thickness_mm": 5.0,
+        "height_mm": 16.0,
+        "length_mm": 120.0,
+        "position_mm": [
+          15.0,
+          0.0,
+          0.0
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "rib_long_5",
+      "component": "box",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "rib_long_4",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:box:rib_long_5:body"
+        }
+      ],
+      "params": {
+        "thickness_mm": 5,
+        "height_mm": 16,
+        "length_mm": 120,
+        "position_mm": [
+          40,
+          0,
+          0
+        ],
+        "direction": "Y"
+      },
+      "typed_params": {
+        "thickness_mm": 5.0,
+        "height_mm": 16.0,
+        "length_mm": 120.0,
+        "position_mm": [
+          40.0,
+          0.0,
+          0.0
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "rib_long_6",
+      "component": "box",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "rib_long_5",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:box:rib_long_6:body"
+        }
+      ],
+      "params": {
+        "thickness_mm": 5,
+        "height_mm": 16,
+        "length_mm": 120,
+        "position_mm": [
+          65,
+          0,
+          0
+        ],
+        "direction": "Y"
+      },
+      "typed_params": {
+        "thickness_mm": 5.0,
+        "height_mm": 16.0,
+        "length_mm": 120.0,
+        "position_mm": [
+          65.0,
+          0.0,
+          0.0
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "rib_cross_1",
+      "component": "box",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "rib_long_6",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:box:rib_cross_1:body"
+        }
+      ],
+      "params": {
+        "thickness_mm": 5,
+        "height_mm": 16,
+        "length_mm": 160,
+        "position_mm": [
+          0,
+          -60,
+          0
+        ],
+        "direction": "X"
+      },
+      "typed_params": {
+        "thickness_mm": 5.0,
+        "height_mm": 16.0,
+        "length_mm": 160.0,
+        "position_mm": [
+          0.0,
+          -60.0,
+          0.0
+        ],
+        "direction": "X"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "rib_cross_2",
+      "component": "box",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "rib_cross_1",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:box:rib_cross_2:body"
+        }
+      ],
+      "params": {
+        "thickness_mm": 5,
+        "height_mm": 16,
+        "length_mm": 160,
+        "position_mm": [
+          0,
+          -35,
+          0
+        ],
+        "direction": "X"
+      },
+      "typed_params": {
+        "thickness_mm": 5.0,
+        "height_mm": 16.0,
+        "length_mm": 160.0,
+        "position_mm": [
+          0.0,
+          -35.0,
+          0.0
+        ],
+        "direction": "X"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "rib_cross_3",
+      "component": "box",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "rib_cross_2",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:box:rib_cross_3:body"
+        }
+      ],
+      "params": {
+        "thickness_mm": 5,
+        "height_mm": 16,
+        "length_mm": 160,
+        "position_mm": [
+          0,
+          -10,
+          0
+        ],
+        "direction": "X"
+      },
+      "typed_params": {
+        "thickness_mm": 5.0,
+        "height_mm": 16.0,
+        "length_mm": 160.0,
+        "position_mm": [
+          0.0,
+          -10.0,
+          0.0
+        ],
+        "direction": "X"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "rib_cross_4",
+      "component": "box",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "rib_cross_3",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:box:rib_cross_4:body"
+        }
+      ],
+      "params": {
+        "thickness_mm": 5,
+        "height_mm": 16,
+        "length_mm": 160,
+        "position_mm": [
+          0,
+          15,
+          0
+        ],
+        "direction": "X"
+      },
+      "typed_params": {
+        "thickness_mm": 5.0,
+        "height_mm": 16.0,
+        "length_mm": 160.0,
+        "position_mm": [
+          0.0,
+          15.0,
+          0.0
+        ],
+        "direction": "X"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "rib_cross_5",
+      "component": "box",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "rib_cross_4",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:box:rib_cross_5:body"
+        }
+      ],
+      "params": {
+        "thickness_mm": 5,
+        "height_mm": 16,
+        "length_mm": 160,
+        "position_mm": [
+          0,
+          40,
+          0
+        ],
+        "direction": "X"
+      },
+      "typed_params": {
+        "thickness_mm": 5.0,
+        "height_mm": 16.0,
+        "length_mm": 160.0,
+        "position_mm": [
+          0.0,
+          40.0,
+          0.0
+        ],
+        "direction": "X"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "rib_cross_6",
+      "component": "box",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "rib_cross_5",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:box:rib_cross_6:body"
+        }
+      ],
+      "params": {
+        "thickness_mm": 5,
+        "height_mm": 16,
+        "length_mm": 160,
+        "position_mm": [
+          0,
+          65,
+          0
+        ],
+        "direction": "X"
+      },
+      "typed_params": {
+        "thickness_mm": 5.0,
+        "height_mm": 16.0,
+        "length_mm": 160.0,
+        "position_mm": [
+          0.0,
+          65.0,
+          0.0
+        ],
+        "direction": "X"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "fillet_final",
+      "component": "box",
+      "dialect": "sketch_extrude",
+      "op": "apply_safe_fillet",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "producer_node": "holes",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:box:fillet_final:body"
+        }
+      ],
+      "params": {
+        "radius_mm": 2,
+        "target": "all_external_edges"
+      },
+      "typed_params": {
+        "radius_mm": 2.0,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "modifies_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:8250fc4b716ccbe4d06e8a06941034c84dbb338c7e549f0b6121197bdbcabce3",
+  "raw_graph_hash": "sha256:df36b9dde32276e9076888a325de95ccc01fec0cfcad8071536726f8e19c3a32"
+}

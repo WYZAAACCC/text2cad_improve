@@ -1,0 +1,25 @@
+{
+  "applied": true,
+  "before_hash": "sha256:961f137dd6e799cf61b77d7b15fe5bb097943521aae65c0e408d1ceed4c55799",
+  "after_hash": "sha256:862dc7c04b7c22cc50329791a8a87b271c68eade0a697cc3c68f689b4ba3f2fb",
+  "entries": [
+    {
+      "rule_id": "fix_output_names",
+      "path": "/",
+      "old_value": "<hash:sha256:961f1>",
+      "new_value": "<hash:sha256:a5e62>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_output_names"
+    },
+    {
+      "rule_id": "fix_input_output_names",
+      "path": "/",
+      "old_value": "<hash:sha256:a5e62>",
+      "new_value": "<hash:sha256:862dc>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_input_output_names"
+    }
+  ]
+}

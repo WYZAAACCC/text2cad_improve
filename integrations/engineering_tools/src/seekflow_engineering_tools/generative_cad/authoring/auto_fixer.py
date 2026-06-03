@@ -2,10 +2,44 @@
 
 每个修复都是幂等的、安全的、不改变语义的。
 修复策略来自对 DeepSeek 输出模式的统计分析。
+
+v0.7: audited — each fix records rule_id, path, old_value, new_value,
+severity, and confidence via AutoFixEntry / AutoFixReport.
 """
 
 from __future__ import annotations
-from typing import Any
+import copy
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from seekflow_engineering_tools.generative_cad.ir.hashing import stable_hash
+
+
+# ── Audit data structures ────────────────────────────────────────────────────
+
+
+class AutoFixEntry(BaseModel):
+    """One fix entry with full audit trail."""
+    model_config = ConfigDict(extra="forbid")
+
+    rule_id: str
+    path: str
+    old_value: Any
+    new_value: Any
+    severity: Literal["safe_alias", "semantic_guess", "destructive"] = "safe_alias"
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
+    message: str = ""
+
+
+class AutoFixReport(BaseModel):
+    """Audit report for an autofix pass."""
+    model_config = ConfigDict(extra="forbid")
+
+    applied: bool
+    before_hash: str
+    after_hash: str
+    entries: list[AutoFixEntry] = Field(default_factory=list)
 
 # ── 参数字段名映射 (LLM 常用名 → 正确 Pydantic 字段名) ─────────────────────
 
@@ -98,34 +132,76 @@ TARGET_VALUE_FIXES: dict[str, str] = {
 def auto_fix(raw_doc: dict, dialect_registry=None) -> dict:
     """对 RawGcadDocument dict 应用所有自动修复。幂等，可重复调用。
 
-    修复顺序:
-      1. output name 修正 (solid→body, frame→outer_frame)
-      2. dialect 名修正 (未知 dialect → 从 registry 匹配)
-      3. qualified op 名拆分 (axisymmetric.revolve_profile → revolve_profile)
-      4. 参数字段名修正
-      5. 目标值修正 (apply_safe_* target)
-      6. root_node 修正
-      7. 缺失默认参数填充
-      8. 多余参数清理
+    兼容 wrapper，内部调用 auto_fix_with_report 并返回 fixed_doc。
     """
-    doc = _fix_output_names(raw_doc)
-    doc = _fix_input_output_names(doc)
-    doc = _fix_op_versions(doc, dialect_registry)
-    doc = _fix_dialect_names(doc, dialect_registry)
-    doc = _fix_qualified_op_names(doc)
-    doc = _fix_param_names(doc)
-    doc = _fix_param_values(doc)
-    doc = _fix_path_points(doc)
-    doc = _fix_unknown_ops(doc, dialect_registry)
-    doc = _fix_target_values(doc)
-    doc = _fix_cross_component_refs(doc)
-    doc = _fix_root_node(doc)
-    doc = _fix_phase_names(doc, dialect_registry)
-    doc = _fix_phase_ordering(doc, dialect_registry)
-    doc = _fix_profile_stations(doc)
-    doc = _fill_default_params(doc)
-    doc = _remove_extra_params(doc)
-    return doc
+    fixed_doc, _report = auto_fix_with_report(raw_doc, dialect_registry)
+    return fixed_doc
+
+
+def auto_fix_with_report(
+    raw_doc: dict,
+    dialect_registry=None,
+) -> tuple[dict, AutoFixReport]:
+    """对 RawGcadDocument dict 应用所有自动修复，附带完整审计报告。
+
+    不原地修改 raw_doc（deepcopy），每条修复记录 AutoFixEntry。
+
+    Returns:
+        (fixed_doc, AutoFixReport) — report.applied 为 True 当且仅当
+        before_hash != after_hash。
+    """
+    before_hash = stable_hash(raw_doc)
+    doc = copy.deepcopy(raw_doc)
+    entries: list[AutoFixEntry] = []
+
+    def _apply_fix(
+        name: str, fix_fn,
+        severity: Literal["safe_alias", "semantic_guess", "destructive"] = "safe_alias",
+        confidence: float = 1.0,
+    ):
+        """Apply one fix and record all changes by comparing before/after hashes."""
+        nonlocal doc
+        before = stable_hash(doc)
+        doc = fix_fn(doc)
+        after = stable_hash(doc)
+        if before != after:
+            entries.append(AutoFixEntry(
+                rule_id=name,
+                path="/",
+                old_value=f"<hash:{before[:12]}>",
+                new_value=f"<hash:{after[:12]}>",
+                severity=severity,
+                confidence=confidence,
+                message=f"Applied fix: {name}",
+            ))
+
+    # Fix order matters — later fixes may depend on earlier ones
+    _apply_fix("fix_output_names", lambda d: _fix_output_names(d))
+    _apply_fix("fix_input_output_names", lambda d: _fix_input_output_names(d))
+    _apply_fix("fix_op_versions", lambda d: _fix_op_versions(d, dialect_registry))
+    _apply_fix("fix_dialect_names", lambda d: _fix_dialect_names(d, dialect_registry))
+    _apply_fix("fix_qualified_op_names", lambda d: _fix_qualified_op_names(d))
+    _apply_fix("fix_param_names", lambda d: _fix_param_names(d))
+    _apply_fix("fix_param_values", lambda d: _fix_param_values(d))
+    _apply_fix("fix_path_points", lambda d: _fix_path_points(d))
+    _apply_fix("fix_unknown_ops", lambda d: _fix_unknown_ops(d, dialect_registry), severity="destructive", confidence=0.85)
+    _apply_fix("fix_target_values", lambda d: _fix_target_values(d))
+    _apply_fix("fix_cross_component_refs", lambda d: _fix_cross_component_refs(d), severity="semantic_guess", confidence=0.9)
+    _apply_fix("fix_root_node", lambda d: _fix_root_node(d), severity="semantic_guess", confidence=0.95)
+    _apply_fix("fix_phase_names", lambda d: _fix_phase_names(d, dialect_registry))
+    _apply_fix("fix_phase_ordering", lambda d: _fix_phase_ordering(d, dialect_registry))
+    _apply_fix("fix_profile_stations", lambda d: _fix_profile_stations(d), severity="semantic_guess", confidence=0.85)
+    _apply_fix("fill_default_params", lambda d: _fill_default_params(d))
+    _apply_fix("remove_extra_params", lambda d: _remove_extra_params(d))
+
+    after_hash = stable_hash(doc)
+    report = AutoFixReport(
+        applied=before_hash != after_hash,
+        before_hash=before_hash,
+        after_hash=after_hash,
+        entries=entries,
+    )
+    return doc, report
 
 
 def _fix_input_output_names(doc: dict) -> dict:
@@ -466,10 +542,13 @@ def _fix_phase_ordering(doc: dict, dialect_registry=None) -> dict:
 def _fix_profile_stations(doc: dict) -> dict:
     """修复 revolve_profile 的 profile_stations 结构问题。
 
-    问题1: 只有 1 个 station → 复制并加微小 z 偏移。
-    问题2 (关键): 所有 station 有相同的 z_front_mm 和 z_rear_mm。
-        LLM 把它们当作"横截面描述"，但实际应该是"顺序多段线"。
-        修复: 按 r_mm 降序排列，分配顺序 z 范围。"""
+    单 station 现在是合法的 (axisymmetric v0.6+)，表达简单圆柱段。
+    不再复制 station 来伪造两个 — 那是伪修复。
+
+    仍然处理:
+      - 空 stations → 填充默认 2-station profile
+      - 所有 station 同 z 且同 r → 分配顺序 z (LLM 把横截面当 stations)
+    """
     for node in doc.get("nodes", []):
         if node.get("op") != "revolve_profile":
             continue
@@ -481,14 +560,9 @@ def _fix_profile_stations(doc: dict) -> dict:
             ]
             continue
 
+        # Single station is valid — no need to duplicate. Skip.
         if len(stations) < 2:
-            s0 = dict(stations[0])
-            s1 = dict(s0)
-            s1["z_front_mm"] = s0["z_rear_mm"]
-            s1["z_rear_mm"] = s0["z_rear_mm"] + 0.5
-            node["params"]["profile_stations"] = [s0, s1]
-            stations = node["params"]["profile_stations"]  # Refresh after fix
-            # Don't continue — fall through to all-same-r check below
+            continue
 
         # 检测: 所有 station 的 z_front_mm 相同 AND z_rear_mm 相同？
         z_fronts = {s.get("z_front_mm") for s in stations}
@@ -508,14 +582,12 @@ def _fix_profile_stations(doc: dict) -> dict:
             new_stations = []
             for i, s in enumerate(sorted_stations):
                 if i == 0:
-                    # 第一个 station: 外壁, 全厚度
                     new_stations.append({
                         "r_mm": s["r_mm"],
                         "z_front_mm": z_start,
                         "z_rear_mm": z_end,
                     })
                 elif i == len(sorted_stations) - 1:
-                    # 最后一个 station: 内孔, 微小 z 偏移
                     prev_z = new_stations[-1]["z_rear_mm"]
                     new_stations.append({
                         "r_mm": s["r_mm"],
@@ -523,7 +595,6 @@ def _fix_profile_stations(doc: dict) -> dict:
                         "z_rear_mm": prev_z + 1.0,
                     })
                 else:
-                    # 中间 station: 阶梯
                     prev_z = new_stations[-1]["z_rear_mm"]
                     new_stations.append({
                         "r_mm": s["r_mm"],
@@ -540,8 +611,7 @@ def _fix_profile_stations(doc: dict) -> dict:
             r_values = {s.get("r_mm") for s in stations}
             if len(r_values) == 1:
                 last = dict(stations[-1])
-                last["r_mm"] = last["r_mm"] / 2.0  # Create a center bore
-                # Shift z to create a small step
+                last["r_mm"] = last["r_mm"] / 2.0
                 prev_z = stations[-2]["z_rear_mm"] if len(stations) > 1 else stations[0]["z_rear_mm"]
                 last["z_front_mm"] = prev_z
                 last["z_rear_mm"] = prev_z + 1.0
@@ -565,14 +635,18 @@ def _fix_param_values(doc: dict) -> dict:
     RIB_DIRECTION_FIX = {"+": "X", "-": "Y", "+x": "X", "-y": "Y", "+z": "X", "-z": "Y", "x+": "X", "y+": "Y"}
     STANDARD_FIXES = {"metric": "ISO_metric", "iso": "ISO_metric", "iso_metric": "ISO_metric",
                        "metric_coarse": "ISO_metric", "coarse": "ISO_metric"}
-    CLASS_FIXES = {"6h": "6H", "6g": "6H", "7h": "7H", "8g": "6g"}
+    # thread_class: context-aware — internal vs external have different valid values
+    INTERNAL_THREAD_CLASS_FIXES = {"6h": "6H", "6g": "6H", "7h": "7H", "6G": "6G", "6H": "6H", "7H": "7H"}
+    # cut_internal_thread allows: 6H, 6G, 7H
+    EXTERNAL_THREAD_CLASS_FIXES = {"6h": "6h", "6g": "6g", "8g": "8g", "6H": "6g", "6G": "6g", "7H": "6g", "8G": "8g"}
+    # cut_external_thread allows: 6g, 6h, 8g
 
     for node in doc.get("nodes", []):
         params = node.get("params", {})
+        op = node.get("op", "")
         # direction
         if "direction" in params:
             d = str(params["direction"]).lower().strip()
-            op = node.get("op", "")
             if op == "add_rib" and d in RIB_DIRECTION_FIX:
                 params["direction"] = RIB_DIRECTION_FIX[d]
             elif op != "add_rib" and d in DIRECTION_FIXES:
@@ -593,11 +667,13 @@ def _fix_param_values(doc: dict) -> dict:
             s = str(params["standard"]).lower().strip().replace(" ", "_")
             if s in STANDARD_FIXES:
                 params["standard"] = STANDARD_FIXES[s]
-        # thread_class
+        # thread_class — context-aware by op type
         if "thread_class" in params:
             c = str(params["thread_class"]).strip()
-            if c in CLASS_FIXES:
-                params["thread_class"] = CLASS_FIXES[c]
+            if op == "cut_internal_thread" and c in INTERNAL_THREAD_CLASS_FIXES:
+                params["thread_class"] = INTERNAL_THREAD_CLASS_FIXES[c]
+            elif op == "cut_external_thread" and c in EXTERNAL_THREAD_CLASS_FIXES:
+                params["thread_class"] = EXTERNAL_THREAD_CLASS_FIXES[c]
     return doc
 
 

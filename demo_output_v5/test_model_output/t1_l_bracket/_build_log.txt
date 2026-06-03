@@ -1,0 +1,11 @@
+RC=0
+STDOUT:
+BUILD_OK
+OP:n01/extrude_rectangle:ok
+OP:n02/cut_hole_pattern_linear:ok
+OP:n03/add_rib:ok
+OP:n04/cut_hole:ok
+OP:n05/cut_hole:ok
+OP:n10/apply_safe_fillet:ok
+
+STDERR:

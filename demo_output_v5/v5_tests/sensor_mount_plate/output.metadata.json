@@ -1,0 +1,322 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "reference_geometry",
+    "document_id": "sensor-mounting-plate-001",
+    "part_name": "精密传感器安装底板",
+    "selected_dialects": [
+      {
+        "dialect": "sketch_extrude",
+        "version": "0.2.0",
+        "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "n_base",
+        "dialect": "sketch_extrude",
+        "op": "extrude_rectangle",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_pocket",
+        "dialect": "sketch_extrude",
+        "op": "cut_rectangular_pocket",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_boss_hole",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_cbored_holes",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole_pattern_linear",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_pocket_holes",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole_pattern_linear",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_rib_left",
+        "dialect": "sketch_extrude",
+        "op": "add_rib",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_rib_right",
+        "dialect": "sketch_extrude",
+        "op": "add_rib",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_boss",
+        "dialect": "sketch_extrude",
+        "op": "add_rectangular_boss",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet",
+        "dialect": "sketch_extrude",
+        "op": "apply_safe_fillet",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:7768345a3303c1f3ec05ea4129948c44cc2b6796c4da3f55780383890a888ad9",
+    "canonical_graph_hash": "sha256:a317904b8078165808316c14d5d8880cc313cab9494eb416390f1daea92f9bad",
+    "paths": {
+      "canonical_ir_path": "E:\\auto_detection_process\\demo_output_v5\\v5_tests\\sensor_mount_plate\\canonical.json",
+      "validation_seed_path": "E:\\auto_detection_process\\demo_output_v5\\v5_tests\\sensor_mount_plate\\validation_bundle.json",
+      "step_path": "E:\\auto_detection_process\\demo_output_v5\\v5_tests\\sensor_mount_plate\\output.step",
+      "metadata_path": "E:\\auto_detection_process\\demo_output_v5\\v5_tests\\sensor_mount_plate\\output.metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:8b76af2c6f8ef3a060f4773f6e850d734cc53946386eaa7b555b1dee44aa50de",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [
+      "Geometry warning on 'n_fillet.body': [brep_check_error] BRepCheck failed: Result(): incompatible function arguments. The following argument types are supported:\n    1. (self: OCP.OCP.BRepCheck.BRepCheck_Analyzer, theSubS: OCP.OCP.TopoDS.TopoDS_Shape) -> OCP.OCP.BRepCheck.BRepCheck_Result\n\nInvoked with: <OCP.OCP.BRepCheck.BRepCheck_Analyzer object at 0x0000020A948D17F0>"
+    ],
+    "degraded_features": [],
+    "operation_metrics": [
+      {
+        "node_id": "n_base",
+        "op": "extrude_rectangle",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_cbored_holes",
+        "op": "cut_hole_pattern_linear",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_pocket",
+        "op": "cut_rectangular_pocket",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_pocket_holes",
+        "op": "cut_hole_pattern_linear",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_rib_left",
+        "op": "add_rib",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_rib_right",
+        "op": "add_rib",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_boss",
+        "op": "add_rectangular_boss",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_boss_hole",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_fillet",
+        "op": "apply_safe_fillet",
+        "status": "ok"
+      }
+    ],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [
+    "Geometry warning on 'n_fillet.body': [brep_check_error] BRepCheck failed: Result(): incompatible function arguments. The following argument types are supported:\n    1. (self: OCP.OCP.BRepCheck.BRepCheck_Analyzer, theSubS: OCP.OCP.TopoDS.TopoDS_Shape) -> OCP.OCP.BRepCheck.BRepCheck_Result\n\nInvoked with: <OCP.OCP.BRepCheck.BRepCheck_Analyzer object at 0x0000020A948D17F0>"
+  ],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {
+        "structure": {
+          "ok": true,
+          "stage": "structure",
+          "issues": [],
+          "stages_run": [
+            "structure"
+          ]
+        },
+        "registry": {
+          "ok": true,
+          "stage": "registry",
+          "issues": [],
+          "stages_run": [
+            "registry"
+          ]
+        },
+        "params": {
+          "ok": true,
+          "stage": "params",
+          "issues": [],
+          "stages_run": [
+            "params"
+          ]
+        },
+        "ownership": {
+          "ok": true,
+          "stage": "ownership",
+          "issues": [],
+          "stages_run": [
+            "ownership"
+          ]
+        },
+        "graph": {
+          "ok": true,
+          "stage": "graph",
+          "issues": [],
+          "stages_run": [
+            "graph"
+          ]
+        },
+        "typecheck": {
+          "ok": true,
+          "stage": "typecheck",
+          "issues": [],
+          "stages_run": [
+            "typecheck"
+          ]
+        },
+        "phase": {
+          "ok": true,
+          "stage": "phase",
+          "issues": [],
+          "stages_run": [
+            "phase"
+          ]
+        },
+        "composition": {
+          "ok": true,
+          "stage": "composition",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "registry",
+            "params",
+            "ownership",
+            "graph",
+            "typecheck",
+            "phase",
+            "composition"
+          ]
+        },
+        "safety": {
+          "ok": true,
+          "stage": "safety",
+          "issues": [],
+          "stages_run": [
+            "safety"
+          ]
+        }
+      },
+      "canonicalize": {
+        "ok": true,
+        "stage": "canonicalize",
+        "issues": [],
+        "stages_run": [
+          "canonicalize"
+        ]
+      },
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": true,
+      "stage": "dialect_semantics",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "safety",
+        "canonicalize",
+        "dialect_semantics"
+      ]
+    },
+    "geometry_preflight": {
+      "ok": true,
+      "stage": "geometry_preflight",
+      "issues": [
+        {
+          "code": "se_boss_outside_base",
+          "message": "boss (30.0x25.0 at 0.0,40.0) extends outside base (±80.0, ±50.0)",
+          "severity": "warning",
+          "stage": "geometry_preflight",
+          "node_id": "n_boss",
+          "component_id": null,
+          "path": null,
+          "expected": null,
+          "actual": null
+        }
+      ],
+      "stages_run": [
+        "structure",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "safety",
+        "canonicalize",
+        "dialect_semantics",
+        "geometry_preflight"
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    }
+  }
+}

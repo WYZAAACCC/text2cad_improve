@@ -1,0 +1,14 @@
+密集加强筋底板, 单位 mm, 参考几何.
+底板: extrude_rectangle width_mm=300 height_mm=200 depth_mm=15 centered=true.
+安装孔: cut_hole_pattern_linear hole_dia_mm=11 count_x=2 count_y=2 spacing_x_mm=260 spacing_y_mm=160.
+纵筋x5 (Y方向): add_rib thickness_mm=6 height_mm=20 length_mm=150 position_mm=[-80,0,7.5] direction=Y.
+  add_rib thickness_mm=6 height_mm=20 length_mm=150 position_mm=[-40,0,7.5] direction=Y.
+  add_rib thickness_mm=6 height_mm=20 length_mm=150 position_mm=[0,0,7.5] direction=Y.
+  add_rib thickness_mm=6 height_mm=20 length_mm=150 position_mm=[40,0,7.5] direction=Y.
+  add_rib thickness_mm=6 height_mm=20 length_mm=150 position_mm=[80,0,7.5] direction=Y.
+横筋x5 (X方向): add_rib thickness_mm=6 height_mm=20 length_mm=220 position_mm=[0,-50,7.5] direction=X.
+  add_rib thickness_mm=6 height_mm=20 length_mm=220 position_mm=[0,-25,7.5] direction=X.
+  add_rib thickness_mm=6 height_mm=20 length_mm=220 position_mm=[0,0,7.5] direction=X.
+  add_rib thickness_mm=6 height_mm=20 length_mm=220 position_mm=[0,25,7.5] direction=X.
+  add_rib thickness_mm=6 height_mm=20 length_mm=220 position_mm=[0,50,7.5] direction=X.
+圆角: apply_safe_fillet radius_mm=1.5 target=all_external_edges.

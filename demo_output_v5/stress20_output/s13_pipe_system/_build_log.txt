@@ -1,0 +1,18 @@
+RC=1
+STDOUT:
+BUILD_FAILED: sweep_profile failed on 'main_sweep': BRep_API: command not done
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\auto_detection_process\.conda\Lib\site-packages\cadquery\cq.py", line 1566, in lineTo
+    p = Edge.makeLine(startPoint, endPoint)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\auto_detection_process\.conda\Lib\site-packages\cadquery\occ_impl\shapes.py", line 2647, in makeLine
+    BRepBuilderAPI_MakeEdge(Vector(v1).toPnt(), Vector(v
+WARN:Geometry warning on 'pipe_a_sweep.body': [brep_check_error] BRepCheck failed: Result(): incompatible function arguments. The following argument types are supported:
+    1. (self: OCP.OCP.BRepCheck.BRe
+
+STDERR:
+Traceback (most recent call last):
+  File "E:\auto_detection_process\demo_output_v5\stress20_output\s13_pipe_system\_build.py", line 17, in <module>
+    for w in (r.warnings or []): print('WARN:' + str(w)[:200])
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'gbk' codec can't encode character '\xb3' in position 86: illegal multibyte sequence

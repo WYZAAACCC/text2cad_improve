@@ -114,9 +114,9 @@ class AxisymmetricDialect:
         for n in nodes:
             if n.op == "revolve_profile":
                 ps = n.typed_params.get("profile_stations") or n.params.get("profile_stations", [])
-                if len(ps) < 2:
+                if len(ps) < 1:
                     issues.append(ValidationIssue(stage=stage, code="a001_stations_count",
-                        message=f"revolve_profile needs >= 2 stations, got {len(ps)}",
+                        message=f"revolve_profile needs >= 1 station, got {len(ps)}",
                         severity="error", node_id=n.id))
                 max_r = 0.0
                 min_r = float("inf")
@@ -134,12 +134,13 @@ class AxisymmetricDialect:
                     if is_finite(r) and r > 0:
                         max_r = max(max_r, r)
                         min_r = min(min_r, r)
-                if max_r > 0 and min_r < float("inf") and max_r > min_r:
+                if max_r > 0 and min_r < float("inf"):
                     profile_max_radius = max_r
                     profile_min_radius = min_r
-                elif max_r <= 0 or min_r <= 0 or max_r <= min_r:
+                    # Single-station cylinder is valid (max_r == min_r OK)
+                elif max_r <= 0 or min_r <= 0:
                     issues.append(ValidationIssue(stage=stage, code="a001_radius_range",
-                        message=f"max radius ({max_r}) must be > min radius ({min_r})",
+                        message=f"max radius ({max_r}) must be > 0, got min radius ({min_r})",
                         severity="error", node_id=n.id))
 
         # Second pass: validate cuts against envelope

@@ -1,0 +1,6 @@
+超大薄壁法兰, 单位 mm, 参考几何.
+使用 revolve_profile 定义:
+  station1 r=250 z=0-8 (法兰盘, 外径500mm厚8mm).
+中心孔: cut_center_bore diameter_mm=480 through_all=true (壁厚仅10mm).
+24个螺栓孔 PCD 470mm: cut_circular_hole_pattern count=24 pcd_mm=470 hole_dia_mm=12.
+所有外边缘倒角 0.5mm: apply_safe_chamfer distance_mm=0.5 target=all_external_edges.

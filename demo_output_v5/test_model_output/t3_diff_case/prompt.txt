@@ -1,0 +1,10 @@
+差速器壳体, 单位 mm, 参考几何.
+revolve_profile 球壳:
+  station1 r=75 z=0-20 (法兰),
+  station2 r=60 z=20-80 (球壳),
+  station3 r=75 z=80-100 (对侧法兰).
+腔体: cut_center_bore diameter_mm=100 through_all=true.
+法兰孔PCD130: cut_circular_hole_pattern count=8 pcd_mm=130 hole_dia_mm=10.
+对侧法兰孔PCD130: cut_circular_hole_pattern count=8 pcd_mm=130 hole_dia_mm=10.
+环槽: cut_annular_groove side=front inner_dia_mm=120 outer_dia_mm=140 depth_mm=3.
+倒角: apply_safe_chamfer distance_mm=1 target=all_external_edges.

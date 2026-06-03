@@ -1,0 +1,11 @@
+多体组合工作台, 单位 mm, 参考几何.
+组件 'top_plate' (sketch_extrude): extrude_rectangle width_mm=500 height_mm=350 depth_mm=25 centered=true.
+  cut_rectangular_pocket width_mm=400 height_mm=250 depth_mm=10 centered=true.
+  cut_hole_pattern_linear hole_dia_mm=12 count_x=2 count_y=2 spacing_x_mm=400 spacing_y_mm=250.
+组件 'bottom_plate' (sketch_extrude): extrude_rectangle width_mm=500 height_mm=350 depth_mm=20 centered=true.
+  cut_hole_pattern_linear hole_dia_mm=14 count_x=2 count_y=2 spacing_x_mm=440 spacing_y_mm=290.
+组件 'pillar_left' (axisymmetric): revolve_profile station1 r=30 z=0-200.
+  cut_center_bore diameter_mm=20 through_all=true.
+组件 'pillar_right' (axisymmetric): revolve_profile station1 r=30 z=0-200.
+  cut_center_bore diameter_mm=20 through_all=true.
+装配 '__assembly__' (composition): 依次 boolean_union 合并 top_plate, bottom_plate, pillar_left, pillar_right.

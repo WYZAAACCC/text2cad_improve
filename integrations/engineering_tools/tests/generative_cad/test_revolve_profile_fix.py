@@ -94,7 +94,13 @@ class TestAutoFixerFlatProfile:
 
         fixed = auto_fix(raw)
         stations = fixed["nodes"][0]["params"]["profile_stations"]
-        assert len(stations) >= 2, f"Single station should get a second one, got {len(stations)}"
+        # v0.6+: single station IS valid (simple cylinder). Auto-fixer no longer
+        # duplicates stations — that was a hack. Validation now accepts
+        # min_length=1 for profile_stations.
+        assert len(stations) == 1, (
+            f"Single station should be preserved as-is (v0.6+), "
+            f"got {len(stations)} stations"
+        )
 
 
 class TestHandlerRevolve:

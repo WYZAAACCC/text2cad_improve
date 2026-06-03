@@ -69,7 +69,7 @@ def assemble_raw_gcad_document(
       - components with owner_dialect
       - node op_version from OperationSpec
       - node outputs from OperationSpec.output_types
-      - simple linear solid-chain wiring
+      - typed linear chain wiring (solid, curve, frame, profile, sketch)
       - root_node references
     """
     if document_id is None:
@@ -105,7 +105,12 @@ def assemble_raw_gcad_document(
         "op_version (from OperationSpec)", "outputs", "linear wiring",
     ]
 
-    # Per-component: track last solid-producing node for linear wiring
+    # Per-component per-type: track last output for typed wiring.
+    # last_output_by_type[component_id][output_type] = (producer_node_id, output_name)
+    last_output_by_type: dict[str, dict[str, tuple[str, str]]] = {
+        c.component_id: {} for c in feature_sequence.components
+    }
+    # Still track last solid separately for root_node assignment
     last_solid: dict[str, str | None] = {c.component_id: None for c in feature_sequence.components}
 
     for node_plan in feature_sequence.node_sequence:
@@ -114,8 +119,8 @@ def assemble_raw_gcad_document(
         # Build outputs from OperationSpec
         outputs = _build_outputs(node_plan, dialect_registry)
 
-        # Build inputs (linear solid chain)
-        inputs = _build_inputs(node_plan, last_solid, dialect_registry)
+        # Build inputs — typed wiring from last_output_by_type
+        inputs = _build_inputs(node_plan, last_output_by_type, dialect_registry)
 
         # Resolve op_version from OperationSpec
         op_version = _resolve_op_version(node_plan, dialect_registry)
@@ -136,13 +141,17 @@ def assemble_raw_gcad_document(
 
         nodes.append(node)
 
-        # Track last solid output
+        # Track all output types for typed wiring
+        cid = node_plan.component_id
         for o in outputs:
-            if o["type"] == "solid":
-                last_solid[node_plan.component_id] = node_plan.node_id
-                break
+            otype = o["type"]
+            oname = o["name"]
+            last_output_by_type[cid][otype] = (node_plan.node_id, oname)
+            # Track solid specifically for root_node
+            if otype == "solid":
+                last_solid[cid] = node_plan.node_id
 
-    # ── Fill root_node on each component ──
+    # ── Fill root_node on each component (last solid-producing node) ──
     for comp in components:
         cid = comp["id"]
         last = last_solid.get(cid)
@@ -217,15 +226,19 @@ def _build_outputs(
 
 def _build_inputs(
     node_plan: Any,  # NodePlanDraft
-    last_solid: dict[str, str | None],
+    last_output_by_type: dict[str, dict[str, tuple[str, str]]],
     dialect_registry,
 ) -> list[dict[str, str]]:
-    """Build simple linear chain inputs.
+    """Build typed linear chain inputs from last_output_by_type.
 
-    If the operation has no input_types, return empty.
-    If it expects 1 solid input and there's a previous solid node, wire it.
-    Otherwise return empty (LLM would need to wire it, but simple chains
-    are auto-wired).
+    For each required input_type in OperationSpec.input_types, look up
+    the most recent matching output in the same component and auto-wire it.
+
+    This handles:
+      - solid → solid (standard chain)
+      - curve → sweep_profile (loft_sweep)
+      - frame → downstream consumption
+      - profile/sketch → downstream ops
     """
     dialect = dialect_registry.get(node_plan.dialect)
     if dialect is None:
@@ -233,20 +246,23 @@ def _build_inputs(
 
     try:
         spec = dialect.get_op_spec(node_plan.op, node_plan.op_version)
-        input_count = len(spec.input_types)
     except Exception:
-        input_count = 0
-
-    if input_count == 0:
         return []
 
-    # Simple linear chain: if exactly 1 solid input expected
-    if input_count == 1:
-        prev = last_solid.get(node_plan.component_id)
-        if prev:
-            return [{"node": prev, "output": "body"}]
+    if not spec.input_types:
+        return []
 
-    return []
+    inputs = []
+    cid = node_plan.component_id
+    type_registry = last_output_by_type.get(cid, {})
+
+    for required_type in spec.input_types:
+        prev = type_registry.get(required_type)
+        if prev is not None:
+            producer_node, output_name = prev
+            inputs.append({"node": producer_node, "output": output_name})
+
+    return inputs
 
 
 def _resolve_op_version(

@@ -145,10 +145,19 @@ def handle_helix_sweep(node, ctx) -> dict:
     height = float(params.get("height_mm", 50))
     pitch = float(params.get("pitch_mm", 5))
     profile_r = float(params.get("profile_radius_mm", 2))
+    turns = float(params.get("turns", 5))
     variable = params.get("variable_pitch", False)
 
+    # total_z = pitch * turns; use height if it differs from pitch*turns
+    total_z = height if abs(height - pitch * turns) > 0.01 else pitch * turns
+
     try:
-        # Curvature safety check: profile must fit within the helix curvature
+        # Curvature safety check: profile must fit within the helix curvature.
+        # Known limitation: CadQuery parametricCurve + sweep produces reduced
+        # volume for multi-turn helices. The OCCT MakePipeShell kernel struggles
+        # with spline-based helix paths. Using parametricCurve is more stable
+        # but may produce self-intersecting geometry when profile_r approaches
+        # the minimum curvature radius.
         min_curvature_radius = pitch / (2 * math.pi)
         if profile_r > min_curvature_radius * 0.8:
             ctx.warnings.append(
@@ -163,25 +172,25 @@ def handle_helix_sweep(node, ctx) -> dict:
             end_p = float(params.get("end_pitch_mm", pitch * 2))
             helix = cq.Workplane("XY").parametricCurve(
                 lambda t: (
-                    radius * math.cos(2 * math.pi * t),
-                    radius * math.sin(2 * math.pi * t),
-                    (start_p + (end_p - start_p) * t / 5.0) * t,
+                    radius * math.cos(2 * math.pi * turns * t),
+                    radius * math.sin(2 * math.pi * turns * t),
+                    (start_p + (end_p - start_p) * t / turns) * t,
                 ),
-                N=200,
+                N=max(200, int(turns * 25)),
             )
         else:
-            # Constant pitch helix
-            wire = cq.Workplane("XY").parametricCurve(
+            # Constant pitch helix — parametricCurve for OCCT stability
+            helix = cq.Workplane("XY").parametricCurve(
                 lambda t: (
-                    radius * math.cos(2 * math.pi * t),
-                    radius * math.sin(2 * math.pi * t),
-                    pitch * t,
+                    radius * math.cos(2 * math.pi * turns * t),
+                    radius * math.sin(2 * math.pi * turns * t),
+                    total_z * t,
                 ),
-                N=200,
+                N=max(200, int(turns * 25)),
             )
-            helix = wire
 
-        profile = cq.Workplane("XZ").circle(profile_r)
+        # Profile at helix starting point on XZ plane
+        profile = cq.Workplane("XZ").center(radius, 0).circle(profile_r)
         solid = profile.sweep(helix)
     except Exception as e:
         raise RuntimeError(f"helix_sweep failed on '{node.id}': {e}")

@@ -1,0 +1,5 @@
+RC=0
+STDOUT:
+BUILD_OK
+
+STDERR:

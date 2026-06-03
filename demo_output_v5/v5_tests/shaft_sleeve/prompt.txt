@@ -1,0 +1,10 @@
+传动轴保护轴套, 单位 mm, 参考几何.
+使用 revolve_profile 定义轴套轮廓:
+  station1 r=30 z=0-5 (前端法兰),
+  station2 r=22 z=5-60 (套筒外壁),
+  station3 r=28 z=60-65 (后端法兰).
+内孔: cut_center_bore diameter_mm=16 through_all=true.
+前端法兰 4 个螺栓孔 PCD 44mm: cut_circular_hole_pattern count=4 pcd_mm=44 hole_dia_mm=6.5.
+后端法兰 4 个螺栓孔 PCD 48mm: cut_circular_hole_pattern count=4 pcd_mm=48 hole_dia_mm=6.5.
+前端面环槽: cut_annular_groove side=front inner_dia_mm=44 outer_dia_mm=52 depth_mm=2.
+所有外缘倒角 0.5mm: apply_safe_chamfer distance_mm=0.5 target=all_external_edges.

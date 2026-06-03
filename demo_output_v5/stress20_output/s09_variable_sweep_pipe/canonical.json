@@ -1,0 +1,324 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "b0fe7e77-5a3c-46c3-8e6f-2c4e6d9f8a1c",
+  "part_name": "variable_sweep_pipe",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0",
+      "contract_hash": "sha256:e65e433162c910d28028903e691e48174e56dcc8b400a35f8f9f124adcc6ff17"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "contract_hash": "sha256:1ff66c680d94f60891bf00260f365ffa2a0d213d5571a2366a3f1c27748f5382"
+    }
+  ],
+  "components": [
+    {
+      "id": "pipe_1",
+      "owner_dialect": "loft_sweep",
+      "kind_hint": null,
+      "root_node": "pipe1_sweep",
+      "output_aliases": {}
+    },
+    {
+      "id": "pipe_2",
+      "owner_dialect": "loft_sweep",
+      "kind_hint": null,
+      "root_node": "pipe2_sweep",
+      "output_aliases": {}
+    },
+    {
+      "id": "__assembly__",
+      "owner_dialect": "composition",
+      "kind_hint": null,
+      "root_node": "union_root",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "pipe1_path",
+      "component": "pipe_1",
+      "dialect": "loft_sweep",
+      "op": "create_sweep_path",
+      "op_version": "1.0.0",
+      "phase": "path",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "curve",
+          "type": "curve",
+          "value_id": "curve:pipe_1:pipe1_path:curve"
+        }
+      ],
+      "params": {
+        "path_points": [
+          {
+            "x_mm": 0,
+            "y_mm": 0,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 60,
+            "y_mm": 20,
+            "z_mm": 50
+          },
+          {
+            "x_mm": 80,
+            "y_mm": 0,
+            "z_mm": 100
+          },
+          {
+            "x_mm": 40,
+            "y_mm": -20,
+            "z_mm": 150
+          },
+          {
+            "x_mm": 0,
+            "y_mm": 0,
+            "z_mm": 200
+          }
+        ]
+      },
+      "typed_params": {
+        "path_points": [
+          {
+            "x_mm": 0.0,
+            "y_mm": 0.0,
+            "z_mm": 0.0
+          },
+          {
+            "x_mm": 60.0,
+            "y_mm": 20.0,
+            "z_mm": 50.0
+          },
+          {
+            "x_mm": 80.0,
+            "y_mm": 0.0,
+            "z_mm": 100.0
+          },
+          {
+            "x_mm": 40.0,
+            "y_mm": -20.0,
+            "z_mm": 150.0
+          },
+          {
+            "x_mm": 0.0,
+            "y_mm": 0.0,
+            "z_mm": 200.0
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_frame"
+      ],
+      "postconditions": []
+    },
+    {
+      "id": "pipe2_path",
+      "component": "pipe_2",
+      "dialect": "loft_sweep",
+      "op": "create_sweep_path",
+      "op_version": "1.0.0",
+      "phase": "path",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "curve",
+          "type": "curve",
+          "value_id": "curve:pipe_2:pipe2_path:curve"
+        }
+      ],
+      "params": {
+        "path_points": [
+          {
+            "x_mm": 0,
+            "y_mm": 0,
+            "z_mm": 200
+          },
+          {
+            "x_mm": -40,
+            "y_mm": 20,
+            "z_mm": 250
+          },
+          {
+            "x_mm": -80,
+            "y_mm": 0,
+            "z_mm": 300
+          }
+        ]
+      },
+      "typed_params": {
+        "path_points": [
+          {
+            "x_mm": 0.0,
+            "y_mm": 0.0,
+            "z_mm": 200.0
+          },
+          {
+            "x_mm": -40.0,
+            "y_mm": 20.0,
+            "z_mm": 250.0
+          },
+          {
+            "x_mm": -80.0,
+            "y_mm": 0.0,
+            "z_mm": 300.0
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_frame"
+      ],
+      "postconditions": []
+    },
+    {
+      "id": "pipe1_sweep",
+      "component": "pipe_1",
+      "dialect": "loft_sweep",
+      "op": "sweep_profile",
+      "op_version": "1.0.0",
+      "phase": "sweep",
+      "inputs": [
+        {
+          "producer_node": "pipe1_path",
+          "producer_component": null,
+          "output": "curve",
+          "resolved_type": "curve"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:pipe_1:pipe1_sweep:body"
+        }
+      ],
+      "params": {
+        "shape": "circle",
+        "radius_mm": 10
+      },
+      "typed_params": {
+        "shape": "circle",
+        "radius_mm": 10.0,
+        "width_mm": 10.0,
+        "height_mm": 10.0
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": []
+    },
+    {
+      "id": "pipe2_sweep",
+      "component": "pipe_2",
+      "dialect": "loft_sweep",
+      "op": "sweep_profile",
+      "op_version": "1.0.0",
+      "phase": "sweep",
+      "inputs": [
+        {
+          "producer_node": "pipe2_path",
+          "producer_component": null,
+          "output": "curve",
+          "resolved_type": "curve"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:pipe_2:pipe2_sweep:body"
+        }
+      ],
+      "params": {
+        "shape": "circle",
+        "radius_mm": 12
+      },
+      "typed_params": {
+        "shape": "circle",
+        "radius_mm": 12.0,
+        "width_mm": 10.0,
+        "height_mm": 10.0
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": []
+    },
+    {
+      "id": "union_root",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "producer_node": null,
+          "producer_component": "pipe_1",
+          "output": "body",
+          "resolved_type": "solid"
+        },
+        {
+          "producer_node": null,
+          "producer_component": "pipe_2",
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:__assembly__:union_root:body"
+        }
+      ],
+      "params": {},
+      "typed_params": {
+        "clean_after": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "boolean_union"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:87bcef2f3c0c951e81590654ead4fb1c3606a5106085971c79666f6ab462961a",
+  "raw_graph_hash": "sha256:9fbbbdf8037f018417ea4c7f8b73a3aaaa9a843f7cfc556a07deb1a2ec4a6cb7"
+}

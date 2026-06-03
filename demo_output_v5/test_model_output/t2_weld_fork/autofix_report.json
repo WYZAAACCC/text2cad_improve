@@ -1,0 +1,25 @@
+{
+  "applied": true,
+  "before_hash": "sha256:414b43e2664d849f2d081694e56b2517af4b82babad9f3aa819c327c65e35af4",
+  "after_hash": "sha256:c7da0565a673e27e4635f928e831034c86ebbaf6fe6791f99e8265bf617f96eb",
+  "entries": [
+    {
+      "rule_id": "fix_dialect_names",
+      "path": "/",
+      "old_value": "<hash:sha256:414b4>",
+      "new_value": "<hash:sha256:c4128>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_dialect_names"
+    },
+    {
+      "rule_id": "fix_phase_ordering",
+      "path": "/",
+      "old_value": "<hash:sha256:c4128>",
+      "new_value": "<hash:sha256:c7da0>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_phase_ordering"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+RC=0
+STDOUT:
+BUILD_OK
+OP:hub_node1/revolve_profile:ok
+OP:hub_node2/cut_center_bore:ok
+OP:hub_node3/apply_safe_chamfer:ok
+OP:base_node1/extrude_rectangle:ok
+OP:base_node2/cut_hole_pattern_linear:ok
+OP:base_node3/add_rib:ok
+OP:base_node4/add_rib:ok
+OP:base_node5/apply_safe_chamfer:ok
+OP:asm_node1/boolean_union:ok
+
+STDERR:

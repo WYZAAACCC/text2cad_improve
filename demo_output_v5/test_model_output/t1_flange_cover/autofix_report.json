@@ -1,0 +1,16 @@
+{
+  "applied": true,
+  "before_hash": "sha256:af2e72120b0679d40b72e63eceafc26a1e1e9c188b1baffc8dbad5dbf773fee1",
+  "after_hash": "sha256:08d597e479540da50b789bc2d184d126a44e09a97babe235e4240a38d1f56ea2",
+  "entries": [
+    {
+      "rule_id": "fix_dialect_names",
+      "path": "/",
+      "old_value": "<hash:sha256:af2e7>",
+      "new_value": "<hash:sha256:08d59>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_dialect_names"
+    }
+  ]
+}

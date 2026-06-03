@@ -1,0 +1,13 @@
+全特征传动轴, 单位 mm, 参考几何.
+使用 revolve_profile 定义 7 段阶梯轮廓:
+  station1 r=18 z=0-12 (左轴肩),
+  station2 r=12 z=12-45 (轴承位),
+  station3 r=16 z=45-55 (定位环),
+  station4 r=10 z=55-95 (中间段),
+  station5 r=14 z=95-105 (齿轮位),
+  station6 r=8 z=105-135 (输出段),
+  station7 r=6 z=135-145 (螺纹段).
+左端中心孔: cut_center_bore diameter_mm=6 through_all=false depth_mm=20.
+齿轮位键槽近似: cut_annular_groove side=front inner_dia_mm=20 outer_dia_mm=24 depth_mm=3.
+螺纹: cut_external_thread nominal_dia_mm=6 pitch_mm=1.0 length_mm=10 standard=ISO_metric thread_class=6g.
+所有轴肩倒角 0.5mm: apply_safe_chamfer distance_mm=0.5 target=all_external_edges.

@@ -1,0 +1,10 @@
+多端口液压集成块, 单位 mm, 参考几何.
+主体: extrude_rectangle width_mm=120 height_mm=100 depth_mm=180 centered=true.
+P口 (顶面): cut_hole diameter_mm=20 position_mm=[0,30] through_all=true axis=Y.
+T口 (顶面): cut_hole diameter_mm=25 position_mm=[0,-30] through_all=true axis=Y.
+A1-A4工作口 (前面): cut_hole diameter_mm=12 position_mm=[-40,0] through_all=false depth_mm=50 axis=Z.
+B1-B4工作口 (后面): cut_hole diameter_mm=12 position_mm=[40,0] through_all=false depth_mm=50 axis=Z.
+先导口 (左侧): cut_hole diameter_mm=6 position_mm=[0,0] through_all=true axis=X.
+测压口 (右侧): cut_hole diameter_mm=4 position_mm=[0,30] through_all=false depth_mm=30 axis=X.
+安装孔x4: cut_hole_pattern_linear hole_dia_mm=11 count_x=2 count_y=2 spacing_x_mm=100 spacing_y_mm=80.
+倒角: apply_safe_chamfer distance_mm=0.3 target=all_external_edges.

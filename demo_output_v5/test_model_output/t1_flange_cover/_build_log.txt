@@ -1,0 +1,10 @@
+RC=0
+STDOUT:
+BUILD_OK
+OP:n_revolve/revolve_profile:ok
+OP:n_center_bore/cut_center_bore:ok
+OP:n_annular_groove/cut_annular_groove:ok
+OP:n_hole_pattern/cut_circular_hole_pattern:ok
+OP:n_edge_treatment/apply_safe_chamfer:ok
+
+STDERR:

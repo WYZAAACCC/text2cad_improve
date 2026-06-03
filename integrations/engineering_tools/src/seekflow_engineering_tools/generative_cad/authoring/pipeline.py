@@ -30,6 +30,12 @@ from seekflow_engineering_tools.generative_cad.authoring.schemas import (
     RoutePlan,
 )
 from seekflow_engineering_tools.generative_cad.llm.models import AuthoringLlmConfig
+from seekflow_engineering_tools.generative_cad.authoring.tool_schemas import (
+    build_feature_sequence_tool_schema,
+    build_node_params_tool_schema,
+    build_repair_patch_tool_schema,
+    build_route_plan_tool_schema,
+)
 from seekflow_engineering_tools.generative_cad.llm.provider import (
     LlmToolCaller,
     ToolCallResult,
@@ -152,7 +158,9 @@ def generate_gcad_from_user_request(
                 messages=[{"role": "user", "content": user_request}],
                 tool_name="emit_route_plan",
                 tool_description="Select CAD route and dialects",
-                tool_schema={},
+                tool_schema=build_route_plan_tool_schema(
+                    dialect_registry=dialect_registry,
+                ),
                 model_config=llm_config.router,
             )
             route_plan = RoutePlan.model_validate(tc_result.arguments)
@@ -202,7 +210,7 @@ def generate_gcad_from_user_request(
                 messages=[{"role": "user", "content": user_request}],
                 tool_name="emit_feature_sequence",
                 tool_description="Plan operation sequence",
-                tool_schema={},
+                tool_schema=build_feature_sequence_tool_schema(ctx),
                 model_config=llm_config.author,
             )
             fs = FeatureSequenceDraft.model_validate(tc_result.arguments)
@@ -231,10 +239,33 @@ def generate_gcad_from_user_request(
                     messages=[{"role": "user", "content": user_request}],
                     tool_name="emit_node_params",
                     tool_description=f"Fill params for {node_plan.op}",
-                    tool_schema={},
+                    tool_schema=build_node_params_tool_schema(node_plan, dialect_registry),
                     model_config=llm_config.author,
                 )
                 np = NodeParamsDraft.model_validate(tc_result.arguments)
+
+                # ── Strict consistency checks ──
+                if np.node_id != node_plan.node_id:
+                    raise ValueError(
+                        f"NodeParamsDraft node_id {np.node_id!r} != "
+                        f"expected {node_plan.node_id!r}"
+                    )
+                if np.dialect != node_plan.dialect:
+                    raise ValueError(
+                        f"NodeParamsDraft dialect {np.dialect!r} != "
+                        f"expected {node_plan.dialect!r}"
+                    )
+                if np.op != node_plan.op:
+                    raise ValueError(
+                        f"NodeParamsDraft op {np.op!r} != "
+                        f"expected {node_plan.op!r}"
+                    )
+                if np.op_version != node_plan.op_version:
+                    raise ValueError(
+                        f"NodeParamsDraft op_version {np.op_version!r} != "
+                        f"expected {node_plan.op_version!r}"
+                    )
+
                 # Validate params against OperationSpec
                 dialect = dialect_registry.get(np.dialect)
                 if dialect:
@@ -297,7 +328,22 @@ def generate_gcad_from_user_request(
             )
             result.failures.append(failure)
 
-    # ── Stage 7: Repair loop ──
+    # ── Stage 7a: Deterministic autofix (before LLM repair) ──
+    if not metrics.validation_success:
+        from seekflow_engineering_tools.generative_cad.authoring.auto_fixer import auto_fix
+        try:
+            fixed_doc = auto_fix(assembly.raw_document, dialect_registry)
+            canonical, report, bundle = validate_and_canonicalize_with_bundle(fixed_doc)
+            if canonical and report.ok:
+                metrics.validation_success = True
+                metrics.canonicalize_success = True
+                result.canonical_document = canonical
+                result.validation_bundle = bundle
+                # Update assembly raw_document to the fixed version
+                assembly.raw_document = fixed_doc
+        except Exception:
+            pass  # autofix failed, fall through to LLM repair
+    # ── Stage 7b: LLM Repair loop ──
     if not metrics.validation_success and repair_caller is not None:
         from seekflow_engineering_tools.generative_cad.repair.governor import (
             RepairStateV2,
@@ -348,7 +394,7 @@ def generate_gcad_from_user_request(
                     messages=[{"role": "user", "content": str(current_doc)}],
                     tool_name="emit_repair_patch",
                     tool_description="Local repair patch",
-                    tool_schema={},
+                    tool_schema=build_repair_patch_tool_schema(),
                     model_config=llm_config.repair,
                 )
                 if tc_result.arguments.get("give_up"):

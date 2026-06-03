@@ -1,0 +1,8 @@
+带座轴承装配, 单位 mm, 参考几何.
+组件 'housing' (axisymmetric): revolve_profile 定义轴承座圈:
+  station1 r=35 z=0-20 (底座法兰), station2 r=28 z=20-45 (座圈外壁), station3 r=20 z=45-46 (内缘).
+  cut_center_bore diameter_mm=30 through_all=true.
+组件 'base' (sketch_extrude): extrude_rectangle width_mm=120 height_mm=80 depth_mm=15 centered=true.
+  cut_hole_pattern_linear hole_dia_mm=10 count_x=2 count_y=2 spacing_x_mm=90 spacing_y_mm=50.
+装配 '__assembly__' (composition): boolean_union 合并 housing 和 base.
+boolean_union inputs: [{component: housing, output: body}, {component: base, output: body}].

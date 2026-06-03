@@ -1,0 +1,6 @@
+机器人腕部壳体, 单位 mm, 参考几何.
+revolve_profile 薄壁圆筒:
+  station1 r=60 z=0-200 (外壁).
+内腔: cut_center_bore diameter_mm=112 through_all=true (壁厚4mm).
+法兰孔: cut_circular_hole_pattern count=6 pcd_mm=140 hole_dia_mm=9.
+倒角: apply_safe_chamfer distance_mm=0.5 target=all_external_edges.

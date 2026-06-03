@@ -1,0 +1,9 @@
+齿轮箱上盖, 单位 mm, 参考几何.
+主体板: extrude_rectangle width_mm=200 height_mm=140 depth_mm=15 centered=true.
+四周安装法兰孔: cut_hole_pattern_linear hole_dia_mm=9 count_x=2 count_y=2 spacing_x_mm=170 spacing_y_mm=110 through_all=true.
+中央观察窗开口: cut_rectangular_pocket width_mm=100 height_mm=70 depth_mm=15 centered=true.
+观察窗周围加强框: add_rectangular_boss width_mm=110 height_mm=80 depth_mm=5 position_mm=[0,0,7.5] centered=true.
+纵向加强筋 ×2: add_rib thickness_mm=6 height_mm=12 length_mm=120 position_mm=[-40,0,7.5] direction=Y.
+  和 add_rib thickness_mm=6 height_mm=12 length_mm=120 position_mm=[40,0,7.5] direction=Y.
+横向加强筋: add_rib thickness_mm=6 height_mm=12 length_mm=80 position_mm=[0,0,7.5] direction=X.
+所有边缘圆角 2mm: apply_safe_fillet radius_mm=2 target=all_external_edges.

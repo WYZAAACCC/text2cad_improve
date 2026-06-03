@@ -1,0 +1,7 @@
+L型安装支架, 单位 mm, 参考几何.
+底板: extrude_rectangle width_mm=100 height_mm=80 depth_mm=10 centered=true.
+底板4个沉头安装孔: cut_hole_pattern_linear hole_dia_mm=9 count_x=2 count_y=2 spacing_x_mm=80 spacing_y_mm=60.
+立板加强筋: add_rib thickness_mm=8 height_mm=40 length_mm=60 position_mm=[0,0,5] direction=Y.
+左右两个定位孔: cut_hole diameter_mm=6 position_mm=[-35,0] through_all=true.
+  cut_hole diameter_mm=6 position_mm=[35,0] through_all=true.
+所有边缘圆角 1.5mm: apply_safe_fillet radius_mm=1.5 target=all_external_edges.

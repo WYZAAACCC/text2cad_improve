@@ -1,0 +1,9 @@
+薄壁加强筋壳体, 单位 mm, 参考几何.
+主体: extrude_rectangle width_mm=200 height_mm=150 depth_mm=100 centered=true.
+中心腔体: cut_rectangular_pocket width_mm=180 height_mm=130 depth_mm=90 centered=true.
+顶部开口: cut_rectangular_pocket width_mm=120 height_mm=80 depth_mm=5 centered=true.
+外壳抽壳: shell_body thickness_mm=3.
+内筋x2: add_rib thickness_mm=4 height_mm=20 length_mm=100 position_mm=[-40,0,20] direction=Y.
+  add_rib thickness_mm=4 height_mm=20 length_mm=100 position_mm=[40,0,20] direction=Y.
+安装孔: cut_hole_pattern_linear hole_dia_mm=8 count_x=2 count_y=2 spacing_x_mm=160 spacing_y_mm=110.
+圆角: apply_safe_fillet radius_mm=2 target=all_external_edges.

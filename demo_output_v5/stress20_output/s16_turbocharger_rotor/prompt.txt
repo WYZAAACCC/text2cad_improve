@@ -1,0 +1,15 @@
+涡轮增压器转子轴, 单位 mm, 参考几何.
+使用 revolve_profile 定义 10 段复杂轮廓:
+  station1 r=35 z=0-8 (压气机叶轮安装面),
+  station2 r=25 z=8-20 (轴肩),
+  station3 r=18 z=20-45 (前轴承位),
+  station4 r=22 z=45-50 (止推环),
+  station5 r=15 z=50-85 (中间轴段),
+  station6 r=20 z=85-95 (密封环台),
+  station7 r=12 z=95-130 (后轴承位),
+  station8 r=16 z=130-140 (涡轮安装面),
+  station9 r=28 z=140-150 (涡轮背板),
+  station10 r=20 z=150-160 (锁紧螺纹段).
+两端中心孔: cut_center_bore diameter_mm=5 through_all=true.
+锁紧螺纹: cut_external_thread nominal_dia_mm=20 pitch_mm=2.5 length_mm=10 standard=ISO_metric thread_class=6g.
+所有轴肩倒角 0.3mm: apply_safe_chamfer distance_mm=0.3 target=all_external_edges.

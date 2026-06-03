@@ -1,0 +1,7 @@
+十字交叉筋加强箱体, 单位 mm, 参考几何.
+底板: extrude_rectangle width_mm=250 height_mm=180 depth_mm=20 centered=true.
+中心减重腔: cut_rectangular_pocket width_mm=200 height_mm=130 depth_mm=12 centered=true.
+纵筋x6 (Y方向, 间距25mm): add_rib thickness_mm=5 height_mm=16 length_mm=120 position_mm=[-60,0,0] direction=Y.
+横筋x6 (X方向, 间距25mm): add_rib thickness_mm=5 height_mm=16 length_mm=160 position_mm=[0,-60,0] direction=X.
+安装孔: cut_hole_pattern_linear hole_dia_mm=10 count_x=2 count_y=2 spacing_x_mm=210 spacing_y_mm=140.
+圆角: apply_safe_fillet radius_mm=2 target=all_external_edges.

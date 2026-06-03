@@ -1,0 +1,325 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "turbocharger-rotor-shaft-001",
+  "part_name": "turbocharger_rotor_shaft",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+    }
+  ],
+  "components": [
+    {
+      "id": "shaft",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": null,
+      "root_node": "thread_op",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "revolve_op",
+      "component": "shaft",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:shaft:revolve_op:body"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame",
+          "value_id": "frame:shaft:revolve_op:outer_frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 35,
+            "z_front_mm": 0,
+            "z_rear_mm": 8
+          },
+          {
+            "r_mm": 25,
+            "z_front_mm": 8,
+            "z_rear_mm": 20
+          },
+          {
+            "r_mm": 18,
+            "z_front_mm": 20,
+            "z_rear_mm": 45
+          },
+          {
+            "r_mm": 22,
+            "z_front_mm": 45,
+            "z_rear_mm": 50
+          },
+          {
+            "r_mm": 15,
+            "z_front_mm": 50,
+            "z_rear_mm": 85
+          },
+          {
+            "r_mm": 20,
+            "z_front_mm": 85,
+            "z_rear_mm": 95
+          },
+          {
+            "r_mm": 12,
+            "z_front_mm": 95,
+            "z_rear_mm": 130
+          },
+          {
+            "r_mm": 16,
+            "z_front_mm": 130,
+            "z_rear_mm": 140
+          },
+          {
+            "r_mm": 28,
+            "z_front_mm": 140,
+            "z_rear_mm": 150
+          },
+          {
+            "r_mm": 20,
+            "z_front_mm": 150,
+            "z_rear_mm": 160
+          }
+        ]
+      },
+      "typed_params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 35.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 8.0,
+            "label": null
+          },
+          {
+            "r_mm": 25.0,
+            "z_front_mm": 8.0,
+            "z_rear_mm": 20.0,
+            "label": null
+          },
+          {
+            "r_mm": 18.0,
+            "z_front_mm": 20.0,
+            "z_rear_mm": 45.0,
+            "label": null
+          },
+          {
+            "r_mm": 22.0,
+            "z_front_mm": 45.0,
+            "z_rear_mm": 50.0,
+            "label": null
+          },
+          {
+            "r_mm": 15.0,
+            "z_front_mm": 50.0,
+            "z_rear_mm": 85.0,
+            "label": null
+          },
+          {
+            "r_mm": 20.0,
+            "z_front_mm": 85.0,
+            "z_rear_mm": 95.0,
+            "label": null
+          },
+          {
+            "r_mm": 12.0,
+            "z_front_mm": 95.0,
+            "z_rear_mm": 130.0,
+            "label": null
+          },
+          {
+            "r_mm": 16.0,
+            "z_front_mm": 130.0,
+            "z_rear_mm": 140.0,
+            "label": null
+          },
+          {
+            "r_mm": 28.0,
+            "z_front_mm": 140.0,
+            "z_rear_mm": 150.0,
+            "label": null
+          },
+          {
+            "r_mm": 20.0,
+            "z_front_mm": 150.0,
+            "z_rear_mm": 160.0,
+            "label": null
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid",
+        "creates_frame"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "center_bore_op",
+      "component": "shaft",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "revolve_op",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:shaft:center_bore_op:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 5,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 5.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "chamfer_op",
+      "component": "shaft",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "producer_node": "center_bore_op",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:shaft:chamfer_op:body"
+        }
+      ],
+      "params": {
+        "distance_mm": 0.3,
+        "target": "all_external_edges"
+      },
+      "typed_params": {
+        "distance_mm": 0.3,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "modifies_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "thread_op",
+      "component": "shaft",
+      "dialect": "axisymmetric",
+      "op": "cut_external_thread",
+      "op_version": "1.0.0",
+      "phase": "thread",
+      "inputs": [
+        {
+          "producer_node": "chamfer_op",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:shaft:thread_op:body"
+        }
+      ],
+      "params": {
+        "nominal_dia_mm": 20,
+        "pitch_mm": 2.5,
+        "length_mm": 10,
+        "standard": "ISO_metric",
+        "thread_class": "6g",
+        "start_z_mm": 150,
+        "start_angle_deg": 0
+      },
+      "typed_params": {
+        "nominal_dia_mm": 20.0,
+        "pitch_mm": 2.5,
+        "length_mm": 10.0,
+        "standard": "ISO_metric",
+        "thread_class": "6g",
+        "start_z_mm": 150.0,
+        "start_angle_deg": 0.0
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:486cc9bb4434d35ba8e86c01ea89998047da43e9920db3f23f26339494254e6a",
+  "raw_graph_hash": "sha256:683837ad97eb4966980bd8638ad1f1dfa118b6d1f6e03e4b1c1bd4cfc41f1f6e"
+}

@@ -1,0 +1,9 @@
+压缩螺旋弹簧, 单位 mm, 参考几何.
+使用 helix_sweep 创建弹簧:
+  radius_mm=15 (中径30mm),
+  height_mm=80 (自由长度),
+  pitch_mm=10 (节距),
+  profile_radius_mm=2 (簧丝直径4mm),
+  turns=8 (8圈).
+所有节点在同一组件中, owner_dialect=loft_sweep.
+注意: 这是helix_sweep操作, 不是sweep_profile。

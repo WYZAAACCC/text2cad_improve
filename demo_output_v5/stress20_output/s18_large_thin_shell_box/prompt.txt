@@ -1,0 +1,8 @@
+大型薄壁电子设备壳体, 单位 mm, 参考几何.
+主体: extrude_rectangle width_mm=400 height_mm=300 depth_mm=150 centered=true.
+内部腔体: cut_rectangular_pocket width_mm=380 height_mm=280 depth_mm=140 centered=true.
+薄壁抽壳: shell_body thickness_mm=2.
+底面法兰: add_rectangular_boss width_mm=420 height_mm=320 depth_mm=8 position_mm=[0,0,-71] centered=true.
+法兰安装孔: cut_hole_pattern_linear hole_dia_mm=6 count_x=3 count_y=3 spacing_x_mm=180 spacing_y_mm=130.
+顶部开口: cut_rectangular_pocket width_mm=200 height_mm=150 depth_mm=5 centered=true.
+圆角: apply_safe_fillet radius_mm=3 target=all_external_edges.

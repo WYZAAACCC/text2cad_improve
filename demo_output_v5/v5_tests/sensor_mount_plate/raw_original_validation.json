@@ -1,0 +1,31 @@
+{
+  "ok": true,
+  "stage": "complete",
+  "issues": [
+    {
+      "code": "se_boss_outside_base",
+      "message": "boss (30.0x25.0 at 0.0,40.0) extends outside base (±80.0, ±50.0)",
+      "severity": "warning",
+      "stage": "geometry_preflight",
+      "node_id": "n_boss",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "registry",
+    "params",
+    "ownership",
+    "graph",
+    "typecheck",
+    "phase",
+    "composition",
+    "safety",
+    "canonicalize",
+    "dialect_semantics",
+    "geometry_preflight"
+  ]
+}

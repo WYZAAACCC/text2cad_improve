@@ -26,7 +26,7 @@ class RevolveProfileParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     axis: Literal["Z"] = "Z"
-    profile_stations: list[ProfileStation] = Field(min_length=2)
+    profile_stations: list[ProfileStation] = Field(min_length=1)
 
 
 class CutCenterBoreParams(BaseModel):
