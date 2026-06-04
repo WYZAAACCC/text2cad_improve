@@ -1,0 +1,22 @@
+{
+  "part_intent": {
+    "object_type": "helical_coil_spring",
+    "dominant_geometry": "helical_sweep",
+    "engineering_domain": "mechanical_spring"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0",
+      "reason": "A helical coil spring is a helical sweep of a circular wire profile along a helical path. The loft_sweep dialect supports helix and sweep operations which can generate this geometry."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "This is reference geometry only, not certified or manufacturing-ready.",
+    "Helical spring generation via sweep/helix operations; no structural validation is performed."
+  ]
+}

@@ -30,7 +30,16 @@ def _store_solid(node: CanonicalNode, ctx: RuntimeContext, obj) -> str:
 
 
 def _degraded_store(node: CanonicalNode, ctx: RuntimeContext, original_body, op_name: str) -> str:
-    """Store original body when operation fails — logs warning, preserves geometry."""
+    """Store original body when operation fails — logs warning, preserves geometry.
+
+    v6.3: Required features hard fail — only optional/decorative features may degrade.
+    """
+    if getattr(node, "required", True):
+        raise RuntimeError(
+            f"Required operation '{op_name}' failed on '{node.id}': "
+            f"operation cannot be skipped for required features. "
+            f"Fix the parameters or mark the node as required=False."
+        )
     ctx.warnings.append(
         f"'{op_name}' failed on '{node.id}': returning unmodified solid. "
         f"Part is valid without this operation."
@@ -46,13 +55,26 @@ def handle_translate_solid(node: CanonicalNode, ctx: RuntimeContext) -> dict[str
     body = resolve_input_object(node, ctx, 0)
     vector = node.params.get("vector_mm", (0, 0, 0))
     if not (isinstance(vector, (list, tuple)) and len(vector) == 3):
+        if getattr(node, "required", True):
+            raise ValueError(
+                f"required translate_solid on '{node.id}': "
+                f"invalid vector_mm (expected 3D tuple, got {type(vector).__name__})"
+            )
         ctx.warnings.append(f"translate_solid on '{node.id}': invalid vector, using (0,0,0)")
         vector = (0, 0, 0)
     if all(v == 0 for v in vector):
+        if getattr(node, "required", True):
+            ctx.warnings.append(
+                f"translate_solid on '{node.id}': zero vector — no-op translation"
+            )
         return {"body": _store_solid(node, ctx, body)}  # no-op
     try:
         return {"body": _store_solid(node, ctx, body.translate(vector))}
     except Exception as e:
+        if getattr(node, "required", True):
+            raise RuntimeError(
+                f"required translate_solid failed on '{node.id}': {e}"
+            ) from e
         ctx.warnings.append(f"translate_solid failed on '{node.id}': {e}")
         return {"body": _store_solid(node, ctx, body)}
 
@@ -63,10 +85,18 @@ def handle_rotate_solid(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, s
     axis_dir = node.params.get("axis_dir", (0, 0, 1))
     angle = float(node.params.get("angle_deg", 0))
     if angle == 0:
+        if getattr(node, "required", True):
+            ctx.warnings.append(
+                f"rotate_solid on '{node.id}': angle=0deg — no-op rotation"
+            )
         return {"body": _store_solid(node, ctx, body)}
     # Guard zero axis
     axis = tuple(float(x) for x in axis_dir) if isinstance(axis_dir, (list, tuple)) else (0, 0, 1)
     if all(v == 0 for v in axis):
+        if getattr(node, "required", True):
+            raise ValueError(
+                f"required rotate_solid on '{node.id}': zero axis vector"
+            )
         ctx.warnings.append(f"rotate_solid on '{node.id}': zero axis vector, skipping")
         return {"body": _store_solid(node, ctx, body)}
     try:
@@ -76,14 +106,70 @@ def handle_rotate_solid(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, s
 
 
 def handle_place_component(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
+    """Place a component at the specified position.
+
+    v6.3: Priority order for placement:
+      1. ctx.spatial_placements[target_component_id] (ConstraintResolver output)
+      2. node.params["position_mm"] (LLM-provided fallback)
+
+    The ConstraintResolver runs after all leaf components are built and
+    computes numeric placements from symbolic constraints + actual bboxes.
+    This handler now consumes those computed placements.
+    """
     body = resolve_input_object(node, ctx, 0)
-    pos = node.params.get("position_mm", (0, 0, 0))
-    if all(v == 0 for v in (pos if isinstance(pos, (list, tuple)) else (0, 0, 0))):
-        return {"body": _store_solid(node, ctx, body)}
+
+    # ── v6.3: Preferred path — solver-computed placement ──
+    pos = None
+    placements = getattr(ctx, 'spatial_placements', None)
+    if placements:
+        # Determine target component ID:
+        # 1. Explicit component_id param (v6.3)
+        # 2. producer_component of first input (the solid being placed)
+        target_cid = node.params.get("component_id")
+        if not target_cid and node.inputs:
+            target_cid = node.inputs[0].producer_component
+
+        if target_cid and target_cid in placements:
+            p = placements[target_cid]
+            if not p.is_pending:
+                pos = tuple(p.translation_mm)
+                if p.rotation_deg_xyz and any(v != 0 for v in p.rotation_deg_xyz):
+                    ctx.warnings.append(
+                        f"place_component on '{node.id}': rotation from solver "
+                        f"({p.rotation_deg_xyz}) ignored — rotation not yet "
+                        f"supported in place_component handler"
+                    )
+
+    # ── Fallback: LLM-provided position ──
+    if pos is None:
+        pos = node.params.get("position_mm", (0, 0, 0))
+
+    if not isinstance(pos, (list, tuple)) or len(pos) != 3:
+        raise ValueError(f"place_component requires 3D position, got {pos}")
+
+    pos_f = tuple(float(v) for v in pos)
+
     try:
-        return {"body": _store_solid(node, ctx, body.translate(pos))}
-    except Exception:
+        placed = body.translate(pos_f)
+    except Exception as exc:
+        if getattr(node, "required", True):
+            raise RuntimeError(
+                f"required place_component failed on '{node.id}': {exc}"
+            ) from exc
         return {"body": _degraded_store(node, ctx, body, "place_component")}
+
+    # ── v6.3: Track placed bbox for downstream spatial audit ──
+    target_cid = node.params.get("component_id") or (
+        node.inputs[0].producer_component if node.inputs else None
+    )
+    if target_cid and hasattr(ctx, "placed_component_bboxes"):
+        try:
+            bb = placed.val().BoundingBox() if hasattr(placed, 'val') else placed.BoundingBox()
+            ctx.placed_component_bboxes[target_cid] = bb
+        except Exception:
+            pass
+
+    return {"body": _store_solid(node, ctx, placed)}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -97,9 +183,10 @@ def handle_circular_pattern_component(node: CanonicalNode, ctx: RuntimeContext) 
     start_angle = float(node.params.get("start_angle_deg", 0))
 
     if count <= 1 or radius <= 0:
-        ctx.warnings.append(
-            f"circular_pattern on '{node.id}': count={count} radius={radius} — no pattern, returning original"
-        )
+        msg = f"circular_pattern on '{node.id}': count={count} radius={radius} — invalid params"
+        if getattr(node, "required", True):
+            raise ValueError(msg)
+        ctx.warnings.append(msg)
         return {"body": _store_solid(node, ctx, body)}
 
     # Use native CadQuery array operations for performance
@@ -115,6 +202,10 @@ def handle_circular_pattern_component(node: CanonicalNode, ctx: RuntimeContext) 
             result = result.union(placed)
         return {"body": _store_solid(node, ctx, result)}
     except Exception as e:
+        if getattr(node, "required", True):
+            raise RuntimeError(
+                f"required circular_pattern failed on '{node.id}': {e}"
+            ) from e
         ctx.warnings.append(f"circular_pattern failed on '{node.id}': {e}")
         return {"body": _store_solid(node, ctx, body)}
 
@@ -126,9 +217,10 @@ def handle_linear_pattern_component(node: CanonicalNode, ctx: RuntimeContext) ->
     direction = node.params.get("direction", "X")
 
     if count <= 1 or spacing <= 0:
-        ctx.warnings.append(
-            f"linear_pattern on '{node.id}': count={count} spacing={spacing} — no pattern, returning original"
-        )
+        msg = f"linear_pattern on '{node.id}': count={count} spacing={spacing} — invalid params"
+        if getattr(node, "required", True):
+            raise ValueError(msg)
+        ctx.warnings.append(msg)
         return {"body": _store_solid(node, ctx, body)}
 
     dir_map = {"X": (1, 0, 0), "Y": (0, 1, 0), "Z": (0, 0, 1)}
@@ -141,6 +233,10 @@ def handle_linear_pattern_component(node: CanonicalNode, ctx: RuntimeContext) ->
             result = result.union(body.translate(vec))
         return {"body": _store_solid(node, ctx, result)}
     except Exception as e:
+        if getattr(node, "required", True):
+            raise RuntimeError(
+                f"required linear_pattern failed on '{node.id}': {e}"
+            ) from e
         ctx.warnings.append(f"linear_pattern failed on '{node.id}': {e}")
         return {"body": _store_solid(node, ctx, body)}
 
@@ -211,42 +307,41 @@ def handle_boolean_union(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, 
     except Exception:
         pass
 
-    # ── Attempt 3 (v6.1): Tolerance-expanded fuse ──
-    # For near-tangent/grazing contact, expand one solid slightly
-    # to ensure there is actual geometric overlap for the boolean op
-    margin = ctx.tolerance.linear_mm * 0.5
+    # ── Attempt 3 (v6.3): OCCT fuzzy fuse — no geometry movement ──
+    # Replaces the old translate-margin hack which moved solid B.
+    # Uses SetFuzzyValue() for proper tolerance-based coincidence detection.
     try:
-        b_expanded = b.translate((margin, margin, margin))
-        result = a.fuse(b_expanded)
+        from seekflow_engineering_tools.generative_cad.dialects.geometry_utils.boolean_safe import (
+            boolean_union_safe,
+        )
+        result, _strategy = boolean_union_safe(a, b, ctx.tolerance, allow_compound=False)
         ctx.warnings.append(
-            f"boolean_union: tolerance-expanded fuse succeeded "
-            f"(margin={margin:.3f}mm, clearance={pre.clearance_mm:.3f}mm)"
+            f"boolean_union: fuzzy fuse succeeded "
+            f"(clearance={_fmt_clr(pre.clearance_mm)})"
         )
         return {"body": _store_solid(node, ctx, result)}
     except Exception:
         pass
 
-    # ── Degradation: return first solid with full diagnostic record ──
+    # ── Degradation: HARD FAIL for required boolean_union ──
+    # v6.3: boolean_union is a structurally critical operation.
+    # Silently dropping solid B means the assembly is INCOMPLETE.
+    # This is no longer allowed — we must fail-closed.
     ctx.degraded_features.append({
         "node_id": node.id, "op": "boolean_union",
-        "reason": "union_fuse_tolerance_fuse_all_failed_returning_first_solid",
+        "reason": "all_fuse_strategies_failed",
         "clearance_mm": pre.clearance_mm,
         "lost_volume_mm3": pre.b_volume_mm3,
         "lost_bbox_mm": pre.b_bbox_mm,
         "kept_volume_mm3": pre.a_volume_mm3,
-        "recommendation": (
-            f"Check if solids actually intersect. "
-            f"For concentric cylinders, radial overlap must > "
-            f"{ctx.tolerance.linear_mm:.3f}mm. "
-            f"Consider expanding one solid or adjusting placement."
-        ),
     })
-    ctx.warnings.append(
+    raise RuntimeError(
         f"boolean_union FAILED on '{node.id}': "
-        f"solid B ({_fmt_vol(pre.b_volume_mm3)}) was NOT merged. "
-        f"Assembly is INCOMPLETE. Clearance={_fmt_clr(pre.clearance_mm)}."
+        f"Could not merge solid B ({_fmt_vol(pre.b_volume_mm3)}) with solid A "
+        f"({_fmt_vol(pre.a_volume_mm3)}). "
+        f"Clearance={_fmt_clr(pre.clearance_mm)}. "
+        f"Check for non-intersecting geometry or grazing contact."
     )
-    return {"body": _store_solid(node, ctx, a)}
 
 
 def handle_boolean_cut(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
@@ -266,17 +361,18 @@ def handle_boolean_cut(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, st
         except Exception:
             ctx.degraded_features.append({
                 "node_id": node.id, "op": "boolean_cut",
-                "reason": "cut_failed_returning_unmodified_target",
+                "reason": "cut_failed",
                 "clearance_mm": pre.clearance_mm,
                 "target_volume_mm3": pre.a_volume_mm3,
                 "tool_volume_mm3": pre.b_volume_mm3,
             })
-            ctx.warnings.append(
-                f"boolean_cut FAILED on '{node.id}': cut was NOT applied. "
-                f"Target volume={_fmt_vol(pre.a_volume_mm3)}, "
-                f"Tool volume={_fmt_vol(pre.b_volume_mm3)}."
+            raise RuntimeError(
+                f"boolean_cut FAILED on '{node.id}': "
+                f"cut was NOT applied. "
+                f"Target={_fmt_vol(pre.a_volume_mm3)}, "
+                f"Tool={_fmt_vol(pre.b_volume_mm3)}. "
+                f"Clearance={_fmt_clr(pre.clearance_mm)}."
             )
-            return {"body": _store_solid(node, ctx, target)}
     return {"body": _store_solid(node, ctx, result)}
 
 

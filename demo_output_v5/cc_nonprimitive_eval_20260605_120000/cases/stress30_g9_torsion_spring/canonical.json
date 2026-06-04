@@ -1,0 +1,85 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "torsion-spring-001",
+  "part_name": "torsion_spring",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0",
+      "contract_hash": "sha256:e65e433162c910d28028903e691e48174e56dcc8b400a35f8f9f124adcc6ff17"
+    }
+  ],
+  "components": [
+    {
+      "id": "spring_body",
+      "owner_dialect": "loft_sweep",
+      "kind_hint": null,
+      "root_node": "helix_1",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "helix_1",
+      "component": "spring_body",
+      "dialect": "loft_sweep",
+      "op": "helix_sweep",
+      "op_version": "1.0.0",
+      "phase": "helix",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:spring_body:helix_1:body"
+        }
+      ],
+      "params": {
+        "radius_mm": 25,
+        "height_mm": 120,
+        "pitch_mm": 8,
+        "profile_radius_mm": 3,
+        "turns": 15
+      },
+      "typed_params": {
+        "radius_mm": 25.0,
+        "height_mm": 120.0,
+        "pitch_mm": 8.0,
+        "profile_radius_mm": 3.0,
+        "turns": 15.0,
+        "variable_pitch": false,
+        "start_pitch_mm": null,
+        "end_pitch_mm": null
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": []
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:0f82e1ecdca064147607721dd2368c7fce8d42f5c7a27bb2183f6b85f7f524eb",
+  "raw_graph_hash": "sha256:dc280eb05cd231dc8553aecb23444733e2494dcd9a2c736fe7456e3ade384ffb"
+}

@@ -194,6 +194,10 @@ def handle_cut_profile(node, ctx) -> dict:
     try:
         result = target.cut(wp.extrude(cut_depth))
     except Exception as e:
+        if getattr(node, "required", True):
+            raise RuntimeError(
+                f"required cut_profile failed on '{node.id}': {e}"
+            ) from e
         ctx.warnings.append(f"cut_profile failed on '{node.id}': {e}. Returning unmodified target.")
         result = target
     handle = SolidHandle(id=f"solid:{cid}:{node.id}:body", producer_node=node.id, component_id=cid)

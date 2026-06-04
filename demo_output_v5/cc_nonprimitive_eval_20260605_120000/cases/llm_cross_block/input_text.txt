@@ -1,0 +1,1 @@
+Design a 100x100x100mm cube with holes on all six faces. Top face: one 20mm diameter through hole at center. Bottom face: one 15mm hole offset (20,0) from center. Front face: two 10mm holes spaced 40mm apart. Back face: one 12mm hole at center. Left face: one 8mm hole. Right face: one 8mm hole.

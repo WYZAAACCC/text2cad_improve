@@ -1,0 +1,255 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "reference_geometry",
+    "document_id": "d4a1b2c3-8e5f-4a7d-9c0e-3f1b2d6a8e4c",
+    "part_name": "volute_assembly",
+    "selected_dialects": [
+      {
+        "dialect": "axisymmetric",
+        "version": "0.2.0",
+        "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+      },
+      {
+        "dialect": "sketch_extrude",
+        "version": "0.2.0",
+        "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+      },
+      {
+        "dialect": "composition",
+        "version": "0.2.0",
+        "contract_hash": "sha256:1ff66c680d94f60891bf00260f365ffa2a0d213d5571a2366a3f1c27748f5382"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "volute_revolve",
+        "dialect": "axisymmetric",
+        "op": "revolve_profile",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "flange_extrude",
+        "dialect": "sketch_extrude",
+        "op": "extrude_rectangle",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "base_extrude",
+        "dialect": "sketch_extrude",
+        "op": "extrude_rectangle",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "volute_bore",
+        "dialect": "axisymmetric",
+        "op": "cut_center_bore",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "flange_center_hole",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "flange_hole_pattern",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole_pattern_linear",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "base_hole_pattern",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole_pattern_linear",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "union_volute_flange",
+        "dialect": "composition",
+        "op": "boolean_union",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "assembly_final",
+        "dialect": "composition",
+        "op": "boolean_union",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "volute_hole_pattern",
+        "dialect": "axisymmetric",
+        "op": "cut_circular_hole_pattern",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "volute_cleanup",
+        "dialect": "axisymmetric",
+        "op": "apply_safe_chamfer",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:20784094458f51a2ccd1c8a08526bf8fe13dce2e1a7c10cf7bd861eb33dbea6b",
+    "canonical_graph_hash": "sha256:22f65b280d7deec71f39690183d42a692a9e75b1c17568022ac749443bc3a891",
+    "paths": {
+      "canonical_ir_path": "<in_memory>",
+      "validation_seed_path": "<in_memory>",
+      "step_path": "cases\\stress30_g4_pump_casing\\output.step",
+      "metadata_path": "cases\\stress30_g4_pump_casing\\metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:eab821db6a5050b01c7c963688ab0ad80399ff452cdbf5b2925dc72e64a7e1c9",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [
+      "boolean_union pre-check on 'union_volute_flange': Near-coincident faces detected (clearance=0.0000mm < minimum 0.2mm). Boolean operation may fail — ensure components are properly separated.",
+      "boolean_union pre-check on 'assembly_final': Near-coincident faces detected (clearance=0.0000mm < minimum 0.2mm). Boolean operation may fail — ensure components are properly separated."
+    ],
+    "degraded_features": [],
+    "operation_metrics": [
+      {
+        "node_id": "volute_revolve",
+        "op": "revolve_profile",
+        "status": "ok"
+      },
+      {
+        "node_id": "volute_bore",
+        "op": "cut_center_bore",
+        "status": "ok"
+      },
+      {
+        "node_id": "volute_hole_pattern",
+        "op": "cut_circular_hole_pattern",
+        "status": "ok"
+      },
+      {
+        "node_id": "volute_cleanup",
+        "op": "apply_safe_chamfer",
+        "status": "ok"
+      },
+      {
+        "node_id": "flange_extrude",
+        "op": "extrude_rectangle",
+        "status": "ok"
+      },
+      {
+        "node_id": "flange_center_hole",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "flange_hole_pattern",
+        "op": "cut_hole_pattern_linear",
+        "status": "ok"
+      },
+      {
+        "node_id": "base_extrude",
+        "op": "extrude_rectangle",
+        "status": "ok"
+      },
+      {
+        "node_id": "base_hole_pattern",
+        "op": "cut_hole_pattern_linear",
+        "status": "ok"
+      },
+      {
+        "node_id": "union_volute_flange",
+        "op": "boolean_union",
+        "status": "ok"
+      },
+      {
+        "node_id": "assembly_final",
+        "op": "boolean_union",
+        "status": "ok"
+      }
+    ],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [
+    "boolean_union pre-check on 'union_volute_flange': Near-coincident faces detected (clearance=0.0000mm < minimum 0.2mm). Boolean operation may fail — ensure components are properly separated.",
+    "boolean_union pre-check on 'assembly_final': Near-coincident faces detected (clearance=0.0000mm < minimum 0.2mm). Boolean operation may fail — ensure components are properly separated."
+  ],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {},
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": false,
+      "stage": "dialect_semantics",
+      "issues": [
+        {
+          "code": "missing_dialect_semantics_report",
+          "message": "No dialect_semantics report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "geometry_preflight": {
+      "ok": false,
+      "stage": "geometry_preflight",
+      "issues": [
+        {
+          "code": "missing_geometry_preflight_report",
+          "message": "No geometry_preflight report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "geometry_postcheck": {
+      "ok": true,
+      "volume_mm3": 2784401.4892687555,
+      "n_solids": 1,
+      "bbox_mm": [
+        250.0000002,
+        240.0,
+        85.0000001000001
+      ],
+      "closed": false,
+      "is_valid_solid": false,
+      "errors": [],
+      "warnings": []
+    }
+  }
+}

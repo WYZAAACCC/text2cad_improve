@@ -1,0 +1,1 @@
+Design a pipe with flanges on both ends. Pipe outer diameter 60mm, inner diameter 50mm, length 300mm. Flanges on both ends: diameter 120mm, thickness 15mm, 6 bolt holes diameter 10mm on PCD 90mm. Flanges are coaxial with the pipe.

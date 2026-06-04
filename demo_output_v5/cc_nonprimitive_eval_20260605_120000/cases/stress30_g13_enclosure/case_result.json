@@ -1,0 +1,14 @@
+{
+  "case_id": "g13_enclosure",
+  "status": "PASS",
+  "step_exists": true,
+  "step_size_bytes": 192748,
+  "volume_mm3": 859298.89,
+  "n_solids": 1,
+  "bbox": "308x208x154",
+  "closed": false,
+  "elapsed_s": 1.1,
+  "warnings": 0,
+  "degraded": 0,
+  "error": null
+}

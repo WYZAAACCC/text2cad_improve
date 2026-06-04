@@ -1,0 +1,5 @@
+四柱支撑框架, 单位mm.
+组件base_plate(sketch_extrude): extrude_rectangle width_mm=400 height_mm=300 depth_mm=20 centered=true. 4安装孔: cut_hole_pattern_linear hole_dia_mm=16 count_x=2 count_y=2 spacing_x_mm=350 spacing_y_mm=250.
+组件pillar(axisymmetric): revolve_profile station1 r=25 z=0-200. 生产4个副本.
+组件top_plate(sketch_extrude): extrude_rectangle width_mm=400 height_mm=300 depth_mm=15 centered=true.
+装配__assembly__(composition): 依次boolean_union(每次2 inputs).

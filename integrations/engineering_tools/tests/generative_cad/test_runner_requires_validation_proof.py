@@ -149,17 +149,20 @@ class TestRunnerRequiresValidationProof:
         assert seed == original  # Seed must not be mutated
 
     def test_builder_harness_generates_validation_seed_json(self, tmp_path):
-        """Builder writes validation seed JSON file."""
+        """v1.0: Builder writes validation seed JSON and calls run_canonical_gcad directly."""
         import inspect
         from seekflow_engineering_tools.generative_cad import builder
         src = inspect.getsource(builder)
-        assert "validation_seed_json" in src
+        # Builder now directly creates validation_seed_path with .validation.json suffix
         assert "validation_seed_path" in src
         assert ".validation.json" in src
+        # Builder imports and calls run_canonical_gcad directly (no subprocess)
+        assert "run_canonical_gcad" in src
 
     def test_builder_harness_passes_validation_seed_json_param(self):
-        """The generated harness includes validation_seed_json parameter."""
+        """v1.0: Builder passes validation_seed to run_canonical_gcad directly."""
         import inspect
         from seekflow_engineering_tools.generative_cad import builder
-        src = inspect.getsource(builder._generate_harness_script)
-        assert "validation_seed_json" in src
+        src = inspect.getsource(builder)
+        # Builder calls run_canonical_gcad with validation_seed parameter
+        assert "validation_seed=" in src or "validation_seed =" in src

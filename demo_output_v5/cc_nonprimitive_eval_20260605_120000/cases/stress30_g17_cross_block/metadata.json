@@ -1,0 +1,222 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "reference_geometry",
+    "document_id": "6face-drill-test-block-001",
+    "part_name": "六面全方向钻孔测试块",
+    "selected_dialects": [
+      {
+        "dialect": "sketch_extrude",
+        "version": "0.2.0",
+        "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+      },
+      {
+        "dialect": "composition",
+        "version": "0.2.0",
+        "contract_hash": "sha256:1ff66c680d94f60891bf00260f365ffa2a0d213d5571a2366a3f1c27748f5382"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "n_base",
+        "dialect": "sketch_extrude",
+        "op": "extrude_rectangle",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_top_hole",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_bottom_hole",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_front_hole",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_back_hole",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_left_hole",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_right_hole",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_mount_holes",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole_pattern_linear",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_chamfer",
+        "dialect": "sketch_extrude",
+        "op": "apply_safe_chamfer",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:51392a798c28eb0aef240255b8359f649b5e994e8bdbddd6565d0ab523350dcf",
+    "canonical_graph_hash": "sha256:2e91fa708bb66d660b3a951f3228b38bdff3a466089d16c456ab48b925fc9435",
+    "paths": {
+      "canonical_ir_path": "<in_memory>",
+      "validation_seed_path": "<in_memory>",
+      "step_path": "cases\\stress30_g17_cross_block\\output.step",
+      "metadata_path": "cases\\stress30_g17_cross_block\\metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:fec6353952393ea705286054282da76ffac1ff78b8f3685e4e683532be7a285b",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [],
+    "degraded_features": [],
+    "operation_metrics": [
+      {
+        "node_id": "n_base",
+        "op": "extrude_rectangle",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_top_hole",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_bottom_hole",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_front_hole",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_back_hole",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_left_hole",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_right_hole",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_mount_holes",
+        "op": "cut_hole_pattern_linear",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_chamfer",
+        "op": "apply_safe_chamfer",
+        "status": "ok"
+      }
+    ],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {},
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": false,
+      "stage": "dialect_semantics",
+      "issues": [
+        {
+          "code": "missing_dialect_semantics_report",
+          "message": "No dialect_semantics report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "geometry_preflight": {
+      "ok": false,
+      "stage": "geometry_preflight",
+      "issues": [
+        {
+          "code": "missing_geometry_preflight_report",
+          "message": "No geometry_preflight report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "geometry_postcheck": {
+      "ok": true,
+      "volume_mm3": 873863.6969512793,
+      "n_solids": 1,
+      "bbox_mm": [
+        100.0,
+        100.0,
+        100.0
+      ],
+      "closed": false,
+      "is_valid_solid": false,
+      "errors": [],
+      "warnings": []
+    }
+  }
+}

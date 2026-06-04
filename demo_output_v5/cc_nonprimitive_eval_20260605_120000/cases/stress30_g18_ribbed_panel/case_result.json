@@ -1,0 +1,14 @@
+{
+  "case_id": "g18_ribbed_panel",
+  "status": "PASS",
+  "step_exists": true,
+  "step_size_bytes": 2502226,
+  "volume_mm3": 2673860.82,
+  "n_solids": 1,
+  "bbox": "550x400x35",
+  "closed": false,
+  "elapsed_s": 9.0,
+  "warnings": 0,
+  "degraded": 0,
+  "error": null
+}

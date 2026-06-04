@@ -1,8 +1,13 @@
-"""Generative CAD builder — v0.8: artifact/metadata consistency, metadata_path in metrics."""
+"""Generative CAD builder — v1.0: direct pipeline call (no subprocess).
+
+v1.0: Replaces subprocess-based harness execution with direct call to
+run_canonical_gcad(). This eliminates the 2000-char truncation of
+warnings/degraded_features and preserves full operation metrics.
+"""
 
 from __future__ import annotations
 
-import json, subprocess, sys, uuid
+import json, uuid
 from pathlib import Path
 
 from seekflow_engineering_tools.cadquery_backend.builder import assert_file_created
@@ -14,6 +19,7 @@ from seekflow_engineering_tools.generative_cad.ir.raw import RawGcadDocument
 from seekflow_engineering_tools.generative_cad.pipeline.metadata_v3 import validate_generative_metadata_v3
 from seekflow_engineering_tools.generative_cad.dialects.default_registry import default_registry
 from seekflow_engineering_tools.generative_cad.validation.pipeline import validate_and_canonicalize_with_bundle
+from seekflow_engineering_tools.generative_cad.pipeline.run import run_canonical_gcad
 
 
 def build_generative_cad_model(
@@ -92,40 +98,57 @@ def build_generative_cad_model(
         encoding="utf-8",
     )
 
-    # Script path with workspace guard
-    script_dir = ensure_inside_workspace(workspace, ".generative_cad_scripts")
-    script_dir.mkdir(parents=True, exist_ok=True)
-    if script_out is not None:
-        script_path = ensure_inside_workspace(workspace, script_out)
-    else:
-        script_path = script_dir / f"run_gcad_{uuid.uuid4().hex[:12]}.py"
-    script_path = Path(script_path)
-    script_path.parent.mkdir(parents=True, exist_ok=True)
-    script_path.write_text(_generate_harness_script(Path(graph_path), validation_seed_path, step_path, meta_path), encoding="utf-8")
-
-    timeout = canonical.constraints.max_runtime_seconds
+    # ── v1.0: Direct pipeline call (replaces subprocess harness) ──
     try:
-        result = subprocess.run([sys.executable, str(script_path)], capture_output=True, text=True, timeout=timeout, cwd=str(step_path.parent))
-    except subprocess.TimeoutExpired:
-        return EngineeringActionResult(ok=False, software="cadquery", action="build_generative_cad",
-            error=f"Generative CAD build timed out after {timeout}s.").model_dump()
+        run_result = run_canonical_gcad(
+            canonical=canonical,
+            out_step=step_path,
+            metadata_path=meta_path,
+            validation_seed=validation_bundle.to_metadata_dict(),
+            canonical_ir_path=graph_path,
+            validation_seed_path=validation_seed_path,
+            require_full_validation_seed=True,
+        )
+    except Exception as exc:
+        import traceback
+        return EngineeringActionResult(
+            ok=False, software="cadquery", action="build_generative_cad",
+            error=f"Runtime execution failed: {exc}\n{traceback.format_exc()[-1000:]}",
+            metrics={
+                "graph_path": str(graph_path),
+                "canonical_graph_hash": canonical.canonical_graph_hash,
+            },
+        ).model_dump()
 
-    stdout_tail = (result.stdout or "")[-2000:]; stderr_tail = (result.stderr or "")[-2000:]
-    build_warnings = [line[len("CQ_WARNING:"):].strip() for line in (result.stdout or "").split("\n") if line.startswith("CQ_WARNING:")]
+    # ── Preserve FULL warnings and diagnostics (no 2000-char truncation) ──
+    build_warnings = list(run_result.warnings) if run_result.warnings else []
+    degraded_features = list(run_result.degraded_features) if run_result.degraded_features else []
+    operation_metrics = list(run_result.operation_metrics) if run_result.operation_metrics else []
 
-    if result.returncode != 0:
-        return EngineeringActionResult(ok=False, software="cadquery", action="build_generative_cad",
-            error=f"Runner failed (rc={result.returncode}). {(result.stderr or '')[:200]}",
-            stdout_tail=stdout_tail, stderr_tail=stderr_tail, warnings=build_warnings,
-            metrics={"graph_path": str(graph_path), "script_path": str(script_path)}).model_dump()
+    if not run_result.ok:
+        return EngineeringActionResult(
+            ok=False, software="cadquery", action="build_generative_cad",
+            error=f"Runtime failed: {run_result.error}",
+            warnings=build_warnings,
+            metrics={
+                "graph_path": str(graph_path),
+                "canonical_graph_hash": canonical.canonical_graph_hash,
+                "degraded_features": degraded_features,
+                "operation_metrics": operation_metrics,
+            },
+        ).model_dump()
 
-    try: assert_file_created(step_path, "STEP")
+    try:
+        assert_file_created(step_path, "STEP")
     except (FileNotFoundError, ValueError) as exc:
-        return EngineeringActionResult(ok=False, software="cadquery", action="build_generative_cad",
-            error=str(exc), stdout_tail=stdout_tail, stderr_tail=stderr_tail,
-            metrics={"graph_path": str(graph_path), "script_path": str(script_path)}).model_dump()
+        return EngineeringActionResult(
+            ok=False, software="cadquery", action="build_generative_cad",
+            error=str(exc),
+            warnings=build_warnings,
+            metrics={"graph_path": str(graph_path)},
+        ).model_dump()
 
-    files_created = [str(step_path), str(graph_path), str(script_path)]
+    files_created = [str(step_path), str(graph_path)]
 
     try: assert_file_created(meta_path, "metadata")
     except (FileNotFoundError, ValueError) as exc:
@@ -179,6 +202,7 @@ def build_generative_cad_model(
                     error="; ".join(i["message"] for i in contract_issues)).model_dump()
     else:
         insp_val = {"ok": None, "skipped": True, "message": "Inspection was disabled."}
+        insp_result = {}  # type: ignore[assignment]
 
     # ── Write full validation proof into metadata ──
     validation_meta = validation_bundle.to_metadata_dict()
@@ -202,15 +226,20 @@ def build_generative_cad_model(
             error="Metadata v3 final validation failed: " + "; ".join(i["message"] for i in meta_validation_final["issues"]),
             files_created=files_created).model_dump()
 
+    insp_data = insp_result if inspect else {}
     metrics = {
-        "graph_path": str(graph_path), "script_path": str(script_path),
+        "graph_path": str(graph_path),
         "step_path": str(step_path), "step_size_bytes": step_path.stat().st_size,
         "feature_count": len(canonical.nodes), "component_count": len(canonical.components),
         "core_validation": report.model_dump(),
         "canonical_graph_hash": canonical.canonical_graph_hash,
         "metadata_validation": meta_validation_final,
-        "inspection": insp_result if inspect else {},
+        "inspection": insp_data,
         "inspection_validation": insp_val,
+        # v1.0: Full runtime diagnostics (no truncation)
+        "warnings": build_warnings,
+        "degraded_features": degraded_features,
+        "operation_metrics": operation_metrics,
     }
     warnings_list = list(build_warnings)
 
@@ -218,7 +247,7 @@ def build_generative_cad_model(
     artifact = build_canonical_step_artifact(
         canonical=canonical, step_path=step_path, metadata_path=meta_path,
         graph_path=str(graph_path), validation_seed_path=str(validation_seed_path),
-        runner_script_path=str(script_path),
+        runner_script_path=str(graph_path),  # graph serves as the "script" path for compat
         validation=validation_meta,
         inspection=insp_val,
     )
@@ -294,27 +323,4 @@ def build_generative_cad_model(
 
     return EngineeringActionResult(ok=True, software="cadquery", action="build_generative_cad",
         message=f"Generative CAD STEP created: {step_path}", files_created=files_created,
-        stdout_tail=stdout_tail, stderr_tail=stderr_tail, metrics=metrics, warnings=warnings_list).model_dump()
-
-
-def _generate_harness_script(graph_path: Path, validation_seed_path: Path, out_step: Path, metadata_path: Path) -> str:
-    """Fixed harness — calls run_canonical_gcad_from_files with validation seed (canonical JSON, NOT raw)."""
-    return f'''
-"""Fixed G-CAD runner harness — auto-generated, no LLM CAD code."""
-import sys
-from seekflow_engineering_tools.generative_cad.pipeline.run import run_canonical_gcad_from_files
-
-result = run_canonical_gcad_from_files(
-    canonical_json=r"{graph_path.as_posix()}",
-    validation_seed_json=r"{validation_seed_path.as_posix()}",
-    out_step=r"{out_step.as_posix()}",
-    metadata_path=r"{metadata_path.as_posix()}",
-)
-if not result.ok:
-    print(f"BUILD FAILED: {{result.error}}", file=sys.stderr)
-    sys.exit(1)
-print(f"STEP exported: {{result.step_path}}")
-print(f"Metadata written: {{result.metadata_path}}")
-for w in result.warnings:
-    print(f"CQ_WARNING: {{w}}")
-'''
+        metrics=metrics, warnings=warnings_list).model_dump()

@@ -24,7 +24,18 @@ def _store_solid(node: CanonicalNode, ctx: RuntimeContext, obj) -> str:
 
 
 def _degrade(node: CanonicalNode, ctx: RuntimeContext, body, op_name: str) -> str:
-    """Return unmodified body with warning when operation fails."""
+    """Return unmodified body with warning when operation fails.
+
+    v6.3: If node.required is True, this is a HARD FAIL — the feature is
+    structurally necessary and cannot be silently skipped.
+    """
+    if getattr(node, "required", True):
+        raise RuntimeError(
+            f"Required operation '{op_name}' failed on '{node.id}': "
+            f"geometry does not support this operation and degradation is not allowed. "
+            f"Fix the parameters or mark the node as required=False with "
+            f"degradation_policy='may_skip_with_warning' if this feature is decorative."
+        )
     ctx.warnings.append(
         f"'{op_name}' skipped on '{node.id}': geometry does not support this operation. "
         f"Part is valid without it."

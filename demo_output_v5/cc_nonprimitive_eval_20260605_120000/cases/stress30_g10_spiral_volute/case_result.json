@@ -1,0 +1,14 @@
+{
+  "case_id": "g10_spiral_volute",
+  "status": "PASS",
+  "step_exists": true,
+  "step_size_bytes": 5934,
+  "volume_mm3": 174938.52,
+  "n_solids": 1,
+  "bbox": "196x196x30",
+  "closed": false,
+  "elapsed_s": 0.4,
+  "warnings": 1,
+  "degraded": 0,
+  "error": null
+}

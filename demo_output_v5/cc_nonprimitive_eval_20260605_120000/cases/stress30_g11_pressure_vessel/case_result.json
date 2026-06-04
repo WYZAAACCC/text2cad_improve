@@ -1,0 +1,14 @@
+{
+  "case_id": "g11_pressure_vessel",
+  "status": "PASS",
+  "step_exists": true,
+  "step_size_bytes": 19779,
+  "volume_mm3": 920847.37,
+  "n_solids": 0,
+  "bbox": "310x310x406",
+  "closed": true,
+  "elapsed_s": 0.2,
+  "warnings": 0,
+  "degraded": 0,
+  "error": null
+}

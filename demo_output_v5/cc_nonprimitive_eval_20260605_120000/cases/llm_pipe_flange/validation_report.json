@@ -1,0 +1,34 @@
+{
+  "ok": false,
+  "stage": "params",
+  "issues": [
+    {
+      "code": "invalid_params",
+      "message": "node 'n_bottom_flange_face' params invalid for op 'cut_annular_groove': 1 validation error for CutAnnularGrooveParams\ninner_dia_mm\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_bottom_flange_face",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n_top_flange_face' params invalid for op 'cut_annular_groove': 1 validation error for CutAnnularGrooveParams\ninner_dia_mm\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_top_flange_face",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "root_terminal",
+    "registry",
+    "params"
+  ]
+}

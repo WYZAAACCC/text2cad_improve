@@ -1,0 +1,14 @@
+{
+  "case_id": "g30_hyd_cylinder",
+  "status": "FAIL_RUNTIME",
+  "step_exists": true,
+  "step_size_bytes": 1663,
+  "volume_mm3": 0.0,
+  "n_solids": 0,
+  "bbox": "inspect_err",
+  "closed": null,
+  "elapsed_s": 0.4,
+  "warnings": 2,
+  "degraded": 0,
+  "error": "geometry postcheck failed: Final geometry has 0 solid bodies (empty); Final geometry has non-positive volume (0.0000 mm³). Possible causes: OCCT boolean failure on thin walls, self-intersecting sweep,"
+}

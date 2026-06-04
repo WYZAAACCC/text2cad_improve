@@ -1,0 +1,14 @@
+{
+  "case_id": "g23_pipe_reducer",
+  "status": "FAIL_RUNTIME",
+  "step_exists": false,
+  "step_size_bytes": 0,
+  "volume_mm3": null,
+  "n_solids": null,
+  "bbox": null,
+  "closed": null,
+  "elapsed_s": 0.1,
+  "warnings": 2,
+  "degraded": 0,
+  "error": "loft_sections failed on 'n_reducer_body_loft': Nothing to loft\nack (most recent call last):\n  File \"E:\\auto_detection_process/integrations/engineering_tools/src\\seekflow_engineering_tools\\generative_c"
+}

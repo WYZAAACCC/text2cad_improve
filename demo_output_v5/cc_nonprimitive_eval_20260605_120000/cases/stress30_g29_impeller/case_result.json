@@ -1,0 +1,14 @@
+{
+  "case_id": "g29_impeller",
+  "status": "PASS",
+  "step_exists": true,
+  "step_size_bytes": 60313,
+  "volume_mm3": 1072137.2,
+  "n_solids": 1,
+  "bbox": "300x300x35",
+  "closed": false,
+  "elapsed_s": 0.2,
+  "warnings": 4,
+  "degraded": 0,
+  "error": null
+}

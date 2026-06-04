@@ -1,0 +1,1 @@
+阶梯轴, 单位mm. revolve_profile 多级台阶: station1 r=25 z=0-30, station2 r=30 z=30-80, station3 r=20 z=80-150. cut_center_bore diameter_mm=10 (中心通孔). apply_safe_chamfer distance_mm=1.0 target=all_external_edges.

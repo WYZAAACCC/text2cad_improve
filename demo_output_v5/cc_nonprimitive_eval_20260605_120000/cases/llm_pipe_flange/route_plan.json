@@ -1,0 +1,27 @@
+{
+  "part_intent": {
+    "object_type": "pipe_with_flanges",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "piping"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "The pipe body and flanges are rotationally symmetric about a central axis. The axisymmetric dialect supports revolve_profile for the pipe body and flanges, cut_center_bore for the inner diameter, and cut_circular_hole_pattern for the bolt holes on the flanges."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "The flanges on both ends are separate coaxial components that need to be combined with the pipe body via boolean union. The composition dialect provides boolean_union and component placement operations."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "This is reference geometry only, not certified or manufacturing-ready.",
+    "No deterministic primitive matches this pipe-with-flanges geometry."
+  ]
+}

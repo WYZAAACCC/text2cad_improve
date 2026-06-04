@@ -1,0 +1,14 @@
+{
+  "case_id": "g16_stepped_pulley",
+  "status": "PASS",
+  "step_exists": true,
+  "step_size_bytes": 58431,
+  "volume_mm3": 1839522.66,
+  "n_solids": 1,
+  "bbox": "240x240x87",
+  "closed": false,
+  "elapsed_s": 0.1,
+  "warnings": 1,
+  "degraded": 0,
+  "error": null
+}

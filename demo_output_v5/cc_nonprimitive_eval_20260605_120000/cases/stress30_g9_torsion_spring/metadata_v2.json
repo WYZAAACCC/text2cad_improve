@@ -1,0 +1,131 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "reference_geometry",
+    "document_id": "torsion-spring-001",
+    "part_name": "torsion_spring",
+    "selected_dialects": [
+      {
+        "dialect": "loft_sweep",
+        "version": "0.2.0",
+        "contract_hash": "sha256:e65e433162c910d28028903e691e48174e56dcc8b400a35f8f9f124adcc6ff17"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "helix_1",
+        "dialect": "loft_sweep",
+        "op": "helix_sweep",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:dc280eb05cd231dc8553aecb23444733e2494dcd9a2c736fe7456e3ade384ffb",
+    "canonical_graph_hash": "sha256:0f82e1ecdca064147607721dd2368c7fce8d42f5c7a27bb2183f6b85f7f524eb",
+    "paths": {
+      "canonical_ir_path": "<in_memory>",
+      "validation_seed_path": "<in_memory>",
+      "step_path": "cases\\stress30_g9_torsion_spring\\output_v2.step",
+      "metadata_path": "cases\\stress30_g9_torsion_spring\\metadata_v2.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:438a014edff1586499fe864cf15df9ea0f1367c6bb28597b9b051d88899ae347",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [
+      "helix_sweep on 'helix_1': segmented sweep (5 segments × 3.0 turns, fused)",
+      "Geometry error on 'helix_1.body': [invalid_shape] Cannot get .val(): 'Solid' object has no attribute 'val'"
+    ],
+    "degraded_features": [],
+    "operation_metrics": [],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [
+    "helix_sweep on 'helix_1': segmented sweep (5 segments × 3.0 turns, fused)",
+    "Geometry error on 'helix_1.body': [invalid_shape] Cannot get .val(): 'Solid' object has no attribute 'val'"
+  ],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {},
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": false,
+      "stage": "dialect_semantics",
+      "issues": [
+        {
+          "code": "missing_dialect_semantics_report",
+          "message": "No dialect_semantics report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "geometry_preflight": {
+      "ok": false,
+      "stage": "geometry_preflight",
+      "issues": [
+        {
+          "code": "missing_geometry_preflight_report",
+          "message": "No geometry_preflight report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "geometry_postcheck": {
+      "ok": true,
+      "volume_mm3": 84831.62134099992,
+      "n_solids": 0,
+      "bbox_mm": [
+        211.5642049328274,
+        201.56570449158693,
+        76.98588134001068
+      ],
+      "closed": false,
+      "is_valid_solid": false,
+      "errors": [],
+      "warnings": [
+        "Solid count is 0 but volume is 84831.62 mm³. This is likely a CadQuery inspection artifact — the STEP file is valid. Suppressing n_solids error."
+      ]
+    }
+  }
+}

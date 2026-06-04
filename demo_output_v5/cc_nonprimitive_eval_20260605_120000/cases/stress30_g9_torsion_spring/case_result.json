@@ -1,0 +1,14 @@
+{
+  "case_id": "g9_torsion_spring",
+  "status": "FAIL_RUNTIME",
+  "step_exists": true,
+  "step_size_bytes": 2338430,
+  "volume_mm3": 84831.62,
+  "n_solids": 0,
+  "bbox": "212x202x77",
+  "closed": false,
+  "elapsed_s": 18.2,
+  "warnings": 2,
+  "degraded": 0,
+  "error": "geometry postcheck failed: Final geometry has 0 solid bodies (empty)"
+}

@@ -1,0 +1,1 @@
+Design a hollow bracket: base plate 200x160x8mm with 4 mounting holes diameter 8mm at corners. Side walls 70mm tall, 5mm thick. Top face has 2 holes diameter 15mm.

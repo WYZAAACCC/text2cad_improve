@@ -1,0 +1,8 @@
+{
+  "case_id": "flange",
+  "status": "PASS",
+  "step_size_bytes": 5620,
+  "volume_mm3": 628318.5,
+  "elapsed_s": 6.4,
+  "error": null
+}

@@ -1,0 +1,14 @@
+{
+  "case_id": "g26_extreme_shaft",
+  "status": "FAIL_NEG_VOLUME",
+  "step_exists": true,
+  "step_size_bytes": 75665,
+  "volume_mm3": -34090.17,
+  "n_solids": 0,
+  "bbox": "16x16x500",
+  "closed": false,
+  "elapsed_s": 0.3,
+  "warnings": 3,
+  "degraded": 0,
+  "error": null
+}

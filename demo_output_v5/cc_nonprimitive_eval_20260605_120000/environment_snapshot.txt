@@ -1,0 +1,18 @@
+Environment Snapshot — cc_nonprimitive_eval_20260605
+=================================================================
+Timestamp: 2026-06-05T12:00:00+08:00
+Git Commit: 8a1c742a2bcd60e8eafd484d8259e01799bffd18
+Git Branch: main
+Git Status: 19 modified files (v6.3 audit fixes)
+Python: 3.13.5
+OS: Windows 11 Home China 10.0.22631
+CadQuery: 2.7.0 (via OCP)
+Pydantic: 2.13.4
+SolidWorks: TBD (to be detected at runtime)
+LLM Provider: DeepSeek V3 (deepseek_client.py)
+LLM Parameters: model=deepseek-chat, temperature=0.0
+Spatial Frontend: auto_spatial mode
+Repair Loop: enabled, max_attempts=2
+AutoFixer: enabled (SYNTACTIC_ALIAS + SCHEMA_DEFAULT + CONTEXT_SAFE)
+SolidWorks Import: enabled if COM available
+Geometry Inspection: enabled (strict_inspection=True)

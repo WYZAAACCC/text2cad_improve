@@ -139,6 +139,51 @@ def run_canonical_gcad(
                 if c.id != "__assembly__"
             ]
             bboxes = measure_all_component_bboxes(ctx, component_ids)
+
+            # ── v6.3: Build spatial→canonical component ID mapping ──
+            # The spatial graph (from LLM's MechanicalObjectGraphDraft) may
+            # use different component IDs than the canonical document (from
+            # FeatureSequenceDraft). Build a best-effort mapping and remap
+            # constraint entities in-place to bridge the two naming conventions.
+            spatial_to_canonical: dict[str, str] = {}
+            canonical_bbox_keys = set(bboxes.keys())
+            # Step 1: Exact match
+            for constraint in spatial_graph.constraints:
+                for eid in constraint.entities:
+                    if eid in canonical_bbox_keys:
+                        spatial_to_canonical[eid] = eid
+            # Step 2: Case-insensitive match for remaining
+            remaining_spatial = {
+                eid for c in spatial_graph.constraints
+                for eid in c.entities
+                if eid not in spatial_to_canonical
+            }
+            for seid in sorted(remaining_spatial):
+                seid_lower = seid.lower()
+                for cid in canonical_bbox_keys:
+                    if cid.lower() == seid_lower and cid not in spatial_to_canonical.values():
+                        spatial_to_canonical[seid] = cid
+                        break
+            # Step 3: Position-based fallback
+            still_remaining = [eid for eid in remaining_spatial if eid not in spatial_to_canonical]
+            unused_canonical = [cid for cid in component_ids if cid not in spatial_to_canonical.values()]
+            for i, seid in enumerate(still_remaining):
+                if i < len(unused_canonical):
+                    spatial_to_canonical[seid] = unused_canonical[i]
+                    ctx.warnings.append(
+                        f"[spatial] fuzzy ID mapping: '{seid}' → '{unused_canonical[i]}'"
+                    )
+                else:
+                    ctx.warnings.append(
+                        f"[spatial] cannot map entity '{seid}' to any canonical component"
+                    )
+
+            # Remap constraint entities in-place to canonical IDs
+            for constraint in spatial_graph.constraints:
+                constraint.entities = [
+                    spatial_to_canonical.get(eid, eid) for eid in constraint.entities
+                ]
+
             placements, resolver_issues = resolve_placements(spatial_graph, bboxes)
             ctx.spatial_placements = placements
             for issue in resolver_issues:
@@ -192,8 +237,49 @@ def run_canonical_gcad(
 
         _export_final_solid(final_handle_id, ctx)
 
+        # ════════════════════════════════════════════════════════════
+        # v6.3: Geometry postcondition gate (post-STEP export)
+        # ════════════════════════════════════════════════════════════
+        from seekflow_engineering_tools.generative_cad.runtime.geometry_postcheck import (
+            validate_final_geometry,
+            validate_step_post_export,
+        )
+        geo_postcheck = validate_final_geometry(
+            ctx, final_handle_id,
+            expected_body_count=canonical.constraints.expected_body_count,
+        )
+        step_postcheck = validate_step_post_export(out_step, min_size_bytes=200)
+
+        if not geo_postcheck.ok:
+            return GcadRunResult(
+                ok=False,
+                error="geometry postcheck failed: " + "; ".join(geo_postcheck.errors),
+                warnings=ctx.warnings + geo_postcheck.warnings,
+                degraded_features=ctx.degraded_features,
+                operation_metrics=ctx.operation_metrics,
+            )
+        if not step_postcheck.ok:
+            return GcadRunResult(
+                ok=False,
+                error="STEP postcheck failed: " + "; ".join(step_postcheck.errors),
+                warnings=ctx.warnings,
+                degraded_features=ctx.degraded_features,
+                operation_metrics=ctx.operation_metrics,
+            )
+        # ════════════════════════════════════════════════════════════
+
         validation = copy.deepcopy(validation_seed)
         validation["runtime_postconditions"] = runtime_pc
+        validation["geometry_postcheck"] = {
+            "ok": geo_postcheck.ok,
+            "volume_mm3": geo_postcheck.volume_mm3,
+            "n_solids": geo_postcheck.n_solids,
+            "bbox_mm": geo_postcheck.bbox_mm,
+            "closed": geo_postcheck.closed,
+            "is_valid_solid": geo_postcheck.is_valid_solid,
+            "errors": geo_postcheck.errors,
+            "warnings": geo_postcheck.warnings,
+        }
 
         metadata = build_generative_metadata_v3(
             canonical=canonical, ctx=ctx,

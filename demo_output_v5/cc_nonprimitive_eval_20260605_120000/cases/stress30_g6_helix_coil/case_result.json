@@ -1,0 +1,14 @@
+{
+  "case_id": "g6_helix_coil",
+  "status": "FAIL_RUNTIME",
+  "step_exists": true,
+  "step_size_bytes": 3757343,
+  "volume_mm3": 675539.15,
+  "n_solids": 0,
+  "bbox": "561x597x165",
+  "closed": false,
+  "elapsed_s": 35.9,
+  "warnings": 2,
+  "degraded": 0,
+  "error": "geometry postcheck failed: Final geometry has 0 solid bodies (empty)"
+}

@@ -89,6 +89,9 @@ def generate_validate_build_step(
     answer_normalizer_caller=None,
     spatial_user_answers=None,
     spatial_session_state=None,
+    # v6.3: Auto spatial mode — when True, auto-enables spatial frontend
+    # for multi-component cases detected at routing stage
+    auto_spatial: bool = False,
 ) -> AuthoringBuildResult:
     """Execute the full Text → STEP pipeline with staged authoring and audit.
 
@@ -143,8 +146,12 @@ def generate_validate_build_step(
 
     # ════════════════════════════════════════════════════════════
     # v6: Stage 0 — Spatial Frontend (intent resolution)
+    # v6.3: auto_spatial mode — auto-enable when object_graph_caller provided
     # ════════════════════════════════════════════════════════════
-    if enable_spatial_frontend and object_graph_caller is not None:
+    should_run_spatial = (
+        enable_spatial_frontend or (auto_spatial and object_graph_caller is not None)
+    )
+    if should_run_spatial and object_graph_caller is not None:
         try:
             from seekflow_engineering_tools.generative_cad.authoring.spatial.pipeline import (
                 run_spatial_authoring_frontend,

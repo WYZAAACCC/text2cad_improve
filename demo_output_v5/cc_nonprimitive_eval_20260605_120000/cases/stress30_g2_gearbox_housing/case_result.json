@@ -1,0 +1,14 @@
+{
+  "case_id": "g2_gearbox_housing",
+  "status": "PASS",
+  "step_exists": true,
+  "step_size_bytes": 978160,
+  "volume_mm3": 9610218.38,
+  "n_solids": 1,
+  "bbox": "500x475x128",
+  "closed": false,
+  "elapsed_s": 4.3,
+  "warnings": 2,
+  "degraded": 0,
+  "error": null
+}

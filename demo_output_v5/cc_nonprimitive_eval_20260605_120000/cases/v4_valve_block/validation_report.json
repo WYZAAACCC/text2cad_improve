@@ -1,0 +1,55 @@
+{
+  "ok": true,
+  "stage": "complete",
+  "issues": [
+    {
+      "code": "LEGACY_SIDE_HOLE_REQUIRES_3D_POSITION",
+      "message": "Legacy cut_hole node 'n3' uses axis='Y' with 2D position_mm. The Z coordinate is ambiguous and will default to the bounding-box midplane. Use cut_hole_v2 with target_face + center_uv_mm for explicit semantics.",
+      "severity": "warning",
+      "stage": "geometry_preflight",
+      "node_id": "n3",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "LEGACY_SIDE_HOLE_REQUIRES_3D_POSITION",
+      "message": "Legacy cut_hole node 'n4' uses axis='Y' with 2D position_mm. The Z coordinate is ambiguous and will default to the bounding-box midplane. Use cut_hole_v2 with target_face + center_uv_mm for explicit semantics.",
+      "severity": "warning",
+      "stage": "geometry_preflight",
+      "node_id": "n4",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "LEGACY_SIDE_HOLE_REQUIRES_3D_POSITION",
+      "message": "Legacy cut_hole node 'n5' uses axis='X' with 2D position_mm. The Z coordinate is ambiguous and will default to the bounding-box midplane. Use cut_hole_v2 with target_face + center_uv_mm for explicit semantics.",
+      "severity": "warning",
+      "stage": "geometry_preflight",
+      "node_id": "n5",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "root_terminal",
+    "registry",
+    "params",
+    "ownership",
+    "graph",
+    "typecheck",
+    "phase",
+    "composition",
+    "hole_semantics",
+    "safety",
+    "canonicalize",
+    "dialect_semantics",
+    "geometry_preflight"
+  ]
+}

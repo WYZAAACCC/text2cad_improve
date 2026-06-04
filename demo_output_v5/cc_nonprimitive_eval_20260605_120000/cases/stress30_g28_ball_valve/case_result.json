@@ -1,0 +1,14 @@
+{
+  "case_id": "g28_ball_valve",
+  "status": "PASS",
+  "step_exists": true,
+  "step_size_bytes": 342170,
+  "volume_mm3": 124674.6,
+  "n_solids": 0,
+  "bbox": "160x160x160",
+  "closed": false,
+  "elapsed_s": 0.9,
+  "warnings": 3,
+  "degraded": 0,
+  "error": null
+}

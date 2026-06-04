@@ -1,0 +1,195 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "fan-volute-sweep-001",
+  "part_name": "风机螺旋蜗壳扫掠",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0",
+      "contract_hash": "sha256:e65e433162c910d28028903e691e48174e56dcc8b400a35f8f9f124adcc6ff17"
+    }
+  ],
+  "components": [
+    {
+      "id": "volute",
+      "owner_dialect": "loft_sweep",
+      "kind_hint": null,
+      "root_node": "sweep_profile_node",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sweep_path_node",
+      "component": "volute",
+      "dialect": "loft_sweep",
+      "op": "create_sweep_path",
+      "op_version": "1.0.0",
+      "phase": "path",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "curve",
+          "type": "curve",
+          "value_id": "curve:volute:sweep_path_node:curve"
+        }
+      ],
+      "params": {
+        "path_points": [
+          {
+            "x_mm": 50,
+            "y_mm": 0,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 60,
+            "y_mm": 10,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 75,
+            "y_mm": 25,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 95,
+            "y_mm": 45,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 120,
+            "y_mm": 70,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 150,
+            "y_mm": 100,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 185,
+            "y_mm": 135,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 225,
+            "y_mm": 175,
+            "z_mm": 0
+          }
+        ]
+      },
+      "typed_params": {
+        "path_points": [
+          {
+            "x_mm": 50.0,
+            "y_mm": 0.0,
+            "z_mm": 0.0
+          },
+          {
+            "x_mm": 60.0,
+            "y_mm": 10.0,
+            "z_mm": 0.0
+          },
+          {
+            "x_mm": 75.0,
+            "y_mm": 25.0,
+            "z_mm": 0.0
+          },
+          {
+            "x_mm": 95.0,
+            "y_mm": 45.0,
+            "z_mm": 0.0
+          },
+          {
+            "x_mm": 120.0,
+            "y_mm": 70.0,
+            "z_mm": 0.0
+          },
+          {
+            "x_mm": 150.0,
+            "y_mm": 100.0,
+            "z_mm": 0.0
+          },
+          {
+            "x_mm": 185.0,
+            "y_mm": 135.0,
+            "z_mm": 0.0
+          },
+          {
+            "x_mm": 225.0,
+            "y_mm": 175.0,
+            "z_mm": 0.0
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_frame"
+      ],
+      "postconditions": []
+    },
+    {
+      "id": "sweep_profile_node",
+      "component": "volute",
+      "dialect": "loft_sweep",
+      "op": "sweep_profile",
+      "op_version": "1.0.0",
+      "phase": "sweep",
+      "inputs": [
+        {
+          "producer_node": "sweep_path_node",
+          "producer_component": null,
+          "output": "curve",
+          "resolved_type": "curve"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:volute:sweep_profile_node:body"
+        }
+      ],
+      "params": {
+        "shape": "circle",
+        "radius_mm": 15
+      },
+      "typed_params": {
+        "shape": "circle",
+        "radius_mm": 15.0,
+        "width_mm": 10.0,
+        "height_mm": 10.0
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": []
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:ba3eefe6a12a4093c497952ab6450be661736f92d2913aefc30ac2210d86ec13",
+  "raw_graph_hash": "sha256:8b9c2675c3822bd34b6fcff6b4c97b0d52aee9d0b280609e5f08429918dcc83b"
+}

@@ -1,0 +1,1 @@
+液压阀块, 单位mm. extrude_rectangle width_mm=120 height_mm=100 depth_mm=150 centered=true. cut_hole diameter_mm=20 position_mm=[0,0] axis=Z (P口顶面). cut_hole diameter_mm=15 position_mm=[30,20] axis=Y (A口前面). cut_hole diameter_mm=15 position_mm=[-30,20] axis=Y (B口前面). cut_hole diameter_mm=25 position_mm=[0,0] axis=X (进油口右面).

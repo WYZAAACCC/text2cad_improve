@@ -1,0 +1,309 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "reference_geometry",
+    "document_id": "optics-base-001",
+    "part_name": "光学精密仪器基座",
+    "selected_dialects": [
+      {
+        "dialect": "sketch_extrude",
+        "version": "0.2.0",
+        "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "n_base_rect",
+        "dialect": "sketch_extrude",
+        "op": "extrude_rectangle",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_pocket_main",
+        "dialect": "sketch_extrude",
+        "op": "cut_rectangular_pocket",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_hole_prec_1",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_hole_prec_2",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_hole_prec_3",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_hole_prec_4",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_hole_dowel_1",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_hole_dowel_2",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_light_1",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_light_2",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_pattern_fix",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole_pattern_linear",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_rib_1",
+        "dialect": "sketch_extrude",
+        "op": "add_rib",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_rib_2",
+        "dialect": "sketch_extrude",
+        "op": "add_rib",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_rib_3",
+        "dialect": "sketch_extrude",
+        "op": "add_rib",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_rib_4",
+        "dialect": "sketch_extrude",
+        "op": "add_rib",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_edge_treatment_fillet",
+        "dialect": "sketch_extrude",
+        "op": "apply_safe_fillet",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_edge_treatment_chamfer",
+        "dialect": "sketch_extrude",
+        "op": "apply_safe_chamfer",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:c715010799f985f2082985d507173e5d4c5adf5c8539cdb73ac0554b3526935d",
+    "canonical_graph_hash": "sha256:a2af1c30cd7f059a76ecd54456cc6c99147cbaee3d63554d271cd273f43d493e",
+    "paths": {
+      "canonical_ir_path": "<in_memory>",
+      "validation_seed_path": "<in_memory>",
+      "step_path": "cases\\stress30_g19_precision_base\\output.step",
+      "metadata_path": "cases\\stress30_g19_precision_base\\metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:f89fbc448239fd8ad0950ded11c06eaf09e54d38b9bb0f0b76b4192381b0e9cc",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [
+      "Safe fillet skipped on 'n_edge_treatment_fillet': geometry does not support fillet. Part is valid without fillet."
+    ],
+    "degraded_features": [],
+    "operation_metrics": [
+      {
+        "node_id": "n_base_rect",
+        "op": "extrude_rectangle",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_pocket_main",
+        "op": "cut_rectangular_pocket",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_hole_prec_1",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_hole_prec_2",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_hole_prec_3",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_hole_prec_4",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_hole_dowel_1",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_hole_dowel_2",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_pattern_fix",
+        "op": "cut_hole_pattern_linear",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_rib_1",
+        "op": "add_rib",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_rib_2",
+        "op": "add_rib",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_rib_3",
+        "op": "add_rib",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_rib_4",
+        "op": "add_rib",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_light_1",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_light_2",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_edge_treatment_fillet",
+        "op": "apply_safe_fillet",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_edge_treatment_chamfer",
+        "op": "apply_safe_chamfer",
+        "status": "ok"
+      }
+    ],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [
+    "Safe fillet skipped on 'n_edge_treatment_fillet': geometry does not support fillet. Part is valid without fillet."
+  ],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {},
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": false,
+      "stage": "dialect_semantics",
+      "issues": [
+        {
+          "code": "missing_dialect_semantics_report",
+          "message": "No dialect_semantics report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "geometry_preflight": {
+      "ok": false,
+      "stage": "geometry_preflight",
+      "issues": [
+        {
+          "code": "missing_geometry_preflight_report",
+          "message": "No geometry_preflight report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "geometry_postcheck": {
+      "ok": true,
+      "volume_mm3": 1662390.2483510587,
+      "n_solids": 1,
+      "bbox_mm": [
+        305.0,
+        280.00000000000006,
+        41.000000100000065
+      ],
+      "closed": false,
+      "is_valid_solid": false,
+      "errors": [],
+      "warnings": []
+    }
+  }
+}

@@ -1,0 +1,476 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "hydraulic-manifold-001",
+  "part_name": "工程机械液压集成块",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+    }
+  ],
+  "components": [
+    {
+      "id": "manifold",
+      "owner_dialect": "sketch_extrude",
+      "kind_hint": null,
+      "root_node": "n_chamfer",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_extrude",
+      "component": "manifold",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:manifold:n_extrude:body"
+        }
+      ],
+      "params": {
+        "width_mm": 150,
+        "height_mm": 120,
+        "depth_mm": 180,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0
+      },
+      "typed_params": {
+        "width_mm": 150.0,
+        "height_mm": 120.0,
+        "depth_mm": 180.0,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0.0
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_cut_P",
+      "component": "manifold",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n_extrude",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:manifold:n_cut_P:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 25,
+        "position_mm": [
+          0,
+          0
+        ],
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 25.0,
+        "position_mm": [
+          0.0,
+          0.0
+        ],
+        "axis": "Z",
+        "through_all": true,
+        "depth_mm": null
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_cut_A",
+      "component": "manifold",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n_cut_P",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:manifold:n_cut_A:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 20,
+        "position_mm": [
+          50,
+          30
+        ],
+        "axis": "Y",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 20.0,
+        "position_mm": [
+          50.0,
+          30.0
+        ],
+        "axis": "Y",
+        "through_all": true,
+        "depth_mm": null
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_cut_B",
+      "component": "manifold",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n_cut_A",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:manifold:n_cut_B:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 20,
+        "position_mm": [
+          -50,
+          30
+        ],
+        "axis": "Y",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 20.0,
+        "position_mm": [
+          -50.0,
+          30.0
+        ],
+        "axis": "Y",
+        "through_all": true,
+        "depth_mm": null
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_cut_C",
+      "component": "manifold",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n_cut_B",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:manifold:n_cut_C:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 20,
+        "position_mm": [
+          50,
+          -30
+        ],
+        "axis": "Y",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 20.0,
+        "position_mm": [
+          50.0,
+          -30.0
+        ],
+        "axis": "Y",
+        "through_all": true,
+        "depth_mm": null
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_cut_D",
+      "component": "manifold",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n_cut_C",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:manifold:n_cut_D:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 20,
+        "position_mm": [
+          -50,
+          -30
+        ],
+        "axis": "Y",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 20.0,
+        "position_mm": [
+          -50.0,
+          -30.0
+        ],
+        "axis": "Y",
+        "through_all": true,
+        "depth_mm": null
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_cut_T",
+      "component": "manifold",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n_cut_D",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:manifold:n_cut_T:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 15,
+        "position_mm": [
+          0,
+          0
+        ],
+        "axis": "X",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 15.0,
+        "position_mm": [
+          0.0,
+          0.0
+        ],
+        "axis": "X",
+        "through_all": true,
+        "depth_mm": null
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_pattern_mount",
+      "component": "manifold",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_pattern_linear",
+      "op_version": "1.0.0",
+      "phase": "hole_pattern",
+      "inputs": [
+        {
+          "producer_node": "n_cut_T",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:manifold:n_pattern_mount:body"
+        }
+      ],
+      "params": {
+        "hole_dia_mm": 11,
+        "count_x": 2,
+        "count_y": 2,
+        "spacing_x_mm": 120,
+        "spacing_y_mm": 90,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "hole_dia_mm": 11.0,
+        "count_x": 2,
+        "count_y": 2,
+        "spacing_x_mm": 120.0,
+        "spacing_y_mm": 90.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_chamfer",
+      "component": "manifold",
+      "dialect": "sketch_extrude",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "producer_node": "n_pattern_mount",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:manifold:n_chamfer:body"
+        }
+      ],
+      "params": {
+        "distance_mm": 0.5,
+        "target": "all_external_edges"
+      },
+      "typed_params": {
+        "distance_mm": 0.5,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "modifies_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:4696c5980b2872783dc42761da1e73bdc4838e9660fe1361eeb77a3ff0858131",
+  "raw_graph_hash": "sha256:da1209a241e344a347fb5ccaa921bbf3ba4fee20b8d65349f573669fce2a7f2e"
+}

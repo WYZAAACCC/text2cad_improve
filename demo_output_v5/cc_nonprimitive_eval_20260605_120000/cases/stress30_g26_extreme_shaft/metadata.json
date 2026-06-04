@@ -1,0 +1,181 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "reference_geometry",
+    "document_id": "a7e3f1c2-9b4d-4e8a-9f12-d6c8e5a3b0f7",
+    "part_name": "ultra_slender_transmission_shaft",
+    "selected_dialects": [
+      {
+        "dialect": "axisymmetric",
+        "version": "0.2.0",
+        "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "n1",
+        "dialect": "axisymmetric",
+        "op": "revolve_profile",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n2",
+        "dialect": "axisymmetric",
+        "op": "cut_center_bore",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n3",
+        "dialect": "axisymmetric",
+        "op": "apply_safe_chamfer",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n4",
+        "dialect": "axisymmetric",
+        "op": "apply_safe_chamfer",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n5",
+        "dialect": "axisymmetric",
+        "op": "apply_safe_chamfer",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:7a244222fd723faad7624efc5e40df26c287559b7705eee3c2504035452fe6fc",
+    "canonical_graph_hash": "sha256:e432e71a706ccaa24d1e243615666a29c27c6703de792d9eca0855b4bed99023",
+    "paths": {
+      "canonical_ir_path": "<in_memory>",
+      "validation_seed_path": "<in_memory>",
+      "step_path": "cases\\stress30_g26_extreme_shaft\\output.step",
+      "metadata_path": "cases\\stress30_g26_extreme_shaft\\metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:d75651a604e655a03dd082624f4f85121bfc026abcf57078ab4d1508899f54ab",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [
+      "Geometry warning on 'n4.body': [brep_check_error] BRepCheck failed: Result(): incompatible function arguments. The following argument types are supported:\n    1. (self: OCP.OCP.BRepCheck.BRepCheck_Analyzer, theSubS: OCP.OCP.TopoDS.TopoDS_Shape) -> OCP.OCP.BRepCheck.BRepCheck_Result\n\nInvoked with: <OCP.OCP.BRepCheck.BRepCheck_Analyzer object at 0x00000260E2DBE2F0>",
+      "Safe chamfer skipped on 'n5': geometry does not support chamfer. Part is valid without chamfer.",
+      "Geometry warning on 'n5.body': [brep_check_error] BRepCheck failed: Result(): incompatible function arguments. The following argument types are supported:\n    1. (self: OCP.OCP.BRepCheck.BRepCheck_Analyzer, theSubS: OCP.OCP.TopoDS.TopoDS_Shape) -> OCP.OCP.BRepCheck.BRepCheck_Result\n\nInvoked with: <OCP.OCP.BRepCheck.BRepCheck_Analyzer object at 0x00000260E2C0BB70>"
+    ],
+    "degraded_features": [],
+    "operation_metrics": [
+      {
+        "node_id": "n1",
+        "op": "revolve_profile",
+        "status": "ok"
+      },
+      {
+        "node_id": "n2",
+        "op": "cut_center_bore",
+        "status": "ok"
+      },
+      {
+        "node_id": "n3",
+        "op": "apply_safe_chamfer",
+        "status": "ok"
+      },
+      {
+        "node_id": "n4",
+        "op": "apply_safe_chamfer",
+        "status": "ok"
+      },
+      {
+        "node_id": "n5",
+        "op": "apply_safe_chamfer",
+        "status": "ok"
+      }
+    ],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [
+    "Geometry warning on 'n4.body': [brep_check_error] BRepCheck failed: Result(): incompatible function arguments. The following argument types are supported:\n    1. (self: OCP.OCP.BRepCheck.BRepCheck_Analyzer, theSubS: OCP.OCP.TopoDS.TopoDS_Shape) -> OCP.OCP.BRepCheck.BRepCheck_Result\n\nInvoked with: <OCP.OCP.BRepCheck.BRepCheck_Analyzer object at 0x00000260E2DBE2F0>",
+    "Safe chamfer skipped on 'n5': geometry does not support chamfer. Part is valid without chamfer.",
+    "Geometry warning on 'n5.body': [brep_check_error] BRepCheck failed: Result(): incompatible function arguments. The following argument types are supported:\n    1. (self: OCP.OCP.BRepCheck.BRepCheck_Analyzer, theSubS: OCP.OCP.TopoDS.TopoDS_Shape) -> OCP.OCP.BRepCheck.BRepCheck_Result\n\nInvoked with: <OCP.OCP.BRepCheck.BRepCheck_Analyzer object at 0x00000260E2C0BB70>"
+  ],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {},
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": false,
+      "stage": "dialect_semantics",
+      "issues": [
+        {
+          "code": "missing_dialect_semantics_report",
+          "message": "No dialect_semantics report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "geometry_preflight": {
+      "ok": false,
+      "stage": "geometry_preflight",
+      "issues": [
+        {
+          "code": "missing_geometry_preflight_report",
+          "message": "No geometry_preflight report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "geometry_postcheck": {
+      "ok": true,
+      "volume_mm3": 86428.0045072838,
+      "n_solids": 1,
+      "bbox_mm": [
+        16.00000020000688,
+        16.0000002,
+        500.0
+      ],
+      "closed": false,
+      "is_valid_solid": false,
+      "errors": [],
+      "warnings": []
+    }
+  }
+}

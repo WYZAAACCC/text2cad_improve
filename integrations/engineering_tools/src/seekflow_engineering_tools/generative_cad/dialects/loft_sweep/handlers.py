@@ -12,6 +12,17 @@ def _store_solid(node, ctx, obj) -> str:
 
 
 def _degrade(node, ctx, body, op_name: str) -> str:
+    """Return unmodified body with warning when operation fails.
+
+    v6.3: Required features hard fail — only optional/decorative features may degrade.
+    """
+    if getattr(node, "required", True):
+        raise RuntimeError(
+            f"Required operation '{op_name}' failed on '{node.id}': "
+            f"geometry does not support this operation and degradation is not allowed. "
+            f"Fix the parameters or mark the node as required=False with "
+            f"degradation_policy='may_skip_with_warning' if this feature is decorative."
+        )
     ctx.warnings.append(f"'{op_name}' skipped on '{node.id}': operation failed. Part may be incomplete.")
     return _store_solid(node, ctx, body)
 
@@ -125,16 +136,50 @@ def handle_sweep_profile(node, ctx) -> dict:
 
 
 def handle_loft_sections(node, ctx) -> dict:
-    """Loft between multiple cross-sections at different 3D positions."""
+    """Loft between multiple cross-sections at different 3D positions.
+
+    v6.3: Uses native OCP ThruSections (ocp_loft.native_loft_sections) for
+    heterogeneous topology sections (circle→rectangle→circle). Falls back
+    to CadQuery .loft() for backward compatibility.
+    """
     import cadquery as cq
 
     sections = node.params.get("sections", [])
     if len(sections) < 2:
         raise ValueError("Need at least 2 sections for loft")
 
+    ruled = node.params.get("ruled", False)
+    sample_n = int(node.params.get("sample_n", 64))
+    continuity = node.params.get("continuity", "G0")
+
+    continuity_note = ""
+    if continuity in ("G1", "G2"):
+        continuity_note = (
+            f"continuity={continuity} requested but OCCT only supports G0. "
+        )
+
+    # ── v6.3: Preferred path — native OCP loft ──
+    try:
+        from seekflow_engineering_tools.generative_cad.dialects.geometry_utils.ocp_loft import (
+            native_loft_sections,
+        )
+        solid = native_loft_sections(sections, ruled=ruled, sample_n=sample_n)
+        if continuity_note:
+            ctx.warnings.append(
+                f"loft_sections on '{node.id}': {continuity_note}"
+                f"Native OCP loft used."
+            )
+        return {"body": _store_solid(node, ctx, solid)}
+    except Exception as native_exc:
+        ctx.warnings.append(
+            f"loft_sections on '{node.id}': native OCP loft failed "
+            f"({native_exc}), falling back to CadQuery loft"
+        )
+
+    # ── Fallback: CadQuery loft (backward compatible) ──
     try:
         wires = []
-        for i, sec in enumerate(sections):
+        for sec in sections:
             pos = sec.get("position", {})
             x = float(pos.get("x_mm", 0))
             y = float(pos.get("y_mm", 0))
@@ -153,17 +198,10 @@ def handle_loft_sections(node, ctx) -> dict:
                 h = float(sec.get("height_mm", 20))
                 wires.append(wp.ellipse(w / 2.0, h / 2.0))
 
-        ruled = node.params.get("ruled", False)
-        continuity = node.params.get("continuity", "G0")
         solid = cq.Workplane("XY").add(wires).toPending().loft(ruled=ruled)
-        # Note: G1/G2 loft requires CadQuery/OCCT 7.7+ with BRepOffsetAPI_ThruSections.
-        # For now, G0 (default) is always used. The continuity parameter is recorded
-        # for future OCCT versions that support it.
-        if continuity in ("G1", "G2"):
+        if continuity_note:
             ctx.warnings.append(
-                f"loft_sections on '{node.id}': continuity={continuity} requested. "
-                f"Current CadQuery/OCCT only supports G0 (tangent) loft. "
-                f"Result is G0 continuous."
+                f"loft_sections on '{node.id}': {continuity_note}"
             )
     except Exception as e:
         raise RuntimeError(f"loft_sections failed on '{node.id}': {e}")

@@ -1,0 +1,1 @@
+螺旋弹簧15圈, 单位mm. helix_sweep radius_mm=60 height_mm=225 pitch_mm=15 profile_radius_mm=4 turns=15. strict_semantic:false.

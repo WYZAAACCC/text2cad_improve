@@ -22,6 +22,19 @@ def _store_solid(node: CanonicalNode, ctx: RuntimeContext, obj) -> str:
 
 
 def _degrade(node: CanonicalNode, ctx: RuntimeContext, body, op_name: str) -> str:
+    """Return unmodified body with warning when operation fails.
+
+    v6.3: If node.required is True, this is a HARD FAIL — the feature is
+    structurally necessary and cannot be silently skipped. Only optional
+    decorative features (fillet, chamfer) may degrade.
+    """
+    if getattr(node, "required", True):
+        raise RuntimeError(
+            f"Required operation '{op_name}' failed on '{node.id}': "
+            f"geometry does not support this operation and degradation is not allowed. "
+            f"Fix the parameters or mark the node as required=False with "
+            f"degradation_policy='may_skip_with_warning' if this feature is decorative."
+        )
     ctx.warnings.append(
         f"'{op_name}' skipped on '{node.id}': geometry does not support it. "
         f"Part is valid without this operation."
@@ -257,3 +270,203 @@ def handle_se_chamfer(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str
                     f"Part is valid without chamfer."
                 )
     return {"body": _store_solid(node, ctx, body)}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# v6.3: V2 Hole handlers — face-relative, deterministic placement
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def handle_cut_hole_v2(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
+    """Cut a hole using V2 face-relative placement.
+
+    Uses HolePlacementV2 (target_face + center_uv_mm + normal_axis) instead
+    of legacy axis + position_mm. The face resolver converts semantic placement
+    to actual 3D coordinates using the component's bounding box.
+    """
+    body = resolve_input_object(node, ctx, 0)
+    p = node.typed_params if node.typed_params else node.params
+
+    dia = float(p.get("diameter_mm", 0))
+    if dia <= 0:
+        raise ValueError("cut_hole_v2 requires positive diameter_mm")
+
+    placement_raw = p.get("placement")
+    if placement_raw is None:
+        raise ValueError("cut_hole_v2 requires placement")
+
+    # Normalize to HolePlacementV2 model
+    from seekflow_engineering_tools.generative_cad.ir.geometry_semantics import (
+        HolePlacementV2,
+    )
+    if isinstance(placement_raw, dict):
+        placement = HolePlacementV2.model_validate(placement_raw)
+    else:
+        placement = placement_raw
+
+    from seekflow_engineering_tools.generative_cad.dialects.geometry_utils.hole_placement import (
+        resolve_face_hole_placement,
+    )
+    from seekflow_engineering_tools.generative_cad.dialects.geometry_utils.ocp_cylinder import (
+        make_cylinder_cutter,
+    )
+
+    bb = body.val().BoundingBox()
+    resolved = resolve_face_hole_placement(placement, bb)
+
+    # Determine cutter length and placement mode
+    if placement.through_mode == "blind":
+        if placement.depth_mm is None:
+            raise ValueError("blind cut_hole_v2 requires depth_mm")
+        length = float(placement.depth_mm)
+        extend_both = False  # blind: cutter starts at face, extends INTO part
+    else:
+        # through_all: extend beyond bbox in both directions
+        length = max(bb.xlen, bb.ylen, bb.zlen) + 20.0
+        extend_both = True
+
+    cutter = make_cylinder_cutter(
+        center_xyz=resolved.center_xyz,
+        direction_xyz=resolved.direction_xyz,
+        radius_mm=dia / 2.0,
+        length_mm=length,
+        extend_both=extend_both,
+    )
+
+    try:
+        result = body.cut(cutter)
+    except Exception as exc:
+        if getattr(node, "required", True):
+            raise RuntimeError(
+                f"required cut_hole_v2 failed on '{node.id}': {exc}"
+            ) from exc
+        return {"body": _degrade(node, ctx, body, "cut_hole_v2")}
+
+    return {"body": _store_solid(node, ctx, result)}
+
+
+def handle_cut_hole_pattern_linear_v2(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
+    """Cut a linear grid of holes using V2 face-relative placement.
+
+    The grid is laid out on the target face's UV plane. Each hole uses
+    the same face, normal, and through_mode. Only center_uv_mm varies.
+    """
+    body = resolve_input_object(node, ctx, 0)
+    p = node.typed_params if node.typed_params else node.params
+
+    dia = float(p.get("hole_dia_mm", 0))
+    if dia <= 0:
+        raise ValueError("cut_hole_pattern_linear_v2 requires positive hole_dia_mm")
+
+    count_u = int(p.get("count_u", 1))
+    count_v = int(p.get("count_v", 1))
+    spacing_u = float(p.get("spacing_u_mm", 0))
+    spacing_v = float(p.get("spacing_v_mm", 0))
+
+    placement_raw = p.get("placement")
+    if placement_raw is None:
+        raise ValueError("cut_hole_pattern_linear_v2 requires placement")
+
+    from seekflow_engineering_tools.generative_cad.ir.geometry_semantics import (
+        HolePlacementV2,
+    )
+    if isinstance(placement_raw, dict):
+        placement = HolePlacementV2.model_validate(placement_raw)
+    else:
+        placement = placement_raw
+
+    from seekflow_engineering_tools.generative_cad.dialects.geometry_utils.hole_placement import (
+        resolve_face_hole_placement,
+        iter_linear_pattern_centers,
+    )
+    from seekflow_engineering_tools.generative_cad.dialects.geometry_utils.ocp_cylinder import (
+        make_cylinder_cutter,
+    )
+    from seekflow_engineering_tools.generative_cad.dialects.geometry_utils.boolean_batch import (
+        batch_cut,
+    )
+
+    bb = body.val().BoundingBox()
+    length = max(bb.xlen, bb.ylen, bb.zlen) + 20.0
+    base_uv = placement.center_uv_mm
+
+    cutters = []
+    for u, v in iter_linear_pattern_centers(base_uv, count_u, count_v, spacing_u, spacing_v):
+        hole_placement = HolePlacementV2(
+            target_face=placement.target_face,
+            center_uv_mm=(u, v),
+            normal_axis=placement.normal_axis,
+            origin_mode=placement.origin_mode,
+            through_mode=placement.through_mode,
+            depth_mm=placement.depth_mm,
+        )
+        resolved = resolve_face_hole_placement(hole_placement, bb)
+        cutters.append(make_cylinder_cutter(
+            center_xyz=resolved.center_xyz,
+            direction_xyz=resolved.direction_xyz,
+            radius_mm=dia / 2.0,
+            length_mm=length,
+        ))
+
+    try:
+        result = batch_cut(body, cutters)
+    except Exception as exc:
+        if getattr(node, "required", True):
+            raise RuntimeError(
+                f"required cut_hole_pattern_linear_v2 failed on '{node.id}': {exc}"
+            ) from exc
+        return {"body": _degrade(node, ctx, body, "cut_hole_pattern_linear_v2")}
+
+    return {"body": _store_solid(node, ctx, result)}
+
+
+def handle_drill_hole_3d(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
+    """Drill a hole along an arbitrary 3D direction.
+
+    For holes that cannot be expressed as face-normal:
+    angled holes, holes on curved surfaces, oil passages, etc.
+    Uses explicit origin_mm + direction vector.
+    """
+    body = resolve_input_object(node, ctx, 0)
+    p = node.typed_params if node.typed_params else node.params
+
+    dia = float(p.get("diameter_mm", 0))
+    origin = tuple(p.get("origin_mm", (0, 0, 0)))
+    direction = tuple(p.get("direction", (0, 0, 1)))
+    through_mode = p.get("through_mode", "through_all")
+
+    if dia <= 0:
+        raise ValueError("drill_hole_3d requires positive diameter_mm")
+
+    from seekflow_engineering_tools.generative_cad.dialects.geometry_utils.ocp_cylinder import (
+        make_cylinder_cutter,
+    )
+
+    bb = body.val().BoundingBox()
+    if str(through_mode).endswith("BLIND") or through_mode == "blind":
+        depth = float(p.get("depth_mm", 0))
+        if depth <= 0:
+            raise ValueError("blind drill_hole_3d requires positive depth_mm")
+        length = depth
+        extend_both = False  # blind: starts at origin, extends along direction
+    else:
+        length = max(bb.xlen, bb.ylen, bb.zlen) + 20.0
+        extend_both = True
+
+    cutter = make_cylinder_cutter(
+        center_xyz=origin,
+        direction_xyz=direction,
+        radius_mm=dia / 2.0,
+        length_mm=length,
+        extend_both=extend_both,
+    )
+
+    try:
+        result = body.cut(cutter)
+    except Exception as exc:
+        if getattr(node, "required", True):
+            raise RuntimeError(
+                f"required drill_hole_3d failed on '{node.id}': {exc}"
+            ) from exc
+        return {"body": _degrade(node, ctx, body, "drill_hole_3d")}
+
+    return {"body": _store_solid(node, ctx, result)}

@@ -1,0 +1,5 @@
+双法兰短管, 单位mm.
+组件pipe(axisymmetric): revolve_profile station1 r=40 z=0-200 (内径60外径80). cut_center_bore diameter_mm=60.
+组件flange_a(axisymmetric): revolve_profile station1 r=70 z=0-20. cut_center_bore diameter_mm=80. cut_circular_hole_pattern count=6 pcd_mm=110 hole_dia_mm=12.
+组件flange_b(axisymmetric): revolve_profile station1 r=70 z=0-20. cut_center_bore diameter_mm=80. cut_circular_hole_pattern count=6 pcd_mm=110 hole_dia_mm=12.
+装配__assembly__(composition): 依次boolean_union(每次2 inputs).

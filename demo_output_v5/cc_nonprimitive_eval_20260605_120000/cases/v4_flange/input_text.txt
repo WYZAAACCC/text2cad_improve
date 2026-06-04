@@ -1,0 +1,1 @@
+法兰盘, 单位mm. revolve_profile 外径200内径80厚20: station1 r=100 z=0-20. cut_center_bore diameter_mm=80. cut_circular_hole_pattern count=8 pcd_mm=160 hole_dia_mm=12.

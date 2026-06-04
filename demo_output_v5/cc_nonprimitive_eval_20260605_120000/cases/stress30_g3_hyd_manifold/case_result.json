@@ -1,0 +1,14 @@
+{
+  "case_id": "g3_hyd_manifold",
+  "status": "PASS",
+  "step_exists": true,
+  "step_size_bytes": 1041251,
+  "volume_mm3": 2993916.19,
+  "n_solids": 1,
+  "bbox": "150x120x180",
+  "closed": false,
+  "elapsed_s": 1.2,
+  "warnings": 0,
+  "degraded": 0,
+  "error": null
+}

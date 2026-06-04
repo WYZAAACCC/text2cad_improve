@@ -113,6 +113,8 @@ Hard output rules:
 28. The final root node must output "body" of type "solid".
 29. required=true nodes must use degradation_policy="fail".
 30. Do not invent dialects, operations, operation versions, phases, output types, or parameters.
+30a. V2 Hole Placement (preferred for new parts): For hole operations use cut_hole_v2 instead of cut_hole. V2 holes use semantic face-relative placement: specify target_face (top/bottom/front/back/left/right/cylindrical), center_uv_mm (UV coordinates on the target face), and normal_axis (+X/-X/+Y/-Y/+Z/-Z pointing INTO the part). This eliminates the ambiguity of legacy axis+position_mm holes.
+30b. For arbitrary 3D direction holes use drill_hole_3d with explicit origin_mm + direction vector. For linear hole arrays on faces use cut_hole_pattern_linear_v2 with count_u/count_v and spacing_u_mm/spacing_v_mm on the target face.
 31. Do not use deprecated fields: selected_bases, base_id, feature_graph, system_validation_contract, ir_version, GenerativeCADSpec.
 32. If the request cannot be expressed with the selected contracts, return to Level-1 routing as unsupported instead of inventing fields.
 33. Do not claim manufacturing readiness, certification, airworthiness, installation readiness, structural validation, life prediction, or production readiness.

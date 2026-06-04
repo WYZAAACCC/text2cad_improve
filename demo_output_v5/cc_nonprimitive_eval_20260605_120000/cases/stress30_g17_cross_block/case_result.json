@@ -1,0 +1,14 @@
+{
+  "case_id": "g17_cross_block",
+  "status": "PASS",
+  "step_exists": true,
+  "step_size_bytes": 444290,
+  "volume_mm3": 873863.37,
+  "n_solids": 1,
+  "bbox": "100x100x100",
+  "closed": false,
+  "elapsed_s": 0.6,
+  "warnings": 0,
+  "degraded": 0,
+  "error": null
+}

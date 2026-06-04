@@ -18,6 +18,9 @@ from seekflow_engineering_tools.generative_cad.dialects.registry import (
 )
 from seekflow_engineering_tools.generative_cad import native_importers
 from seekflow_engineering_tools.generative_cad.validation.pipeline import validate_and_canonicalize
+from seekflow_engineering_tools.generative_cad.authoring.auto_fixer import (
+    auto_fix_with_report,
+)
 
 
 def _list_dialects_result() -> dict:
@@ -174,6 +177,146 @@ def build_generative_cad_tools(config):
             workspace_root=config.workspace_root,
             path_params=frozenset({"out_step"}),
             parallel_safe=False, requires_approval=False, idempotent=False,
+        )
+    )
+
+    # ── v6.3: Autofix-enhanced build ──
+    @tool(
+        name="generative_cad_build_with_autofix",
+        description=(
+            "Build a STEP file from a G-CAD Core IR document with deterministic autofix. "
+            "Runs auto_fixer if validation fails, then rebuilds. "
+            "Returns full autofix report in metrics."
+        ),
+        cache=False, sanitize=True, trusted=False,
+    )
+    def generative_cad_build_with_autofix(
+        spec: dict, out_step: str,
+        inspect: bool = True, strict_inspection: bool = True,
+    ) -> dict:
+        try:
+            # First try direct build
+            result = build_generative_cad_model(
+                spec=spec, config=config, out_step=out_step,
+                inspect=inspect, strict_inspection=strict_inspection,
+            )
+            if result.get("ok"):
+                return result
+
+            # Validation failed — try autofix
+            from seekflow_engineering_tools.generative_cad.dialects.default_registry import default_registry
+            fixed_doc, autofix_report = auto_fix_with_report(spec, default_registry())
+
+            if not autofix_report.applied:
+                return {
+                    **result,
+                    "metrics": {
+                        **(result.get("metrics") or {}),
+                        "autofix": autofix_report.model_dump(),
+                        "autofix_applied": False,
+                    },
+                }
+
+            # Rebuild with fixed document
+            fixed_result = build_generative_cad_model(
+                spec=fixed_doc, config=config, out_step=out_step,
+                inspect=inspect, strict_inspection=strict_inspection,
+            )
+            return {
+                **fixed_result,
+                "metrics": {
+                    **(fixed_result.get("metrics") or {}),
+                    "autofix": autofix_report.model_dump(),
+                    "autofix_applied": True,
+                    "autofix_entries": len(autofix_report.entries),
+                },
+            }
+        except Exception as exc:
+            return EngineeringActionResult(
+                ok=False, software="cadquery", action="build_generative_cad_with_autofix",
+                error=str(exc),
+            ).model_dump()
+
+    generative_cad_build_with_autofix = generative_cad_build_with_autofix.with_policy(
+        ToolPolicy(
+            capabilities={"cad.generative.write", "filesystem.write"},
+            risk="write", timeout_s=300,
+            workspace_root=config.workspace_root,
+            path_params=frozenset({"out_step"}),
+            parallel_safe=False, requires_approval=False, idempotent=False,
+        )
+    )
+
+    # ── v6.3: Full authoring pipeline ──
+    @tool(
+        name="generative_cad_full_authoring",
+        description=(
+            "Run the full staged authoring pipeline: spatial frontend → LLM authoring → "
+            "autofix → validation → runtime → STEP. Requires LLM callers to be configured. "
+            "For use with advanced agent setups that can provide LLM tool callers."
+        ),
+        cache=False, sanitize=True, trusted=False,
+    )
+    def generative_cad_full_authoring(
+        user_request: str, out_dir: str,
+        allow_autofix: bool = True,
+        max_repair_attempts: int = 2,
+    ) -> dict:
+        try:
+            from pathlib import Path
+            from seekflow_engineering_tools.generative_cad.authoring.build_pipeline import (
+                generate_validate_build_step,
+            )
+            from seekflow_engineering_tools.generative_cad.dialects.default_registry import default_registry
+            from seekflow_engineering_tools.generative_cad.base_packages.registry import (
+                default_base_package_registry,
+            )
+            from seekflow_engineering_tools.generative_cad.llm.models import AuthoringLlmConfig
+
+            # Build LLM config from agent config
+            llm_config = AuthoringLlmConfig(
+                router=AuthoringLlmConfig.model_fields["router"].default,
+                author=AuthoringLlmConfig.model_fields["author"].default,
+                repair=AuthoringLlmConfig.model_fields["repair"].default,
+            )
+
+            result = generate_validate_build_step(
+                user_request=user_request,
+                llm_config=llm_config,
+                dialect_registry=default_registry(),
+                base_package_registry=default_base_package_registry(),
+                out_dir=Path(out_dir),
+                allow_autofix=allow_autofix,
+                max_repair_attempts=max_repair_attempts,
+            )
+
+            return EngineeringActionResult(
+                ok=result.step_ok,
+                software="cadquery",
+                action="generative_cad_full_authoring",
+                message="Full authoring pipeline completed." if result.step_ok else result.final_error or "Pipeline failed",
+                metrics={
+                    "report_v2": result.report_v2,
+                    "step_ok": result.step_ok,
+                    "autofix_applied": result.autofix_applied,
+                    "spatial_frontend": result.spatial_frontend,
+                    "failures": result.failures,
+                },
+            ).model_dump()
+        except Exception as exc:
+            import traceback
+            return EngineeringActionResult(
+                ok=False, software="cadquery", action="generative_cad_full_authoring",
+                error=f"{exc}\n{traceback.format_exc()[-500:]}",
+            ).model_dump()
+
+    generative_cad_full_authoring = generative_cad_full_authoring.with_policy(
+        ToolPolicy(
+            capabilities={"cad.generative.write", "filesystem.write"},
+            risk="write", timeout_s=600,
+            workspace_root=config.workspace_root,
+            path_params=frozenset({"out_dir"}),
+            parallel_safe=False, requires_approval=True, idempotent=False,
         )
     )
 

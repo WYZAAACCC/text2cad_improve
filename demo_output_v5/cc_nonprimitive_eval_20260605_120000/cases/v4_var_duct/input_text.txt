@@ -1,0 +1,1 @@
+变截面风管, 单位mm. loft_sections sections=[{position:{x_mm:0,y_mm:0,z_mm:0},shape:circle,radius_mm:50},{position:{x_mm:0,y_mm:0,z_mm:150},shape:rectangle,width_mm:100,height_mm:70},{position:{x_mm:0,y_mm:0,z_mm:300},shape:circle,radius_mm:40}].

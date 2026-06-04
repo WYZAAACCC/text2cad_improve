@@ -1,0 +1,27 @@
+{
+  "part_intent": {
+    "object_type": "cube_with_holes",
+    "dominant_geometry": "prismatic_block",
+    "engineering_domain": "general_mechanical"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "The base cube (100x100x100mm) is a rectangular prismatic block best created via sketch_extrude. Holes on faces can be expressed as cut_hole operations on the appropriate faces."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "Multiple independent hole features on different faces require boolean cut operations across different orientations, which composition dialect handles via boolean_cut and translate/rotate operations."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Reference geometry only. Not manufacturing-ready or certified.",
+    "Hole positions on different faces require careful coordinate transforms."
+  ]
+}

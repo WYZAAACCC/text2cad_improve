@@ -15,8 +15,13 @@ from seekflow_engineering_tools.generative_cad.dialects.base import BaseDialect
 from seekflow_engineering_tools.generative_cad.dialects.default_registry import default_registry
 from seekflow_engineering_tools.generative_cad.ir.hashing import contract_hash
 
-# Backward-compat global — populated lazily from default_registry()
-DIALECT_REGISTRY: dict[str, BaseDialect] = {}
+# v6.3: DIALECT_REGISTRY global removed. Use default_registry() instead.
+# All production code should call:
+#   default_registry().require(dialect_id)
+#   default_registry().get(dialect_id)
+# The old global was a lazy-populated synonym that added unnecessary
+# global mutable state. It has been replaced across all production code.
+__DIALECT_REGISTRY_REMOVED_IN_V63__ = True
 
 FORBIDDEN_PART_TOKENS = {
     "turbine_disk",
@@ -28,18 +33,15 @@ FORBIDDEN_PART_TOKENS = {
 
 
 def _ensure_populated() -> None:
-    """Lazy init global DIALECT_REGISTRY from frozen default."""
-    if not DIALECT_REGISTRY:
-        reg = default_registry()
-        for did in reg.list_ids():
-            DIALECT_REGISTRY[did] = reg.require(did)
+    """v6.3: No-op — default_registry() auto-initializes via lru_cache. Kept for compat."""
+    pass
 
 
 def register_dialect(dialect: BaseDialect) -> None:
     raise RuntimeError(
-        "register_dialect is disabled in production. "
-        "The default registry is frozen at import time. "
-        "Use DialectRegistry() for isolated test instances."
+        "register_dialect is disabled. The default registry is frozen at import time. "
+        "Use DialectRegistry() for isolated test instances. "
+        "The DIALECT_REGISTRY global has been removed in v6.3 — use default_registry() instead."
     )
 
 

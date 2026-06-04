@@ -1,0 +1,1 @@
+电子外壳, 单位mm. extrude_rectangle width_mm=200 height_mm=150 depth_mm=100 centered=true. shell_body thickness_mm=3.0 (抽壳后壁厚3mm). 底面开口保持不变. 正面开口: cut_rectangular_pocket width_mm=80 height_mm=50 depth_mm=3 centered=true plane=YZ (前面板开口). 安装孔: cut_hole_pattern_linear hole_dia_mm=5 count_x=2 count_y=2 spacing_x_mm=160 spacing_y_mm=110.

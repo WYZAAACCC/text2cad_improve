@@ -14,17 +14,20 @@ from seekflow_engineering_tools.generative_cad.validation.composition import val
 from seekflow_engineering_tools.generative_cad.validation.dialect_semantics import validate_dialect_semantics
 from seekflow_engineering_tools.generative_cad.validation.geometry_preflight import validate_geometry_preflight
 from seekflow_engineering_tools.generative_cad.validation.graph import validate_graph
+from seekflow_engineering_tools.generative_cad.validation.hole_semantics import validate_hole_semantics
 from seekflow_engineering_tools.generative_cad.validation.ownership import validate_ownership
 from seekflow_engineering_tools.generative_cad.validation.params import validate_params
 from seekflow_engineering_tools.generative_cad.validation.phase import validate_phase
 from seekflow_engineering_tools.generative_cad.validation.registry import validate_registry
 from seekflow_engineering_tools.generative_cad.validation.reports import ValidationReport
+from seekflow_engineering_tools.generative_cad.validation.root_terminal import validate_root_terminal
 from seekflow_engineering_tools.generative_cad.validation.safety import validate_safety
 from seekflow_engineering_tools.generative_cad.validation.structure import validate_structure
 from seekflow_engineering_tools.generative_cad.validation.typecheck import validate_typecheck
 
 RAW_STAGES = [
     ("structure", validate_structure),
+    ("root_terminal", validate_root_terminal),
     ("registry", validate_registry),
     ("params", validate_params),
     ("ownership", validate_ownership),
@@ -32,6 +35,7 @@ RAW_STAGES = [
     ("typecheck", validate_typecheck),
     ("phase", validate_phase),
     ("composition", validate_composition_requirements),
+    ("hole_semantics", validate_hole_semantics),
     ("safety", validate_safety),
 ]
 
@@ -133,13 +137,35 @@ def validate_and_canonicalize_with_bundle(
         canonical, CANONICAL_STAGES, all_issues, stages_run,
     )
 
+    # ── v6.3: Generate repair hints from ALL accumulated issues ──
+    # Must run BEFORE the fail-closed return so hints are available even
+    # when validation fails (used by auto_fixer and LLM repair loop).
+    repair_hints_text = ""
+    error_issues = [i for i in all_issues if getattr(i, 'severity', '') == 'error']
+    if error_issues:
+        try:
+            from seekflow_engineering_tools.generative_cad.validation.repair_hints import (
+                build_repair_hints_from_validation,
+            )
+            temp_report = ValidationReport(
+                ok=False, stage="complete",
+                issues=list(all_issues), stages_run=list(stages_run),
+            )
+            repair_hints_text = build_repair_hints_from_validation(temp_report)
+        except Exception:
+            pass  # Non-critical — hints are advisory only
+
     if not ok:
         report = ValidationReport(ok=False, stage=failed_stage, issues=all_issues, stages_run=list(stages_run))
         bundle = ValidationBundle(ok=False, raw_stage_reports=raw_stage_reports, canonicalize_report=c_report, canonical_stage_reports=canonical_stage_reports)
+        if repair_hints_text:
+            bundle.repair_hints = repair_hints_text  # type: ignore[attr-defined]
         return None, report, bundle
 
     report = ValidationReport(ok=True, stage="complete", issues=all_issues, stages_run=list(stages_run))
     bundle = ValidationBundle(ok=True, raw_stage_reports=raw_stage_reports, canonicalize_report=c_report, canonical_stage_reports=canonical_stage_reports)
+    if repair_hints_text:
+        bundle.repair_hints = repair_hints_text  # type: ignore[attr-defined]
     return canonical, report, bundle
 
 

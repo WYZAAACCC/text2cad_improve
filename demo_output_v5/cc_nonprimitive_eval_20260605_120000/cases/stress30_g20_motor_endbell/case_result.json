@@ -1,0 +1,14 @@
+{
+  "case_id": "g20_motor_endbell",
+  "status": "PASS",
+  "step_exists": true,
+  "step_size_bytes": 215996,
+  "volume_mm3": 1046806.27,
+  "n_solids": 1,
+  "bbox": "250x200x45",
+  "closed": false,
+  "elapsed_s": 0.3,
+  "warnings": 4,
+  "degraded": 0,
+  "error": null
+}

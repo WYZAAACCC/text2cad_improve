@@ -1,0 +1,270 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "reference_geometry",
+    "document_id": "motor-endbell-assembly-001",
+    "part_name": "电机端盖总成",
+    "selected_dialects": [
+      {
+        "dialect": "axisymmetric",
+        "version": "0.2.0",
+        "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+      },
+      {
+        "dialect": "sketch_extrude",
+        "version": "0.2.0",
+        "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+      },
+      {
+        "dialect": "composition",
+        "version": "0.2.0",
+        "contract_hash": "sha256:1ff66c680d94f60891bf00260f365ffa2a0d213d5571a2366a3f1c27748f5382"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "endbell_revolve",
+        "dialect": "axisymmetric",
+        "op": "revolve_profile",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "mount_feet_base",
+        "dialect": "sketch_extrude",
+        "op": "extrude_rectangle",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "cooling_fins_base",
+        "dialect": "sketch_extrude",
+        "op": "extrude_rectangle",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "endbell_center_bore",
+        "dialect": "axisymmetric",
+        "op": "cut_center_bore",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "mount_feet_cut_hole_1",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "mount_feet_cut_hole_2",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "endbell_annular_groove",
+        "dialect": "axisymmetric",
+        "op": "cut_annular_groove",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "assembly_union_1",
+        "dialect": "composition",
+        "op": "boolean_union",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "assembly_union_2",
+        "dialect": "composition",
+        "op": "boolean_union",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "endbell_hole_pattern",
+        "dialect": "axisymmetric",
+        "op": "cut_circular_hole_pattern",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "endbell_chamfer",
+        "dialect": "axisymmetric",
+        "op": "apply_safe_chamfer",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "endbell_edge_treatment",
+        "dialect": "axisymmetric",
+        "op": "apply_safe_chamfer",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:300ab10533e2530b9de88c592d74baf2e7b5642e000b4d744cd30f8836645274",
+    "canonical_graph_hash": "sha256:2c88b706cc2e5e625992b913df35b5a117f8e85fea022c8adb7e7b130ea085ca",
+    "paths": {
+      "canonical_ir_path": "<in_memory>",
+      "validation_seed_path": "<in_memory>",
+      "step_path": "cases\\stress30_g20_motor_endbell\\output.step",
+      "metadata_path": "cases\\stress30_g20_motor_endbell\\metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:cdadac08c6343bc2d43cde47567c1e321e389499d57b874f5a7e8f58386317b6",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [
+      "Safe chamfer skipped on 'endbell_chamfer': geometry does not support chamfer. Part is valid without chamfer.",
+      "Safe chamfer skipped on 'endbell_edge_treatment': geometry does not support chamfer. Part is valid without chamfer.",
+      "boolean_union pre-check on 'assembly_union_1': Near-coincident faces detected (clearance=0.0000mm < minimum 0.2mm). Boolean operation may fail — ensure components are properly separated.",
+      "boolean_union pre-check on 'assembly_union_2': Near-coincident faces detected (clearance=0.0000mm < minimum 0.2mm). Boolean operation may fail — ensure components are properly separated."
+    ],
+    "degraded_features": [],
+    "operation_metrics": [
+      {
+        "node_id": "endbell_revolve",
+        "op": "revolve_profile",
+        "status": "ok"
+      },
+      {
+        "node_id": "endbell_center_bore",
+        "op": "cut_center_bore",
+        "status": "ok"
+      },
+      {
+        "node_id": "endbell_hole_pattern",
+        "op": "cut_circular_hole_pattern",
+        "status": "ok"
+      },
+      {
+        "node_id": "endbell_annular_groove",
+        "op": "cut_annular_groove",
+        "status": "ok"
+      },
+      {
+        "node_id": "endbell_chamfer",
+        "op": "apply_safe_chamfer",
+        "status": "ok"
+      },
+      {
+        "node_id": "endbell_edge_treatment",
+        "op": "apply_safe_chamfer",
+        "status": "ok"
+      },
+      {
+        "node_id": "mount_feet_base",
+        "op": "extrude_rectangle",
+        "status": "ok"
+      },
+      {
+        "node_id": "mount_feet_cut_hole_1",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "mount_feet_cut_hole_2",
+        "op": "cut_hole",
+        "status": "ok"
+      },
+      {
+        "node_id": "cooling_fins_base",
+        "op": "extrude_rectangle",
+        "status": "ok"
+      },
+      {
+        "node_id": "assembly_union_1",
+        "op": "boolean_union",
+        "status": "ok"
+      },
+      {
+        "node_id": "assembly_union_2",
+        "op": "boolean_union",
+        "status": "ok"
+      }
+    ],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [
+    "Safe chamfer skipped on 'endbell_chamfer': geometry does not support chamfer. Part is valid without chamfer.",
+    "Safe chamfer skipped on 'endbell_edge_treatment': geometry does not support chamfer. Part is valid without chamfer.",
+    "boolean_union pre-check on 'assembly_union_1': Near-coincident faces detected (clearance=0.0000mm < minimum 0.2mm). Boolean operation may fail — ensure components are properly separated.",
+    "boolean_union pre-check on 'assembly_union_2': Near-coincident faces detected (clearance=0.0000mm < minimum 0.2mm). Boolean operation may fail — ensure components are properly separated."
+  ],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {},
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": false,
+      "stage": "dialect_semantics",
+      "issues": [
+        {
+          "code": "missing_dialect_semantics_report",
+          "message": "No dialect_semantics report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "geometry_preflight": {
+      "ok": false,
+      "stage": "geometry_preflight",
+      "issues": [
+        {
+          "code": "missing_geometry_preflight_report",
+          "message": "No geometry_preflight report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "geometry_postcheck": {
+      "ok": true,
+      "volume_mm3": 1046806.2734034464,
+      "n_solids": 1,
+      "bbox_mm": [
+        250.0,
+        200.0,
+        45.0
+      ],
+      "closed": false,
+      "is_valid_solid": false,
+      "errors": [],
+      "warnings": []
+    }
+  }
+}

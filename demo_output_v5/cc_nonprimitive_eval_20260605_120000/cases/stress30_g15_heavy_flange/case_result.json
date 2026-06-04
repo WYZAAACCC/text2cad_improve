@@ -1,0 +1,14 @@
+{
+  "case_id": "g15_heavy_flange",
+  "status": "PASS",
+  "step_exists": true,
+  "step_size_bytes": 287420,
+  "volume_mm3": 4225308.53,
+  "n_solids": 1,
+  "bbox": "400x400x55",
+  "closed": false,
+  "elapsed_s": 1.7,
+  "warnings": 1,
+  "degraded": 0,
+  "error": null
+}

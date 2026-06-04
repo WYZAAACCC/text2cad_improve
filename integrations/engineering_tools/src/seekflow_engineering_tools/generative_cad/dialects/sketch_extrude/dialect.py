@@ -9,13 +9,17 @@ from seekflow_engineering_tools.generative_cad.dialects.operation import Operati
 from seekflow_engineering_tools.generative_cad.dialects.sketch_extrude.contract import SKETCH_EXTRUDE_CONTRACT
 from seekflow_engineering_tools.generative_cad.dialects.sketch_extrude.handlers import (
     handle_add_rectangular_boss, handle_add_rib, handle_cut_hole,
-    handle_cut_hole_pattern_linear, handle_cut_rectangular_pocket,
-    handle_extrude_rectangle, handle_se_chamfer, handle_se_fillet,
+    handle_cut_hole_pattern_linear, handle_cut_hole_v2,
+    handle_cut_hole_pattern_linear_v2, handle_cut_rectangular_pocket,
+    handle_drill_hole_3d, handle_extrude_rectangle, handle_se_chamfer, handle_se_fillet,
 )
 from seekflow_engineering_tools.generative_cad.dialects.sketch_extrude.manifest import SKETCH_EXTRUDE_MANIFEST
 from seekflow_engineering_tools.generative_cad.dialects.sketch_extrude.params import (
     AddRectangularBossParams, AddRibParams, ApplySafeChamferParams, ApplySafeFilletParams,
     CutHoleParams, CutHolePatternLinearParams, CutRectangularPocketParams, ExtrudeRectangleParams,
+)
+from seekflow_engineering_tools.generative_cad.ir.geometry_semantics import (
+    CutHoleV2Params, DrillHole3DParams, CutHolePatternLinearV2Params,
 )
 from seekflow_engineering_tools.generative_cad.ir.canonical import CanonicalComponent, CanonicalNode
 from seekflow_engineering_tools.generative_cad.runtime.context import RuntimeContext
@@ -30,6 +34,8 @@ class SketchExtrudeDialect:
     _op_version_map = {k: "1.0.0" for k in [
         "extrude_rectangle", "cut_rectangular_pocket", "cut_hole", "cut_hole_pattern_linear",
         "add_rectangular_boss", "add_rib", "apply_safe_fillet", "apply_safe_chamfer",
+        # v6.3: V2 hole ops
+        "cut_hole_v2", "drill_hole_3d", "cut_hole_pattern_linear_v2",
     ]}
 
     def manifest(self): return dict(SKETCH_EXTRUDE_MANIFEST)
@@ -46,6 +52,10 @@ class SketchExtrudeDialect:
             ("add_rib", "1.0.0"): OperationSpec(dialect="sketch_extrude", op="add_rib", op_version="1.0.0", phase="boss_rib", input_types=S, output_types=SO, params_model=AddRibParams, effects=["adds_material"], postconditions=["valid_solid"], handler=handle_add_rib),
             ("apply_safe_fillet", "1.0.0"): OperationSpec(dialect="sketch_extrude", op="apply_safe_fillet", op_version="1.0.0", phase="edge_treatment", input_types=S, output_types=SO, params_model=ApplySafeFilletParams, effects=["modifies_solid"], postconditions=["valid_solid"], handler=handle_se_fillet),
             ("apply_safe_chamfer", "1.0.0"): OperationSpec(dialect="sketch_extrude", op="apply_safe_chamfer", op_version="1.0.0", phase="edge_treatment", input_types=S, output_types=SO, params_model=ApplySafeChamferParams, effects=["modifies_solid"], postconditions=["valid_solid"], handler=handle_se_chamfer),
+            # v6.3: V2 hole ops — face-relative, deterministic placement
+            ("cut_hole_v2", "1.0.0"): OperationSpec(dialect="sketch_extrude", op="cut_hole_v2", op_version="1.0.0", phase="primary_cut", input_types=S, output_types=SO, params_model=CutHoleV2Params, effects=["cuts_material"], postconditions=["valid_solid"], handler=handle_cut_hole_v2, summary="Cut a hole using face-relative V2 placement (target_face + center_uv_mm + normal_axis)."),
+            ("drill_hole_3d", "1.0.0"): OperationSpec(dialect="sketch_extrude", op="drill_hole_3d", op_version="1.0.0", phase="primary_cut", input_types=S, output_types=SO, params_model=DrillHole3DParams, effects=["cuts_material"], postconditions=["valid_solid"], handler=handle_drill_hole_3d, summary="Drill a hole along an arbitrary 3D direction (explicit origin + direction vector)."),
+            ("cut_hole_pattern_linear_v2", "1.0.0"): OperationSpec(dialect="sketch_extrude", op="cut_hole_pattern_linear_v2", op_version="1.0.0", phase="hole_pattern", input_types=S, output_types=SO, params_model=CutHolePatternLinearV2Params, effects=["cuts_material"], postconditions=["valid_solid"], handler=handle_cut_hole_pattern_linear_v2, summary="Cut a linear grid of holes using V2 face-relative placement."),
         }
 
     def default_op_version(self, op): return self._op_version_map[op]
@@ -254,6 +264,45 @@ class SketchExtrudeDialect:
                             f"base thickness ({base_min_thickness}). May fail.",
                             severity="warning", node_id=n.id,
                         ))
+
+            # ── v6.3: V2 hole preflight ──
+            if n.op == "cut_hole_v2":
+                dia = n.typed_params.get("diameter_mm") or n.params.get("diameter_mm", 0)
+                if dia <= 0:
+                    issues.append(ValidationIssue(stage=stage, code="se_hole_dia",
+                        message=f"cut_hole_v2 diameter must be > 0, got {dia}",
+                        severity="error", node_id=n.id))
+                if base_width is not None and base_height is not None and dia > 0:
+                    min_base = min(base_width, base_height)
+                    if dia >= min_base - 2 * MARGIN:
+                        issues.append(ValidationIssue(stage=stage, code="se_hole_too_large",
+                            message=f"cut_hole_v2 diameter ({dia}) >= min(base) ({min_base}) - 2*margin",
+                            severity="error", node_id=n.id))
+                placement = n.typed_params.get("placement") or n.params.get("placement", {})
+                if isinstance(placement, dict) and not placement.get("target_face"):
+                    issues.append(ValidationIssue(stage=stage, code="se_v2_missing_face",
+                        message=f"cut_hole_v2 requires target_face in placement",
+                        severity="error", node_id=n.id))
+
+            if n.op == "drill_hole_3d":
+                dia = n.typed_params.get("diameter_mm") or n.params.get("diameter_mm", 0)
+                if dia <= 0:
+                    issues.append(ValidationIssue(stage=stage, code="se_hole_dia",
+                        message=f"drill_hole_3d diameter must be > 0, got {dia}",
+                        severity="error", node_id=n.id))
+                direction = n.typed_params.get("direction") or n.params.get("direction", (0,0,0))
+                mag = sum(v*v for v in direction) if isinstance(direction, (list, tuple)) else 0
+                if mag < 1e-9:
+                    issues.append(ValidationIssue(stage=stage, code="se_zero_direction",
+                        message=f"drill_hole_3d direction must be non-zero",
+                        severity="error", node_id=n.id))
+
+            if n.op == "cut_hole_pattern_linear_v2":
+                dia = n.typed_params.get("hole_dia_mm") or n.params.get("hole_dia_mm", 0)
+                if dia <= 0:
+                    issues.append(ValidationIssue(stage=stage, code="se_hole_dia",
+                        message=f"cut_hole_pattern_linear_v2 hole_dia_mm must be > 0, got {dia}",
+                        severity="error", node_id=n.id))
 
         return ValidationReport(ok=not any(i.severity == "error" for i in issues),
                                stage=stage, issues=issues)

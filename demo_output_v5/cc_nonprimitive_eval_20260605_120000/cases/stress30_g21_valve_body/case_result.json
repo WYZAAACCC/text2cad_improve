@@ -1,0 +1,14 @@
+{
+  "case_id": "g21_valve_body",
+  "status": "PASS",
+  "step_exists": true,
+  "step_size_bytes": 93055,
+  "volume_mm3": 1016418.22,
+  "n_solids": 1,
+  "bbox": "140x140x138",
+  "closed": false,
+  "elapsed_s": 0.3,
+  "warnings": 4,
+  "degraded": 0,
+  "error": null
+}

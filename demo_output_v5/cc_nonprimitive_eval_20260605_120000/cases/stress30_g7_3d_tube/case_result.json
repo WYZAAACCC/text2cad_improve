@@ -1,0 +1,14 @@
+{
+  "case_id": "g7_3d_tube",
+  "status": "PASS",
+  "step_exists": true,
+  "step_size_bytes": 79125,
+  "volume_mm3": 210487.27,
+  "n_solids": 1,
+  "bbox": "199x179x474",
+  "closed": false,
+  "elapsed_s": 0.2,
+  "warnings": 1,
+  "degraded": 0,
+  "error": null
+}

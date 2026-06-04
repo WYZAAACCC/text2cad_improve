@@ -1,0 +1,14 @@
+{
+  "case_id": "g1_engine_mount",
+  "status": "PASS",
+  "step_exists": true,
+  "step_size_bytes": 199477,
+  "volume_mm3": 1551178.54,
+  "n_solids": 1,
+  "bbox": "300x200x60",
+  "closed": false,
+  "elapsed_s": 1.9,
+  "warnings": 3,
+  "degraded": 0,
+  "error": null
+}

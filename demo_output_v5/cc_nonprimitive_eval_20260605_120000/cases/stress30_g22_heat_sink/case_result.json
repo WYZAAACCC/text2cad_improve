@@ -1,0 +1,14 @@
+{
+  "case_id": "g22_heat_sink",
+  "status": "FAIL_RUNTIME",
+  "step_exists": true,
+  "step_size_bytes": 106300,
+  "volume_mm3": 1686932.27,
+  "n_solids": 2,
+  "bbox": "328x228x104",
+  "closed": false,
+  "elapsed_s": 0.2,
+  "warnings": 2,
+  "degraded": 0,
+  "error": "geometry postcheck failed: Final geometry has 2 solid bodies (expected 1). This means boolean_union failed to merge components. Check for grazing contact or non-intersecting solids in the assembly."
+}

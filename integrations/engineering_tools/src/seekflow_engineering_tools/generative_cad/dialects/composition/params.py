@@ -47,3 +47,9 @@ class BooleanCutParams(BaseModel):
 class PlaceComponentParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
     position_mm: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    component_id: str | None = Field(
+        default=None,
+        description="Target component ID for spatial placement lookup. "
+                    "When set and ctx.spatial_placements exists, the solver-computed "
+                    "placement overrides position_mm."
+    )

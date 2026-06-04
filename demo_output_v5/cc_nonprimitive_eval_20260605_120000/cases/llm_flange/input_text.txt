@@ -1,0 +1,1 @@
+Design a flange: outer diameter 200mm, inner bore 80mm, thickness 20mm. 8 bolt holes of diameter 12mm equally spaced on PCD 160mm. The flange is axisymmetric.

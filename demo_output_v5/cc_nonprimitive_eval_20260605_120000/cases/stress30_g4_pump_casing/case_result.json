@@ -1,0 +1,14 @@
+{
+  "case_id": "g4_pump_casing",
+  "status": "PASS",
+  "step_exists": true,
+  "step_size_bytes": 458181,
+  "volume_mm3": 2784401.49,
+  "n_solids": 1,
+  "bbox": "250x240x85",
+  "closed": false,
+  "elapsed_s": 0.7,
+  "warnings": 2,
+  "degraded": 0,
+  "error": null
+}

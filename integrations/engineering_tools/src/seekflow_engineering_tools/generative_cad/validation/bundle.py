@@ -14,6 +14,9 @@ class ValidationBundle(BaseModel):
     raw_stage_reports: dict[str, ValidationReport] = Field(default_factory=dict)
     canonicalize_report: ValidationReport | None = None
     canonical_stage_reports: dict[str, ValidationReport] = Field(default_factory=dict)
+    # v6.3: Repair hints generated from accumulated validation issues.
+    # Empty string means no hints needed (all checks passed).
+    repair_hints: str = ""
 
     def to_metadata_dict(self) -> dict:
         core_issues = []

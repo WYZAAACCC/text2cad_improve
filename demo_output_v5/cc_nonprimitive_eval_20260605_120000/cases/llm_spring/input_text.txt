@@ -1,0 +1,1 @@
+Design a helical coil spring with 10 turns, coil radius 80mm, wire diameter 10mm, pitch 16mm, total height 160mm.

@@ -1,0 +1,14 @@
+{
+  "case_id": "g19_precision_base",
+  "status": "PASS",
+  "step_exists": true,
+  "step_size_bytes": 781192,
+  "volume_mm3": 1662390.26,
+  "n_solids": 1,
+  "bbox": "305x280x41",
+  "closed": false,
+  "elapsed_s": 1.1,
+  "warnings": 1,
+  "degraded": 0,
+  "error": null
+}

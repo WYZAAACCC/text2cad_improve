@@ -36,6 +36,10 @@ class RuntimeContext:
     spatial_placements: dict[str, Any] = field(default_factory=dict)
     spatial_audit_report: Any = None
     spatial_contract_hash: str | None = None
+    # v6.3: Track post-placement bboxes for spatial audit
+    placed_component_bboxes: dict[str, Any] = field(default_factory=dict)
+    # v6.3: Enforce strict geometry semantics (reject ambiguous legacy hole params)
+    strict_geometry_semantics: bool = True
 
     @property
     def geometry_runtime_name(self) -> str:

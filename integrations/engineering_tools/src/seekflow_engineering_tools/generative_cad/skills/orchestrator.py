@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 
-from seekflow_engineering_tools.generative_cad.dialects.registry import DIALECT_REGISTRY, export_dialect_catalog
+from seekflow_engineering_tools.generative_cad.dialects.registry import export_dialect_catalog
+from seekflow_engineering_tools.generative_cad.dialects.default_registry import default_registry as _default_dialect_registry
 from seekflow_engineering_tools.generative_cad.ir.raw import RawGcadDocument
 from seekflow_engineering_tools.generative_cad.skills.prompts import (
     LEVEL1_ROUTING_SYSTEM_PROMPT,
@@ -126,7 +127,7 @@ def build_level2_authoring_prompt(
     if contracts is None:
         contracts = {}
         for sd in selection_plan.selected_dialects:
-            dialect = DIALECT_REGISTRY.get(sd.dialect)
+            dialect = _default_dialect_registry().get(sd.dialect)
             if dialect is not None:
                 contracts[sd.dialect] = dialect.contract()
 
@@ -196,21 +197,24 @@ def build_level1_tool() -> dict:
     from seekflow_engineering_tools.generative_cad.dialects.default_registry import default_registry
 
     valid_dialects = sorted(list_dialects())
-    dialect_versions = {}
+    dialect_versions: dict[str, str] = {}
     reg = default_registry()
     for dn in valid_dialects:
         d = reg.get(dn)
         if d is not None:
             dialect_versions[dn] = d.version
 
+    # v6.3: Dynamic version enum from registry, not hardcoded "0.2.0"
+    all_versions = sorted(set(dialect_versions.values()))
+
     schema = copy.deepcopy(DialectSelectionPlan.model_json_schema())
-    for def_name, def_schema in schema.get("$defs", {}).items():
+    for _def_name, def_schema in schema.get("$defs", {}).items():
         props = def_schema.get("properties", {})
         if "dialect" in props and "version" in props:
             props["dialect"]["enum"] = valid_dialects
             if "reason" in props:
-                # DialectSelectionItem: constrain version too
-                props["version"]["enum"] = ["0.2.0"]
+                # DialectSelectionItem: use actual registry versions
+                props["version"]["enum"] = all_versions
 
     return {
         "type": "function",
@@ -271,7 +275,9 @@ def build_level2_tool(contracts: dict[str, dict] | None = None) -> dict:
 
     # ── Build per-operation node schemas with rich descriptions ──
 
-    # Operation-level descriptions explaining what each op does geometrically
+    # Operation-level descriptions explaining what each op does geometrically.
+    # Used as description override for LLM-facing tool schemas.
+    # When an op is NOT in this dict, the compiler falls back to OperationSpec.summary.
     OP_DESCRIPTIONS: dict[str, str] = {
         "revolve_profile": (
             "绕Z轴旋转2D截面轮廓生成旋转体。profile_stations定义轮廓形状。"
@@ -305,6 +311,21 @@ def build_level2_tool(contracts: dict[str, dict] | None = None) -> dict:
         "cut_hole_pattern_linear": (
             "矩形阵列通孔。hole_dia_mm=孔径，count_x/count_y=行列数，spacing_x_mm/spacing_y_mm=间距。"
         ),
+        # v6.3: V2 hole ops — face-relative, deterministic placement
+        "cut_hole_v2": (
+            "在指定面上打孔(V2语义)。diameter_mm=孔径。placement包含target_face(目标面top/bottom/front/back/left/right/cylindrical)、"
+            "center_uv_mm(面上UV坐标)、normal_axis(法向)、through_mode(through_all/blind)。"
+            "比旧版cut_hole更精确，推荐新零件使用此操作。"
+        ),
+        "drill_hole_3d": (
+            "在任意3D方向钻孔。diameter_mm=孔径。origin_mm=3D起点，direction=方向向量。"
+            "用于斜孔、油道、冷却通道等不能用面法向表达的孔。"
+        ),
+        "cut_hole_pattern_linear_v2": (
+            "在指定面上做矩形孔阵列(V2语义)。hole_dia_mm=孔径，count_u/count_v=行列数，"
+            "spacing_u_mm/spacing_v_mm=UV方向间距。placement定义目标面和基准。"
+            "比旧版更强：支持任意面的UV网格。"
+        ),
         "add_rectangular_boss": (
             "在表面添加矩形凸台。width_mm/height_mm/depth_mm=凸台尺寸。position_mm=[x,y]=位置。"
         ),
@@ -337,145 +358,79 @@ def build_level2_tool(contracts: dict[str, dict] | None = None) -> dict:
         ),
     }
 
-    op_variants: list[dict] = []
-    for dn in valid_dialects:
-        d = reg.get(dn)
-        if d is None:
-            continue
-        for (op_name, _op_ver), spec in d.op_specs().items():
-            # Build the exact outputs array
-            outputs = []
-            for otype in spec.output_types:
-                if otype == "solid":
-                    outputs.append({"name": "body", "type": "solid"})
-                elif otype == "frame":
-                    outputs.append({"name": "outer_frame", "type": "frame"})
+    # ── v6.3: Delegate op variant construction to the schema compiler ──
+    # The compiler reads OperationSpec metadata (summary, usage_notes,
+    # params_model field descriptions) to generate structurally correct
+    # per-op schemas. We then inject Chinese descriptions as overrides.
+    from seekflow_engineering_tools.generative_cad.skills.tool_schema_compiler import (
+        _build_op_variants,
+        _wire_node_variants,
+        _constrain_top_level,
+        _constrain_selected_dialects,
+    )
 
-            # Build per-op params schema
-            params_schema = copy.deepcopy(spec.params_model.model_json_schema())
-            ref_name = f"{dn}__{op_name}_params"
-            params_schema["title"] = ref_name
+    # Use compiler's top-level constraints (dynamic version enum)
+    _constrain_top_level(schema)
+    _constrain_selected_dialects(defs, valid_dialects, reg)
 
-            # ── Inject field-level Chinese descriptions ──
-            ps_props = params_schema.get("properties", {})
+    # Build op variants via compiler (structurally correct, from OperationSpec)
+    op_variants = _build_op_variants(valid_dialects, reg, None, defs)
 
-            # profile_stations: the #1 LLM confusion point
-            if "profile_stations" in ps_props:
-                ps_props["profile_stations"]["description"] = (
-                    "定义旋转体的2D截面轮廓。每个station描述一段圆柱：r_mm=该段半径(直径的一半！)，"
-                    "z_front_mm=该段起始Z位置，z_rear_mm=该段结束Z位置。"
-                    "关键规则：1) z_rear_mm必须>z_front_mm; 2) 相邻station的r_mm必须不同才能形成台阶; "
-                    "3) 第一个station的z_front_mm是最底部，最后一个station的z_rear_mm是最顶部; "
-                    "4) r_mm=RADIUS(半径)，不是直径。外径=2×r_mm。"
-                    "示例-外径80内径30厚12垫圈:[{r:40,zf:0,zr:2},{r:40,zf:2,zr:12},{r:15,zf:12,zr:13}]"
-                    "示例-外径120厚16法兰:[{r:60,zf:0,zr:3},{r:60,zf:3,zr:16},{r:20,zf:16,zr:17}]"
-                )
-                ps_props["profile_stations"]["minItems"] = 2
-                # Also describe items
-                items_schema = ps_props["profile_stations"].get("items", {})
-                if isinstance(items_schema, dict):
-                    item_props = items_schema.get("properties", {})
-                    if "r_mm" in item_props:
-                        item_props["r_mm"]["description"] = "该station处的半径(mm)=直径/2。例如外径80mm则r_mm=40。相邻station的r_mm必须不同。"
-                    if "z_front_mm" in item_props:
-                        item_props["z_front_mm"]["description"] = "该station段的起始Z坐标(mm), 必须<z_rear_mm"
-                    if "z_rear_mm" in item_props:
-                        item_props["z_rear_mm"]["description"] = "该station段的结束Z坐标(mm), 必须>z_front_mm"
-                    if "z_mm" in item_props:
-                        item_props["z_mm"]["description"] = "该station的Z坐标(mm)"
+    # ── Inject Chinese descriptions from OP_DESCRIPTIONS ──
+    for variant in op_variants:
+        title = variant.get("title", "")
+        # Extract op_name from title like "axisymmetric.revolve_profile"
+        if "." in title:
+            op_name = title.split(".", 1)[1]
+            if op_name in OP_DESCRIPTIONS:
+                variant["description"] = OP_DESCRIPTIONS[op_name]
 
-            # diameter_mm fields
-            for fname in ["diameter_mm", "hole_dia_mm"]:
-                if fname in ps_props:
-                    ps_props[fname]["description"] = f"直径(mm)。必须是正数且小于轮廓的外径。"
+    # ── Inject field-level Chinese descriptions for critical params ──
+    for _ref_name, params_schema in defs.items():
+        ps_props = params_schema.get("properties", {})
+        # profile_stations: the #1 LLM confusion point
+        if "profile_stations" in ps_props:
+            ps_props["profile_stations"]["description"] = (
+                "定义旋转体的2D截面轮廓。每个station描述一段圆柱：r_mm=该段半径(直径的一半！)，"
+                "z_front_mm=该段起始Z位置，z_rear_mm=该段结束Z位置。"
+                "关键规则：1) z_rear_mm必须>z_front_mm; 2) 相邻station的r_mm必须不同才能形成台阶; "
+                "3) 第一个station的z_front_mm是最底部，最后一个station的z_rear_mm是最顶部; "
+                "4) r_mm=RADIUS(半径)，不是直径。外径=2×r_mm。"
+                "示例-外径80内径30厚12垫圈:[{r:40,zf:0,zr:2},{r:40,zf:2,zr:12},{r:15,zf:12,zr:13}]"
+                "示例-外径120厚16法兰:[{r:60,zf:0,zr:3},{r:60,zf:3,zr:16},{r:20,zf:16,zr:17}]"
+            )
+            items_schema = ps_props["profile_stations"].get("items", {})
+            if isinstance(items_schema, dict):
+                item_props = items_schema.get("properties", {})
+                if "r_mm" in item_props:
+                    item_props["r_mm"]["description"] = "该station处的半径(mm)=直径/2。例如外径80mm则r_mm=40。"
+                if "z_front_mm" in item_props:
+                    item_props["z_front_mm"]["description"] = "该station段的起始Z坐标(mm), 必须<z_rear_mm"
+                if "z_rear_mm" in item_props:
+                    item_props["z_rear_mm"]["description"] = "该station段的结束Z坐标(mm), 必须>z_front_mm"
 
-            # Dimension fields with units
-            for fname in ["inner_dia_mm", "outer_dia_mm", "pcd_mm"]:
-                if fname in ps_props:
-                    ps_props[fname]["description"] = f"直径(mm)。"
+        # Dimension fields with Chinese units
+        for fname in ["diameter_mm", "hole_dia_mm"]:
+            if fname in ps_props:
+                ps_props[fname]["description"] = "直径(mm)。必须是正数且小于轮廓的外径。"
+        for fname in ["width_mm", "height_mm", "depth_mm", "thickness_mm", "length_mm"]:
+            if fname in ps_props:
+                ps_props[fname]["description"] = "尺寸(mm)。必须是正数。"
+        for fname in ["distance_mm", "radius_mm"]:
+            if fname in ps_props:
+                ps_props[fname]["description"] = "尺寸(mm)。必须是正数，且不超出零件边界。"
+        for fname in ["count", "count_x", "count_y", "count_u", "count_v"]:
+            if fname in ps_props:
+                ps_props[fname]["description"] = "数量。必须是>=1的整数。"
+        if "position_mm" in ps_props:
+            ps_props["position_mm"]["description"] = "位置坐标[x,y]或[x,y,z](mm)。相对于零件中心的偏移。"
+        if "side" in ps_props:
+            ps_props["side"]["description"] = "操作面: 'front'=前表面(Z最大处), 'rear'=后表面(Z最小处)"
 
-            for fname in ["width_mm", "height_mm", "depth_mm", "thickness_mm", "length_mm"]:
-                if fname in ps_props:
-                    ps_props[fname]["description"] = f"尺寸(mm)。必须是正数。"
+    # ── v6.3: Use compiler's wiring for multi-component guidance ──
+    _wire_node_variants(schema, op_variants)
 
-            for fname in ["distance_mm", "radius_mm", "slot_depth_mm"]:
-                if fname in ps_props:
-                    ps_props[fname]["description"] = f"尺寸(mm)。必须是正数，且不超出零件边界。"
-
-            for fname in ["count", "count_x", "count_y"]:
-                if fname in ps_props:
-                    ps_props[fname]["description"] = f"数量。必须是>=1的整数。"
-
-            # position_mm
-            if "position_mm" in ps_props:
-                ps_props["position_mm"]["description"] = "位置坐标[x,y]或[x,y,z](mm)。相对于零件中心的偏移。"
-
-            # side field
-            if "side" in ps_props:
-                ps_props["side"]["description"] = "操作面: 'front'=前表面(Z最大处), 'rear'=后表面(Z最小处)"
-
-            # vector_mm
-            if "vector_mm" in ps_props:
-                ps_props["vector_mm"]["description"] = "平移向量[x,y,z](mm)。正Z向上移动，负Z向下移动。"
-
-            # axis
-            if "axis" in ps_props:
-                ps_props["axis"]["description"] = "旋转轴方向: 'Z'=绕Z轴"
-
-            defs[ref_name] = params_schema
-
-            # Build the op variant
-            op_desc = OP_DESCRIPTIONS.get(op_name, f"{op_name}操作。参数见params schema。")
-            variant = {
-                "type": "object",
-                "title": f"{dn}.{op_name}",
-                "description": op_desc,
-                "properties": {
-                    "id": {"type": "string", "description": "节点唯一ID，如n1, n_body, n_cut"},
-                    "component": {"type": "string", "description": "所属组件ID"},
-                    "dialect": {"const": dn},
-                    "op": {"const": op_name},
-                    "op_version": {"const": "1.0.0"},
-                    "phase": {"const": spec.phase},
-                    "inputs": {
-                        "type": "array",
-                        "description": f"输入引用列表(恰好{len(spec.input_types)}个). 每个引用指向之前node的输出.",
-                        "minItems": len(spec.input_types),
-                        "maxItems": len(spec.input_types),
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "node": {"type": "string", "description": "生产者node的id"},
-                                "output": {"type": "string", "description": "输出名称, 通常是'body'"},
-                            },
-                            "required": ["node", "output"],
-                            "additionalProperties": False,
-                        },
-                    },
-                    "outputs": {
-                        "type": "array",
-                        "description": f"节点输出列表(恰好{len(outputs)}个)",
-                        "minItems": len(outputs),
-                        "maxItems": len(outputs),
-                        "prefixItems": [
-                            {"const": o} for o in outputs
-                        ] if outputs else [],
-                    } if outputs else {"type": "array", "maxItems": 0},
-                    "params": {"$ref": f"#/$defs/{ref_name}"},
-                    "required": {"const": True, "description": "是否必须执行"},
-                    "degradation_policy": {"const": "fail", "description": "失败时的降级策略. 'fail'=直接报错."},
-                },
-                "required": [
-                    "id", "component", "dialect", "op", "op_version",
-                    "phase", "inputs", "outputs", "params",
-                    "required", "degradation_policy",
-                ],
-                "additionalProperties": False,
-            }
-            op_variants.append(variant)
-
-    # ── Add multi-component guidance to top-level schema ──
-    # Guide LLM on when and how to create multiple components
+    # Override with Chinese descriptions for DeepSeek
     comp_prop = schema.get("properties", {}).get("components", {})
     if comp_prop:
         comp_prop["description"] = (
@@ -494,10 +449,6 @@ def build_level2_tool(contracts: dict[str, dict] | None = None) -> dict:
             "2) 再在__assembly__组件中创建composition节点(boolean_union等)来合并它们。"
             "composition节点通过inputs引用其他组件的最终节点来实现跨组件合并。"
         )
-
-    # ── Replace nodes.items with per-op discriminated union ──
-    if nodes_prop:
-        nodes_prop["items"] = {"anyOf": op_variants}
 
     return {
         "type": "function",

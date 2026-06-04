@@ -1,0 +1,159 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "transition-pipe-variable-section",
+  "part_name": "transition_pipe",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0",
+      "contract_hash": "sha256:e65e433162c910d28028903e691e48174e56dcc8b400a35f8f9f124adcc6ff17"
+    }
+  ],
+  "components": [
+    {
+      "id": "pipe",
+      "owner_dialect": "loft_sweep",
+      "kind_hint": null,
+      "root_node": "loft_body",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "loft_body",
+      "component": "pipe",
+      "dialect": "loft_sweep",
+      "op": "loft_sections",
+      "op_version": "1.0.0",
+      "phase": "loft",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:pipe:loft_body:body"
+        }
+      ],
+      "params": {
+        "sections": [
+          {
+            "position": {
+              "x_mm": 0,
+              "y_mm": 0,
+              "z_mm": 0
+            },
+            "shape": "circle",
+            "radius_mm": 40
+          },
+          {
+            "position": {
+              "x_mm": 0,
+              "y_mm": 0,
+              "z_mm": 60
+            },
+            "shape": "circle",
+            "radius_mm": 55
+          },
+          {
+            "position": {
+              "x_mm": 0,
+              "y_mm": 0,
+              "z_mm": 120
+            },
+            "shape": "rectangle",
+            "width_mm": 100,
+            "height_mm": 80
+          },
+          {
+            "position": {
+              "x_mm": 0,
+              "y_mm": 0,
+              "z_mm": 200
+            },
+            "shape": "circle",
+            "radius_mm": 65
+          }
+        ],
+        "ruled": false
+      },
+      "typed_params": {
+        "sections": [
+          {
+            "position": {
+              "x_mm": 0.0,
+              "y_mm": 0.0,
+              "z_mm": 0.0
+            },
+            "shape": "circle",
+            "radius_mm": 40.0,
+            "width_mm": 20.0,
+            "height_mm": 20.0
+          },
+          {
+            "position": {
+              "x_mm": 0.0,
+              "y_mm": 0.0,
+              "z_mm": 60.0
+            },
+            "shape": "circle",
+            "radius_mm": 55.0,
+            "width_mm": 20.0,
+            "height_mm": 20.0
+          },
+          {
+            "position": {
+              "x_mm": 0.0,
+              "y_mm": 0.0,
+              "z_mm": 120.0
+            },
+            "shape": "rectangle",
+            "radius_mm": 10.0,
+            "width_mm": 100.0,
+            "height_mm": 80.0
+          },
+          {
+            "position": {
+              "x_mm": 0.0,
+              "y_mm": 0.0,
+              "z_mm": 200.0
+            },
+            "shape": "circle",
+            "radius_mm": 65.0,
+            "width_mm": 20.0,
+            "height_mm": 20.0
+          }
+        ],
+        "ruled": false
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": []
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:2e1647e20647d2409655151f0231a4811c89c53814404ac348a0bd1ce1da46ca",
+  "raw_graph_hash": "sha256:4ee0d5b0b7f6af1f10bbab5019b4ba980f217f0a23c6d6ab3bdd30d985d6b309"
+}
