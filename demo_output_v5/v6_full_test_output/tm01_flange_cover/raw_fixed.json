@@ -1,0 +1,216 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "flange_cover",
+  "part_name": "法兰盖",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "flange",
+      "owner_dialect": "axisymmetric",
+      "root_node": "revolve"
+    },
+    {
+      "id": "__assembly__",
+      "owner_dialect": "axisymmetric",
+      "root_node": "assemble"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "revolve",
+      "component": "flange",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "v0.2.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 75,
+            "z_front_mm": 0,
+            "z_rear_mm": 15
+          },
+          {
+            "r_mm": 40,
+            "z_front_mm": 15,
+            "z_rear_mm": 25
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "bore",
+      "component": "flange",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "v0.2.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "revolve",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 20,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "groove",
+      "component": "flange",
+      "dialect": "axisymmetric",
+      "op": "cut_annular_groove",
+      "op_version": "v0.2.0",
+      "phase": "annular_detail",
+      "inputs": [
+        {
+          "node": "bore",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "side": "front",
+        "inner_dia_mm": 85,
+        "outer_dia_mm": 105,
+        "depth_mm": 3
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "holes",
+      "component": "flange",
+      "dialect": "axisymmetric",
+      "op": "cut_circular_hole_pattern",
+      "op_version": "v0.2.0",
+      "phase": "pattern_cut",
+      "inputs": [
+        {
+          "node": "groove",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "count": 8,
+        "pcd_mm": 120,
+        "hole_dia_mm": 11,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "chamfer",
+      "component": "flange",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "v0.2.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "holes",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 1,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "assemble",
+      "component": "__assembly__",
+      "dialect": "axisymmetric",
+      "op": "boolean_union",
+      "op_version": "v0.2.0",
+      "phase": "cleanup",
+      "inputs": [
+        {
+          "component": "flange",
+          "output": "body"
+        },
+        {
+          "component": "flange",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {},
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": null
+}

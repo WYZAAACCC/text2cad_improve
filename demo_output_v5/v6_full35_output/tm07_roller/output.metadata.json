@@ -1,0 +1,282 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "reference_geometry",
+    "document_id": "conveyor-roller-01",
+    "part_name": "conveyor_roller",
+    "selected_dialects": [
+      {
+        "dialect": "axisymmetric",
+        "version": "0.2.0",
+        "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+      },
+      {
+        "dialect": "composition",
+        "version": "0.2.0",
+        "contract_hash": "sha256:1ff66c680d94f60891bf00260f365ffa2a0d213d5571a2366a3f1c27748f5382"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "tube_revolve",
+        "dialect": "axisymmetric",
+        "op": "revolve_profile",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "shaft_revolve",
+        "dialect": "axisymmetric",
+        "op": "revolve_profile",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "tube_bore",
+        "dialect": "axisymmetric",
+        "op": "cut_center_bore",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "assy_union",
+        "dialect": "composition",
+        "op": "boolean_union",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "tube_cleanup",
+        "dialect": "axisymmetric",
+        "op": "apply_safe_chamfer",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "shaft_cleanup",
+        "dialect": "axisymmetric",
+        "op": "apply_safe_chamfer",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:a26bb37444dd1a86632f48ad16f60fc6d077ef8dbc65048102ff8db41852bdbb",
+    "canonical_graph_hash": "sha256:f80d735b8d42d7cda0b0c9f256b1c75d6a2ee147e2c6644f337311b5b89900b0",
+    "paths": {
+      "canonical_ir_path": "E:\\auto_detection_process\\demo_output_v5\\v6_full35_output\\tm07_roller\\canonical.json",
+      "validation_seed_path": "E:\\auto_detection_process\\demo_output_v5\\v6_full35_output\\tm07_roller\\validation_bundle.json",
+      "step_path": "E:\\auto_detection_process\\demo_output_v5\\v6_full35_output\\tm07_roller\\output.step",
+      "metadata_path": "E:\\auto_detection_process\\demo_output_v5\\v6_full35_output\\tm07_roller\\output.metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:3a8127b919199b5f5a57255a1840e6f7957be438aaa44facf196dd80bcca5d03",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [
+      "boolean_union pre-check on 'assy_union': Near-coincident faces detected (clearance=0.0000mm < minimum 0.2mm). Boolean operation may fail — ensure components are properly separated."
+    ],
+    "degraded_features": [],
+    "operation_metrics": [
+      {
+        "node_id": "tube_revolve",
+        "op": "revolve_profile",
+        "status": "ok"
+      },
+      {
+        "node_id": "tube_bore",
+        "op": "cut_center_bore",
+        "status": "ok"
+      },
+      {
+        "node_id": "tube_cleanup",
+        "op": "apply_safe_chamfer",
+        "status": "ok"
+      },
+      {
+        "node_id": "shaft_revolve",
+        "op": "revolve_profile",
+        "status": "ok"
+      },
+      {
+        "node_id": "shaft_cleanup",
+        "op": "apply_safe_chamfer",
+        "status": "ok"
+      },
+      {
+        "node_id": "assy_union",
+        "op": "boolean_union",
+        "status": "ok"
+      }
+    ],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [
+    "boolean_union pre-check on 'assy_union': Near-coincident faces detected (clearance=0.0000mm < minimum 0.2mm). Boolean operation may fail — ensure components are properly separated."
+  ],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {
+        "structure": {
+          "ok": true,
+          "stage": "structure",
+          "issues": [],
+          "stages_run": [
+            "structure"
+          ]
+        },
+        "registry": {
+          "ok": true,
+          "stage": "registry",
+          "issues": [],
+          "stages_run": [
+            "registry"
+          ]
+        },
+        "params": {
+          "ok": true,
+          "stage": "params",
+          "issues": [],
+          "stages_run": [
+            "params"
+          ]
+        },
+        "ownership": {
+          "ok": true,
+          "stage": "ownership",
+          "issues": [],
+          "stages_run": [
+            "ownership"
+          ]
+        },
+        "graph": {
+          "ok": true,
+          "stage": "graph",
+          "issues": [],
+          "stages_run": [
+            "graph"
+          ]
+        },
+        "typecheck": {
+          "ok": true,
+          "stage": "typecheck",
+          "issues": [],
+          "stages_run": [
+            "typecheck"
+          ]
+        },
+        "phase": {
+          "ok": true,
+          "stage": "phase",
+          "issues": [],
+          "stages_run": [
+            "phase"
+          ]
+        },
+        "composition": {
+          "ok": true,
+          "stage": "composition",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "registry",
+            "params",
+            "ownership",
+            "graph",
+            "typecheck",
+            "phase",
+            "composition"
+          ]
+        },
+        "safety": {
+          "ok": true,
+          "stage": "safety",
+          "issues": [],
+          "stages_run": [
+            "safety"
+          ]
+        }
+      },
+      "canonicalize": {
+        "ok": true,
+        "stage": "canonicalize",
+        "issues": [],
+        "stages_run": [
+          "canonicalize"
+        ]
+      },
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": true,
+      "stage": "dialect_semantics",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "safety",
+        "canonicalize",
+        "dialect_semantics"
+      ]
+    },
+    "geometry_preflight": {
+      "ok": true,
+      "stage": "geometry_preflight",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "safety",
+        "canonicalize",
+        "dialect_semantics",
+        "geometry_preflight"
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    }
+  }
+}

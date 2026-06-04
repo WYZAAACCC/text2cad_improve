@@ -1,0 +1,5 @@
+涡轮增压器转子轴, 单位 mm.
+revolve_profile 10段: station1 r=35 z=0-8, station2 r=25 z=8-20, station3 r=18 z=20-45, station4 r=22 z=45-50, station5 r=15 z=50-85, station6 r=20 z=85-95, station7 r=12 z=95-130, station8 r=16 z=130-140, station9 r=28 z=140-150, station10 r=20 z=150-160.
+cut_center_bore diameter_mm=5 through_all=true.
+cut_external_thread nominal_dia_mm=20 pitch_mm=2.5 length_mm=10 standard=ISO_metric thread_class=6g.
+apply_safe_chamfer distance_mm=0.3 target=all_external_edges.

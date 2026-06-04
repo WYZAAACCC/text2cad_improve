@@ -1,0 +1,5 @@
+大功率散热器总成, 单位mm.
+组件base_plate(sketch_extrude): extrude_rectangle width_mm=300 height_mm=200 depth_mm=15 centered=true.
+组件fin_array(sketch_extrude): extrude_rectangle width_mm=280 height_mm=3 depth_mm=80 centered=true.
+组件housing(sketch_extrude): extrude_rectangle width_mm=320 height_mm=220 depth_mm=100 centered=true. shell_body thickness_mm=4.
+装配__assembly__(composition): 依次boolean_union(每次2 inputs).

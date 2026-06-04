@@ -63,54 +63,61 @@ def _make_3d_spline_wire(pts: list) -> "TopoDS_Wire":
 
 
 def handle_sweep_profile(node, ctx) -> dict:
-    """Sweep a 2D profile along a previously defined 3D path."""
+    """Sweep a 2D circular profile along a previously defined 3D path.
+
+    v6.1: Uses OCP-native 3D pipe builder (make_circular_pipe_along_path)
+    which handles pure vertical, horizontal, and angled straight pipe segments,
+    bypassing CadQuery's XY-workplane Z-dropping limitation.
+    Falls back to CadQuery spline sweep for non-circular profiles.
+    """
     import cadquery as cq
     from seekflow_engineering_tools.generative_cad.runtime.resolve import resolve_input_object
 
-    # input[0] = path (list of Point3D), input[1] = optional solid to merge into
     path_data = resolve_input_object(node, ctx, 0)
-
     params = node.params
     shape = params.get("shape", "circle")
     radius = float(params.get("radius_mm", 5))
     width = float(params.get("width_mm", 10))
     height = float(params.get("height_mm", 10))
 
-    # Convert path point dicts to CadQuery vectors
-    pts = []
+    # Convert path point dicts to (x, y, z) tuples
+    pts: list[tuple[float, float, float]] = []
     for p in path_data:
         x = float(p.get("x_mm", p.get("x", 0))) if isinstance(p, dict) else float(p[0])
         y = float(p.get("y_mm", p.get("y", 0))) if isinstance(p, dict) else float(p[1])
         z = float(p.get("z_mm", p.get("z", 0))) if isinstance(p, dict) else float(p[2])
-        pts.append(cq.Vector(x, y, z))
+        pts.append((x, y, z))
 
     if len(pts) < 2:
         raise ValueError("Need at least 2 path points for sweep")
 
+    # Self-intersection check (same as before)
+    for i in range(len(pts) - 2):
+        for j in range(i + 2, len(pts) - 1):
+            di = (pts[i][0]-pts[j][0])**2 + (pts[i][1]-pts[j][1])**2 + (pts[i][2]-pts[j][2])**2
+            if di < 0.01:
+                raise RuntimeError(
+                    f"Sweep path self-intersects: points {i} and {j} are {di**0.5:.4f}mm apart"
+                )
+
     try:
-        # Build path — try CadQuery first (handles 2D and simple 3D)
-        if len(pts) == 2:
-            path_wire = cq.Workplane("XY").moveTo(pts[0].x, pts[0].y).lineTo(pts[1].x, pts[1].y)
-        else:
-            path_wire = cq.Workplane("XY").spline(pts)
-
-        # Self-intersection check
-        for i in range(len(pts) - 2):
-            for j in range(i + 2, len(pts) - 1):
-                d = (pts[i] - pts[j]).Length
-                if d < 0.1:
-                    raise RuntimeError(
-                        f"Sweep path self-intersects: points {i} and {j} are {d:.4f}mm apart"
-                    )
-
-        # Build profile
         if shape == "circle":
-            profile = cq.Workplane("XZ").circle(radius)
+            # v6.1: OCP-native 3D pipe (handles vertical/horizontal/angled)
+            from seekflow_engineering_tools.generative_cad.dialects.geometry_utils.ocp_pipe import (
+                make_circular_pipe_along_path,
+            )
+            solid = make_circular_pipe_along_path(pts, radius)
         else:
+            # Non-circular: CadQuery fallback
+            cq_pts = [cq.Vector(p[0], p[1], p[2]) for p in pts]
+            if len(pts) == 2:
+                path_wire = cq.Workplane("XY").moveTo(
+                    cq_pts[0].x, cq_pts[0].y
+                ).lineTo(cq_pts[1].x, cq_pts[1].y)
+            else:
+                path_wire = cq.Workplane("XY").spline(cq_pts)
             profile = cq.Workplane("XZ").rect(width, height)
-
-        # Sweep
-        solid = profile.sweep(path_wire)
+            solid = profile.sweep(path_wire)
     except Exception as e:
         raise RuntimeError(f"sweep_profile failed on '{node.id}': {e}")
 
@@ -172,11 +179,13 @@ def _estimate_helix_sweep_volume(radius, profile_r, turns, total_z):
     return math.pi * profile_r ** 2 * centerline_len
 
 
-def _build_helix_wire_ocp(radius, total_z, turns, sample_n=720):
+def _build_helix_wire_ocp(radius, total_z, turns, sample_n=720, z_start=0.0):
     """Build a 3D helix as TopoDS_Wire using OCP native API.
 
     Bypasses CadQuery parametricCurve which produces polyline-approximated
     paths that cause BRepOffsetAPI_MakePipeShell to fail on multi-turn helices.
+
+    v6.1: z_start parameter for segmented helix sweep.
     """
     from OCP.gp import gp_Pnt
     from OCP.TColgp import TColgp_Array1OfPnt
@@ -188,7 +197,7 @@ def _build_helix_wire_ocp(radius, total_z, turns, sample_n=720):
     for i in range(n_pts):
         t = i / sample_n
         angle = 2.0 * math.pi * turns * t
-        z = total_z * t
+        z = z_start + total_z * t
         arr.SetValue(i + 1, gp_Pnt(
             radius * math.cos(angle),
             radius * math.sin(angle),
@@ -246,38 +255,81 @@ def handle_helix_sweep(node, ctx) -> dict:
         )
 
     try:
-        # ── Build helix wire using OCP native API ──
-        sample_n = max(360, int(math.ceil(turns * 60)))
-        helix_wire = _build_helix_wire_ocp(radius, total_z, turns, sample_n)
-
-        # ── Build profile as a face for BRepOffsetAPI_MakePipe ──
+        # ── Profile for sweep ──
         profile = cq.Workplane("XZ").center(radius, 0).circle(profile_r)
         profile_face = profile.val()
-
-        # ── Try OCP BRepOffsetAPI_MakePipe first ──
         from OCP.BRepOffsetAPI import BRepOffsetAPI_MakePipe
-        profile_shape = profile_face.wrapped if hasattr(profile_face, 'wrapped') else profile_face
-        pipe = BRepOffsetAPI_MakePipe(helix_wire, profile_shape)
-        pipe.Build()
 
-        if pipe.IsDone():
-            solid = cq.Solid(pipe.Shape())
+        # ── v6.1: Segmented sweep for long helices (>8 turns) ──
+        MAX_TURNS_ONE_SHOT = 8
+        MAX_TURNS_PER_SEG = 3
+
+        if turns <= MAX_TURNS_ONE_SHOT:
+            # One-shot OCP MakePipe
+            sample_n = max(360, int(math.ceil(turns * 60)))
+            helix_wire = _build_helix_wire_ocp(radius, total_z, turns, sample_n)
+            profile_shape = profile_face.wrapped if hasattr(profile_face, 'wrapped') else profile_face
+            pipe = BRepOffsetAPI_MakePipe(helix_wire, profile_shape)
+            pipe.Build()
+
+            if pipe.IsDone():
+                solid = cq.Solid(pipe.Shape())
+            else:
+                # Fallback: CadQuery parametricCurve sweep
+                ctx.warnings.append(
+                    f"helix_sweep on '{node.id}': OCP MakePipe failed, "
+                    f"falling back to CadQuery sweep (may have reduced volume)"
+                )
+                helix = cq.Workplane("XY").parametricCurve(
+                    lambda t: (
+                        radius * math.cos(2.0 * math.pi * turns * t),
+                        radius * math.sin(2.0 * math.pi * turns * t),
+                        total_z * t,
+                    ),
+                    N=max(200, int(math.ceil(turns * 25))),
+                )
+                solid = profile.sweep(helix)
         else:
-            # ── Fallback: CadQuery parametricCurve sweep ──
+            # ── v6.1: Segmented sweep for long helices ──
+            n_segs = int(math.ceil(turns / MAX_TURNS_PER_SEG))
+            turns_per_seg = turns / n_segs
+            z_per_seg = total_z / n_segs
+            seg_solids = []
+
+            for i in range(n_segs):
+                z_start = z_per_seg * i
+                seg_z = z_per_seg
+                seg_turns = turns_per_seg
+                seg_sample_n = max(360, int(math.ceil(seg_turns * 60)))
+                seg_wire = _build_helix_wire_ocp(radius, seg_z, seg_turns, seg_sample_n, z_start=z_start)
+                pf = profile_face.val() if hasattr(profile_face, 'val') else profile_face
+                ps = pf.wrapped if hasattr(pf, 'wrapped') else pf
+                pipe = BRepOffsetAPI_MakePipe(seg_wire, ps)
+                pipe.Build()
+                if not pipe.IsDone():
+                    raise RuntimeError(
+                        f"helix_sweep segment {i+1}/{n_segs} OCP MakePipe failed"
+                    )
+                seg_solids.append(cq.Solid(pipe.Shape()))
+
+            # Fuse segments
+            solid = seg_solids[0]
+            for seg in seg_solids[1:]:
+                try:
+                    solid = solid.union(seg)
+                except Exception:
+                    from OCP.BRepAlgoAPI import BRepAlgoAPI_Fuse
+                    fuse = BRepAlgoAPI_Fuse(solid.wrapped, seg.wrapped)
+                    fuse.Build()
+                    if fuse.IsDone():
+                        solid = cq.Solid(fuse.Shape())
+                    else:
+                        raise RuntimeError("helix_sweep segment fuse failed")
+
             ctx.warnings.append(
-                f"helix_sweep on '{node.id}': OCP MakePipe failed, "
-                f"falling back to CadQuery sweep (may have reduced volume)"
+                f"helix_sweep on '{node.id}': segmented sweep ({n_segs} segments × "
+                f"{turns_per_seg:.1f} turns, fused)"
             )
-            helix = cq.Workplane("XY").parametricCurve(
-                lambda t: (
-                    radius * math.cos(2.0 * math.pi * turns * t),
-                    radius * math.sin(2.0 * math.pi * turns * t),
-                    total_z * t,
-                ),
-                N=max(200, int(math.ceil(turns * 25))),
-            )
-            profile = cq.Workplane("XZ").center(radius, 0).circle(profile_r)
-            solid = profile.sweep(helix)
 
         # ── Volume verification ──
         expected_v = _estimate_helix_sweep_volume(radius, profile_r, turns, total_z)

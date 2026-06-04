@@ -1,0 +1,349 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "centrifugal-pump-impeller-assembly",
+  "part_name": "离心泵叶轮总成",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0"
+    },
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "impeller_disc",
+      "owner_dialect": "axisymmetric",
+      "root_node": "impeller_disc_bore"
+    },
+    {
+      "id": "blade_1",
+      "owner_dialect": "sketch_extrude",
+      "root_node": "blade_1_extrude"
+    },
+    {
+      "id": "blade_2",
+      "owner_dialect": "sketch_extrude",
+      "root_node": "blade_2_extrude"
+    },
+    {
+      "id": "blade_3",
+      "owner_dialect": "sketch_extrude",
+      "root_node": "blade_3_extrude"
+    },
+    {
+      "id": "blade_4",
+      "owner_dialect": "sketch_extrude",
+      "root_node": "blade_4_extrude"
+    },
+    {
+      "id": "__assembly__",
+      "owner_dialect": "composition",
+      "root_node": "assembly_root"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "impeller_disc_revolve",
+      "component": "impeller_disc",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 20.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 10.0
+          },
+          {
+            "r_mm": 150.0,
+            "z_front_mm": 10.0,
+            "z_rear_mm": 25.0
+          },
+          {
+            "r_mm": 20.0,
+            "z_front_mm": 25.0,
+            "z_rear_mm": 35.0
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "blade_1_extrude",
+      "component": "blade_1",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 3.0,
+        "height_mm": 120.0,
+        "depth_mm": 20.0,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "blade_2_extrude",
+      "component": "blade_2",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 3.0,
+        "height_mm": 120.0,
+        "depth_mm": 20.0,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "blade_3_extrude",
+      "component": "blade_3",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 3.0,
+        "height_mm": 120.0,
+        "depth_mm": 20.0,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "blade_4_extrude",
+      "component": "blade_4",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 3.0,
+        "height_mm": 120.0,
+        "depth_mm": 20.0,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "impeller_disc_bore",
+      "component": "impeller_disc",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "impeller_disc_revolve",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 25.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "union_disc_blade1",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "output": "body",
+          "component": "impeller_disc"
+        },
+        {
+          "output": "body",
+          "component": "blade_1"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {},
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "union_12_blade2",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "node": "union_disc_blade1",
+          "output": "body"
+        },
+        {
+          "output": "body",
+          "component": "blade_2"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {},
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "union_123_blade3",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "node": "union_12_blade2",
+          "output": "body"
+        },
+        {
+          "output": "body",
+          "component": "blade_3"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {},
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "assembly_root",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "node": "union_123_blade3",
+          "output": "body"
+        },
+        {
+          "output": "body",
+          "component": "blade_4"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {},
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {
+    "_": "Centrifugal pump impeller assembly: axisymmetric disc with 3-station revolve profile and 25mm center bore, plus 4 rectangular blades (3x120x20mm each) sequentially boolean-unioned. All 7 safety flags active. Expected 1 closed solid body."
+  }
+}

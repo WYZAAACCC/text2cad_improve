@@ -1,0 +1,4 @@
+完整轴承座, 单位 mm.
+组件 'housing' (axisymmetric): revolve_profile station1 r=55 z=0-20, station2 r=40 z=20-70, station3 r=35 z=70-75. cut_center_bore diameter_mm=50 through_all=true. cut_circular_hole_pattern count=4 pcd_mm=90 hole_dia_mm=10.
+组件 'base' (sketch_extrude): extrude_rectangle width_mm=200 height_mm=120 depth_mm=20 centered=true. cut_hole_pattern_linear hole_dia_mm=12 count_x=2 count_y=2 spacing_x_mm=160 spacing_y_mm=80.
+装配 '__assembly__' (composition): boolean_union 合并 housing 和 base. inputs: [{component: housing, output: body}, {component: base, output: body}].

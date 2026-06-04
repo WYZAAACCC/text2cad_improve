@@ -1,0 +1,5 @@
+超大直径薄壁环, 单位mm.
+revolve_profile station1 r=500 z=0-15.
+cut_center_bore diameter_mm=990 (壁厚5mm).
+cut_circular_hole_pattern count=36 pcd_mm=970 hole_dia_mm=10.
+apply_safe_chamfer distance_mm=0.5. 直径1米的薄壁环, 壁厚仅5mm, 36个螺栓孔.

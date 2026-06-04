@@ -1,0 +1,218 @@
+{
+  "timestamp": "2026-06-04T03:35:59.563311",
+  "total": 35,
+  "passed": 33,
+  "pipeline": "v5.1-full35",
+  "results": [
+    {
+      "id": "tm01_flange_cover",
+      "name": "T1 法兰盖",
+      "ok": true,
+      "msg": "STEP=108919B sem=OK"
+    },
+    {
+      "id": "tm02_l_bracket",
+      "name": "T1 L型支架",
+      "ok": true,
+      "msg": "STEP=264534B sem=OK"
+    },
+    {
+      "id": "tm03_bearing_seat",
+      "name": "T1 轴承座",
+      "ok": true,
+      "msg": "STEP=60256B sem=OK"
+    },
+    {
+      "id": "tm04_stepped_shaft",
+      "name": "T1 阶梯轴",
+      "ok": true,
+      "msg": "STEP=70767B sem=OK"
+    },
+    {
+      "id": "tm05_v_pulley",
+      "name": "T1 V型带轮",
+      "ok": true,
+      "msg": "STEP=115710B sem=OK"
+    },
+    {
+      "id": "tm06_spring",
+      "name": "T2 压缩弹簧",
+      "ok": true,
+      "msg": "STEP=161267B sem=OK"
+    },
+    {
+      "id": "tm07_roller",
+      "name": "T2 托辊",
+      "ok": true,
+      "msg": "STEP=32697B sem=OK"
+    },
+    {
+      "id": "tm08_weld_fork",
+      "name": "T2 焊接叉",
+      "ok": true,
+      "msg": "STEP=68792B sem=OK"
+    },
+    {
+      "id": "tm09_gearbox_cover",
+      "name": "T2 减速器箱盖",
+      "ok": true,
+      "msg": "STEP=15567B sem=OK"
+    },
+    {
+      "id": "tm10_hex_nut",
+      "name": "T2 六角螺母",
+      "ok": true,
+      "msg": "STEP=20122B sem=OK"
+    },
+    {
+      "id": "tm11_turbine_disk",
+      "name": "T3 涡轮盘",
+      "ok": true,
+      "msg": "STEP=465598B sem=OK"
+    },
+    {
+      "id": "tm12_robot_wrist",
+      "name": "T3 机器人腕部",
+      "ok": false,
+      "msg": "[hole_pattern_intersects_center_bore] hole pattern PCD radius (70.0) - hole radius (4.0) <= bore radius (76.0) + margin (1.0)"
+    },
+    {
+      "id": "tm13_exhaust_manifold",
+      "name": "T3 排气歧管",
+      "ok": true,
+      "msg": "STEP=19535B sem=OK"
+    },
+    {
+      "id": "tm14_hyd_valve",
+      "name": "T3 液压阀体",
+      "ok": true,
+      "msg": "STEP=287084B sem=OK"
+    },
+    {
+      "id": "tm15_diff_case",
+      "name": "T3 差速器壳体",
+      "ok": true,
+      "msg": "STEP=186198B sem=OK"
+    },
+    {
+      "id": "s01_thin_flange",
+      "name": "S1 超大薄壁法兰",
+      "ok": false,
+      "msg": "[hole_pattern_outside_profile] hole pattern PCD radius (290.0) + hole radius (6.0) >= profile max (250.0) - margin (1.0)"
+    },
+    {
+      "id": "s02_micro_bushing",
+      "name": "S2 微型轴套",
+      "ok": true,
+      "msg": "STEP=20125B sem=OK"
+    },
+    {
+      "id": "s03_dense_rib",
+      "name": "S3 密集筋板",
+      "ok": true,
+      "msg": "STEP=626479B sem=OK"
+    },
+    {
+      "id": "s04_deep_holes",
+      "name": "S4 深孔阀块",
+      "ok": true,
+      "msg": "STEP=428734B sem=OK"
+    },
+    {
+      "id": "s05_long_spring",
+      "name": "S5 长弹簧",
+      "ok": true,
+      "msg": "STEP=3731765B sem=OK"
+    },
+    {
+      "id": "s06_double_flange",
+      "name": "S6 双层法兰",
+      "ok": true,
+      "msg": "STEP=99572B sem=OK"
+    },
+    {
+      "id": "s07_cross_rib",
+      "name": "S7 十字筋箱体",
+      "ok": true,
+      "msg": "STEP=1287045B sem=OK"
+    },
+    {
+      "id": "s08_full_shaft",
+      "name": "S8 全特征轴",
+      "ok": true,
+      "msg": "STEP=75457B sem=OK"
+    },
+    {
+      "id": "s09_var_sweep",
+      "name": "S9 变径扫掠管",
+      "ok": true,
+      "msg": "STEP=41532B sem=OK"
+    },
+    {
+      "id": "s10_shelled_box",
+      "name": "S10 薄壁壳体",
+      "ok": true,
+      "msg": "STEP=73100B sem=OK"
+    },
+    {
+      "id": "s11_coupling",
+      "name": "S11 联轴器总成",
+      "ok": true,
+      "msg": "STEP=85147B sem=OK"
+    },
+    {
+      "id": "s12_reducer_base",
+      "name": "S12 减速器底座",
+      "ok": true,
+      "msg": "STEP=62637B sem=OK"
+    },
+    {
+      "id": "s13_pipe_system",
+      "name": "S13 多管路系统",
+      "ok": true,
+      "msg": "STEP=44029B sem=OK"
+    },
+    {
+      "id": "s14_bearing_full",
+      "name": "S14 完整轴承座",
+      "ok": true,
+      "msg": "STEP=46248B sem=OK"
+    },
+    {
+      "id": "s15_multi_valve",
+      "name": "S15 多端口阀块",
+      "ok": true,
+      "msg": "STEP=58969B sem=OK"
+    },
+    {
+      "id": "s16_turbo_rotor",
+      "name": "S16 涡轮转子",
+      "ok": true,
+      "msg": "STEP=80693B sem=OK"
+    },
+    {
+      "id": "s17_3d_pipe",
+      "name": "S17 3D空间弯管",
+      "ok": true,
+      "msg": "STEP=79041B sem=OK"
+    },
+    {
+      "id": "s18_thin_shell",
+      "name": "S18 大型薄壳",
+      "ok": true,
+      "msg": "STEP=73219B sem=OK"
+    },
+    {
+      "id": "s19_workbench",
+      "name": "S19 多体工作台",
+      "ok": true,
+      "msg": "STEP=228542B sem=OK"
+    },
+    {
+      "id": "s20_ultimate",
+      "name": "S20 终极综合件",
+      "ok": true,
+      "msg": "STEP=164937B sem=OK"
+    }
+  ]
+}

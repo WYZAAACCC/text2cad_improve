@@ -1,0 +1,5 @@
+真空腔体总成, 单位mm.
+组件chamber(axisymmetric): revolve_profile station1 r=100 z=0-300. shell_body thickness_mm=3.
+组件flange_top(sketch_extrude): extrude_rectangle width_mm=240 height_mm=240 depth_mm=20 centered=true. cut_hole diameter_mm=200 position_mm=[0,0]. cut_circular_hole_pattern count=12 pcd_mm=210 hole_dia_mm=10.
+组件flange_bottom(sketch_extrude): extrude_rectangle width_mm=240 height_mm=240 depth_mm=20 centered=true. cut_hole diameter_mm=200 position_mm=[0,0]. cut_circular_hole_pattern count=12 pcd_mm=210 hole_dia_mm=10.
+装配__assembly__(composition): 依次boolean_union(每次2 inputs).

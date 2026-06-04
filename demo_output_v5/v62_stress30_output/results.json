@@ -1,0 +1,242 @@
+[
+  {
+    "id": "g1_engine_mount",
+    "name": "发动机悬置支架总成",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 199475,
+    "attempts": 1
+  },
+  {
+    "id": "g2_gearbox_housing",
+    "name": "减速器箱体总成",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 992010,
+    "attempts": 1
+  },
+  {
+    "id": "g3_hyd_manifold",
+    "name": "液压集成块",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 1041249,
+    "attempts": 1
+  },
+  {
+    "id": "g4_pump_casing",
+    "name": "离心泵蜗壳",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 458179,
+    "attempts": 1
+  },
+  {
+    "id": "g5_robot_arm",
+    "name": "机器人手臂段",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 48514,
+    "attempts": 1
+  },
+  {
+    "id": "g6_helix_coil",
+    "name": "螺旋换热盘管",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 3757327,
+    "attempts": 1
+  },
+  {
+    "id": "g7_3d_tube",
+    "name": "复杂空间管路",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 79123,
+    "attempts": 1
+  },
+  {
+    "id": "g8_var_duct",
+    "name": "变截面过渡管",
+    "ok": true,
+    "step_ok": false,
+    "msg": "build failed",
+    "attempts": 1
+  },
+  {
+    "id": "g9_torsion_spring",
+    "name": "扭力弹簧",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 2338413,
+    "attempts": 2
+  },
+  {
+    "id": "g10_spiral_volute",
+    "name": "螺旋蜗壳",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 5934,
+    "attempts": 1
+  },
+  {
+    "id": "g11_pressure_vessel",
+    "name": "薄壁压力容器",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 19779,
+    "attempts": 1
+  },
+  {
+    "id": "g12_hollow_bracket",
+    "name": "空心结构支架",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 269527,
+    "attempts": 1
+  },
+  {
+    "id": "g13_enclosure",
+    "name": "电子设备外壳",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 192748,
+    "attempts": 1
+  },
+  {
+    "id": "g14_vacuum_chamber",
+    "name": "真空腔体",
+    "ok": false,
+    "step_ok": false,
+    "msg": "[missing_input_node_ref] node 'ft_pattern_rest' references unknown node 'ft_cut_hole_ref'",
+    "attempts": 5
+  },
+  {
+    "id": "g15_heavy_flange",
+    "name": "重型法兰",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 287420,
+    "attempts": 1
+  },
+  {
+    "id": "g16_stepped_pulley",
+    "name": "多级带轮",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 58431,
+    "attempts": 1
+  },
+  {
+    "id": "g17_cross_block",
+    "name": "六面钻孔块",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 444290,
+    "attempts": 1
+  },
+  {
+    "id": "g18_ribbed_panel",
+    "name": "密集筋板结构",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 2502226,
+    "attempts": 1
+  },
+  {
+    "id": "g19_precision_base",
+    "name": "精密仪器基座",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 781192,
+    "attempts": 1
+  },
+  {
+    "id": "g20_motor_endbell",
+    "name": "电机端盖",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 215994,
+    "attempts": 1
+  },
+  {
+    "id": "g21_valve_body",
+    "name": "阀体带法兰",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 93053,
+    "attempts": 1
+  },
+  {
+    "id": "g22_heat_sink",
+    "name": "散热器总成",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 106294,
+    "attempts": 2
+  },
+  {
+    "id": "g23_pipe_reducer",
+    "name": "变径管接头",
+    "ok": true,
+    "step_ok": false,
+    "msg": "build failed",
+    "attempts": 1
+  },
+  {
+    "id": "g24_micro_bushing",
+    "name": "微型精密轴套",
+    "ok": false,
+    "step_ok": false,
+    "msg": "[a002_bore_too_large] center bore radius (1.2mm) leaves wall thickness of only 0.2mm (margin=1mm). Consider reducing bore or increasing outer \n\n=== REPAIR HINTS (computed feasible parameter ranges) ==",
+    "attempts": 5
+  },
+  {
+    "id": "g25_large_ring",
+    "name": "超大薄壁环",
+    "ok": false,
+    "step_ok": false,
+    "msg": "[hole_pattern_intersects_center_bore] Holes overlap with center bore: PCD/2-hole_r (494-2=492) <= bore_r (495) + margin (1). Min PCD for bore_dia=990: 996mm. \n\n=== REPAIR HINTS (computed feasible para",
+    "attempts": 5
+  },
+  {
+    "id": "g26_extreme_shaft",
+    "name": "超长细轴",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 75663,
+    "attempts": 1
+  },
+  {
+    "id": "g27_dense_holes",
+    "name": "密集孔板",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 1366474,
+    "attempts": 1
+  },
+  {
+    "id": "g28_ball_valve",
+    "name": "球阀阀体",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 342168,
+    "attempts": 1
+  },
+  {
+    "id": "g29_impeller",
+    "name": "离心叶轮",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 60311,
+    "attempts": 1
+  },
+  {
+    "id": "g30_hyd_cylinder",
+    "name": "液压缸端盖",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 1661,
+    "attempts": 1
+  }
+]

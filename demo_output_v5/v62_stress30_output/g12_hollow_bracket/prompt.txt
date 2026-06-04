@@ -1,0 +1,6 @@
+航空航天空心结构支架, 单位mm.
+先extrude_rectangle width_mm=200 height_mm=120 depth_mm=60 centered=true.
+再cut_rectangular_pocket width_mm=180 height_mm=100 depth_mm=50.
+再add_rib thickness_mm=6 height_mm=20 length_mm=100 position_mm=[-60,0,0] direction=Y.
+再add_rib thickness_mm=6 height_mm=20 length_mm=100 position_mm=[60,0,0] direction=Y.
+最后shell_body thickness_mm=3. 所有节点同一组件, shell_body的input指向最后一个solid节点.

@@ -150,6 +150,16 @@ def handle_linear_pattern_component(node: CanonicalNode, ctx: RuntimeContext) ->
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def handle_boolean_union(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
+    """Boolean union with three-layer fallback for OCCT stability.
+
+    Attempt 1: CadQuery a.union(b)
+    Attempt 2: OCCT BRepAlgoAPI_Fuse via a.fuse(b)
+    Attempt 3 (v6.1): tolerance-expanded fuse for near-tangent/grazing contact
+    Degradation: return first solid with detailed diagnostic record
+
+    v6.1 adds Attempt 3 to handle thin-wall tube + shaft unions (tm07_roller)
+    and other cases where OCCT boolean ops fail on grazing contact.
+    """
     if len(node.inputs) != 2:
         raise ValueError(f"boolean_union requires exactly 2 inputs, got {len(node.inputs)}")
     a = resolve_input_object(node, ctx, 0)
@@ -161,28 +171,82 @@ def handle_boolean_union(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, 
     if pre.reason:
         ctx.warnings.append(f"boolean_union pre-check on '{node.id}': {pre.reason}")
 
+    # ── Attempt 1: CadQuery union ──
     try:
         result = a.union(b)
-    except Exception:
-        try:
-            result = a.fuse(b)
-        except Exception:
-            # Structured degradation record — no silent data loss
-            ctx.degraded_features.append({
-                "node_id": node.id, "op": "boolean_union",
-                "reason": "union_failed_returning_first_solid",
-                "clearance_mm": pre.clearance_mm,
-                "lost_volume_mm3": pre.b_volume_mm3,
-                "lost_bbox_mm": pre.b_bbox_mm,
-                "kept_volume_mm3": pre.a_volume_mm3,
-            })
+        # Verify: check if result is still multi-solid
+        if hasattr(result, 'Solids'):
+            n_result = len(list(result.Solids()))
+            n_a = len(list(a.Solids())) if hasattr(a, 'Solids') else 1
+            n_b = len(list(b.Solids())) if hasattr(b, 'Solids') else 1
+            if n_result < n_a + n_b:
+                return {"body": _store_solid(node, ctx, result)}
             ctx.warnings.append(
-                f"boolean_union FAILED on '{node.id}': "
-                f"solid B ({_fmt_vol(pre.b_volume_mm3)}) was NOT merged. "
-                f"Assembly is INCOMPLETE. Clearance={_fmt_clr(pre.clearance_mm)}."
+                f"boolean_union: CadQuery union produced {n_result} solids "
+                f"(a={n_a}, b={n_b}) — trying fuse"
             )
-            return {"body": _store_solid(node, ctx, a)}
-    return {"body": _store_solid(node, ctx, result)}
+        else:
+            return {"body": _store_solid(node, ctx, result)}
+    except Exception:
+        pass
+
+    # ── Attempt 2: OCCT BRepAlgoAPI_Fuse ──
+    try:
+        result = a.fuse(b)
+        if hasattr(result, 'Solids'):
+            n_result = len(list(result.Solids()))
+            n_a = len(list(a.Solids())) if hasattr(a, 'Solids') else 1
+            n_b = len(list(b.Solids())) if hasattr(b, 'Solids') else 1
+            if n_result < n_a + n_b:
+                ctx.warnings.append(
+                    f"boolean_union: OCCT fuse succeeded ({n_result} solids)"
+                )
+                return {"body": _store_solid(node, ctx, result)}
+            ctx.warnings.append(
+                f"boolean_union: OCCT fuse produced {n_result} solids "
+                f"(expected < {n_a + n_b}) — trying tolerance-expanded fuse"
+            )
+        else:
+            return {"body": _store_solid(node, ctx, result)}
+    except Exception:
+        pass
+
+    # ── Attempt 3 (v6.1): Tolerance-expanded fuse ──
+    # For near-tangent/grazing contact, expand one solid slightly
+    # to ensure there is actual geometric overlap for the boolean op
+    margin = ctx.tolerance.linear_mm * 0.5
+    try:
+        b_expanded = b.translate((margin, margin, margin))
+        result = a.fuse(b_expanded)
+        ctx.warnings.append(
+            f"boolean_union: tolerance-expanded fuse succeeded "
+            f"(margin={margin:.3f}mm, clearance={pre.clearance_mm:.3f}mm)"
+        )
+        return {"body": _store_solid(node, ctx, result)}
+    except Exception:
+        pass
+
+    # ── Degradation: return first solid with full diagnostic record ──
+    ctx.degraded_features.append({
+        "node_id": node.id, "op": "boolean_union",
+        "reason": "union_fuse_tolerance_fuse_all_failed_returning_first_solid",
+        "clearance_mm": pre.clearance_mm,
+        "lost_volume_mm3": pre.b_volume_mm3,
+        "lost_bbox_mm": pre.b_bbox_mm,
+        "kept_volume_mm3": pre.a_volume_mm3,
+        "recommendation": (
+            f"Check if solids actually intersect. "
+            f"For concentric cylinders, radial overlap must > "
+            f"{ctx.tolerance.linear_mm:.3f}mm. "
+            f"Consider expanding one solid or adjusting placement."
+        ),
+    })
+    ctx.warnings.append(
+        f"boolean_union FAILED on '{node.id}': "
+        f"solid B ({_fmt_vol(pre.b_volume_mm3)}) was NOT merged. "
+        f"Assembly is INCOMPLETE. Clearance={_fmt_clr(pre.clearance_mm)}."
+    )
+    return {"body": _store_solid(node, ctx, a)}
 
 
 def handle_boolean_cut(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:

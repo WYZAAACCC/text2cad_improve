@@ -1,0 +1,309 @@
+[
+  {
+    "id": "s01_thin_flange",
+    "step_ok": false,
+    "step_size": 0,
+    "has_canon": false,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "s02_micro_bushing",
+    "step_ok": true,
+    "step_size": 20125,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "s03_dense_rib",
+    "step_ok": true,
+    "step_size": 626479,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "s04_deep_holes",
+    "step_ok": true,
+    "step_size": 60386,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "s05_long_spring",
+    "step_ok": false,
+    "step_size": 0,
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "s06_double_flange",
+    "step_ok": true,
+    "step_size": 45525,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "s07_cross_rib",
+    "step_ok": true,
+    "step_size": 1286573,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "s08_full_shaft",
+    "step_ok": true,
+    "step_size": 75457,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "s09_var_sweep",
+    "step_ok": true,
+    "step_size": 90633,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "s10_shelled_box",
+    "step_ok": false,
+    "step_size": 0,
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "s11_coupling",
+    "step_ok": true,
+    "step_size": 431587,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "s12_reducer_base",
+    "step_ok": true,
+    "step_size": 62637,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "s13_pipe_system",
+    "step_ok": false,
+    "step_size": 0,
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "s14_bearing_full",
+    "step_ok": true,
+    "step_size": 46248,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "s15_multi_valve",
+    "step_ok": false,
+    "step_size": 0,
+    "has_canon": false,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "s16_turbo_rotor",
+    "step_ok": true,
+    "step_size": 103785,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "s17_3d_pipe",
+    "step_ok": true,
+    "step_size": 791692,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "s18_thin_shell",
+    "step_ok": true,
+    "step_size": 73208,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "s19_workbench",
+    "step_ok": true,
+    "step_size": 110540,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "s20_ultimate",
+    "step_ok": true,
+    "step_size": 326736,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "tm01_flange_cover",
+    "step_ok": true,
+    "step_size": 110528,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "tm02_l_bracket",
+    "step_ok": true,
+    "step_size": 264534,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "tm03_bearing_seat",
+    "step_ok": true,
+    "step_size": 169689,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "tm04_stepped_shaft",
+    "step_ok": true,
+    "step_size": 70767,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "tm05_v_pulley",
+    "step_ok": true,
+    "step_size": 115710,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "tm06_spring",
+    "step_ok": false,
+    "step_size": 0,
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "tm07_roller",
+    "step_ok": true,
+    "step_size": 17143,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "tm08_weld_fork",
+    "step_ok": true,
+    "step_size": 292350,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "tm09_gearbox_cover",
+    "step_ok": true,
+    "step_size": 311787,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "tm10_hex_nut",
+    "step_ok": true,
+    "step_size": 20122,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "tm11_turbine_disk",
+    "step_ok": true,
+    "step_size": 467205,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "tm12_robot_wrist",
+    "step_ok": false,
+    "step_size": 0,
+    "has_canon": false,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "tm13_exhaust_manifold",
+    "step_ok": true,
+    "step_size": 38698,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "tm14_hyd_valve",
+    "step_ok": true,
+    "step_size": 55939,
+    "error": "No module named 'cadquery'",
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  },
+  {
+    "id": "tm15_diff_case",
+    "step_ok": false,
+    "step_size": 0,
+    "has_canon": true,
+    "has_llm": true,
+    "has_af": true
+  }
+]

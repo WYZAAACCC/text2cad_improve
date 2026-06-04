@@ -1,0 +1,12 @@
+D:\anaconda\Lib\site-packages\requests\__init__.py:113: RequestsDependencyWarning: urllib3 (2.6.3) or chardet (7.4.3)/charset_normalizer (3.3.2) doesn't match a supported version!
+  warnings.warn(
+=== v6 Full Test: 35 cases ===
+Output: E:\auto_detection_process\demo_output_v5\v6_full_test_output
+Multi-component (v6 spatial): 9 cases
+
+[01/35] T1 ·¨À¼¸Ç               FAIL valid: [unknown_op] node 'revolve': unknown op 'revolve_profile' in 'axisymmetric': "unknown op/version: 'revolve_profile'/'v0. [76s]
+[02/35] T1 LÐÍÖ§¼Ü              STEP=15501B [33s]
+[03/35] T1 Öá³Ð×ù               FAIL valid: [unknown_op] node 'hub_revolve': unknown op 'revolve_profile' in 'axisymmetric': "unknown op/version: 'revolve_profile'/ [75s]
+[04/35] T1 ½×ÌÝÖá               FAIL valid: [unknown_op] node 'revolve': unknown op 'revolve_profile' in 'axisymmetric': "unknown op/version: 'revolve_profile'/'v0. [68s]
+[05/35] T1 VÐÍ´øÂÖ              FAIL valid: [unknown_op] node 'revolve': unknown op 'revolve_profile' in 'axisymmetric': "unknown op/version: 'revolve_profile'/'v0. [67s]
+[06/35] T2 Ñ¹Ëõµ¯»É              STEP=161267B [7s]

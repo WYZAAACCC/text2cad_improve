@@ -1,0 +1,16 @@
+{
+  "applied": true,
+  "before_hash": "sha256:829f2983fb606c38fd58d0e151a717e63ab6b2291a13d8578a1420748fdef652",
+  "after_hash": "sha256:c739d4a99b3f41b0f829049ee53e45dbfcca4f541065a4c35bf7d7d2cee74b3e",
+  "entries": [
+    {
+      "rule_id": "fix_output_names",
+      "path": "/",
+      "old_value": "<hash:sha256:829f2>",
+      "new_value": "<hash:sha256:c739d>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_output_names"
+    }
+  ]
+}

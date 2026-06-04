@@ -1,0 +1,6 @@
+工业电子设备防护外壳, 单位mm.
+先extrude_rectangle width_mm=300 height_mm=200 depth_mm=150 centered=true.
+再shell_body thickness_mm=4.
+再cut_rectangular_pocket width_mm=260 height_mm=160 depth_mm=140 (内部空腔).
+再cut_hole_pattern_linear hole_dia_mm=8 count_x=2 count_y=2 spacing_x_mm=250 spacing_y_mm=150 (安装孔).
+apply_safe_fillet radius_mm=2. 所有节点同一组件, owner_dialect=sketch_extrude.

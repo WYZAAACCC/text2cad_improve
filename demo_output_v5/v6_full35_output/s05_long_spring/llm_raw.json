@@ -1,0 +1,64 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "a8f3b2c1-7d4e-4f5a-9b6c-2e1d0a3b8c7f",
+  "part_name": "helical_compression_spring",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "spring",
+      "owner_dialect": "loft_sweep",
+      "root_node": "helix_sweep_1"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "helix_sweep_1",
+      "component": "spring",
+      "dialect": "loft_sweep",
+      "op": "helix_sweep",
+      "op_version": "1.0.0",
+      "phase": "helix",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "radius_mm": 20,
+        "height_mm": 150,
+        "pitch_mm": 10,
+        "profile_radius_mm": 1.5,
+        "turns": 15
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {
+    "_": "single-component helical spring via loft_sweep helix_sweep op: radius_mm=20 (mid-radius 40mm dia), height_mm=150, pitch_mm=10, profile_radius_mm=1.5 (wire dia 3mm), turns=15"
+  }
+}

@@ -1,0 +1,266 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "reference_geometry",
+    "document_id": "diff-housing-001",
+    "part_name": "差速器壳体",
+    "selected_dialects": [
+      {
+        "dialect": "axisymmetric",
+        "version": "0.2.0",
+        "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "n1",
+        "dialect": "axisymmetric",
+        "op": "revolve_profile",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n2",
+        "dialect": "axisymmetric",
+        "op": "cut_center_bore",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n4",
+        "dialect": "axisymmetric",
+        "op": "cut_annular_groove",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n3",
+        "dialect": "axisymmetric",
+        "op": "cut_circular_hole_pattern",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n5",
+        "dialect": "axisymmetric",
+        "op": "apply_safe_chamfer",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:67929d6f15038bf8e84d851c4c297576f2a9b71b46160ccb9c85a88453c822e7",
+    "canonical_graph_hash": "sha256:31bdc851ef5efad03a9431b94498e4f1aa5a4ee17ce15a48687ede6e29d55b19",
+    "paths": {
+      "canonical_ir_path": "E:\\auto_detection_process\\demo_output_v5\\v61_8failed_output\\tm15_diff_case\\canonical.json",
+      "validation_seed_path": "E:\\auto_detection_process\\demo_output_v5\\v61_8failed_output\\tm15_diff_case\\validation_bundle.json",
+      "step_path": "E:\\auto_detection_process\\demo_output_v5\\v61_8failed_output\\tm15_diff_case\\output.step",
+      "metadata_path": "E:\\auto_detection_process\\demo_output_v5\\v61_8failed_output\\tm15_diff_case\\output.metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:68a6b37c8a26b3e201c2b87108e35da21b010784e2a4726557c0d4511b3b6406",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [
+      "Safe chamfer skipped on 'n5': geometry does not support chamfer. Part is valid without chamfer."
+    ],
+    "degraded_features": [],
+    "operation_metrics": [
+      {
+        "node_id": "n1",
+        "op": "revolve_profile",
+        "status": "ok"
+      },
+      {
+        "node_id": "n2",
+        "op": "cut_center_bore",
+        "status": "ok"
+      },
+      {
+        "node_id": "n3",
+        "op": "cut_circular_hole_pattern",
+        "status": "ok"
+      },
+      {
+        "node_id": "n4",
+        "op": "cut_annular_groove",
+        "status": "ok"
+      },
+      {
+        "node_id": "n5",
+        "op": "apply_safe_chamfer",
+        "status": "ok"
+      }
+    ],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [
+    "Safe chamfer skipped on 'n5': geometry does not support chamfer. Part is valid without chamfer."
+  ],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {
+        "structure": {
+          "ok": true,
+          "stage": "structure",
+          "issues": [],
+          "stages_run": [
+            "structure"
+          ]
+        },
+        "registry": {
+          "ok": true,
+          "stage": "registry",
+          "issues": [],
+          "stages_run": [
+            "registry"
+          ]
+        },
+        "params": {
+          "ok": true,
+          "stage": "params",
+          "issues": [],
+          "stages_run": [
+            "params"
+          ]
+        },
+        "ownership": {
+          "ok": true,
+          "stage": "ownership",
+          "issues": [],
+          "stages_run": [
+            "ownership"
+          ]
+        },
+        "graph": {
+          "ok": true,
+          "stage": "graph",
+          "issues": [],
+          "stages_run": [
+            "graph"
+          ]
+        },
+        "typecheck": {
+          "ok": true,
+          "stage": "typecheck",
+          "issues": [],
+          "stages_run": [
+            "typecheck"
+          ]
+        },
+        "phase": {
+          "ok": true,
+          "stage": "phase",
+          "issues": [],
+          "stages_run": [
+            "phase"
+          ]
+        },
+        "composition": {
+          "ok": true,
+          "stage": "composition",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "registry",
+            "params",
+            "ownership",
+            "graph",
+            "typecheck",
+            "phase",
+            "composition"
+          ]
+        },
+        "safety": {
+          "ok": true,
+          "stage": "safety",
+          "issues": [],
+          "stages_run": [
+            "safety"
+          ]
+        }
+      },
+      "canonicalize": {
+        "ok": true,
+        "stage": "canonicalize",
+        "issues": [],
+        "stages_run": [
+          "canonicalize"
+        ]
+      },
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": true,
+      "stage": "dialect_semantics",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "safety",
+        "canonicalize",
+        "dialect_semantics"
+      ]
+    },
+    "geometry_preflight": {
+      "ok": true,
+      "stage": "geometry_preflight",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "safety",
+        "canonicalize",
+        "dialect_semantics",
+        "geometry_preflight"
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    }
+  }
+}

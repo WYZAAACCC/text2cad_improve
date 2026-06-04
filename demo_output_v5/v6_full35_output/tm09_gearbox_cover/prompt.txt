@@ -1,0 +1,8 @@
+减速器上箱盖, 单位 mm.
+extrude_rectangle width_mm=300 height_mm=200 depth_mm=20 centered=true.
+cut_rectangular_pocket width_mm=260 height_mm=160 depth_mm=14 centered=true.
+cut_hole_pattern_linear hole_dia_mm=12 count_x=2 count_y=2 spacing_x_mm=250 spacing_y_mm=150.
+add_rib thickness_mm=8 height_mm=18 length_mm=150 position_mm=[-60,0,0] direction=Y.
+add_rib thickness_mm=8 height_mm=18 length_mm=150 position_mm=[60,0,0] direction=Y.
+add_rectangular_boss width_mm=100 height_mm=80 depth_mm=10 position_mm=[0,0,10] centered=true.
+apply_safe_fillet radius_mm=3 target=all_external_edges.

@@ -1,0 +1,3 @@
+扭力弹簧, 单位mm.
+helix_sweep radius_mm=25 height_mm=120 pitch_mm=8 profile_radius_mm=3 turns=15.
+中径50mm扭力弹簧, 簧丝直径6mm, 15圈, 自由长度120mm, 螺距8mm.

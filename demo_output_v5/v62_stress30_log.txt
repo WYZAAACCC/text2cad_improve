@@ -1,0 +1,71 @@
+D:\anaconda\Lib\site-packages\requests\__init__.py:113: RequestsDependencyWarning: urllib3 (2.6.3) or chardet (7.4.3)/charset_normalizer (3.3.2) doesn't match a supported version!
+  warnings.warn(
+=== v6.2 Stress30: 30 NEW high-complexity industrial parts ===
+Output: E:\auto_detection_process\demo_output_v5\v62_stress30_output
+Time: 2026-06-04 04:52:03
+
+[01/30] 发动机悬置支架总成            STEP=199475B (1 LLM) [30s]
+[02/30] 减速器箱体总成              STEP=992010B (1 LLM) [42s]
+[03/30] 液压集成块                STEP=1041249B (1 LLM) [18s]
+[04/30] 离心泵蜗壳                STEP=458179B (1 LLM) [26s]
+[05/30] 机器人手臂段               STEP=48514B (1 LLM) [21s]
+[06/30] 螺旋换热盘管               STEP=3757327B (1 LLM) [6s]
+[07/30] 复杂空间管路               STEP=79123B (1 LLM) [11s]
+[08/30] 变截面过渡管               BUILD_FAIL (1 LLM) [10s]
+[09/30] 扭力弹簧                 STEP=2338413B (2 LLM) [16s]
+[10/30] 螺旋蜗壳                 STEP=5934B (1 LLM) [10s]
+[11/30] 薄壁压力容器               STEP=19779B (1 LLM) [10s]
+[12/30] 空心结构支架               STEP=269527B (1 LLM) [14s]
+[13/30] 电子设备外壳               STEP=192748B (1 LLM) [16s]
+[14/30] 真空腔体                 VALID_FAIL (5 LLM) [123s] [missing_input_node_ref] node 'ft_pattern_rest' references unknown node 'ft_cut_hole_ref'
+[15/30] 重型法兰                 STEP=287420B (1 LLM) [13s]
+[16/30] 多级带轮                 STEP=58431B (1 LLM) [13s]
+[17/30] 六面钻孔块                STEP=444290B (1 LLM) [20s]
+[18/30] 密集筋板结构               STEP=2502226B (1 LLM) [30s]
+[19/30] 精密仪器基座               STEP=781192B (1 LLM) [35s]
+[20/30] 电机端盖                 STEP=215994B (1 LLM) [27s]
+[21/30] 阀体带法兰                STEP=93053B (1 LLM) [28s]
+[22/30] 散热器总成                STEP=106294B (2 LLM) [31s]
+[23/30] 变径管接头                BUILD_FAIL (1 LLM) [22s]
+[24/30] 微型精密轴套               VALID_FAIL (5 LLM) [54s] [a002_bore_too_large] center bore radius (1.2mm) leaves wall thickness of only 0.2mm (margin=1mm). C
+[25/30] 超大薄壁环                VALID_FAIL (5 LLM) [65s] [hole_pattern_intersects_center_bore] Holes overlap with center bore: PCD/2-hole_r (494-2=492) <= bo
+[26/30] 超长细轴                 STEP=75663B (1 LLM) [15s]
+[27/30] 密集孔板                 STEP=1366474B (1 LLM) [10s]
+[28/30] 球阀阀体                 STEP=342168B (1 LLM) [24s]
+[29/30] 离心叶轮                 STEP=60311B (1 LLM) [20s]
+[30/30] 液压缸端盖                STEP=1661B (1 LLM) [16s]
+
+============================================================
+STRESS30: 25/30 STEP generated (5 failed)
+  g1_engine_mount           STEP_OK    attempts=1 199475
+  g2_gearbox_housing        STEP_OK    attempts=1 992010
+  g3_hyd_manifold           STEP_OK    attempts=1 1041249
+  g4_pump_casing            STEP_OK    attempts=1 458179
+  g5_robot_arm              STEP_OK    attempts=1 48514
+  g6_helix_coil             STEP_OK    attempts=1 3757327
+  g7_3d_tube                STEP_OK    attempts=1 79123
+  g8_var_duct               B_FAIL     attempts=1 
+  g9_torsion_spring         STEP_OK    attempts=2 2338413
+  g10_spiral_volute         STEP_OK    attempts=1 5934
+  g11_pressure_vessel       STEP_OK    attempts=1 19779
+  g12_hollow_bracket        STEP_OK    attempts=1 269527
+  g13_enclosure             STEP_OK    attempts=1 192748
+  g14_vacuum_chamber        VAL_FAIL   attempts=5 
+  g15_heavy_flange          STEP_OK    attempts=1 287420
+  g16_stepped_pulley        STEP_OK    attempts=1 58431
+  g17_cross_block           STEP_OK    attempts=1 444290
+  g18_ribbed_panel          STEP_OK    attempts=1 2502226
+  g19_precision_base        STEP_OK    attempts=1 781192
+  g20_motor_endbell         STEP_OK    attempts=1 215994
+  g21_valve_body            STEP_OK    attempts=1 93053
+  g22_heat_sink             STEP_OK    attempts=2 106294
+  g23_pipe_reducer          B_FAIL     attempts=1 
+  g24_micro_bushing         VAL_FAIL   attempts=5 
+  g25_large_ring            VAL_FAIL   attempts=5 
+  g26_extreme_shaft         STEP_OK    attempts=1 75663
+  g27_dense_holes           STEP_OK    attempts=1 1366474
+  g28_ball_valve            STEP_OK    attempts=1 342168
+  g29_impeller              STEP_OK    attempts=1 60311
+  g30_hyd_cylinder          STEP_OK    attempts=1 1661
+
+Results: E:\auto_detection_process\demo_output_v5\v62_stress30_output\results.json

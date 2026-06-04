@@ -1,0 +1,5 @@
+V型带轮, 单位 mm, 参考几何.
+revolve_profile 7段: station1 r=100 z=0-10, station2 r=95 z=10-18, station3 r=100 z=18-26, station4 r=95 z=26-34, station5 r=100 z=34-42, station6 r=95 z=42-50, station7 r=100 z=50-60.
+cut_center_bore diameter_mm=30 through_all=true.
+cut_circular_hole_pattern count=4 pcd_mm=60 hole_dia_mm=10.
+apply_safe_chamfer distance_mm=1 target=all_external_edges.

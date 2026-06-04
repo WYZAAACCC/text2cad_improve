@@ -1,0 +1,440 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "dense-rib-plate-v1",
+  "part_name": "dense_rib_plate",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+    }
+  ],
+  "components": [
+    {
+      "id": "main_part",
+      "owner_dialect": "sketch_extrude",
+      "kind_hint": null,
+      "root_node": "fillet_final",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "base_rect",
+      "component": "main_part",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:main_part:base_rect:body"
+        }
+      ],
+      "params": {
+        "width_mm": 300,
+        "height_mm": 200,
+        "depth_mm": 15,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+"
+      },
+      "typed_params": {
+        "width_mm": 300.0,
+        "height_mm": 200.0,
+        "depth_mm": 15.0,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0.0
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "hole_pattern",
+      "component": "main_part",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_pattern_linear",
+      "op_version": "1.0.0",
+      "phase": "hole_pattern",
+      "inputs": [
+        {
+          "producer_node": "base_rect",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:main_part:hole_pattern:body"
+        }
+      ],
+      "params": {
+        "hole_dia_mm": 11,
+        "count_x": 2,
+        "count_y": 2,
+        "spacing_x_mm": 260,
+        "spacing_y_mm": 160,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "hole_dia_mm": 11.0,
+        "count_x": 2,
+        "count_y": 2,
+        "spacing_x_mm": 260.0,
+        "spacing_y_mm": 160.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "rib_1",
+      "component": "main_part",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "hole_pattern",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:main_part:rib_1:body"
+        }
+      ],
+      "params": {
+        "thickness_mm": 6,
+        "height_mm": 20,
+        "length_mm": 150,
+        "position_mm": [
+          -80,
+          0,
+          7.5
+        ],
+        "direction": "Y"
+      },
+      "typed_params": {
+        "thickness_mm": 6.0,
+        "height_mm": 20.0,
+        "length_mm": 150.0,
+        "position_mm": [
+          -80.0,
+          0.0,
+          7.5
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "rib_2",
+      "component": "main_part",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "rib_1",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:main_part:rib_2:body"
+        }
+      ],
+      "params": {
+        "thickness_mm": 6,
+        "height_mm": 20,
+        "length_mm": 150,
+        "position_mm": [
+          -40,
+          0,
+          7.5
+        ],
+        "direction": "Y"
+      },
+      "typed_params": {
+        "thickness_mm": 6.0,
+        "height_mm": 20.0,
+        "length_mm": 150.0,
+        "position_mm": [
+          -40.0,
+          0.0,
+          7.5
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "rib_3",
+      "component": "main_part",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "rib_2",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:main_part:rib_3:body"
+        }
+      ],
+      "params": {
+        "thickness_mm": 6,
+        "height_mm": 20,
+        "length_mm": 150,
+        "position_mm": [
+          0,
+          0,
+          7.5
+        ],
+        "direction": "Y"
+      },
+      "typed_params": {
+        "thickness_mm": 6.0,
+        "height_mm": 20.0,
+        "length_mm": 150.0,
+        "position_mm": [
+          0.0,
+          0.0,
+          7.5
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "rib_4",
+      "component": "main_part",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "rib_3",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:main_part:rib_4:body"
+        }
+      ],
+      "params": {
+        "thickness_mm": 6,
+        "height_mm": 20,
+        "length_mm": 150,
+        "position_mm": [
+          40,
+          0,
+          7.5
+        ],
+        "direction": "Y"
+      },
+      "typed_params": {
+        "thickness_mm": 6.0,
+        "height_mm": 20.0,
+        "length_mm": 150.0,
+        "position_mm": [
+          40.0,
+          0.0,
+          7.5
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "rib_5",
+      "component": "main_part",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "rib_4",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:main_part:rib_5:body"
+        }
+      ],
+      "params": {
+        "thickness_mm": 6,
+        "height_mm": 20,
+        "length_mm": 150,
+        "position_mm": [
+          80,
+          0,
+          7.5
+        ],
+        "direction": "Y"
+      },
+      "typed_params": {
+        "thickness_mm": 6.0,
+        "height_mm": 20.0,
+        "length_mm": 150.0,
+        "position_mm": [
+          80.0,
+          0.0,
+          7.5
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "fillet_final",
+      "component": "main_part",
+      "dialect": "sketch_extrude",
+      "op": "apply_safe_fillet",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "producer_node": "rib_5",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:main_part:fillet_final:body"
+        }
+      ],
+      "params": {
+        "radius_mm": 1.5,
+        "target": "all_external_edges"
+      },
+      "typed_params": {
+        "radius_mm": 1.5,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "modifies_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:95b5ba5f10ecbda1baa8d86db6e02a398d42d57109ea019d0f6b66e3cb402957",
+  "raw_graph_hash": "sha256:b6aa1d786118030c1f96b2321cb15c2d2d80f7ab60077eb8197f403de69d1392"
+}

@@ -1,0 +1,6 @@
+多通阀体, 单位 mm, 参考几何.
+revolve_profile station1 r=60 z=0-100.
+cut_center_bore diameter_mm=30.
+cut_circular_hole_pattern count=4 pcd_mm=80 hole_dia_mm=6.
+cut_annular_groove side=front inner_dia_mm=50 outer_dia_mm=70 depth_mm=2.
+apply_safe_chamfer distance_mm=1.

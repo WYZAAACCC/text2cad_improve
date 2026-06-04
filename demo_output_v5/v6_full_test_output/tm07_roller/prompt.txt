@@ -1,0 +1,4 @@
+输送机托辊.
+组件tube(axisymmetric): revolve_profile station1 r=44.5 z=0-600. cut_center_bore diameter_mm=80.
+组件shaft(axisymmetric): revolve_profile station1 r=15 z=0-650.
+__assembly__(composition): boolean_union inputs:[{component:tube,output:body},{component:shaft,output:body}].

@@ -1,0 +1,16 @@
+{
+  "applied": true,
+  "before_hash": "sha256:f578a9b39c8aa72dee3a563e88d219cd939dc55bf28335898d1f760bc14d30ac",
+  "after_hash": "sha256:6c4a8233c35d9f0f938f9b91e7c93a63cf1d08ec36df7719c809867dc01a4c98",
+  "entries": [
+    {
+      "rule_id": "fix_profile_stations",
+      "path": "/",
+      "old_value": "<hash:sha256:f578a>",
+      "new_value": "<hash:sha256:6c4a8>",
+      "severity": "semantic_guess",
+      "confidence": 0.85,
+      "message": "Applied fix: fix_profile_stations"
+    }
+  ]
+}

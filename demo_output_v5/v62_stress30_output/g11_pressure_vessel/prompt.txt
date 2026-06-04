@@ -1,0 +1,3 @@
+薄壁压力容器, 单位mm.
+revolve_profile station1 r=150 z=0-10,station2 r=150 z=10-400,station3 r=150 z=400-410.
+shell_body thickness_mm=5 (5mm壁厚). 容器直径300mm, 高度400mm. 注意: revolve_profile和shell_body在同一个组件, shell_body的input指向revolve节点.

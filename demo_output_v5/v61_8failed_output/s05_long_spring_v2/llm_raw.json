@@ -1,0 +1,64 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "helix-spring-01",
+  "part_name": "long_helical_spring",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "spring_comp",
+      "owner_dialect": "loft_sweep",
+      "root_node": "n1"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n1",
+      "component": "spring_comp",
+      "dialect": "loft_sweep",
+      "op": "helix_sweep",
+      "op_version": "1.0.0",
+      "phase": "helix",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "radius_mm": 20,
+        "height_mm": 150,
+        "pitch_mm": 10,
+        "profile_radius_mm": 1.5,
+        "turns": 15
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {
+    "_": "helical spring: radius 20mm, height 150mm, pitch 10mm, profile radius 1.5mm, 15 turns"
+  }
+}

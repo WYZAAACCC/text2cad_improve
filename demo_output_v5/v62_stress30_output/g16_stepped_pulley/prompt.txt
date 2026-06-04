@@ -1,0 +1,5 @@
+多级V型带轮, 单位mm.
+revolve_profile 9段: station1 r=30 z=0-15,station2 r=60 z=15-25,station3 r=55 z=25-33,station4 r=80 z=33-43,station5 r=75 z=43-51,station6 r=100 z=51-61,station7 r=95 z=61-69,station8 r=120 z=69-79,station9 r=115 z=79-87.
+cut_center_bore diameter_mm=25.
+cut_circular_hole_pattern count=4 pcd_mm=50 hole_dia_mm=8.
+apply_safe_chamfer distance_mm=1.5.

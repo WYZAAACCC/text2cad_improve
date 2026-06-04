@@ -1,0 +1,42 @@
+[
+  {
+    "id": "solidworks",
+    "ok": false,
+    "msg": "no STEP file"
+  },
+  {
+    "id": "tm01_flange_cover",
+    "ok": false,
+    "msg": "no STEP file"
+  },
+  {
+    "id": "tm02_l_bracket",
+    "ok": true,
+    "size": 57871
+  },
+  {
+    "id": "tm03_bearing_seat",
+    "ok": false,
+    "msg": "no STEP file"
+  },
+  {
+    "id": "tm04_stepped_shaft",
+    "ok": false,
+    "msg": "no STEP file"
+  },
+  {
+    "id": "tm05_v_pulley",
+    "ok": false,
+    "msg": "no STEP file"
+  },
+  {
+    "id": "tm06_spring",
+    "ok": true,
+    "size": 1042653
+  },
+  {
+    "id": "tm07_roller",
+    "ok": false,
+    "msg": "no STEP file"
+  }
+]

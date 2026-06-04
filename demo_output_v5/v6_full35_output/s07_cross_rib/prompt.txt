@@ -1,0 +1,6 @@
+十字筋箱体, 单位 mm.
+extrude_rectangle width_mm=250 height_mm=180 depth_mm=20 centered=true.
+cut_rectangular_pocket width_mm=200 height_mm=130 depth_mm=12 centered=true.
+横纵筋各5条: add_rib thickness_mm=5 height_mm=16 length_mm=120 position_mm=[-60,0,0] direction=Y 等.
+cut_hole_pattern_linear hole_dia_mm=10 count_x=2 count_y=2 spacing_x_mm=210 spacing_y_mm=140.
+apply_safe_fillet radius_mm=2 target=all_external_edges.

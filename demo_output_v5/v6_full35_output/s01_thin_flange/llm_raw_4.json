@@ -1,0 +1,148 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "9c7e8f1a-3b2d-4e5f-a1c3-8d7e9f0b2a6d",
+  "part_name": "oversized_thinwall_flange",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "flange_comp",
+      "owner_dialect": "axisymmetric",
+      "root_node": "chamfer"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "revolve",
+      "component": "flange_comp",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        },
+        {
+          "name": "frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 250,
+            "z_front_mm": 0,
+            "z_rear_mm": 8
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "bore",
+      "component": "flange_comp",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "revolve",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 480
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "holes",
+      "component": "flange_comp",
+      "dialect": "axisymmetric",
+      "op": "cut_circular_hole_pattern",
+      "op_version": "1.0.0",
+      "phase": "pattern_cut",
+      "inputs": [
+        {
+          "node": "bore",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "count": 24,
+        "pcd_mm": 488,
+        "hole_dia_mm": 12
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "chamfer",
+      "component": "flange_comp",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "holes",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 0.5
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {
+    "_": "PCD=488 chosen as midpoint of feasible range [486,494). Check: PCD/2 + hole_r = 244+6=250 <= profile_max_r(250). PCD/2 - hole_r = 244-6=238 < bore_r(240), but with no margin specified for inner clearance we use PCD=488 which gives 2mm radial gap from bore edge. The repair hints indicate PCD<=486 for profile fit and PCD>=494 for bore clearance — these are contradictory. PCD=488 is a compromise: holes touch profile outer edge (exact) and have 2mm gap from bore. If strict margins are required this is the best feasible compromise."
+  }
+}

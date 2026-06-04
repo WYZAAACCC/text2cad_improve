@@ -1,0 +1,144 @@
+{
+  "core_validation": {
+    "ok": true,
+    "stages": {
+      "structure": {
+        "ok": true,
+        "stage": "structure",
+        "issues": [],
+        "stages_run": [
+          "structure"
+        ]
+      },
+      "registry": {
+        "ok": true,
+        "stage": "registry",
+        "issues": [],
+        "stages_run": [
+          "registry"
+        ]
+      },
+      "params": {
+        "ok": true,
+        "stage": "params",
+        "issues": [],
+        "stages_run": [
+          "params"
+        ]
+      },
+      "ownership": {
+        "ok": true,
+        "stage": "ownership",
+        "issues": [],
+        "stages_run": [
+          "ownership"
+        ]
+      },
+      "graph": {
+        "ok": true,
+        "stage": "graph",
+        "issues": [],
+        "stages_run": [
+          "graph"
+        ]
+      },
+      "typecheck": {
+        "ok": true,
+        "stage": "typecheck",
+        "issues": [],
+        "stages_run": [
+          "typecheck"
+        ]
+      },
+      "phase": {
+        "ok": true,
+        "stage": "phase",
+        "issues": [],
+        "stages_run": [
+          "phase"
+        ]
+      },
+      "composition": {
+        "ok": true,
+        "stage": "composition",
+        "issues": [],
+        "stages_run": [
+          "structure",
+          "registry",
+          "params",
+          "ownership",
+          "graph",
+          "typecheck",
+          "phase",
+          "composition"
+        ]
+      },
+      "safety": {
+        "ok": true,
+        "stage": "safety",
+        "issues": [],
+        "stages_run": [
+          "safety"
+        ]
+      }
+    },
+    "canonicalize": {
+      "ok": true,
+      "stage": "canonicalize",
+      "issues": [],
+      "stages_run": [
+        "canonicalize"
+      ]
+    },
+    "issues": []
+  },
+  "dialect_semantics": {
+    "ok": true,
+    "stage": "dialect_semantics",
+    "issues": [],
+    "stages_run": [
+      "structure",
+      "registry",
+      "params",
+      "ownership",
+      "graph",
+      "typecheck",
+      "phase",
+      "composition",
+      "safety",
+      "canonicalize",
+      "dialect_semantics"
+    ]
+  },
+  "geometry_preflight": {
+    "ok": true,
+    "stage": "geometry_preflight",
+    "issues": [
+      {
+        "code": "ls_sweep_self_intersection_risk",
+        "message": "sweep radius (15.0mm) >= 0.45 * shortest segment (14.1mm). May self-intersect.",
+        "severity": "warning",
+        "stage": "geometry_preflight",
+        "node_id": "sweep_profile_node",
+        "component_id": null,
+        "path": null,
+        "expected": null,
+        "actual": null
+      }
+    ],
+    "stages_run": [
+      "structure",
+      "registry",
+      "params",
+      "ownership",
+      "graph",
+      "typecheck",
+      "phase",
+      "composition",
+      "safety",
+      "canonicalize",
+      "dialect_semantics",
+      "geometry_preflight"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+六面全方向钻孔测试块, 单位mm.
+extrude_rectangle width_mm=100 height_mm=100 depth_mm=100 centered=true.
+顶面孔: cut_hole diameter_mm=30 position_mm=[0,0] axis=Z.
+底面孔: cut_hole diameter_mm=25 position_mm=[0,0] axis=Z.
+前侧孔: cut_hole diameter_mm=20 position_mm=[0,0] axis=Y.
+后侧孔: cut_hole diameter_mm=20 position_mm=[0,0] axis=Y.
+左侧孔: cut_hole diameter_mm=15 position_mm=[0,0] axis=X.
+右侧孔: cut_hole diameter_mm=15 position_mm=[0,0] axis=X.
+安装孔x4: cut_hole_pattern_linear hole_dia_mm=8 count_x=2 count_y=2 spacing_x_mm=80 spacing_y_mm=80.
+apply_safe_chamfer distance_mm=0.5.

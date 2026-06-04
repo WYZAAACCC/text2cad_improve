@@ -1,0 +1,286 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "reference_geometry",
+    "document_id": "multi-pipe-system",
+    "part_name": "multi_pipe_system",
+    "selected_dialects": [
+      {
+        "dialect": "loft_sweep",
+        "version": "0.2.0",
+        "contract_hash": "sha256:e65e433162c910d28028903e691e48174e56dcc8b400a35f8f9f124adcc6ff17"
+      },
+      {
+        "dialect": "composition",
+        "version": "0.2.0",
+        "contract_hash": "sha256:1ff66c680d94f60891bf00260f365ffa2a0d213d5571a2366a3f1c27748f5382"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "pipe_a_path",
+        "dialect": "loft_sweep",
+        "op": "create_sweep_path",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "pipe_b_path",
+        "dialect": "loft_sweep",
+        "op": "create_sweep_path",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "main_path",
+        "dialect": "loft_sweep",
+        "op": "create_sweep_path",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "pipe_a_sweep",
+        "dialect": "loft_sweep",
+        "op": "sweep_profile",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "pipe_b_sweep",
+        "dialect": "loft_sweep",
+        "op": "sweep_profile",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "main_sweep",
+        "dialect": "loft_sweep",
+        "op": "sweep_profile",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "union_ab",
+        "dialect": "composition",
+        "op": "boolean_union",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "final_union",
+        "dialect": "composition",
+        "op": "boolean_union",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:b203a01aa5731b1006ad162ae09cea1cb943f2ab18bad14bb851be5217b3a501",
+    "canonical_graph_hash": "sha256:70054d035554155f551c3126fbd22adcbf5ef3e268592a91167e5ae4863c0022",
+    "paths": {
+      "canonical_ir_path": "E:\\auto_detection_process\\demo_output_v5\\v6_full35_output\\s13_pipe_system\\canonical.json",
+      "validation_seed_path": "E:\\auto_detection_process\\demo_output_v5\\v6_full35_output\\s13_pipe_system\\validation_bundle.json",
+      "step_path": "E:\\auto_detection_process\\demo_output_v5\\v6_full35_output\\s13_pipe_system\\output_v2.step",
+      "metadata_path": "E:\\auto_detection_process\\demo_output_v5\\v6_full35_output\\s13_pipe_system\\output_v2.metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:fb52f5e3f1c12ffd5c4cad213873d6f656669f7dc6be36909fc0058108d15e6b",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [
+      "Geometry error on 'pipe_a_sweep.body': [invalid_shape] Cannot get .val(): 'Solid' object has no attribute 'val'",
+      "Geometry error on 'pipe_b_sweep.body': [invalid_shape] Cannot get .val(): 'Solid' object has no attribute 'val'",
+      "Geometry error on 'main_sweep.body': [invalid_shape] Cannot get .val(): 'Solid' object has no attribute 'val'",
+      "boolean_union pre-check on 'union_ab': Pre-check failed: 'Solid' object has no attribute 'val'",
+      "boolean_union: OCCT fuse succeeded (1 solids)",
+      "boolean_union pre-check on 'final_union': Pre-check failed: 'Compound' object has no attribute 'val'",
+      "boolean_union: OCCT fuse succeeded (1 solids)"
+    ],
+    "degraded_features": [],
+    "operation_metrics": [
+      {
+        "node_id": "union_ab",
+        "op": "boolean_union",
+        "status": "ok"
+      },
+      {
+        "node_id": "final_union",
+        "op": "boolean_union",
+        "status": "ok"
+      }
+    ],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [
+    "Geometry error on 'pipe_a_sweep.body': [invalid_shape] Cannot get .val(): 'Solid' object has no attribute 'val'",
+    "Geometry error on 'pipe_b_sweep.body': [invalid_shape] Cannot get .val(): 'Solid' object has no attribute 'val'",
+    "Geometry error on 'main_sweep.body': [invalid_shape] Cannot get .val(): 'Solid' object has no attribute 'val'",
+    "boolean_union pre-check on 'union_ab': Pre-check failed: 'Solid' object has no attribute 'val'",
+    "boolean_union: OCCT fuse succeeded (1 solids)",
+    "boolean_union pre-check on 'final_union': Pre-check failed: 'Compound' object has no attribute 'val'",
+    "boolean_union: OCCT fuse succeeded (1 solids)"
+  ],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {
+        "structure": {
+          "ok": true,
+          "stage": "structure",
+          "issues": [],
+          "stages_run": [
+            "structure"
+          ]
+        },
+        "registry": {
+          "ok": true,
+          "stage": "registry",
+          "issues": [],
+          "stages_run": [
+            "registry"
+          ]
+        },
+        "params": {
+          "ok": true,
+          "stage": "params",
+          "issues": [],
+          "stages_run": [
+            "params"
+          ]
+        },
+        "ownership": {
+          "ok": true,
+          "stage": "ownership",
+          "issues": [],
+          "stages_run": [
+            "ownership"
+          ]
+        },
+        "graph": {
+          "ok": true,
+          "stage": "graph",
+          "issues": [],
+          "stages_run": [
+            "graph"
+          ]
+        },
+        "typecheck": {
+          "ok": true,
+          "stage": "typecheck",
+          "issues": [],
+          "stages_run": [
+            "typecheck"
+          ]
+        },
+        "phase": {
+          "ok": true,
+          "stage": "phase",
+          "issues": [],
+          "stages_run": [
+            "phase"
+          ]
+        },
+        "composition": {
+          "ok": true,
+          "stage": "composition",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "registry",
+            "params",
+            "ownership",
+            "graph",
+            "typecheck",
+            "phase",
+            "composition"
+          ]
+        },
+        "safety": {
+          "ok": true,
+          "stage": "safety",
+          "issues": [],
+          "stages_run": [
+            "safety"
+          ]
+        }
+      },
+      "canonicalize": {
+        "ok": true,
+        "stage": "canonicalize",
+        "issues": [],
+        "stages_run": [
+          "canonicalize"
+        ]
+      },
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": true,
+      "stage": "dialect_semantics",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "safety",
+        "canonicalize",
+        "dialect_semantics"
+      ]
+    },
+    "geometry_preflight": {
+      "ok": true,
+      "stage": "geometry_preflight",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "safety",
+        "canonicalize",
+        "dialect_semantics",
+        "geometry_preflight"
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,7 @@
+工程机械液压缸端盖, 单位mm.
+revolve_profile: station1 r=70 z=0-15,station2 r=50 z=15-50,station3 r=55 z=50-65,station4 r=45 z=65-75.
+cut_center_bore diameter_mm=30.
+cut_external_thread nominal_dia_mm=60 pitch_mm=3 length_mm=20 standard=ISO_metric thread_class=6g.
+cut_circular_hole_pattern count=8 pcd_mm=110 hole_dia_mm=12.
+cut_annular_groove side=front inner_dia_mm=80 outer_dia_mm=100 depth_mm=3.
+apply_safe_chamfer distance_mm=1.5.

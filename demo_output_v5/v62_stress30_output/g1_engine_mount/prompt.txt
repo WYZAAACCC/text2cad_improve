@@ -1,0 +1,6 @@
+汽车发动机悬置支架总成, 单位mm.
+组件base_plate(sketch_extrude): extrude_rectangle width_mm=300 height_mm=200 depth_mm=25 centered=true. cut_hole_pattern_linear hole_dia_mm=14 count_x=2 count_y=2 spacing_x_mm=250 spacing_y_mm=150.
+组件bushing_left(axisymmetric): revolve_profile station1 r=30 z=0-50. cut_center_bore diameter_mm=16.
+组件bushing_right(axisymmetric): revolve_profile station1 r=30 z=0-50. cut_center_bore diameter_mm=16.
+组件mount_bracket(sketch_extrude): extrude_rectangle width_mm=80 height_mm=60 depth_mm=15 centered=true. cut_hole diameter_mm=10 position_mm=[-25,0]. cut_hole diameter_mm=10 position_mm=[25,0]. add_rib thickness_mm=8 height_mm=20 length_mm=40 position_mm=[0,0,7.5] direction=Y.
+装配__assembly__(composition): 依次boolean_union合并4个组件(每次2 inputs).

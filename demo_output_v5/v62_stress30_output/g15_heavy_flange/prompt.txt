@@ -1,0 +1,8 @@
+高压管道重型法兰, 单位mm.
+revolve_profile: station1 r=200 z=0-50,station2 r=150 z=50-55.
+cut_center_bore diameter_mm=200.
+cut_circular_hole_pattern count=24 pcd_mm=340 hole_dia_mm=22.
+cut_circular_hole_pattern count=12 pcd_mm=280 hole_dia_mm=18.
+cut_annular_groove side=front inner_dia_mm=240 outer_dia_mm=280 depth_mm=4.
+cut_annular_groove side=front inner_dia_mm=300 outer_dia_mm=340 depth_mm=4.
+apply_safe_chamfer distance_mm=2 target=all_external_edges.

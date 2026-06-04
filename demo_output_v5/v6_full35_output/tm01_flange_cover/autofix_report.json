@@ -1,0 +1,16 @@
+{
+  "applied": true,
+  "before_hash": "sha256:23a65edaed67ac220a9cc7cb09561139041d8f2dbabfdc909426f27a67e76e3e",
+  "after_hash": "sha256:36eae2f41deeb97d3bca9803ccfd57ff66a33b5d3efb4cda521d9d8266029aa1",
+  "entries": [
+    {
+      "rule_id": "fix_output_names",
+      "path": "/",
+      "old_value": "<hash:sha256:23a65>",
+      "new_value": "<hash:sha256:36eae>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_output_names"
+    }
+  ]
+}

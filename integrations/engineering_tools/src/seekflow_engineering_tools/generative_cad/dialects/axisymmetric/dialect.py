@@ -152,10 +152,29 @@ class AxisymmetricDialect:
                     issues.append(ValidationIssue(stage=stage, code="a002_bore_dia",
                         message=f"center bore diameter must be > 0 and finite, got {dia}",
                         severity="error", node_id=n.id))
-                elif profile_max_radius is not None and dia / 2 >= profile_max_radius - MARGIN:
-                    issues.append(ValidationIssue(stage=stage, code="a002_bore_too_large",
-                        message=f"center bore radius ({dia/2}) >= profile max radius ({profile_max_radius}) - margin ({MARGIN})",
-                        severity="error", node_id=n.id))
+                elif profile_max_radius is not None:
+                    bore_r = dia / 2.0
+                    if bore_r >= profile_max_radius:
+                        # v6.1: Geometrically impossible — bore larger than outer radius
+                        issues.append(ValidationIssue(stage=stage, code="a002_bore_gt_outer",
+                            message=(
+                                f"center bore radius ({bore_r:.1f}mm, dia={dia:.1f}) "
+                                f">= profile max radius ({profile_max_radius:.1f}mm, outer dia={profile_max_radius*2:.1f}). "
+                                f"Bore is larger than the part — geometrically impossible. "
+                                f"Reduce bore diameter to < {profile_max_radius*2 - 2*MARGIN:.0f}mm "
+                                f"(wall thickness >= {MARGIN:.0f}mm)."
+                            ),
+                            severity="error", node_id=n.id))
+                    elif bore_r >= profile_max_radius - MARGIN:
+                        # Very thin wall — might fail boolean ops
+                        wall = profile_max_radius - bore_r
+                        issues.append(ValidationIssue(stage=stage, code="a002_bore_too_large",
+                            message=(
+                                f"center bore radius ({bore_r:.1f}mm) leaves wall thickness "
+                                f"of only {wall:.1f}mm (margin={MARGIN:.0f}mm). "
+                                f"Consider reducing bore or increasing outer radius."
+                            ),
+                            severity="error", node_id=n.id))
                 center_bore_radius = dia / 2 if is_finite(dia) and dia > 0 else None
 
             # A003: circular hole pattern
@@ -179,14 +198,40 @@ class AxisymmetricDialect:
                 if profile_max_radius is not None and is_finite(pcd) and pcd > 0 and is_finite(hole_dia) and hole_dia > 0:
                     pcd_radius = pcd / 2
                     hole_radius = hole_dia / 2
-                    if pcd_radius + hole_radius >= profile_max_radius - MARGIN:
+                    outer_edge = pcd_radius + hole_radius
+                    inner_edge = pcd_radius - hole_radius
+                    # v6.1: Preemptively compute BOTH bounds so repair hints can detect double-bind
+                    min_pcd = 2 * (center_bore_radius + hole_radius + MARGIN) if center_bore_radius is not None else None
+                    max_pcd = 2 * (profile_max_radius - hole_radius - MARGIN)
+                    max_bore = 2 * (inner_edge - MARGIN) if center_bore_radius is not None else None
+                    # Always include both bounds in expected dict for proactive double-bind detection
+                    expected_both = {}
+                    if min_pcd is not None: expected_both["min_pcd_mm"] = round(min_pcd, 1)
+                    expected_both["max_pcd_mm"] = round(max_pcd, 1)
+                    if max_bore is not None: expected_both["max_bore_dia_mm"] = round(max_bore, 1)
+
+                    if outer_edge >= profile_max_radius - MARGIN:
                         issues.append(ValidationIssue(stage=stage, code="hole_pattern_outside_profile",
-                            message=f"hole pattern PCD radius ({pcd_radius}) + hole radius ({hole_radius}) >= profile max ({profile_max_radius}) - margin ({MARGIN})",
-                            severity="error", node_id=n.id))
-                    if center_bore_radius is not None and pcd_radius - hole_radius <= center_bore_radius + MARGIN:
+                            message=(
+                                f"Hole pattern exceeds profile: PCD/2+hole_r ({pcd_radius:.0f}+{hole_radius:.0f}"
+                                f"={outer_edge:.0f}) >= profile_max_radius ({profile_max_radius:.0f}) - margin ({MARGIN:.0f}). "
+                                f"Max PCD for hole_dia={hole_dia:.0f}: {max_pcd:.0f}mm. "
+                                f"Or increase profile radius to > {outer_edge + MARGIN:.0f}mm."
+                            ),
+                            severity="error", node_id=n.id,
+                            expected=expected_both,
+                            actual={"outer_edge_mm": round(outer_edge, 1)}))
+                    if center_bore_radius is not None and inner_edge <= center_bore_radius + MARGIN:
                         issues.append(ValidationIssue(stage=stage, code="hole_pattern_intersects_center_bore",
-                            message=f"hole pattern PCD radius ({pcd_radius}) - hole radius ({hole_radius}) <= bore radius ({center_bore_radius}) + margin ({MARGIN})",
-                            severity="error", node_id=n.id))
+                            message=(
+                                f"Holes overlap with center bore: PCD/2-hole_r ({pcd_radius:.0f}-{hole_radius:.0f}"
+                                f"={inner_edge:.0f}) <= bore_r ({center_bore_radius:.0f}) + margin ({MARGIN:.0f}). "
+                                f"Min PCD for bore_dia={center_bore_radius*2:.0f}: {min_pcd:.0f}mm. "
+                                f"Or max bore_dia for PCD={pcd:.0f}: {max_bore:.0f}mm."
+                            ),
+                            severity="error", node_id=n.id,
+                            expected=expected_both,
+                            actual={"hole_inner_edge_mm": round(inner_edge, 1)}))
 
             # A004: annular groove
             if n.op == "cut_annular_groove":

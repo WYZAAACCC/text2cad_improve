@@ -1,0 +1,66 @@
+[
+  {
+    "id": "s01_thin_flange",
+    "name": "超大薄壁法兰(几何矛盾)",
+    "ok": false,
+    "step_ok": false,
+    "msg": "[hole_pattern_intersects_center_bore] hole pattern PCD radius (235.0) - hole radius (6.0) <= bore radius (240.0) + margin (1.0)",
+    "llm_attempts": 5
+  },
+  {
+    "id": "s05_long_spring",
+    "name": "长弹簧(15圈分段)",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 140995,
+    "llm_attempts": 1
+  },
+  {
+    "id": "s10_shelled_box",
+    "name": "薄壁壳体(混编dialect)",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 73089,
+    "llm_attempts": 1
+  },
+  {
+    "id": "s13_pipe_system",
+    "name": "多管路系统(竖直sweep)",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 44029,
+    "llm_attempts": 1
+  },
+  {
+    "id": "s15_multi_valve",
+    "name": "多通阀体(复杂特征)",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 78823,
+    "llm_attempts": 2
+  },
+  {
+    "id": "tm06_spring",
+    "name": "压缩弹簧(8圈OCP)",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 161267,
+    "llm_attempts": 1
+  },
+  {
+    "id": "tm12_robot_wrist",
+    "name": "机器人腕部(JSON sanitize)",
+    "ok": false,
+    "step_ok": false,
+    "msg": "[hole_pattern_intersects_center_bore] hole pattern PCD radius (70.0) - hole radius (4.0) <= bore radius (76.0) + margin (1.0)",
+    "llm_attempts": 5
+  },
+  {
+    "id": "tm15_diff_case",
+    "name": "差速器壳体(preflight)",
+    "ok": true,
+    "step_ok": true,
+    "step_size": 186342,
+    "llm_attempts": 1
+  }
+]

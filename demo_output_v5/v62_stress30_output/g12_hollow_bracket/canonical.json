@@ -1,0 +1,282 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "aero-hollow-bracket-001",
+  "part_name": "Aerospace Hollow Structural Bracket",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+    },
+    {
+      "dialect": "shell_housing",
+      "version": "0.2.0",
+      "contract_hash": "sha256:63e5f8fc14a6184740d9471176fb83b36dee572eb0d37dcc78e236a3e0bd2798"
+    }
+  ],
+  "components": [
+    {
+      "id": "bracket",
+      "owner_dialect": "sketch_extrude",
+      "kind_hint": null,
+      "root_node": "shell_1",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "rect_extrude",
+      "component": "bracket",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:bracket:rect_extrude:body"
+        }
+      ],
+      "params": {
+        "width_mm": 200,
+        "height_mm": 120,
+        "depth_mm": 60,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+"
+      },
+      "typed_params": {
+        "width_mm": 200.0,
+        "height_mm": 120.0,
+        "depth_mm": 60.0,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0.0
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "pocket_1",
+      "component": "bracket",
+      "dialect": "sketch_extrude",
+      "op": "cut_rectangular_pocket",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "rect_extrude",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:bracket:pocket_1:body"
+        }
+      ],
+      "params": {
+        "width_mm": 180,
+        "height_mm": 100,
+        "depth_mm": 50,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+"
+      },
+      "typed_params": {
+        "width_mm": 180.0,
+        "height_mm": 100.0,
+        "depth_mm": 50.0,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0.0
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "rib_1",
+      "component": "bracket",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "pocket_1",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:bracket:rib_1:body"
+        }
+      ],
+      "params": {
+        "thickness_mm": 6,
+        "height_mm": 20,
+        "length_mm": 100,
+        "position_mm": [
+          -60,
+          0,
+          0
+        ],
+        "direction": "Y"
+      },
+      "typed_params": {
+        "thickness_mm": 6.0,
+        "height_mm": 20.0,
+        "length_mm": 100.0,
+        "position_mm": [
+          -60.0,
+          0.0,
+          0.0
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "rib_2",
+      "component": "bracket",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "producer_node": "rib_1",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:bracket:rib_2:body"
+        }
+      ],
+      "params": {
+        "thickness_mm": 6,
+        "height_mm": 20,
+        "length_mm": 100,
+        "position_mm": [
+          60,
+          0,
+          0
+        ],
+        "direction": "Y"
+      },
+      "typed_params": {
+        "thickness_mm": 6.0,
+        "height_mm": 20.0,
+        "length_mm": 100.0,
+        "position_mm": [
+          60.0,
+          0.0,
+          0.0
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "adds_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "shell_1",
+      "component": "bracket",
+      "dialect": "shell_housing",
+      "op": "shell_body",
+      "op_version": "1.0.0",
+      "phase": "shell",
+      "inputs": [
+        {
+          "producer_node": "rib_2",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:bracket:shell_1:body"
+        }
+      ],
+      "params": {
+        "thickness_mm": 3
+      },
+      "typed_params": {
+        "thickness_mm": 3.0,
+        "open_faces": []
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "modifies_solid"
+      ],
+      "postconditions": []
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:34ff04446e33558027d58a989e140e7af994fadf22e4bc41b193e138218a90ee",
+  "raw_graph_hash": "sha256:51710f81e761711409dfff249b740d30af4518bca0a6319a5aa0f781304ffc2b"
+}

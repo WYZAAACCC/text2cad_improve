@@ -1,0 +1,32 @@
+[
+  {
+    "id": "s05_long_spring",
+    "ok": true,
+    "size": 74651
+  },
+  {
+    "id": "s10_shelled_box",
+    "ok": true,
+    "size": 83787
+  },
+  {
+    "id": "s13_pipe_system",
+    "ok": true,
+    "size": 100950
+  },
+  {
+    "id": "s15_multi_valve",
+    "ok": true,
+    "size": 131097
+  },
+  {
+    "id": "tm06_spring",
+    "ok": true,
+    "size": 1042376
+  },
+  {
+    "id": "tm15_diff_case",
+    "ok": true,
+    "size": 171332
+  }
+]

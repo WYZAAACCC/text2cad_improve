@@ -1,0 +1,412 @@
+[
+  {
+    "id": "s01_thin_flange",
+    "step_ok": false
+  },
+  {
+    "id": "s02_micro_bushing",
+    "step_ok": true,
+    "volume_mm3": 300.6,
+    "bbox_mm": [
+      6.0,
+      6.0,
+      12.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 20125
+  },
+  {
+    "id": "s03_dense_rib",
+    "step_ok": true,
+    "volume_mm3": 952602.1,
+    "bbox_mm": [
+      300.0,
+      250.0,
+      25.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 626479
+  },
+  {
+    "id": "s04_deep_holes",
+    "step_ok": true,
+    "volume_mm3": 1023403.2,
+    "bbox_mm": [
+      100.0,
+      80.0,
+      150.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 60386
+  },
+  {
+    "id": "s05_long_spring",
+    "step_ok": false
+  },
+  {
+    "id": "s06_double_flange",
+    "step_ok": true,
+    "volume_mm3": 247777.4,
+    "bbox_mm": [
+      160.0,
+      160.0,
+      15.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 45525
+  },
+  {
+    "id": "s07_cross_rib",
+    "step_ok": true,
+    "volume_mm3": 945892.0,
+    "bbox_mm": [
+      250.0,
+      210.0,
+      28.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 1286573
+  },
+  {
+    "id": "s08_full_shaft",
+    "step_ok": true,
+    "volume_mm3": 56928.8,
+    "bbox_mm": [
+      36.0,
+      36.0,
+      145.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 75457
+  },
+  {
+    "id": "s09_var_sweep",
+    "step_ok": true,
+    "volume_mm3": 65170.2,
+    "bbox_mm": [
+      100.3,
+      58.5,
+      219.6
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 90633
+  },
+  {
+    "id": "s10_shelled_box",
+    "step_ok": false
+  },
+  {
+    "id": "s11_coupling",
+    "step_ok": true,
+    "volume_mm3": 297959.0,
+    "bbox_mm": [
+      100.0,
+      100.0,
+      40.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 431587
+  },
+  {
+    "id": "s12_reducer_base",
+    "step_ok": true,
+    "volume_mm3": 3128999.8,
+    "bbox_mm": [
+      400.0,
+      325.0,
+      62.5
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 62637
+  },
+  {
+    "id": "s13_pipe_system",
+    "step_ok": false
+  },
+  {
+    "id": "s14_bearing_full",
+    "step_ok": true,
+    "volume_mm3": 633529.6,
+    "bbox_mm": [
+      200.0,
+      120.0,
+      75.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 46248
+  },
+  {
+    "id": "s15_multi_valve",
+    "step_ok": false
+  },
+  {
+    "id": "s16_turbo_rotor",
+    "step_ok": true,
+    "volume_mm3": 182601.7,
+    "bbox_mm": [
+      70.0,
+      70.0,
+      160.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 103785
+  },
+  {
+    "id": "s17_3d_pipe",
+    "step_ok": true,
+    "volume_mm3": 57835.6,
+    "bbox_mm": [
+      104.3,
+      85.9,
+      293.5
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 791692
+  },
+  {
+    "id": "s18_thin_shell",
+    "step_ok": true,
+    "volume_mm3": 666299.9,
+    "bbox_mm": [
+      404.0,
+      304.0,
+      152.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 73208
+  },
+  {
+    "id": "s19_workbench",
+    "step_ok": true,
+    "volume_mm3": 4811746.3,
+    "bbox_mm": [
+      500.0,
+      350.0,
+      200.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 110540
+  },
+  {
+    "id": "s20_ultimate",
+    "step_ok": true,
+    "volume_mm3": 1460050.0,
+    "bbox_mm": [
+      250.0,
+      180.0,
+      140.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 326736
+  },
+  {
+    "id": "tm01_flange_cover",
+    "step_ok": true,
+    "volume_mm3": 295254.2,
+    "bbox_mm": [
+      150.0,
+      150.0,
+      25.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 110528
+  },
+  {
+    "id": "tm02_l_bracket",
+    "step_ok": true,
+    "volume_mm3": 92277.0,
+    "bbox_mm": [
+      100.0,
+      100.0,
+      40.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 264534
+  },
+  {
+    "id": "tm03_bearing_seat",
+    "step_ok": true,
+    "volume_mm3": 179661.9,
+    "bbox_mm": [
+      120.0,
+      70.0,
+      55.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 169689
+  },
+  {
+    "id": "tm04_stepped_shaft",
+    "step_ok": true,
+    "volume_mm3": 118112.3,
+    "bbox_mm": [
+      44.0,
+      44.0,
+      120.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 70767
+  },
+  {
+    "id": "tm05_v_pulley",
+    "step_ok": true,
+    "volume_mm3": 1749243.0,
+    "bbox_mm": [
+      200.0,
+      200.0,
+      60.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 115710
+  },
+  {
+    "id": "tm06_spring",
+    "step_ok": false
+  },
+  {
+    "id": "tm07_roller",
+    "step_ok": true,
+    "volume_mm3": 1176212.3,
+    "bbox_mm": [
+      89.0,
+      89.0,
+      650.0
+    ],
+    "closed": true,
+    "n_solids": 2,
+    "anomaly": "MULTI_SOLID",
+    "step_size": 17143
+  },
+  {
+    "id": "tm08_weld_fork",
+    "step_ok": true,
+    "volume_mm3": 51185.9,
+    "bbox_mm": [
+      100.0,
+      50.0,
+      22.5
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 292350
+  },
+  {
+    "id": "tm09_gearbox_cover",
+    "step_ok": true,
+    "volume_mm3": 1214260.6,
+    "bbox_mm": [
+      300.0,
+      250.0,
+      29.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 311787
+  },
+  {
+    "id": "tm10_hex_nut",
+    "step_ok": true,
+    "volume_mm3": 1727.9,
+    "bbox_mm": [
+      19.0,
+      19.0,
+      8.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 20122
+  },
+  {
+    "id": "tm11_turbine_disk",
+    "step_ok": true,
+    "volume_mm3": 2750092.9,
+    "bbox_mm": [
+      300.0,
+      300.0,
+      85.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 467205
+  },
+  {
+    "id": "tm12_robot_wrist",
+    "step_ok": false
+  },
+  {
+    "id": "tm13_exhaust_manifold",
+    "step_ok": true,
+    "volume_mm3": 43495.3,
+    "bbox_mm": [
+      36.0,
+      68.6,
+      355.4
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 38698
+  },
+  {
+    "id": "tm14_hyd_valve",
+    "step_ok": true,
+    "volume_mm3": 814858.4,
+    "bbox_mm": [
+      80.0,
+      60.0,
+      200.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 55939
+  },
+  {
+    "id": "tm15_diff_case",
+    "step_ok": false
+  }
+]

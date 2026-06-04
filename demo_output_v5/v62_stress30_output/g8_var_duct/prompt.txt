@@ -1,0 +1,3 @@
+变截面过渡管道, 单位mm.
+loft_sections sections:[{position:{x_mm:0,y_mm:0,z_mm:0},shape:circle,radius_mm:40},{position:{x_mm:0,y_mm:0,z_mm:60},shape:circle,radius_mm:55},{position:{x_mm:0,y_mm:0,z_mm:120},shape:rectangle,width_mm:100,height_mm:80},{position:{x_mm:0,y_mm:0,z_mm:200},shape:circle,radius_mm:65}].
+4个截面从圆过渡到矩形再回到圆. 使用loft_sections.

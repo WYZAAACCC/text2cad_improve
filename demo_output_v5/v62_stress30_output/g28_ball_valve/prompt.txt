@@ -1,0 +1,5 @@
+工业球阀阀体总成, 单位mm.
+组件valve_body(axisymmetric): revolve_profile station1 r=60 z=0-40,station2 r=45 z=40-120,station3 r=60 z=120-160. cut_center_bore diameter_mm=40. 侧向出口孔: cut_hole diameter_mm=40 position_mm=[0,80] axis=Y.
+组件flange_inlet(axisymmetric): revolve_profile station1 r=80 z=0-20. cut_center_bore diameter_mm=40. cut_circular_hole_pattern count=6 pcd_mm=130 hole_dia_mm=14.
+组件flange_outlet(axisymmetric): revolve_profile station1 r=80 z=0-20. cut_center_bore diameter_mm=40. cut_circular_hole_pattern count=6 pcd_mm=130 hole_dia_mm=14.
+装配__assembly__(composition): 依次boolean_union(每次2 inputs).

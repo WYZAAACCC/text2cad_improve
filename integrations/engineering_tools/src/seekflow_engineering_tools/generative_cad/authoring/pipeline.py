@@ -54,6 +54,8 @@ class AuthoringPipelineResult:
         self.validation_bundle: Any = None
         self.metrics: AuthoringRunMetrics = AuthoringRunMetrics()
         self.failures: list[AuthoringFailure] = []
+        # v6: Spatial frontend result
+        self.spatial_frontend: Any = None
 
 
 # ── Mock callers for testing ────────────────────────────────────────────────
@@ -138,18 +140,73 @@ def generate_gcad_from_user_request(
     repair_caller: LlmToolCaller | None = None,
     primitive_catalog_summary: dict | None = None,
     max_repair_attempts: int = 3,
+    # v6: Spatial frontend
+    enable_spatial_frontend: bool = False,
+    spatial_mode: str = "guided",
+    spatial_user_answers: list | None = None,
+    spatial_session_state: Any = None,
+    question_budget: int = 3,
+    object_graph_caller: LlmToolCaller | None = None,
+    spatial_plan_caller: LlmToolCaller | None = None,
+    question_caller: LlmToolCaller | None = None,
+    answer_normalizer_caller: LlmToolCaller | None = None,
 ) -> AuthoringPipelineResult:
     """Run the full staged authoring pipeline.
 
     If callers are not provided, the pipeline validates pre-loaded data
     from route_plan, feature_sequence, and node_params in metrics only.
     Production usage requires injecting real LlmToolCaller instances.
+
+    v6: enable_spatial_frontend=True adds Stage 0 spatial intent resolution
+    before routing. Single-component cases automatically skip the frontend.
     """
     result = AuthoringPipelineResult()
     metrics = result.metrics
     metrics.model_router = llm_config.router.model
     metrics.model_author = llm_config.author.model
     metrics.model_repair = llm_config.repair.model
+
+    # ════════════════════════════════════════════════════════════
+    # v6: Stage 0 — Spatial Frontend
+    # ════════════════════════════════════════════════════════════
+    if enable_spatial_frontend and object_graph_caller is not None:
+        try:
+            from seekflow_engineering_tools.generative_cad.authoring.spatial.pipeline import (
+                run_spatial_authoring_frontend,
+            )
+            spatial_result = run_spatial_authoring_frontend(
+                user_request=user_request,
+                llm_config=llm_config,
+                dialect_registry=dialect_registry,
+                base_package_registry=base_package_registry,
+                object_graph_caller=object_graph_caller,
+                spatial_plan_caller=spatial_plan_caller,
+                question_caller=question_caller,
+                answer_normalizer_caller=answer_normalizer_caller,
+                user_answers=spatial_user_answers,
+                session_state=spatial_session_state,
+                mode=spatial_mode,
+                question_budget=question_budget,
+            )
+            result.spatial_frontend = spatial_result
+
+            if spatial_result.needs_clarification:
+                # Do not continue to CAD generation; return questions to UI layer
+                result.failures.append(AuthoringFailure(
+                    code=AuthoringFailureCode(
+                        getattr(AuthoringFailureCode, 'NEEDS_SPATIAL_CLARIFICATION', 'PROVIDER_NO_TOOL_CALL')
+                    ),
+                    stage="spatial_frontend",
+                    message="spatial clarification needed — present questions to user",
+                ))
+                return result
+        except Exception as exc:
+            result.failures.append(AuthoringFailure(
+                code=AuthoringFailureCode.CONTEXT_BUILD_ERROR,
+                stage="spatial_frontend",
+                message=f"spatial frontend failed: {exc}",
+            ))
+    # ════════════════════════════════════════════════════════════
 
     # ── Stage 1: Route ──
     if route_caller is not None:

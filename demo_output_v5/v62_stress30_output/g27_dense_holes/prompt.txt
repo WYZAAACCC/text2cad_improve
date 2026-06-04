@@ -1,0 +1,4 @@
+密集孔阵列测试板, 单位mm.
+extrude_rectangle width_mm=200 height_mm=150 depth_mm=10 centered=true.
+cut_hole_pattern_linear hole_dia_mm=3 count_x=20 count_y=15 spacing_x_mm=9 spacing_y_mm=9.
+密集排列20x15共300个3mm小孔, 孔间距9mm, 孔边距4.5mm. 测试大量孔的OCCT boolean性能.

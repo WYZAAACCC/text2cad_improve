@@ -1,0 +1,7 @@
+{
+  "ok": true,
+  "warnings": [
+    "Geometry error on 'helix_spring.body': [invalid_shape] Cannot get .val(): 'Solid' object has no attribute 'val'"
+  ],
+  "degraded": []
+}

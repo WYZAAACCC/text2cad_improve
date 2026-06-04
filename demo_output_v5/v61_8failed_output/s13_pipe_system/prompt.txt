@@ -1,0 +1,5 @@
+多管路系统, 单位 mm.
+组件pipe_a(loft_sweep): create_sweep_path[{x_mm:-30,y_mm:0,z_mm:0},{x_mm:-30,y_mm:0,z_mm:200},{x_mm:0,y_mm:0,z_mm:300}]. sweep_profile shape=circle radius_mm=15.
+组件pipe_b(loft_sweep): create_sweep_path[{x_mm:30,y_mm:0,z_mm:0},{x_mm:30,y_mm:0,z_mm:200},{x_mm:0,y_mm:0,z_mm:300}]. sweep_profile shape=circle radius_mm=15.
+组件main(loft_sweep): create_sweep_path[{x_mm:0,y_mm:0,z_mm:300},{x_mm:0,y_mm:0,z_mm:500}]. sweep_profile shape=circle radius_mm=30.
+装配__assembly__(composition): 依次boolean_union(每次2 inputs).

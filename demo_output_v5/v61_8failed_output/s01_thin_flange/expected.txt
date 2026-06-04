@@ -1,0 +1,1 @@
+preflight应报错: bore(480) > outer_dia(500) 但壁厚=(500-480)/2=10mm, 实际上几何是可行的! 原prompt可能有歧义

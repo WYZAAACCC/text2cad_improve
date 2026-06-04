@@ -1,0 +1,16 @@
+{
+  "applied": true,
+  "before_hash": "sha256:c2d7613fd96a7ebb39a13537dc3bb58b84be2a95cef141c9549b1845ba42dccd",
+  "after_hash": "sha256:72d1fcf6d37ce9fa4e4a94e1b988df7d13a07b50fd8546e2e5758e8ba001fc24",
+  "entries": [
+    {
+      "rule_id": "fix_phase_ordering",
+      "path": "/",
+      "old_value": "<hash:sha256:c2d76>",
+      "new_value": "<hash:sha256:72d1f>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_phase_ordering"
+    }
+  ]
+}

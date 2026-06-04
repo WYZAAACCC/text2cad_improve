@@ -1,0 +1,178 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "thinwall-shell-001",
+  "part_name": "thinwall_shell_housing",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+    },
+    {
+      "dialect": "shell_housing",
+      "version": "0.2.0",
+      "contract_hash": "sha256:63e5f8fc14a6184740d9471176fb83b36dee572eb0d37dcc78e236a3e0bd2798"
+    }
+  ],
+  "components": [
+    {
+      "id": "thinwall_shell",
+      "owner_dialect": "sketch_extrude",
+      "kind_hint": null,
+      "root_node": "shell_cleanup",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "base_block",
+      "component": "thinwall_shell",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:thinwall_shell:base_block:body"
+        }
+      ],
+      "params": {
+        "width_mm": 200,
+        "height_mm": 150,
+        "depth_mm": 100,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0
+      },
+      "typed_params": {
+        "width_mm": 200.0,
+        "height_mm": 150.0,
+        "depth_mm": 100.0,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0.0
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "pocket_cut",
+      "component": "thinwall_shell",
+      "dialect": "sketch_extrude",
+      "op": "cut_rectangular_pocket",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "base_block",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:thinwall_shell:pocket_cut:body"
+        }
+      ],
+      "params": {
+        "width_mm": 180,
+        "height_mm": 130,
+        "depth_mm": 90,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0
+      },
+      "typed_params": {
+        "width_mm": 180.0,
+        "height_mm": 130.0,
+        "depth_mm": 90.0,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0.0
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "shell_cleanup",
+      "component": "thinwall_shell",
+      "dialect": "shell_housing",
+      "op": "shell_body",
+      "op_version": "1.0.0",
+      "phase": "shell",
+      "inputs": [
+        {
+          "producer_node": "pocket_cut",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:thinwall_shell:shell_cleanup:body"
+        }
+      ],
+      "params": {
+        "thickness_mm": 3
+      },
+      "typed_params": {
+        "thickness_mm": 3.0,
+        "open_faces": []
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "modifies_solid"
+      ],
+      "postconditions": []
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:1720128fe8c3510a50714fa06dede1b0a9f91b6728b51efd7809dd9a472e5681",
+  "raw_graph_hash": "sha256:d45fe139c415f13cb2e40577d14aefd163f292065001a331ac61935ba4344924"
+}

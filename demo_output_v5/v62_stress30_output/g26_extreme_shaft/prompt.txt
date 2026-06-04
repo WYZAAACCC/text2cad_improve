@@ -1,0 +1,4 @@
+超长细传动轴, 单位mm.
+revolve_profile: station1 r=8 z=0-500.
+cut_center_bore diameter_mm=6 (空心轴, 壁厚5mm).
+apply_safe_chamfer distance_mm=0.5. 长度500mm, 直径16mm, 长径比31:1.

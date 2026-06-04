@@ -58,6 +58,11 @@ class AuthoringBuildResult(BaseModel):
     final_error: str | None = None
     report_v2: dict[str, Any] = Field(default_factory=dict)
 
+    # v6: Spatial frontend
+    spatial_frontend: dict[str, Any] | None = None
+    spatial_contract_hash: str | None = None
+    failures: list[dict[str, Any]] = Field(default_factory=list)
+
 
 # ── Main entry point ─────────────────────────────────────────────────────────
 
@@ -75,8 +80,21 @@ def generate_validate_build_step(
     repair_caller=None,  # LlmToolCaller
     allow_autofix: bool = True,
     max_repair_attempts: int = 2,
+    # ── v6: Spatial frontend ──
+    enable_spatial_frontend: bool = False,
+    spatial_mode: str = "guided",
+    object_graph_caller=None,
+    spatial_plan_caller=None,
+    question_caller=None,
+    answer_normalizer_caller=None,
+    spatial_user_answers=None,
+    spatial_session_state=None,
 ) -> AuthoringBuildResult:
     """Execute the full Text → STEP pipeline with staged authoring and audit.
+
+    v6: enable_spatial_frontend=True adds Stage 0 spatial intent resolution
+    before routing. For single-component cases the frontend auto-skips.
+    Spatial contract is saved as a sidecar file for Phase C constraint resolution.
 
     Args:
         user_request: Natural language part description.
@@ -90,6 +108,9 @@ def generate_validate_build_step(
         repair_caller: Repair LLM caller.
         allow_autofix: Enable deterministic autofix after validation failure.
         max_repair_attempts: Max LLM repair retry rounds.
+        enable_spatial_frontend: v6 spatial intent resolution (Stage 0).
+        spatial_mode: "guided" | "auto_conservative" | "auto_mechanical" | "precision".
+        object_graph_caller: LLM caller for MechanicalObjectGraphDraft extraction.
 
     Returns:
         AuthoringBuildResult with full stage-by-stage status and report_v2.
@@ -119,6 +140,54 @@ def generate_validate_build_step(
 
     # ── Save prompt ──
     (out_dir / "prompt.txt").write_text(user_request, encoding="utf-8")
+
+    # ════════════════════════════════════════════════════════════
+    # v6: Stage 0 — Spatial Frontend (intent resolution)
+    # ════════════════════════════════════════════════════════════
+    if enable_spatial_frontend and object_graph_caller is not None:
+        try:
+            from seekflow_engineering_tools.generative_cad.authoring.spatial.pipeline import (
+                run_spatial_authoring_frontend,
+            )
+            spatial_result = run_spatial_authoring_frontend(
+                user_request=user_request,
+                llm_config=llm_config,
+                dialect_registry=dialect_registry,
+                base_package_registry=base_package_registry,
+                object_graph_caller=object_graph_caller,
+                spatial_plan_caller=spatial_plan_caller,
+                question_caller=question_caller,
+                answer_normalizer_caller=answer_normalizer_caller,
+                user_answers=spatial_user_answers,
+                session_state=spatial_session_state,
+                mode=spatial_mode,
+            )
+            result.spatial_frontend = (
+                spatial_result.model_dump() if spatial_result else None
+            )
+
+            if spatial_result.needs_clarification:
+                result.final_error = "spatial_clarification_needed"
+                return result
+
+            # Save spatial contract sidecar for Phase C constraint resolution
+            if spatial_result.constraint_graph is not None:
+                import json
+                sc_path = out_dir / "spatial_contract.json"
+                sc_path.write_text(
+                    json.dumps(
+                        spatial_result.constraint_graph.model_dump(),
+                        indent=2, default=str, ensure_ascii=False,
+                    ),
+                    encoding="utf-8",
+                )
+        except Exception as exc:
+            result.failures.append({
+                "code": "CONTEXT_BUILD_ERROR",
+                "stage": "spatial_frontend",
+                "message": f"spatial frontend failed: {exc}",
+            })
+    # ════════════════════════════════════════════════════════════
 
     try:
         # ── Stage 1–4: Staged authoring (RoutePlan → FeatureSequence → NodeParams → Assemble) ──

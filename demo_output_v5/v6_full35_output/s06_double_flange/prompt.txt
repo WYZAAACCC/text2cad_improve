@@ -1,0 +1,5 @@
+双层法兰装配, 单位 mm.
+组件 'flange_a' (axisymmetric): revolve_profile station1 r=80 z=0-15. cut_center_bore diameter_mm=60 through_all=true. cut_circular_hole_pattern count=8 pcd_mm=140 hole_dia_mm=11.
+组件 'flange_b' (axisymmetric): revolve_profile station1 r=80 z=0-15. cut_center_bore diameter_mm=60 through_all=true. cut_circular_hole_pattern count=8 pcd_mm=140 hole_dia_mm=11.
+装配 '__assembly__' (composition): boolean_union 合并两个 flange.
+boolean_union inputs: [{component: flange_a, output: body}, {component: flange_b, output: body}].

@@ -1,0 +1,3 @@
+风机螺旋蜗壳扫掠, 单位mm.
+create_sweep_path path_points(x_mm/y_mm/z_mm):[{x_mm:50,y_mm:0,z_mm:0},{x_mm:60,y_mm:10,z_mm:0},{x_mm:75,y_mm:25,z_mm:0},{x_mm:95,y_mm:45,z_mm:0},{x_mm:120,y_mm:70,z_mm:0},{x_mm:150,y_mm:100,z_mm:0},{x_mm:185,y_mm:135,z_mm:0},{x_mm:225,y_mm:175,z_mm:0}].
+sweep_profile shape=circle radius_mm=15. 螺旋渐开线蜗壳, 8点控制.

@@ -1,0 +1,5 @@
+离心泵蜗壳总成, 单位mm.
+组件volute(axisymmetric): revolve_profile station1 r=120 z=0-30,station2 r=90 z=30-80,station3 r=60 z=80-85. cut_center_bore diameter_mm=50. cut_circular_hole_pattern count=6 pcd_mm=180 hole_dia_mm=14.
+组件discharge_flange(sketch_extrude): extrude_rectangle width_mm=150 height_mm=100 depth_mm=20 centered=true. cut_hole diameter_mm=60 position_mm=[0,0]. cut_hole_pattern_linear hole_dia_mm=12 count_x=2 count_y=2 spacing_x_mm=100 spacing_y_mm=60.
+组件base(sketch_extrude): extrude_rectangle width_mm=250 height_mm=200 depth_mm=30 centered=true. cut_hole_pattern_linear hole_dia_mm=16 count_x=2 count_y=2 spacing_x_mm=200 spacing_y_mm=150.
+装配__assembly__(composition): 依次boolean_union(每次2 inputs).

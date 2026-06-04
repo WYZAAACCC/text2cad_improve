@@ -1,0 +1,1 @@
+增强的op_version修复+prompt模板, LLM应输出正确JSON

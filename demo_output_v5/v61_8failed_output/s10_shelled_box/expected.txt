@@ -1,0 +1,1 @@
+混编dialect正确: sketch_extrude创建solid, shell_housing的shell_body消费

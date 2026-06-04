@@ -121,7 +121,62 @@ def run_canonical_gcad(
 
     try:
         _run_components(canonical, ctx)
+
+        # ════════════════════════════════════════════════════════════
+        # v6: Constraint Resolution (symbolic → numeric placements)
+        # ════════════════════════════════════════════════════════════
+        spatial_graph = _load_spatial_contract(ctx)
+        if spatial_graph is not None:
+            from seekflow_engineering_tools.generative_cad.runtime.bbox_tracker import (
+                measure_all_component_bboxes,
+            )
+            from seekflow_engineering_tools.generative_cad.runtime.constraint_resolver import (
+                resolve_placements,
+            )
+
+            component_ids = [
+                c.id for c in canonical.components
+                if c.id != "__assembly__"
+            ]
+            bboxes = measure_all_component_bboxes(ctx, component_ids)
+            placements, resolver_issues = resolve_placements(spatial_graph, bboxes)
+            ctx.spatial_placements = placements
+            for issue in resolver_issues:
+                ctx.warnings.append(f"[spatial solver] {issue}")
+
+            unsolved = [cid for cid, p in placements.items() if p.is_pending]
+            if unsolved:
+                ctx.warnings.append(
+                    f"spatial: {len(unsolved)} unsolved placements: {unsolved}"
+                )
+
         final_handle_id = _run_composition_or_select_final(canonical, ctx)
+
+        # ════════════════════════════════════════════════════════════
+        # v6: GeometrySpatialAudit
+        # ════════════════════════════════════════════════════════════
+        if spatial_graph is not None:
+            from seekflow_engineering_tools.generative_cad.runtime.spatial_audit import (
+                run_geometry_spatial_audit,
+            )
+            audit = run_geometry_spatial_audit(
+                final_handle_id=final_handle_id,
+                ctx=ctx,
+                spatial_graph=spatial_graph,
+                placements=getattr(ctx, 'spatial_placements', {}),
+            )
+            ctx.spatial_audit_report = audit
+            if not audit.ok:
+                errors = [i for i in audit.issues if i.severity == "error"]
+                if errors:
+                    return GcadRunResult(
+                        ok=False,
+                        error="spatial audit failed: " + "; ".join(i.message for i in errors),
+                        warnings=ctx.warnings,
+                        degraded_features=ctx.degraded_features,
+                        operation_metrics=ctx.operation_metrics,
+                    )
+        # ════════════════════════════════════════════════════════════
 
         from seekflow_engineering_tools.generative_cad.runtime.postconditions import validate_runtime_postconditions
         runtime_pc = validate_runtime_postconditions(canonical, ctx, final_handle_id)
@@ -195,6 +250,19 @@ def run_canonical_gcad(
 
 
 # ── Internal helpers ──
+
+def _load_spatial_contract(ctx) -> "SpatialConstraintGraph | None":
+    """Load spatial_contract.json sidecar from workspace root."""
+    import json
+    sp = ctx.workspace_root / "spatial_contract.json"
+    if not sp.exists():
+        return None
+    from seekflow_engineering_tools.generative_cad.authoring.spatial.schemas import (
+        SpatialConstraintGraph,
+    )
+    data = json.loads(sp.read_text(encoding="utf-8"))
+    return SpatialConstraintGraph.model_validate(data)
+
 
 def _run_components(canonical: CanonicalGcadDocument, ctx: RuntimeContext) -> None:
     """Run each non-assembly component, dispatching nodes to their actual dialect.

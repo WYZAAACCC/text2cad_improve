@@ -1,0 +1,5 @@
+管道变径接头总成, 单位mm.
+组件reducer_body(loft_sweep): loft_sections sections:[{position:{x_mm:0,y_mm:0,z_mm:0},shape:circle,radius_mm:80},{position:{x_mm:0,y_mm:0,z_mm:150},shape:circle,radius_mm:50}].
+组件flange_large(axisymmetric): revolve_profile station1 r=110 z=0-20. cut_center_bore diameter_mm=160. cut_circular_hole_pattern count=8 pcd_mm=190 hole_dia_mm=18.
+组件flange_small(axisymmetric): revolve_profile station1 r=80 z=0-20. cut_center_bore diameter_mm=100. cut_circular_hole_pattern count=8 pcd_mm=140 hole_dia_mm=14.
+装配__assembly__(composition): 依次boolean_union(每次2 inputs).

@@ -1,0 +1,4 @@
+微型精密仪表轴套, 单位mm.
+revolve_profile station1 r=1.5 z=0-8.
+cut_center_bore diameter_mm=2.5 (壁厚0.25mm).
+apply_safe_chamfer distance_mm=0.1. 超小尺寸零件, 外径3mm, 内径2.5mm, 壁厚仅0.25mm.

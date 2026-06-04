@@ -1,0 +1,4 @@
+薄壁壳体, 单位 mm.
+extrude_rectangle width_mm=200 height_mm=150 depth_mm=100 centered=true.
+cut_rectangular_pocket width_mm=180 height_mm=130 depth_mm=90 centered=true.
+shell_body thickness_mm=3.

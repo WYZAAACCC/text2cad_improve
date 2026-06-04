@@ -1,0 +1,3 @@
+发动机舱复杂空间管路, 单位mm.
+create_sweep_path path_points(x_mm/y_mm/z_mm):[{x_mm:0,y_mm:0,z_mm:0},{x_mm:80,y_mm:40,z_mm:60},{x_mm:120,y_mm:-20,z_mm:140},{x_mm:60,y_mm:-80,z_mm:200},{x_mm:0,y_mm:-40,z_mm:280},{x_mm:-60,y_mm:20,z_mm:340},{x_mm:-40,y_mm:60,z_mm:400},{x_mm:0,y_mm:80,z_mm:460}].
+sweep_profile shape=circle radius_mm=10. 8个控制点的空间扭曲管路.

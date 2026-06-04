@@ -1,0 +1,127 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "fan-volute-sweep-001",
+  "part_name": "风机螺旋蜗壳扫掠",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "volute",
+      "owner_dialect": "loft_sweep",
+      "root_node": "sweep_profile_node"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sweep_path_node",
+      "component": "volute",
+      "dialect": "loft_sweep",
+      "op": "create_sweep_path",
+      "op_version": "1.0.0",
+      "phase": "path",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "curve",
+          "type": "curve"
+        }
+      ],
+      "params": {
+        "path_points": [
+          {
+            "x_mm": 50,
+            "y_mm": 0,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 60,
+            "y_mm": 10,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 75,
+            "y_mm": 25,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 95,
+            "y_mm": 45,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 120,
+            "y_mm": 70,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 150,
+            "y_mm": 100,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 185,
+            "y_mm": 135,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 225,
+            "y_mm": 175,
+            "z_mm": 0
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "sweep_profile_node",
+      "component": "volute",
+      "dialect": "loft_sweep",
+      "op": "sweep_profile",
+      "op_version": "1.0.0",
+      "phase": "sweep",
+      "inputs": [
+        {
+          "node": "sweep_path_node",
+          "output": "curve"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "shape": "circle",
+        "radius_mm": 15
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {
+    "_": "风机螺旋蜗壳扫掠 - 8点控制渐开线路径 + circle r=15mm sweep"
+  }
+}

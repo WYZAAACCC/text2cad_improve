@@ -1,0 +1,29 @@
+RC=0
+BUILD_FAILED: loft_sections failed on 'n_reducer_body_loft': Nothing to loft
+ack (most recent call last):
+  File "E:\auto_detection_process/integrations/engineering_tools/src\seekflow_engineering_tools\generative_cad\dialects\loft_sweep\handlers.py", line 158, in handle_loft_sections
+    solid = cq.Workplane("XY").add(wires).toPending().loft(ruled=ruled)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\auto_detection_process\.conda\Lib\site-packages\cadquery\cq.py", line 3641, in loft
+    raise ValueError("Nothing to loft")
+ValueError: Nothing to loft
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\auto_detection_process/integrations/engineering_tools/src\seekflow_engineering_tools\generative_cad\pipeline\run.py", line 123, in run_canonical_gcad
+    _run_components(canonical, ctx)
+  File "E:\auto_detection_process/integrations/engineering_tools/src\seekflow_engineering_tools\generative_cad\pipeline\run.py", line 285, in _run_components
+    component_outputs = dialect.run_component(component, nodes, ctx)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\auto_detection_process/integrations/engineering_tools/src\seekflow_engineering_tools\generative_cad\dialects\loft_sweep\dialect.py", line 288, in run_component
+    executed = execute_operation(node=node, op_spec=op_spec, ctx=ctx)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\auto_detection_process/integrations/engineering_tools/src\seekflow_engineering_tools\generative_cad\dialects\executor.py", line 52, in execute_operation
+    raw_result = op_spec.handler(node, ctx)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\auto_detection_process/integrations/engineering_tools/src\seekflow_engineering_tools\generative_cad\dialects\loft_sweep\handlers.py", line 169, in handle_loft_sections
+    raise RuntimeError(f"loft_sections failed on '{node.id}': {e}")
+RuntimeError: loft_sections failed on 'n_reducer_body_loft': Nothing to loft
+
+

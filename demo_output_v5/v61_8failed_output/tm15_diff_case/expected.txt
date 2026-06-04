@@ -1,0 +1,1 @@
+preflight检查: bore(100) < outer(150), 壁厚25mm可行. 应通过validation.

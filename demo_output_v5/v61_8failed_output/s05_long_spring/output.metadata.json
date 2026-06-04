@@ -1,0 +1,224 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "reference_geometry",
+    "document_id": "helical-spring-15t-150mm",
+    "part_name": "helical_compression_spring",
+    "selected_dialects": [
+      {
+        "dialect": "loft_sweep",
+        "version": "0.2.0",
+        "contract_hash": "sha256:e65e433162c910d28028903e691e48174e56dcc8b400a35f8f9f124adcc6ff17"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "helix_node",
+        "dialect": "loft_sweep",
+        "op": "helix_sweep",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:8dec4c9b204b16241c60ddde4ff78d394f9580e9494152e241777b4502e7b121",
+    "canonical_graph_hash": "sha256:e66cca7976dd211a31008f1d44e7619964fb739ccc06d8fba10c7aa1eea8f9cc",
+    "paths": {
+      "canonical_ir_path": "E:\\auto_detection_process\\demo_output_v5\\v61_8failed_output\\s05_long_spring\\canonical.json",
+      "validation_seed_path": "E:\\auto_detection_process\\demo_output_v5\\v61_8failed_output\\s05_long_spring\\validation_bundle.json",
+      "step_path": "E:\\auto_detection_process\\demo_output_v5\\v61_8failed_output\\s05_long_spring\\output.step",
+      "metadata_path": "E:\\auto_detection_process\\demo_output_v5\\v61_8failed_output\\s05_long_spring\\output.metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:48cdb0bd334f3d07543e24f2b8d98f4b71084bb826f401f4cc345ca200f790cb",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [
+      "helix_sweep on 'helix_node': OCP MakePipe failed, falling back to CadQuery sweep (may have reduced volume)",
+      "helix_sweep on 'helix_node': volume ratio=0.019 (actual=250, expected=13366)."
+    ],
+    "degraded_features": [
+      {
+        "node_id": "helix_node",
+        "op": "helix_sweep",
+        "reason": "volume deviation (ratio=0.019)"
+      }
+    ],
+    "operation_metrics": [],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [
+    "helix_sweep on 'helix_node': OCP MakePipe failed, falling back to CadQuery sweep (may have reduced volume)",
+    "helix_sweep on 'helix_node': volume ratio=0.019 (actual=250, expected=13366)."
+  ],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {
+        "structure": {
+          "ok": true,
+          "stage": "structure",
+          "issues": [],
+          "stages_run": [
+            "structure"
+          ]
+        },
+        "registry": {
+          "ok": true,
+          "stage": "registry",
+          "issues": [],
+          "stages_run": [
+            "registry"
+          ]
+        },
+        "params": {
+          "ok": true,
+          "stage": "params",
+          "issues": [],
+          "stages_run": [
+            "params"
+          ]
+        },
+        "ownership": {
+          "ok": true,
+          "stage": "ownership",
+          "issues": [],
+          "stages_run": [
+            "ownership"
+          ]
+        },
+        "graph": {
+          "ok": true,
+          "stage": "graph",
+          "issues": [],
+          "stages_run": [
+            "graph"
+          ]
+        },
+        "typecheck": {
+          "ok": true,
+          "stage": "typecheck",
+          "issues": [],
+          "stages_run": [
+            "typecheck"
+          ]
+        },
+        "phase": {
+          "ok": true,
+          "stage": "phase",
+          "issues": [],
+          "stages_run": [
+            "phase"
+          ]
+        },
+        "composition": {
+          "ok": true,
+          "stage": "composition",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "registry",
+            "params",
+            "ownership",
+            "graph",
+            "typecheck",
+            "phase",
+            "composition"
+          ]
+        },
+        "safety": {
+          "ok": true,
+          "stage": "safety",
+          "issues": [],
+          "stages_run": [
+            "safety"
+          ]
+        }
+      },
+      "canonicalize": {
+        "ok": true,
+        "stage": "canonicalize",
+        "issues": [],
+        "stages_run": [
+          "canonicalize"
+        ]
+      },
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": true,
+      "stage": "dialect_semantics",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "safety",
+        "canonicalize",
+        "dialect_semantics"
+      ]
+    },
+    "geometry_preflight": {
+      "ok": true,
+      "stage": "geometry_preflight",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "safety",
+        "canonicalize",
+        "dialect_semantics",
+        "geometry_preflight"
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    }
+  }
+}

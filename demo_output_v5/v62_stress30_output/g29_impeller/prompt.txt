@@ -1,0 +1,7 @@
+离心泵叶轮总成, 单位mm.
+组件impeller_disc(axisymmetric): revolve_profile station1 r=20 z=0-10,station2 r=150 z=10-25,station3 r=20 z=25-35. cut_center_bore diameter_mm=25.
+组件blade_1(sketch_extrude): extrude_rectangle width_mm=3 height_mm=120 depth_mm=20 centered=true.
+组件blade_2(sketch_extrude): extrude_rectangle width_mm=3 height_mm=120 depth_mm=20 centered=true.
+组件blade_3(sketch_extrude): extrude_rectangle width_mm=3 height_mm=120 depth_mm=20 centered=true.
+组件blade_4(sketch_extrude): extrude_rectangle width_mm=3 height_mm=120 depth_mm=20 centered=true.
+装配__assembly__(composition): 依次boolean_union(每次2 inputs).

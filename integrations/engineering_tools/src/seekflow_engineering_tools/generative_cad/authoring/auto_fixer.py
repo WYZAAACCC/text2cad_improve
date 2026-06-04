@@ -1,19 +1,88 @@
 """AutoFixer — programmatic fix for common LLM hallucination patterns.
 
-每个修复都是幂等的、安全的、不改变语义的。
-修复策略来自对 DeepSeek 输出模式的统计分析。
+Each fix is idempotent, safe, and does not alter design intent.
+Fix strategies derived from statistical analysis of DeepSeek output patterns.
 
 v0.7: audited — each fix records rule_id, path, old_value, new_value,
 severity, and confidence via AutoFixEntry / AutoFixReport.
+
+v6: AutoFixCategory system — fixes classified by risk level.
+Default policy: allow SYNTACTIC_ALIAS, SCHEMA_DEFAULT, CONTEXT_SAFE.
+Block: SEMANTIC_GUESS, DESTRUCTIVE unless explicitly enabled.
+
+v6.1: _sanitize_llm_json — strip control characters, zero-width chars,
+unpaired surrogates from LLM output before any fix processing.
 """
 
 from __future__ import annotations
 import copy
+import re
+from enum import Enum
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from seekflow_engineering_tools.generative_cad.ir.hashing import stable_hash
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# v6.1: JSON sanitizer (fixes tm12_robot_wrist control character issue)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _sanitize_llm_json(obj: Any) -> Any:
+    """Recursively sanitize LLM output for JSON compatibility.
+
+    Handles:
+    - Control characters (U+0000-U+001F except \\n, \\r, \\t)
+    - Delete character (U+007F) and extended control chars (U+0080-U+009F)
+    - Zero-width characters (U+200B ZWSP, U+200C ZWNJ, U+200D ZWJ, U+FEFF BOM)
+    - Unpaired surrogates (U+D800-U+DFFF)
+    - Null bytes
+
+    This is called before any other AutoFix function because control characters
+    can cause json.loads() and Pydantic model_validate() to fail unrecoverably.
+    """
+    if isinstance(obj, str):
+        # Remove control chars except common whitespace
+        cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', obj)
+        # Remove zero-width characters
+        cleaned = re.sub(r'[​-‍﻿]', '', cleaned)
+        # Remove unpaired surrogates
+        cleaned = re.sub(r'[\ud800-\udfff]', '', cleaned)
+        return cleaned
+    elif isinstance(obj, dict):
+        return {_sanitize_llm_json(k): _sanitize_llm_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_sanitize_llm_json(v) for v in obj]
+    return obj
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# v6: AutoFix risk classification
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class AutoFixCategory(str, Enum):
+    """Risk-based fix category.
+
+    SYNTACTIC_ALIAS: name alias replacement (solid→body, wire→curve)
+    SCHEMA_DEFAULT: fill schema defaults (op_version, phase)
+    CONTEXT_SAFE: contextually safe corrections (dialect name typos, param value aliases)
+    SEMANTIC_GUESS: guessing design intent (filling empty profile stations)
+    DESTRUCTIVE: removing data (deleting unknown ops)
+    """
+    SYNTACTIC_ALIAS = "syntactic_alias"
+    SCHEMA_DEFAULT = "schema_default"
+    CONTEXT_SAFE = "context_safe"
+    SEMANTIC_GUESS = "semantic_guess"
+    DESTRUCTIVE = "destructive"
+
+
+# v6 default policy: allow only safe categories
+DEFAULT_ALLOWED_AUTOFIX_CATEGORIES: set[AutoFixCategory] = {
+    AutoFixCategory.SYNTACTIC_ALIAS,
+    AutoFixCategory.SCHEMA_DEFAULT,
+    AutoFixCategory.CONTEXT_SAFE,
+}
 
 
 # ── Audit data structures ────────────────────────────────────────────────────
@@ -152,6 +221,8 @@ def auto_fix_with_report(
     """
     before_hash = stable_hash(raw_doc)
     doc = copy.deepcopy(raw_doc)
+    # v6.1: Sanitize LLM output before any fix processing
+    doc = _sanitize_llm_json(doc)
     entries: list[AutoFixEntry] = []
 
     def _apply_fix(
@@ -222,21 +293,49 @@ def _fix_input_output_names(doc: dict) -> dict:
 
 
 def _fix_op_versions(doc: dict, dialect_registry=None) -> dict:
-    """修正 op_version: LLM 常把 dialect.version 当做 op.version (如 0.2.0→1.0.0)。"""
+    """修正 op_version: LLM 常把 dialect.version 当做 op.version。
+
+    检测模式:
+    - "0.2.0", "0.1.0" — 精确匹配 dialect 版本号
+    - "v0.2.0", "v0.2", "v0.1.0" — 带 v 前缀的 dialect 版本
+    - "" (空字符串) — LLM 忘记填 op_version
+    - None — 字段缺失
+    - "v1.0.0" — 带 v 前缀的正确版本号 (去前缀即可)
+    """
     if dialect_registry is None:
         from seekflow_engineering_tools.generative_cad.dialects.default_registry import default_registry
         dialect_registry = default_registry()
+
+    # Patterns that are definitely dialect versions (need full replacement)
+    DIALECT_VERSION_PATTERNS = frozenset({
+        "0.2.0", "0.1.0", "v0.2.0", "v0.2", "v0.1.0", "0.2", "0.1",
+    })
+
     for node in doc.get("nodes", []):
         did = node.get("dialect", "")
         op = node.get("op", "")
         ver = node.get("op_version", "")
-        if ver in ("0.2.0", "0.1.0"):  # LLM used dialect version as op version
+
+        if ver is None or ver == "":
+            # Missing op_version → fill from dialect default
             d = dialect_registry.get(did)
             if d:
                 try:
                     node["op_version"] = d.default_op_version(op)
                 except Exception:
                     node["op_version"] = "1.0.0"
+        elif ver in DIALECT_VERSION_PATTERNS:
+            # LLM used dialect version as op version
+            d = dialect_registry.get(did)
+            if d:
+                try:
+                    node["op_version"] = d.default_op_version(op)
+                except Exception:
+                    node["op_version"] = "1.0.0"
+        elif ver.startswith("v") and ver[1:].replace(".", "").isdigit():
+            # Strip "v" prefix: "v1.0.0" → "1.0.0"
+            node["op_version"] = ver.lstrip("v")
+
     return doc
 
 

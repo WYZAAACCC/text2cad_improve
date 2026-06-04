@@ -1,0 +1,5 @@
+电机端盖总成, 单位mm.
+组件endbell(axisymmetric): revolve_profile station1 r=100 z=0-15,station2 r=80 z=15-40,station3 r=60 z=40-45. cut_center_bore diameter_mm=30. cut_circular_hole_pattern count=6 pcd_mm=150 hole_dia_mm=10. cut_annular_groove side=front inner_dia_mm=120 outer_dia_mm=160 depth_mm=3.
+组件mount_feet(sketch_extrude): extrude_rectangle width_mm=250 height_mm=40 depth_mm=20 centered=true. cut_hole diameter_mm=12 position_mm=[-100,0]. cut_hole diameter_mm=12 position_mm=[100,0].
+组件cooling_fins(sketch_extrude): extrude_rectangle width_mm=180 height_mm=5 depth_mm=30 centered=true.
+装配__assembly__(composition): 依次boolean_union(每次2 inputs).

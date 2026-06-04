@@ -1,0 +1,6 @@
+薄壁壳体, 单位 mm.
+单个组件comp_1, owner_dialect=sketch_extrude.
+先extrude_rectangle width_mm=200 height_mm=150 depth_mm=100 centered=true.
+再cut_rectangular_pocket width_mm=180 height_mm=130 depth_mm=90.
+最后shell_body thickness_mm=3.
+注意: extrude和shell在同一个组件, shell_body的input指向extrude节点.

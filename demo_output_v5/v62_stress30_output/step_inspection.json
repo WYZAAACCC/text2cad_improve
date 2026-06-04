@@ -1,0 +1,364 @@
+[
+  {
+    "id": "g10_spiral_volute",
+    "step_ok": true,
+    "volume_mm3": 174938.5,
+    "bbox_mm": [
+      196.2,
+      196.2,
+      30.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 5934
+  },
+  {
+    "id": "g11_pressure_vessel",
+    "step_ok": true,
+    "volume_mm3": 920847.4,
+    "bbox_mm": [
+      310.0,
+      310.0,
+      406.0
+    ],
+    "closed": true,
+    "n_solids": 0,
+    "anomaly": "",
+    "step_size": 19779
+  },
+  {
+    "id": "g12_hollow_bracket",
+    "step_ok": true,
+    "volume_mm3": 191902.0,
+    "bbox_mm": [
+      206.0,
+      166.0,
+      73.0
+    ],
+    "closed": true,
+    "n_solids": 0,
+    "anomaly": "",
+    "step_size": 269527
+  },
+  {
+    "id": "g13_enclosure",
+    "step_ok": true,
+    "volume_mm3": 859298.9,
+    "bbox_mm": [
+      308.0,
+      208.0,
+      154.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 192748
+  },
+  {
+    "id": "g14_vacuum_chamber",
+    "step_ok": false
+  },
+  {
+    "id": "g15_heavy_flange",
+    "step_ok": true,
+    "volume_mm3": 4225308.5,
+    "bbox_mm": [
+      400.0,
+      400.0,
+      55.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 287420
+  },
+  {
+    "id": "g16_stepped_pulley",
+    "step_ok": true,
+    "volume_mm3": 1839522.7,
+    "bbox_mm": [
+      240.0,
+      240.0,
+      87.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 58431
+  },
+  {
+    "id": "g17_cross_block",
+    "step_ok": true,
+    "volume_mm3": 873863.4,
+    "bbox_mm": [
+      100.0,
+      100.0,
+      100.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 444290
+  },
+  {
+    "id": "g18_ribbed_panel",
+    "step_ok": true,
+    "volume_mm3": 2673860.8,
+    "bbox_mm": [
+      550.0,
+      400.0,
+      35.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 2502226
+  },
+  {
+    "id": "g19_precision_base",
+    "step_ok": true,
+    "volume_mm3": 1662390.3,
+    "bbox_mm": [
+      305.0,
+      280.0,
+      41.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 781192
+  },
+  {
+    "id": "g1_engine_mount",
+    "step_ok": true,
+    "volume_mm3": 1551178.5,
+    "bbox_mm": [
+      300.0,
+      200.0,
+      60.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 199475
+  },
+  {
+    "id": "g20_motor_endbell",
+    "step_ok": true,
+    "volume_mm3": 1046806.3,
+    "bbox_mm": [
+      250.0,
+      200.0,
+      45.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 215994
+  },
+  {
+    "id": "g21_valve_body",
+    "step_ok": true,
+    "volume_mm3": 1016418.2,
+    "bbox_mm": [
+      140.0,
+      140.0,
+      137.9
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 93053
+  },
+  {
+    "id": "g22_heat_sink",
+    "step_ok": true,
+    "volume_mm3": 1686932.3,
+    "bbox_mm": [
+      328.0,
+      228.0,
+      104.0
+    ],
+    "closed": true,
+    "n_solids": 2,
+    "anomaly": "MULTI_SOLID(2)",
+    "step_size": 106294
+  },
+  {
+    "id": "g23_pipe_reducer",
+    "step_ok": false
+  },
+  {
+    "id": "g24_micro_bushing",
+    "step_ok": false
+  },
+  {
+    "id": "g25_large_ring",
+    "step_ok": false
+  },
+  {
+    "id": "g26_extreme_shaft",
+    "step_ok": true,
+    "volume_mm3": -34090.2,
+    "bbox_mm": [
+      16.0,
+      16.0,
+      500.0
+    ],
+    "closed": true,
+    "n_solids": 0,
+    "anomaly": "TINY_VOL",
+    "step_size": 75663
+  },
+  {
+    "id": "g27_dense_holes",
+    "step_ok": true,
+    "volume_mm3": 278794.2,
+    "bbox_mm": [
+      200.0,
+      150.0,
+      10.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 1366474
+  },
+  {
+    "id": "g28_ball_valve",
+    "step_ok": true,
+    "volume_mm3": 124674.6,
+    "bbox_mm": [
+      160.0,
+      160.0,
+      160.0
+    ],
+    "closed": true,
+    "n_solids": 0,
+    "anomaly": "",
+    "step_size": 342168
+  },
+  {
+    "id": "g29_impeller",
+    "step_ok": true,
+    "volume_mm3": 1072137.2,
+    "bbox_mm": [
+      300.0,
+      300.0,
+      35.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 60311
+  },
+  {
+    "id": "g2_gearbox_housing",
+    "step_ok": true,
+    "volume_mm3": 9610218.4,
+    "bbox_mm": [
+      500.0,
+      475.0,
+      127.5
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 992010
+  },
+  {
+    "id": "g30_hyd_cylinder",
+    "step_ok": true,
+    "error": "Bnd_Box is void",
+    "step_size": 1661
+  },
+  {
+    "id": "g3_hyd_manifold",
+    "step_ok": true,
+    "volume_mm3": 2993916.2,
+    "bbox_mm": [
+      150.0,
+      120.0,
+      180.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 1041249
+  },
+  {
+    "id": "g4_pump_casing",
+    "step_ok": true,
+    "volume_mm3": 2784401.5,
+    "bbox_mm": [
+      250.0,
+      240.0,
+      85.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 458179
+  },
+  {
+    "id": "g5_robot_arm",
+    "step_ok": true,
+    "volume_mm3": 2173589.4,
+    "bbox_mm": [
+      180.0,
+      180.0,
+      500.0
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 48514
+  },
+  {
+    "id": "g6_helix_coil",
+    "step_ok": true,
+    "volume_mm3": 675539.1,
+    "bbox_mm": [
+      560.6,
+      597.3,
+      164.7
+    ],
+    "closed": true,
+    "n_solids": 0,
+    "anomaly": "",
+    "step_size": 3757327
+  },
+  {
+    "id": "g7_3d_tube",
+    "step_ok": true,
+    "volume_mm3": 210487.3,
+    "bbox_mm": [
+      198.9,
+      178.9,
+      474.3
+    ],
+    "closed": true,
+    "n_solids": 1,
+    "anomaly": "",
+    "step_size": 79123
+  },
+  {
+    "id": "g8_var_duct",
+    "step_ok": false
+  },
+  {
+    "id": "g9_torsion_spring",
+    "step_ok": true,
+    "volume_mm3": 84831.6,
+    "bbox_mm": [
+      211.6,
+      201.6,
+      77.0
+    ],
+    "closed": true,
+    "n_solids": 0,
+    "anomaly": "",
+    "step_size": 2338413
+  }
+]

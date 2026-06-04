@@ -1,0 +1,43 @@
+D:\anaconda\Lib\site-packages\requests\__init__.py:113: RequestsDependencyWarning: urllib3 (2.6.3) or chardet (7.4.3)/charset_normalizer (3.3.2) doesn't match a supported version!
+  warnings.warn(
+=== v5.1 Full35: 35 cases ===
+Output: E:\auto_detection_process\demo_output_v5\v6_full35_output
+
+[01/35] T1 法兰盖                    STEP=108919B sem=OK [29s]
+[02/35] T1 L型支架                   STEP=264534B sem=OK [23s]
+[03/35] T1 轴承座                    STEP=60256B sem=OK [20s]
+[04/35] T1 阶梯轴                    STEP=70767B sem=OK [22s]
+[05/35] T1 V型带轮                   STEP=115710B sem=OK [22s]
+[06/35] T2 压缩弹簧                   STEP=161267B sem=OK [13s]
+[07/35] T2 托辊                     STEP=32697B sem=OK [21s]
+[08/35] T2 焊接叉                    STEP=68792B sem=OK [88s]
+[09/35] T2 减速器箱盖                  STEP=15567B sem=OK [25s]
+[10/35] T2 六角螺母                   STEP=20122B sem=OK [29s]
+[11/35] T3 涡轮盘                    STEP=465598B sem=OK [23s]
+[12/35] T3 机器人腕部                  FAIL: [hole_pattern_intersects_center_bore] hole pattern PCD radius (70.0) - hole radius (4.0) <= bore radius (76.0) + margin (1.0) [64s]
+[13/35] T3 排气歧管                   STEP=19535B sem=OK [17s]
+[14/35] T3 液压阀体                   STEP=287084B sem=OK [20s]
+[15/35] T3 差速器壳体                  STEP=186198B sem=OK [21s]
+[16/35] S1 超大薄壁法兰                 FAIL: [hole_pattern_outside_profile] hole pattern PCD radius (290.0) + hole radius (6.0) >= profile max (250.0) - margin (1.0) [66s]
+[17/35] S2 微型轴套                   STEP=20125B sem=OK [28s]
+[18/35] S3 密集筋板                   STEP=626479B sem=OK [27s]
+[19/35] S4 深孔阀块                   STEP=428734B sem=OK [23s]
+[20/35] S5 长弹簧                    STEP=3731765B sem=OK [38s]
+[21/35] S6 双层法兰                   STEP=99572B sem=OK [29s]
+[22/35] S7 十字筋箱体                  STEP=1287045B sem=OK [42s]
+[23/35] S8 全特征轴                   STEP=75457B sem=OK [23s]
+[24/35] S9 变径扫掠管                  STEP=41532B sem=OK [15s]
+[25/35] S10 薄壁壳体                  STEP=73100B sem=OK [17s]
+[26/35] S11 联轴器总成                 STEP=85147B sem=OK [27s]
+[27/35] S12 减速器底座                 STEP=62637B sem=OK [25s]
+[28/35] S13 多管路系统                 STEP=44029B sem=OK [26s]
+[29/35] S14 完整轴承座                 STEP=46248B sem=OK [21s]
+[30/35] S15 多端口阀块                 STEP=58969B sem=OK [61s]
+[31/35] S16 涡轮转子                  STEP=80693B sem=OK [22s]
+[32/35] S17 3D空间弯管                STEP=79041B sem=OK [17s]
+[33/35] S18 大型薄壳                  STEP=73219B sem=OK [19s]
+[34/35] S19 多体工作台                 STEP=228542B sem=OK [47s]
+[35/35] S20 终极综合件                 STEP=164937B sem=OK [35s]
+
+=== RESULTS: 33/35 passed ===
+Report: E:\auto_detection_process\demo_output_v5\v6_full35_output/report.json

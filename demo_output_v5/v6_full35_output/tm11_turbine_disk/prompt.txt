@@ -1,0 +1,7 @@
+涡轮盘, 单位 mm.
+revolve_profile: station1 r=150 z=0-20, station2 r=120 z=20-40, station3 r=80 z=40-65, station4 r=60 z=65-75, station5 r=50 z=75-85.
+cut_center_bore diameter_mm=30 through_all=true.
+cut_circular_hole_pattern count=8 pcd_mm=80 hole_dia_mm=12.
+cut_circular_hole_pattern count=6 pcd_mm=180 hole_dia_mm=25.
+cut_annular_groove side=front inner_dia_mm=200 outer_dia_mm=240 depth_mm=6.
+apply_safe_chamfer distance_mm=1.5 target=all_external_edges.

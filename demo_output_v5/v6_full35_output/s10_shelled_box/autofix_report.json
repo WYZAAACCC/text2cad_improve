@@ -1,0 +1,16 @@
+{
+  "applied": true,
+  "before_hash": "sha256:cfe543f69e84bc8d8f9b04a2a22aee39a5a83ec2e3b3fb4451a54e403505230a",
+  "after_hash": "sha256:9741586cfcebb9a0dc000aa370f3b9e367fc79a228aaae6044633a1ef23bf987",
+  "entries": [
+    {
+      "rule_id": "remove_extra_params",
+      "path": "/",
+      "old_value": "<hash:sha256:cfe54>",
+      "new_value": "<hash:sha256:97415>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: remove_extra_params"
+    }
+  ]
+}

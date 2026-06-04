@@ -1,0 +1,85 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "helical-spring-15t-150mm",
+  "part_name": "helical_compression_spring",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0",
+      "contract_hash": "sha256:e65e433162c910d28028903e691e48174e56dcc8b400a35f8f9f124adcc6ff17"
+    }
+  ],
+  "components": [
+    {
+      "id": "spring_comp",
+      "owner_dialect": "loft_sweep",
+      "kind_hint": null,
+      "root_node": "helix_node",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "helix_node",
+      "component": "spring_comp",
+      "dialect": "loft_sweep",
+      "op": "helix_sweep",
+      "op_version": "1.0.0",
+      "phase": "helix",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:spring_comp:helix_node:body"
+        }
+      ],
+      "params": {
+        "radius_mm": 20,
+        "height_mm": 150,
+        "pitch_mm": 10,
+        "profile_radius_mm": 1.5,
+        "turns": 15
+      },
+      "typed_params": {
+        "radius_mm": 20.0,
+        "height_mm": 150.0,
+        "pitch_mm": 10.0,
+        "profile_radius_mm": 1.5,
+        "turns": 15.0,
+        "variable_pitch": false,
+        "start_pitch_mm": null,
+        "end_pitch_mm": null
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": []
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:e66cca7976dd211a31008f1d44e7619964fb739ccc06d8fba10c7aa1eea8f9cc",
+  "raw_graph_hash": "sha256:8dec4c9b204b16241c60ddde4ff78d394f9580e9494152e241777b4502e7b121"
+}

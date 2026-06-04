@@ -1,0 +1,6 @@
+工业阀体总成, 单位mm.
+组件valve_chamber(axisymmetric): revolve_profile station1 r=50 z=0-120. cut_center_bore diameter_mm=40.
+组件inlet_flange(axisymmetric): revolve_profile station1 r=70 z=0-20. cut_center_bore diameter_mm=40. cut_circular_hole_pattern count=6 pcd_mm=110 hole_dia_mm=14.
+组件outlet_flange(axisymmetric): revolve_profile station1 r=70 z=0-20. cut_center_bore diameter_mm=40. cut_circular_hole_pattern count=6 pcd_mm=110 hole_dia_mm=14.
+组件flow_path(loft_sweep): create_sweep_path[{x_mm:0,y_mm:0,z_mm:0},{x_mm:30,y_mm:0,z_mm:60},{x_mm:0,y_mm:0,z_mm:120}]. sweep_profile shape=circle radius_mm=20.
+装配__assembly__(composition): 依次boolean_union(每次2 inputs).

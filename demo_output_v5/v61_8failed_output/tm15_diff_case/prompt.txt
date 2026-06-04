@@ -1,0 +1,6 @@
+差速器壳体, 单位 mm.
+revolve_profile: station1 r=75 z=0-20, station2 r=60 z=20-80, station3 r=75 z=80-100.
+cut_center_bore diameter_mm=100.
+cut_circular_hole_pattern count=8 pcd_mm=130 hole_dia_mm=10.
+cut_annular_groove side=front inner_dia_mm=120 outer_dia_mm=140 depth_mm=3.
+apply_safe_chamfer distance_mm=1.

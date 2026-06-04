@@ -32,6 +32,11 @@ class RuntimeContext:
 
     runner_version: str = "0.2.0"
 
+    # v6: Spatial intent resolution
+    spatial_placements: dict[str, Any] = field(default_factory=dict)
+    spatial_audit_report: Any = None
+    spatial_contract_hash: str | None = None
+
     @property
     def geometry_runtime_name(self) -> str:
         return self.geometry_runtime.runtime_id

@@ -1,0 +1,16 @@
+{
+  "applied": true,
+  "before_hash": "sha256:0608b0388a4f06e8e05ff839c71aac4f279e2e9e54efca322d847ed2c790531d",
+  "after_hash": "sha256:8ea736002f74e059314299ff81cad28c5ada5953d3dad520a838a319a47d70c7",
+  "entries": [
+    {
+      "rule_id": "fix_op_versions",
+      "path": "/",
+      "old_value": "<hash:sha256:0608b>",
+      "new_value": "<hash:sha256:8ea73>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_op_versions"
+    }
+  ]
+}

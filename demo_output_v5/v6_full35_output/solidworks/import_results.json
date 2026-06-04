@@ -1,0 +1,152 @@
+[
+  {
+    "id": "s05_long_spring",
+    "ok": true,
+    "size": 184608
+  },
+  {
+    "id": "s06_double_flange",
+    "ok": true,
+    "size": 127580
+  },
+  {
+    "id": "s07_cross_rib",
+    "ok": true,
+    "size": 720981
+  },
+  {
+    "id": "s08_full_shaft",
+    "ok": true,
+    "size": 149588
+  },
+  {
+    "id": "s09_var_sweep",
+    "ok": true,
+    "size": 87080
+  },
+  {
+    "id": "s10_shelled_box",
+    "ok": true,
+    "size": 95747
+  },
+  {
+    "id": "s11_coupling",
+    "ok": true,
+    "size": 111059
+  },
+  {
+    "id": "s12_reducer_base",
+    "ok": true,
+    "size": 80980
+  },
+  {
+    "id": "s13_pipe_system",
+    "ok": true,
+    "size": 100353
+  },
+  {
+    "id": "s14_bearing_full",
+    "ok": true,
+    "size": 97418
+  },
+  {
+    "id": "s15_multi_valve",
+    "ok": true,
+    "size": 82736
+  },
+  {
+    "id": "s16_turbo_rotor",
+    "ok": true,
+    "size": 152676
+  },
+  {
+    "id": "s17_3d_pipe",
+    "ok": true,
+    "size": 96280
+  },
+  {
+    "id": "s18_thin_shell",
+    "ok": true,
+    "size": 91064
+  },
+  {
+    "id": "s19_workbench",
+    "ok": true,
+    "size": 223804
+  },
+  {
+    "id": "s20_ultimate",
+    "ok": true,
+    "size": 176318
+  },
+  {
+    "id": "tm01_flange_cover",
+    "ok": true,
+    "size": 139009
+  },
+  {
+    "id": "tm02_l_bracket",
+    "ok": true,
+    "size": 252556
+  },
+  {
+    "id": "tm03_bearing_seat",
+    "ok": true,
+    "size": 106120
+  },
+  {
+    "id": "tm04_stepped_shaft",
+    "ok": true,
+    "size": 121794
+  },
+  {
+    "id": "tm05_v_pulley",
+    "ok": true,
+    "size": 169672
+  },
+  {
+    "id": "tm06_spring",
+    "ok": true,
+    "size": 1042950
+  },
+  {
+    "id": "tm07_roller",
+    "ok": true,
+    "size": 1043028
+  },
+  {
+    "id": "tm08_weld_fork",
+    "ok": true,
+    "size": 100688
+  },
+  {
+    "id": "tm09_gearbox_cover",
+    "ok": true,
+    "size": 57568
+  },
+  {
+    "id": "tm10_hex_nut",
+    "ok": true,
+    "size": 102907
+  },
+  {
+    "id": "tm11_turbine_disk",
+    "ok": true,
+    "size": 252585
+  },
+  {
+    "id": "tm13_exhaust_manifold",
+    "ok": true,
+    "size": 77055
+  },
+  {
+    "id": "tm14_hyd_valve",
+    "ok": true,
+    "size": 130103
+  },
+  {
+    "id": "tm15_diff_case",
+    "ok": true,
+    "size": 170854
+  }
+]

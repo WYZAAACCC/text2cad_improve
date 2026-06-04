@@ -87,6 +87,13 @@ def handle_cut_rectangular_pocket(node: CanonicalNode, ctx: RuntimeContext) -> d
 
 
 def handle_cut_hole(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
+    """Cut a circular hole through the body.
+
+    v6.1: Supports axis=X, Y, Z for side drilling.
+    axis=Z (default): hole on XY plane, extrude along Z (existing behavior)
+    axis=Y: hole on XZ plane, extrude along Y (side hole)
+    axis=X: hole on YZ plane, extrude along X (side hole)
+    """
     import cadquery as cq
     body = resolve_input_object(node, ctx, 0)
     p = node.typed_params if node.typed_params else node.params
@@ -96,9 +103,32 @@ def handle_cut_hole(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
     pos = p.get("position_mm", [0, 0, 0])
     x = pos[0] if len(pos) > 0 else 0
     y = pos[1] if len(pos) > 1 else 0
+    z = pos[2] if len(pos) > 2 else 0
+    axis = p.get("axis", "Z")
     try:
         bb = body.val().BoundingBox()
-        cutter = cq.Workplane("XY").center(x, y).circle(dia / 2.0).extrude(bb.zlen + 10, both=True)
+        if axis == "Z":
+            # XY plane, extrude along Z
+            depth = bb.zlen + 10
+            cutter = (cq.Workplane("XY").center(x, y)
+                      .circle(dia / 2.0).extrude(depth, both=True))
+        elif axis == "Y":
+            # XZ plane, extrude along Y (side hole)
+            z_center = z if z != 0 else (bb.zmin + bb.zmax) / 2.0
+            depth = bb.ylen + 10
+            cutter = (cq.Workplane("XZ").center(x, z_center)
+                      .circle(dia / 2.0).extrude(depth, both=True))
+        elif axis == "X":
+            # YZ plane, extrude along X (side hole)
+            z_center = z if z != 0 else (bb.zmin + bb.zmax) / 2.0
+            depth = bb.xlen + 10
+            cutter = (cq.Workplane("YZ").center(y, z_center)
+                      .circle(dia / 2.0).extrude(depth, both=True))
+        else:
+            ctx.warnings.append(f"cut_hole: unsupported axis '{axis}', defaulting to Z")
+            depth = bb.zlen + 10
+            cutter = (cq.Workplane("XY").center(x, y)
+                      .circle(dia / 2.0).extrude(depth, both=True))
         result = body.cut(cutter)
     except Exception:
         return {"body": _degrade(node, ctx, body, "cut_hole")}

@@ -1,0 +1,284 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "reference_geometry",
+    "document_id": "a9f3c7e1-4b2d-4a1e-8f6c-3d5e7a9b1c4d",
+    "part_name": "high_power_heat_sink_assembly",
+    "selected_dialects": [
+      {
+        "dialect": "sketch_extrude",
+        "version": "0.2.0",
+        "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+      },
+      {
+        "dialect": "shell_housing",
+        "version": "0.2.0",
+        "contract_hash": "sha256:63e5f8fc14a6184740d9471176fb83b36dee572eb0d37dcc78e236a3e0bd2798"
+      },
+      {
+        "dialect": "composition",
+        "version": "0.2.0",
+        "contract_hash": "sha256:1ff66c680d94f60891bf00260f365ffa2a0d213d5571a2366a3f1c27748f5382"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "n1",
+        "dialect": "sketch_extrude",
+        "op": "extrude_rectangle",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n2",
+        "dialect": "sketch_extrude",
+        "op": "extrude_rectangle",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n3",
+        "dialect": "sketch_extrude",
+        "op": "extrude_rectangle",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n4",
+        "dialect": "shell_housing",
+        "op": "shell_body",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n5",
+        "dialect": "composition",
+        "op": "boolean_union",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n6",
+        "dialect": "composition",
+        "op": "boolean_union",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:5698600e6d94093b0b8aa8037996b5101d606309cc1855a55c0f1f102b5328f5",
+    "canonical_graph_hash": "sha256:83084768ba881caa8c7809908b85fa13be235c9d0052c11e0e9a4cb3e16c21c6",
+    "paths": {
+      "canonical_ir_path": "E:\\auto_detection_process\\demo_output_v5\\v62_stress30_output\\g22_heat_sink\\canonical.json",
+      "validation_seed_path": "E:\\auto_detection_process\\demo_output_v5\\v62_stress30_output\\g22_heat_sink\\validation_bundle.json",
+      "step_path": "E:\\auto_detection_process\\demo_output_v5\\v62_stress30_output\\g22_heat_sink\\output.step",
+      "metadata_path": "E:\\auto_detection_process\\demo_output_v5\\v62_stress30_output\\g22_heat_sink\\output.metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:ba97f483e33fe4fcace2134c7f82067973f838dfb7bcbbc87015be2cab031a29",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [
+      "boolean_union pre-check on 'n5': Near-coincident faces detected (clearance=0.0000mm < minimum 0.2mm). Boolean operation may fail — ensure components are properly separated.",
+      "boolean_union pre-check on 'n6': Near-coincident faces detected (clearance=0.0000mm < minimum 0.2mm). Boolean operation may fail — ensure components are properly separated."
+    ],
+    "degraded_features": [],
+    "operation_metrics": [
+      {
+        "node_id": "n1",
+        "op": "extrude_rectangle",
+        "status": "ok"
+      },
+      {
+        "node_id": "n2",
+        "op": "extrude_rectangle",
+        "status": "ok"
+      },
+      {
+        "node_id": "n3",
+        "op": "extrude_rectangle",
+        "status": "ok"
+      },
+      {
+        "node_id": "n5",
+        "op": "boolean_union",
+        "status": "ok"
+      },
+      {
+        "node_id": "n6",
+        "op": "boolean_union",
+        "status": "ok"
+      }
+    ],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [
+    "boolean_union pre-check on 'n5': Near-coincident faces detected (clearance=0.0000mm < minimum 0.2mm). Boolean operation may fail — ensure components are properly separated.",
+    "boolean_union pre-check on 'n6': Near-coincident faces detected (clearance=0.0000mm < minimum 0.2mm). Boolean operation may fail — ensure components are properly separated."
+  ],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {
+        "structure": {
+          "ok": true,
+          "stage": "structure",
+          "issues": [],
+          "stages_run": [
+            "structure"
+          ]
+        },
+        "registry": {
+          "ok": true,
+          "stage": "registry",
+          "issues": [],
+          "stages_run": [
+            "registry"
+          ]
+        },
+        "params": {
+          "ok": true,
+          "stage": "params",
+          "issues": [],
+          "stages_run": [
+            "params"
+          ]
+        },
+        "ownership": {
+          "ok": true,
+          "stage": "ownership",
+          "issues": [],
+          "stages_run": [
+            "ownership"
+          ]
+        },
+        "graph": {
+          "ok": true,
+          "stage": "graph",
+          "issues": [],
+          "stages_run": [
+            "graph"
+          ]
+        },
+        "typecheck": {
+          "ok": true,
+          "stage": "typecheck",
+          "issues": [],
+          "stages_run": [
+            "typecheck"
+          ]
+        },
+        "phase": {
+          "ok": true,
+          "stage": "phase",
+          "issues": [],
+          "stages_run": [
+            "phase"
+          ]
+        },
+        "composition": {
+          "ok": true,
+          "stage": "composition",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "registry",
+            "params",
+            "ownership",
+            "graph",
+            "typecheck",
+            "phase",
+            "composition"
+          ]
+        },
+        "safety": {
+          "ok": true,
+          "stage": "safety",
+          "issues": [],
+          "stages_run": [
+            "safety"
+          ]
+        }
+      },
+      "canonicalize": {
+        "ok": true,
+        "stage": "canonicalize",
+        "issues": [],
+        "stages_run": [
+          "canonicalize"
+        ]
+      },
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": true,
+      "stage": "dialect_semantics",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "safety",
+        "canonicalize",
+        "dialect_semantics"
+      ]
+    },
+    "geometry_preflight": {
+      "ok": true,
+      "stage": "geometry_preflight",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "safety",
+        "canonicalize",
+        "dialect_semantics",
+        "geometry_preflight"
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    }
+  }
+}

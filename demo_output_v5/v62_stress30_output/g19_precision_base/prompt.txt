@@ -1,0 +1,9 @@
+光学精密仪器基座, 单位mm.
+extrude_rectangle width_mm=250 height_mm=200 depth_mm=35 centered=true.
+cut_rectangular_pocket width_mm=200 height_mm=150 depth_mm=15.
+精密安装孔x4: cut_hole diameter_mm=12 position_mm=[-80,60]. cut_hole diameter_mm=12 position_mm=[80,60]. cut_hole diameter_mm=12 position_mm=[-80,-60]. cut_hole diameter_mm=12 position_mm=[80,-60].
+定位销孔x2: cut_hole diameter_mm=6 position_mm=[-90,0]. cut_hole diameter_mm=6 position_mm=[90,0].
+固定孔x4: cut_hole_pattern_linear hole_dia_mm=10 count_x=2 count_y=2 spacing_x_mm=200 spacing_y_mm=150.
+加强筋x4: add_rib thickness_mm=5 height_mm=12 length_mm=180 position_mm=[-70,0,17.5] direction=Y. add_rib ... [70,0,17.5] ... [0,-50,17.5] direction=X ... [0,50,17.5] direction=X.
+减重孔x2: cut_hole diameter_mm=40 position_mm=[-50,0]. cut_hole diameter_mm=40 position_mm=[50,0].
+apply_safe_fillet radius_mm=1.5. apply_safe_chamfer distance_mm=0.3.
