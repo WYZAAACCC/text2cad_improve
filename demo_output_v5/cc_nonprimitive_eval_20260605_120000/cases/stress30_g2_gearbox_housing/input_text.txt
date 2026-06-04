@@ -1,0 +1,5 @@
+工业减速器箱体总成,单位mm.
+组件housing_base(sketch_extrude): extrude_rectangle width_mm=500 height_mm=350 depth_mm=40 centered=true. cut_rectangular_pocket width_mm=440 height_mm=290 depth_mm=30. cut_hole_pattern_linear hole_dia_mm=18 count_x=2 count_y=2 spacing_x_mm=440 spacing_y_mm=290. add_rib thickness_mm=12 height_mm=25 length_mm=300 position_mm=[-120,0,20] direction=Y. add_rib thickness_mm=12 height_mm=25 length_mm=300 position_mm=[120,0,20] direction=Y.
+组件bearing_a(axisymmetric): revolve_profile station1 r=80 z=0-70,station2 r=60 z=70-75. cut_center_bore diameter_mm=50. cut_circular_hole_pattern count=6 pcd_mm=120 hole_dia_mm=12.
+组件bearing_b(axisymmetric): revolve_profile station1 r=80 z=0-70,station2 r=60 z=70-75. cut_center_bore diameter_mm=50. cut_circular_hole_pattern count=6 pcd_mm=120 hole_dia_mm=12.
+装配__assembly__(composition): 依次boolean_union合并3组件(每次2 inputs).

@@ -1,10 +1,10 @@
 {
   "schema_version": "g_cad_core_v0.2",
   "canonical_version": "canonical_gcad_v0.2",
-  "document_id": "torsion-spring-001",
-  "part_name": "torsion_spring",
+  "document_id": "torsion-spring-15t",
+  "part_name": "15圈扭簧",
   "units": "mm",
-  "trust_level": "reference_geometry",
+  "trust_level": "concept_geometry",
   "selected_dialects": [
     {
       "dialect": "loft_sweep",
@@ -14,17 +14,17 @@
   ],
   "components": [
     {
-      "id": "spring_body",
+      "id": "spring",
       "owner_dialect": "loft_sweep",
       "kind_hint": null,
-      "root_node": "helix_1",
+      "root_node": "helix_spring",
       "output_aliases": {}
     }
   ],
   "nodes": [
     {
-      "id": "helix_1",
-      "component": "spring_body",
+      "id": "helix_spring",
+      "component": "spring",
       "dialect": "loft_sweep",
       "op": "helix_sweep",
       "op_version": "1.0.0",
@@ -34,21 +34,22 @@
         {
           "name": "body",
           "type": "solid",
-          "value_id": "solid:spring_body:helix_1:body"
+          "value_id": "solid:spring:helix_spring:body"
         }
       ],
       "params": {
-        "radius_mm": 25,
-        "height_mm": 120,
-        "pitch_mm": 8,
-        "profile_radius_mm": 3,
-        "turns": 15
+        "radius_mm": 60,
+        "height_mm": 225,
+        "pitch_mm": 15,
+        "profile_radius_mm": 4,
+        "turns": 15,
+        "variable_pitch": false
       },
       "typed_params": {
-        "radius_mm": 25.0,
-        "height_mm": 120.0,
-        "pitch_mm": 8.0,
-        "profile_radius_mm": 3.0,
+        "radius_mm": 60.0,
+        "height_mm": 225.0,
+        "pitch_mm": 15.0,
+        "profile_radius_mm": 4.0,
         "turns": 15.0,
         "variable_pitch": false,
         "start_pitch_mm": null,
@@ -80,6 +81,6 @@
     "no_structural_validation": true,
     "no_life_prediction": true
   },
-  "canonical_graph_hash": "sha256:0f82e1ecdca064147607721dd2368c7fce8d42f5c7a27bb2183f6b85f7f524eb",
-  "raw_graph_hash": "sha256:dc280eb05cd231dc8553aecb23444733e2494dcd9a2c736fe7456e3ade384ffb"
+  "canonical_graph_hash": "sha256:b9dad8a3c2107cd9873461fdcb7266ad451252edb5b7da021c4eae757ec3b6cb",
+  "raw_graph_hash": "sha256:6dc7b39ee049d06b739b0f256a5c720550ed973dcb0749acbb7f1ea9bd168446"
 }

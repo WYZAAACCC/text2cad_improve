@@ -1,0 +1,140 @@
+{
+  "elapsed_min": 7,
+  "cases": [
+    {
+      "id": "g1_engine_mount",
+      "status": "VAL_FAIL",
+      "n_errors": 1
+    },
+    {
+      "id": "g2_gearbox_housing",
+      "status": "VAL_FAIL",
+      "n_errors": 10
+    },
+    {
+      "id": "g3_hyd_manifold",
+      "status": "VAL_FAIL",
+      "n_errors": 3
+    },
+    {
+      "id": "g4_pump_casing",
+      "status": "VAL_FAIL",
+      "n_errors": 1
+    },
+    {
+      "id": "g5_robot_arm",
+      "status": "VAL_FAIL",
+      "n_errors": 1
+    },
+    {
+      "id": "g6_helix_coil",
+      "status": "EXCEPTION",
+      "error": "cannot access local variable 'r' where it is not associated with a value"
+    },
+    {
+      "id": "g7_3d_tube",
+      "status": "EXCEPTION",
+      "error": "cannot access local variable 'r' where it is not associated with a value"
+    },
+    {
+      "id": "g8_var_duct",
+      "status": "EXCEPTION",
+      "error": "cannot access local variable 'r' where it is not associated with a value"
+    },
+    {
+      "id": "g9_torsion_spring",
+      "status": "EXCEPTION",
+      "error": "cannot access local variable 'r' where it is not associated with a value"
+    },
+    {
+      "id": "g10_spiral_volute",
+      "status": "EXCEPTION",
+      "error": "cannot access local variable 'r' where it is not associated with a value"
+    },
+    {
+      "id": "g11_pressure_vessel",
+      "status": "VAL_FAIL",
+      "n_errors": 2
+    },
+    {
+      "id": "g12_hollow_bracket",
+      "status": "EXCEPTION",
+      "error": "cannot access local variable 'r' where it is not associated with a value"
+    },
+    {
+      "id": "g13_enclosure",
+      "status": "VAL_FAIL",
+      "n_errors": 1
+    },
+    {
+      "id": "g14_vacuum_chamber",
+      "status": "VAL_FAIL",
+      "n_errors": 1
+    },
+    {
+      "id": "g15_heavy_flange",
+      "status": "VAL_FAIL",
+      "n_errors": 1
+    },
+    {
+      "id": "g16_stepped_pulley",
+      "status": "VAL_FAIL",
+      "n_errors": 1
+    },
+    {
+      "id": "g17_cross_block",
+      "status": "VAL_FAIL",
+      "n_errors": 1
+    },
+    {
+      "id": "g18_ribbed_panel",
+      "status": "EXCEPTION",
+      "error": "cannot access local variable 'r' where it is not associated with a value"
+    },
+    {
+      "id": "g19_precision_base",
+      "status": "VAL_FAIL",
+      "n_errors": 1
+    },
+    {
+      "id": "g20_motor_endbell",
+      "status": "VAL_FAIL",
+      "n_errors": 1
+    },
+    {
+      "id": "g21_valve_body",
+      "status": "VAL_FAIL",
+      "n_errors": 1
+    },
+    {
+      "id": "g22_heat_sink",
+      "status": "VAL_FAIL",
+      "n_errors": 18
+    },
+    {
+      "id": "g23_pipe_reducer",
+      "status": "VAL_FAIL",
+      "n_errors": 1
+    },
+    {
+      "id": "g24_micro_bushing",
+      "status": "VAL_FAIL",
+      "n_errors": 1
+    },
+    {
+      "id": "g25_large_ring",
+      "status": "VAL_FAIL",
+      "n_errors": 1
+    },
+    {
+      "id": "g26_extreme_shaft",
+      "status": "VAL_FAIL",
+      "n_errors": 1
+    },
+    {
+      "id": "g27_dense_holes",
+      "status": "EXCEPTION",
+      "error": "cannot access local variable 'r' where it is not associated with a value"
+    }
+  ]
+}

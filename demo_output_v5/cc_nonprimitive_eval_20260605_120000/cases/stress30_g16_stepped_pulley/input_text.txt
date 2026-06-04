@@ -1,0 +1,1 @@
+9段多级带轮,单位mm. revolve_profile station1 r=120 z=0-9,station2 r=105 z=9-18,station3 r=90 z=18-27,station4 r=78 z=27-36,station5 r=65 z=36-45,station6 r=55 z=45-54,station7 r=45 z=54-63,station8 r=35 z=63-72,station9 r=25 z=72-87. cut_center_bore diameter_mm=30.

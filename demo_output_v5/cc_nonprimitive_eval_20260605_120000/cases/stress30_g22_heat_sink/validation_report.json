@@ -1,0 +1,210 @@
+{
+  "ok": false,
+  "stage": "params",
+  "issues": [
+    {
+      "code": "invalid_params",
+      "message": "node 'n_rib_01' params invalid for op 'add_rib': 1 validation error for AddRibParams\ndirection\n  Input should be 'X' or 'Y' [type=literal_error, input_value='+Y', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_rib_01",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n_rib_02' params invalid for op 'add_rib': 1 validation error for AddRibParams\ndirection\n  Input should be 'X' or 'Y' [type=literal_error, input_value='+Y', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_rib_02",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n_rib_03' params invalid for op 'add_rib': 1 validation error for AddRibParams\ndirection\n  Input should be 'X' or 'Y' [type=literal_error, input_value='+Y', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_rib_03",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n_rib_04' params invalid for op 'add_rib': 1 validation error for AddRibParams\ndirection\n  Input should be 'X' or 'Y' [type=literal_error, input_value='+Y', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_rib_04",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n_rib_05' params invalid for op 'add_rib': 1 validation error for AddRibParams\ndirection\n  Input should be 'X' or 'Y' [type=literal_error, input_value='+Y', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_rib_05",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n_rib_06' params invalid for op 'add_rib': 1 validation error for AddRibParams\ndirection\n  Input should be 'X' or 'Y' [type=literal_error, input_value='+Y', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_rib_06",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n_rib_07' params invalid for op 'add_rib': 1 validation error for AddRibParams\ndirection\n  Input should be 'X' or 'Y' [type=literal_error, input_value='+Y', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_rib_07",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n_rib_08' params invalid for op 'add_rib': 1 validation error for AddRibParams\ndirection\n  Input should be 'X' or 'Y' [type=literal_error, input_value='+Y', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_rib_08",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n_rib_09' params invalid for op 'add_rib': 1 validation error for AddRibParams\ndirection\n  Input should be 'X' or 'Y' [type=literal_error, input_value='+Y', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_rib_09",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n_rib_10' params invalid for op 'add_rib': 1 validation error for AddRibParams\ndirection\n  Input should be 'X' or 'Y' [type=literal_error, input_value='+Y', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_rib_10",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n_rib_11' params invalid for op 'add_rib': 1 validation error for AddRibParams\ndirection\n  Input should be 'X' or 'Y' [type=literal_error, input_value='+Y', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_rib_11",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n_rib_12' params invalid for op 'add_rib': 1 validation error for AddRibParams\ndirection\n  Input should be 'X' or 'Y' [type=literal_error, input_value='+Y', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_rib_12",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n_rib_13' params invalid for op 'add_rib': 1 validation error for AddRibParams\ndirection\n  Input should be 'X' or 'Y' [type=literal_error, input_value='+Y', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_rib_13",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n_rib_14' params invalid for op 'add_rib': 1 validation error for AddRibParams\ndirection\n  Input should be 'X' or 'Y' [type=literal_error, input_value='+Y', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_rib_14",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n_rib_15' params invalid for op 'add_rib': 1 validation error for AddRibParams\ndirection\n  Input should be 'X' or 'Y' [type=literal_error, input_value='+Y', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_rib_15",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n_rib_16' params invalid for op 'add_rib': 1 validation error for AddRibParams\ndirection\n  Input should be 'X' or 'Y' [type=literal_error, input_value='+Y', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_rib_16",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n_rib_17' params invalid for op 'add_rib': 1 validation error for AddRibParams\ndirection\n  Input should be 'X' or 'Y' [type=literal_error, input_value='+Y', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_rib_17",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n_rib_18' params invalid for op 'add_rib': 1 validation error for AddRibParams\ndirection\n  Input should be 'X' or 'Y' [type=literal_error, input_value='+Y', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_rib_18",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "root_terminal",
+    "registry",
+    "params"
+  ]
+}

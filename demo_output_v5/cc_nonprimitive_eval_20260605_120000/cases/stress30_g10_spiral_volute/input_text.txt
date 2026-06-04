@@ -1,0 +1,1 @@
+渐开线蜗壳,单位mm. create_sweep_path path_points从中心螺旋展开8个点. sweep_profile shape=circle radius_mm=12.

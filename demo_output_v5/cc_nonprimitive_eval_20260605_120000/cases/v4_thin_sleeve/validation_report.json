@@ -1,0 +1,33 @@
+{
+  "ok": false,
+  "stage": "geometry_preflight",
+  "issues": [
+    {
+      "code": "a002_bore_too_large",
+      "message": "center bore radius (5.0mm) leaves wall thickness of only 1.0mm (margin=1mm). Consider reducing bore or increasing outer radius.",
+      "severity": "error",
+      "stage": "geometry_preflight",
+      "node_id": "bore_node",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "root_terminal",
+    "registry",
+    "params",
+    "ownership",
+    "graph",
+    "typecheck",
+    "phase",
+    "composition",
+    "hole_semantics",
+    "safety",
+    "canonicalize",
+    "dialect_semantics",
+    "geometry_preflight"
+  ]
+}

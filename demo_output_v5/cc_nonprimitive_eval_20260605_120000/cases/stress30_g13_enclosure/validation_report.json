@@ -1,0 +1,23 @@
+{
+  "ok": false,
+  "stage": "params",
+  "issues": [
+    {
+      "code": "invalid_params",
+      "message": "node 'n5' params invalid for op 'apply_safe_chamfer': 1 validation error for ApplySafeChamferParams\ntarget\n  Input should be 'all_external_edges' [type=literal_error, input_value='top_edges', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n5",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "root_terminal",
+    "registry",
+    "params"
+  ]
+}

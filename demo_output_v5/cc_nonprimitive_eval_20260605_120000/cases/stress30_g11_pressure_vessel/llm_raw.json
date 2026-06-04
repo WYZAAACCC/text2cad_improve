@@ -1,0 +1,139 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "6a7b3c9d-2e4f-4a1b-8c5d-0f3e7a2b1d6c",
+  "part_name": "thin_wall_pressure_vessel",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0"
+    },
+    {
+      "dialect": "shell_housing",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "vessel_comp",
+      "owner_dialect": "axisymmetric",
+      "root_node": "node_cleanup"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "node_revolve",
+      "component": "vessel_comp",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 150,
+            "z_mm": 0
+          },
+          {
+            "r_mm": 150,
+            "z_mm": 400
+          },
+          {
+            "r_mm": 0,
+            "z_mm": 400
+          },
+          {
+            "r_mm": 0,
+            "z_mm": 0
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "node_bore",
+      "component": "vessel_comp",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "node_revolve",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 290,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "node_cleanup",
+      "component": "vessel_comp",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "node_bore",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 1.0,
+        "target": "bore_edge"
+      },
+      "required": false,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {
+    "_": "thin wall pressure vessel: OD=300mm, ID=290mm, wall=5mm, cylindrical length=400mm, hemispherical ends at z=0 and z=400 via revolve_profile"
+  }
+}

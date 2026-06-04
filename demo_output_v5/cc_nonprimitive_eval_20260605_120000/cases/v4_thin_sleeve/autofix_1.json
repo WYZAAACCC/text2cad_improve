@@ -1,0 +1,16 @@
+{
+  "applied": true,
+  "before_hash": "sha256:ac9493e342675c26e6684ee84cca5b9013c522b669047bb5dce671754fcec5c6",
+  "after_hash": "sha256:2b035774a979b5c23ffc19c5733c3584ea3255218df127dee0514563e29067e7",
+  "entries": [
+    {
+      "rule_id": "fix_phase_names",
+      "path": "/",
+      "old_value": "<hash:sha256:ac949>",
+      "new_value": "<hash:sha256:2b035>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_phase_names"
+    }
+  ]
+}

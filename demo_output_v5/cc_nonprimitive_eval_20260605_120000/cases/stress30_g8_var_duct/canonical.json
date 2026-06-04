@@ -1,8 +1,8 @@
 {
   "schema_version": "g_cad_core_v0.2",
   "canonical_version": "canonical_gcad_v0.2",
-  "document_id": "transition-pipe-variable-section",
-  "part_name": "transition_pipe",
+  "document_id": "b7a4f2e1-3c5d-4a8e-9f12-1d6c8e3a7b90",
+  "part_name": "变截面风管",
   "units": "mm",
   "trust_level": "reference_geometry",
   "selected_dialects": [
@@ -14,17 +14,17 @@
   ],
   "components": [
     {
-      "id": "pipe",
+      "id": "duct",
       "owner_dialect": "loft_sweep",
       "kind_hint": null,
-      "root_node": "loft_body",
+      "root_node": "loft_sections_node",
       "output_aliases": {}
     }
   ],
   "nodes": [
     {
-      "id": "loft_body",
-      "component": "pipe",
+      "id": "loft_sections_node",
+      "component": "duct",
       "dialect": "loft_sweep",
       "op": "loft_sections",
       "op_version": "1.0.0",
@@ -34,7 +34,7 @@
         {
           "name": "body",
           "type": "solid",
-          "value_id": "solid:pipe:loft_body:body"
+          "value_id": "solid:duct:loft_sections_node:body"
         }
       ],
       "params": {
@@ -46,35 +46,26 @@
               "z_mm": 0
             },
             "shape": "circle",
-            "radius_mm": 40
+            "radius_mm": 50
           },
           {
             "position": {
               "x_mm": 0,
               "y_mm": 0,
-              "z_mm": 60
-            },
-            "shape": "circle",
-            "radius_mm": 55
-          },
-          {
-            "position": {
-              "x_mm": 0,
-              "y_mm": 0,
-              "z_mm": 120
+              "z_mm": 150
             },
             "shape": "rectangle",
-            "width_mm": 100,
+            "width_mm": 120,
             "height_mm": 80
           },
           {
             "position": {
               "x_mm": 0,
               "y_mm": 0,
-              "z_mm": 200
+              "z_mm": 300
             },
             "shape": "circle",
-            "radius_mm": 65
+            "radius_mm": 40
           }
         ],
         "ruled": false
@@ -88,7 +79,7 @@
               "z_mm": 0.0
             },
             "shape": "circle",
-            "radius_mm": 40.0,
+            "radius_mm": 50.0,
             "width_mm": 20.0,
             "height_mm": 20.0
           },
@@ -96,32 +87,21 @@
             "position": {
               "x_mm": 0.0,
               "y_mm": 0.0,
-              "z_mm": 60.0
-            },
-            "shape": "circle",
-            "radius_mm": 55.0,
-            "width_mm": 20.0,
-            "height_mm": 20.0
-          },
-          {
-            "position": {
-              "x_mm": 0.0,
-              "y_mm": 0.0,
-              "z_mm": 120.0
+              "z_mm": 150.0
             },
             "shape": "rectangle",
             "radius_mm": 10.0,
-            "width_mm": 100.0,
+            "width_mm": 120.0,
             "height_mm": 80.0
           },
           {
             "position": {
               "x_mm": 0.0,
               "y_mm": 0.0,
-              "z_mm": 200.0
+              "z_mm": 300.0
             },
             "shape": "circle",
-            "radius_mm": 65.0,
+            "radius_mm": 40.0,
             "width_mm": 20.0,
             "height_mm": 20.0
           }
@@ -154,6 +134,6 @@
     "no_structural_validation": true,
     "no_life_prediction": true
   },
-  "canonical_graph_hash": "sha256:2e1647e20647d2409655151f0231a4811c89c53814404ac348a0bd1ce1da46ca",
-  "raw_graph_hash": "sha256:4ee0d5b0b7f6af1f10bbab5019b4ba980f217f0a23c6d6ab3bdd30d985d6b309"
+  "canonical_graph_hash": "sha256:fac04bd461b7812b867cdbc6ca07c148d57f9b34daf0614dba69cd2934f7dead",
+  "raw_graph_hash": "sha256:d4e71a49170b14bd16fd9a4411b09c549f1fcd41e497a65c30274b13679c62eb"
 }

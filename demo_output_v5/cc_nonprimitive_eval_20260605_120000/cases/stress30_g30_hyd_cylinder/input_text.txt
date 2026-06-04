@@ -1,0 +1,1 @@
+液压缸端盖,单位mm. revolve_profile station1 r=35 z=0-30. cut_center_bore diameter_mm=30. cut_circular_hole_pattern count=6 pcd_mm=55 hole_dia_mm=8. 密封槽: cut_annular_groove inner_dia_mm=30 outer_dia_mm=40 depth_mm=3 side=front.

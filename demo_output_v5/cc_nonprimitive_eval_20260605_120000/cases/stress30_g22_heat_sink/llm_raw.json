@@ -1,0 +1,715 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "heat-sink-v1",
+  "part_name": "heat_sink",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "comp_heat_sink",
+      "owner_dialect": "sketch_extrude",
+      "root_node": "n_cleanup"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_base",
+      "component": "comp_heat_sink",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 328,
+        "height_mm": 228,
+        "depth_mm": 8,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+Z",
+        "draft_angle_deg": 0
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib_01",
+      "component": "comp_heat_sink",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_base",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 2,
+        "height_mm": 100,
+        "length_mm": 328,
+        "position_mm": [
+          0,
+          -114,
+          8
+        ],
+        "direction": "+Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib_02",
+      "component": "comp_heat_sink",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_rib_01",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 2,
+        "height_mm": 100,
+        "length_mm": 328,
+        "position_mm": [
+          0,
+          -102,
+          8
+        ],
+        "direction": "+Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib_03",
+      "component": "comp_heat_sink",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_rib_02",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 2,
+        "height_mm": 100,
+        "length_mm": 328,
+        "position_mm": [
+          0,
+          -90,
+          8
+        ],
+        "direction": "+Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib_04",
+      "component": "comp_heat_sink",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_rib_03",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 2,
+        "height_mm": 100,
+        "length_mm": 328,
+        "position_mm": [
+          0,
+          -78,
+          8
+        ],
+        "direction": "+Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib_05",
+      "component": "comp_heat_sink",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_rib_04",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 2,
+        "height_mm": 100,
+        "length_mm": 328,
+        "position_mm": [
+          0,
+          -66,
+          8
+        ],
+        "direction": "+Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib_06",
+      "component": "comp_heat_sink",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_rib_05",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 2,
+        "height_mm": 100,
+        "length_mm": 328,
+        "position_mm": [
+          0,
+          -54,
+          8
+        ],
+        "direction": "+Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib_07",
+      "component": "comp_heat_sink",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_rib_06",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 2,
+        "height_mm": 100,
+        "length_mm": 328,
+        "position_mm": [
+          0,
+          -42,
+          8
+        ],
+        "direction": "+Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib_08",
+      "component": "comp_heat_sink",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_rib_07",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 2,
+        "height_mm": 100,
+        "length_mm": 328,
+        "position_mm": [
+          0,
+          -30,
+          8
+        ],
+        "direction": "+Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib_09",
+      "component": "comp_heat_sink",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_rib_08",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 2,
+        "height_mm": 100,
+        "length_mm": 328,
+        "position_mm": [
+          0,
+          -18,
+          8
+        ],
+        "direction": "+Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib_10",
+      "component": "comp_heat_sink",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_rib_09",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 2,
+        "height_mm": 100,
+        "length_mm": 328,
+        "position_mm": [
+          0,
+          -6,
+          8
+        ],
+        "direction": "+Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib_11",
+      "component": "comp_heat_sink",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_rib_10",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 2,
+        "height_mm": 100,
+        "length_mm": 328,
+        "position_mm": [
+          0,
+          6,
+          8
+        ],
+        "direction": "+Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib_12",
+      "component": "comp_heat_sink",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_rib_11",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 2,
+        "height_mm": 100,
+        "length_mm": 328,
+        "position_mm": [
+          0,
+          18,
+          8
+        ],
+        "direction": "+Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib_13",
+      "component": "comp_heat_sink",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_rib_12",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 2,
+        "height_mm": 100,
+        "length_mm": 328,
+        "position_mm": [
+          0,
+          30,
+          8
+        ],
+        "direction": "+Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib_14",
+      "component": "comp_heat_sink",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_rib_13",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 2,
+        "height_mm": 100,
+        "length_mm": 328,
+        "position_mm": [
+          0,
+          42,
+          8
+        ],
+        "direction": "+Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib_15",
+      "component": "comp_heat_sink",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_rib_14",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 2,
+        "height_mm": 100,
+        "length_mm": 328,
+        "position_mm": [
+          0,
+          54,
+          8
+        ],
+        "direction": "+Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib_16",
+      "component": "comp_heat_sink",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_rib_15",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 2,
+        "height_mm": 100,
+        "length_mm": 328,
+        "position_mm": [
+          0,
+          66,
+          8
+        ],
+        "direction": "+Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib_17",
+      "component": "comp_heat_sink",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_rib_16",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 2,
+        "height_mm": 100,
+        "length_mm": 328,
+        "position_mm": [
+          0,
+          78,
+          8
+        ],
+        "direction": "+Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rib_18",
+      "component": "comp_heat_sink",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "n_rib_17",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 2,
+        "height_mm": 100,
+        "length_mm": 328,
+        "position_mm": [
+          0,
+          90,
+          8
+        ],
+        "direction": "+Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_holes",
+      "component": "comp_heat_sink",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_pattern_linear",
+      "op_version": "1.0.0",
+      "phase": "hole_pattern",
+      "inputs": [
+        {
+          "node": "n_rib_18",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "hole_dia_mm": 6,
+        "count_x": 2,
+        "count_y": 2,
+        "spacing_x_mm": 300,
+        "spacing_y_mm": 200,
+        "axis": "-Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_cleanup",
+      "component": "comp_heat_sink",
+      "dialect": "sketch_extrude",
+      "op": "apply_safe_fillet",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "n_holes",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "radius_mm": 0.5,
+        "target": "all_edges"
+      },
+      "required": false,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": null
+}

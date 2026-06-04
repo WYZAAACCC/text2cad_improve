@@ -1,0 +1,1 @@
+散热器,单位mm. extrude_rectangle width_mm=328 height_mm=228 depth_mm=8 centered=true. 18片鳍片: add_rib厚度2mm高100mm间距12mm. 四角安装孔: cut_hole_pattern_linear hole_dia_mm=6 count_x=2 count_y=2 spacing_x_mm=300 spacing_y_mm=200.

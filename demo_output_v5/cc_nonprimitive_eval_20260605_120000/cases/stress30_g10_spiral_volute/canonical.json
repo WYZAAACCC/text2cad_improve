@@ -1,8 +1,8 @@
 {
   "schema_version": "g_cad_core_v0.2",
   "canonical_version": "canonical_gcad_v0.2",
-  "document_id": "fan-volute-sweep-001",
-  "part_name": "风机螺旋蜗壳扫掠",
+  "document_id": "spiral-volute-001",
+  "part_name": "spiral_volute",
   "units": "mm",
   "trust_level": "reference_geometry",
   "selected_dialects": [
@@ -14,17 +14,17 @@
   ],
   "components": [
     {
-      "id": "volute",
+      "id": "comp_volute",
       "owner_dialect": "loft_sweep",
       "kind_hint": null,
-      "root_node": "sweep_profile_node",
+      "root_node": "n3",
       "output_aliases": {}
     }
   ],
   "nodes": [
     {
-      "id": "sweep_path_node",
-      "component": "volute",
+      "id": "n1",
+      "component": "comp_volute",
       "dialect": "loft_sweep",
       "op": "create_sweep_path",
       "op_version": "1.0.0",
@@ -32,51 +32,51 @@
       "inputs": [],
       "outputs": [
         {
-          "name": "curve",
+          "name": "path",
           "type": "curve",
-          "value_id": "curve:volute:sweep_path_node:curve"
+          "value_id": "curve:comp_volute:n1:path"
         }
       ],
       "params": {
         "path_points": [
           {
-            "x_mm": 50,
+            "x_mm": 0,
             "y_mm": 0,
             "z_mm": 0
           },
           {
-            "x_mm": 60,
+            "x_mm": 8,
+            "y_mm": 3,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 14,
             "y_mm": 10,
             "z_mm": 0
           },
           {
-            "x_mm": 75,
-            "y_mm": 25,
+            "x_mm": 16,
+            "y_mm": 20,
             "z_mm": 0
           },
           {
-            "x_mm": 95,
-            "y_mm": 45,
+            "x_mm": 12,
+            "y_mm": 32,
             "z_mm": 0
           },
           {
-            "x_mm": 120,
-            "y_mm": 70,
+            "x_mm": 2,
+            "y_mm": 40,
             "z_mm": 0
           },
           {
-            "x_mm": 150,
-            "y_mm": 100,
+            "x_mm": -12,
+            "y_mm": 42,
             "z_mm": 0
           },
           {
-            "x_mm": 185,
-            "y_mm": 135,
-            "z_mm": 0
-          },
-          {
-            "x_mm": 225,
-            "y_mm": 175,
+            "x_mm": -28,
+            "y_mm": 36,
             "z_mm": 0
           }
         ]
@@ -84,43 +84,43 @@
       "typed_params": {
         "path_points": [
           {
-            "x_mm": 50.0,
+            "x_mm": 0.0,
             "y_mm": 0.0,
             "z_mm": 0.0
           },
           {
-            "x_mm": 60.0,
+            "x_mm": 8.0,
+            "y_mm": 3.0,
+            "z_mm": 0.0
+          },
+          {
+            "x_mm": 14.0,
             "y_mm": 10.0,
             "z_mm": 0.0
           },
           {
-            "x_mm": 75.0,
-            "y_mm": 25.0,
+            "x_mm": 16.0,
+            "y_mm": 20.0,
             "z_mm": 0.0
           },
           {
-            "x_mm": 95.0,
-            "y_mm": 45.0,
+            "x_mm": 12.0,
+            "y_mm": 32.0,
             "z_mm": 0.0
           },
           {
-            "x_mm": 120.0,
-            "y_mm": 70.0,
+            "x_mm": 2.0,
+            "y_mm": 40.0,
             "z_mm": 0.0
           },
           {
-            "x_mm": 150.0,
-            "y_mm": 100.0,
+            "x_mm": -12.0,
+            "y_mm": 42.0,
             "z_mm": 0.0
           },
           {
-            "x_mm": 185.0,
-            "y_mm": 135.0,
-            "z_mm": 0.0
-          },
-          {
-            "x_mm": 225.0,
-            "y_mm": 175.0,
+            "x_mm": -28.0,
+            "y_mm": 36.0,
             "z_mm": 0.0
           }
         ]
@@ -133,17 +133,17 @@
       "postconditions": []
     },
     {
-      "id": "sweep_profile_node",
-      "component": "volute",
+      "id": "n2",
+      "component": "comp_volute",
       "dialect": "loft_sweep",
       "op": "sweep_profile",
       "op_version": "1.0.0",
       "phase": "sweep",
       "inputs": [
         {
-          "producer_node": "sweep_path_node",
+          "producer_node": "n1",
           "producer_component": null,
-          "output": "curve",
+          "output": "path",
           "resolved_type": "curve"
         }
       ],
@@ -151,16 +151,55 @@
         {
           "name": "body",
           "type": "solid",
-          "value_id": "solid:volute:sweep_profile_node:body"
+          "value_id": "solid:comp_volute:n2:body"
         }
       ],
       "params": {
         "shape": "circle",
-        "radius_mm": 15
+        "radius_mm": 12
       },
       "typed_params": {
         "shape": "circle",
-        "radius_mm": 15.0,
+        "radius_mm": 12.0,
+        "width_mm": 10.0,
+        "height_mm": 10.0
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": []
+    },
+    {
+      "id": "n3",
+      "component": "comp_volute",
+      "dialect": "loft_sweep",
+      "op": "sweep_profile",
+      "op_version": "1.0.0",
+      "phase": "sweep",
+      "inputs": [
+        {
+          "producer_node": "n1",
+          "producer_component": null,
+          "output": "path",
+          "resolved_type": "curve"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:comp_volute:n3:body"
+        }
+      ],
+      "params": {
+        "shape": "circle",
+        "radius_mm": 12
+      },
+      "typed_params": {
+        "shape": "circle",
+        "radius_mm": 12.0,
         "width_mm": 10.0,
         "height_mm": 10.0
       },
@@ -190,6 +229,6 @@
     "no_structural_validation": true,
     "no_life_prediction": true
   },
-  "canonical_graph_hash": "sha256:ba3eefe6a12a4093c497952ab6450be661736f92d2913aefc30ac2210d86ec13",
-  "raw_graph_hash": "sha256:8b9c2675c3822bd34b6fcff6b4c97b0d52aee9d0b280609e5f08429918dcc83b"
+  "canonical_graph_hash": "sha256:6664acacb6667cfa1ca09922a9f1dda5b3e0add4bee362ce437e23a4b27a789f",
+  "raw_graph_hash": "sha256:1d10a876a499a532b3e43cdf7194708b6491c3c618c39b446b14a34f3716efd2"
 }

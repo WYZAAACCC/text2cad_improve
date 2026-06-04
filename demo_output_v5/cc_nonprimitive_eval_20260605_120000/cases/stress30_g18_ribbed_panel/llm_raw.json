@@ -1,0 +1,460 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "86274342-d1ba-4327-901d-3bb15930f5d7",
+  "part_name": "reinforced_rib_panel",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "panel_comp",
+      "owner_dialect": "sketch_extrude",
+      "root_node": "rib12"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "base",
+      "component": "panel_comp",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 550,
+        "height_mm": 400,
+        "depth_mm": 8,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+Z",
+        "draft_angle_deg": 0
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "rib1",
+      "component": "panel_comp",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "base",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 4,
+        "height_mm": 30,
+        "length_mm": 350,
+        "position_mm": [
+          -180,
+          0,
+          4
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "rib2",
+      "component": "panel_comp",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "rib1",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 4,
+        "height_mm": 30,
+        "length_mm": 350,
+        "position_mm": [
+          -120,
+          0,
+          4
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "rib3",
+      "component": "panel_comp",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "rib2",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 4,
+        "height_mm": 30,
+        "length_mm": 350,
+        "position_mm": [
+          -60,
+          0,
+          4
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "rib4",
+      "component": "panel_comp",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "rib3",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 4,
+        "height_mm": 30,
+        "length_mm": 350,
+        "position_mm": [
+          0,
+          0,
+          4
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "rib5",
+      "component": "panel_comp",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "rib4",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 4,
+        "height_mm": 30,
+        "length_mm": 350,
+        "position_mm": [
+          60,
+          0,
+          4
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "rib6",
+      "component": "panel_comp",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "rib5",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 4,
+        "height_mm": 30,
+        "length_mm": 350,
+        "position_mm": [
+          120,
+          0,
+          4
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "rib7",
+      "component": "panel_comp",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "rib6",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 4,
+        "height_mm": 30,
+        "length_mm": 350,
+        "position_mm": [
+          180,
+          0,
+          4
+        ],
+        "direction": "Y"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "rib8",
+      "component": "panel_comp",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "rib7",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 4,
+        "height_mm": 30,
+        "length_mm": 500,
+        "position_mm": [
+          0,
+          -120,
+          4
+        ],
+        "direction": "X"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "rib9",
+      "component": "panel_comp",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "rib8",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 4,
+        "height_mm": 30,
+        "length_mm": 500,
+        "position_mm": [
+          0,
+          -60,
+          4
+        ],
+        "direction": "X"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "rib10",
+      "component": "panel_comp",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "rib9",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 4,
+        "height_mm": 30,
+        "length_mm": 500,
+        "position_mm": [
+          0,
+          0,
+          4
+        ],
+        "direction": "X"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "rib11",
+      "component": "panel_comp",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "rib10",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 4,
+        "height_mm": 30,
+        "length_mm": 500,
+        "position_mm": [
+          0,
+          60,
+          4
+        ],
+        "direction": "X"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "rib12",
+      "component": "panel_comp",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "rib11",
+          "output": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "solid",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 4,
+        "height_mm": 30,
+        "length_mm": 500,
+        "position_mm": [
+          0,
+          120,
+          4
+        ],
+        "direction": "X"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": null
+}

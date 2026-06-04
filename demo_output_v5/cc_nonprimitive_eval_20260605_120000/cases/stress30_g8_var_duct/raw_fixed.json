@@ -1,0 +1,88 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "b7a4f2e1-3c5d-4a8e-9f12-1d6c8e3a7b90",
+  "part_name": "变截面风管",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "duct",
+      "owner_dialect": "loft_sweep",
+      "root_node": "loft_sections_node"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "loft_sections_node",
+      "component": "duct",
+      "dialect": "loft_sweep",
+      "op": "loft_sections",
+      "op_version": "1.0.0",
+      "phase": "loft",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "sections": [
+          {
+            "position": {
+              "x_mm": 0,
+              "y_mm": 0,
+              "z_mm": 0
+            },
+            "shape": "circle",
+            "radius_mm": 50
+          },
+          {
+            "position": {
+              "x_mm": 0,
+              "y_mm": 0,
+              "z_mm": 150
+            },
+            "shape": "rectangle",
+            "width_mm": 120,
+            "height_mm": 80
+          },
+          {
+            "position": {
+              "x_mm": 0,
+              "y_mm": 0,
+              "z_mm": 300
+            },
+            "shape": "circle",
+            "radius_mm": 40
+          }
+        ],
+        "ruled": false
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {}
+}

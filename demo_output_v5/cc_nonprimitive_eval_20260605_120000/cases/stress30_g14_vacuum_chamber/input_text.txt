@@ -1,0 +1,5 @@
+真空腔体装配,单位mm.
+组件chamber(axisymmetric): revolve_profile station1 r=100 z=0-400. cut_center_bore diameter_mm=180 (内径180外径200壁厚10mm).
+组件front_cover(sketch_extrude): extrude_rectangle width_mm=220 height_mm=220 depth_mm=20 centered=true. cut_hole diameter_mm=100 position_mm=[0,0]. cut_hole_pattern_linear hole_dia_mm=10 count_x=2 count_y=2 spacing_x_mm=180 spacing_y_mm=180.
+组件rear_cover(sketch_extrude): extrude_rectangle width_mm=220 height_mm=220 depth_mm=20 centered=true. cut_hole diameter_mm=50 position_mm=[0,0]. cut_hole diameter_mm=50 position_mm=[0,60]. cut_hole_pattern_linear hole_dia_mm=10 count_x=2 count_y=2 spacing_x_mm=180 spacing_y_mm=180.
+装配__assembly__(composition): 依次boolean_union(每次2 inputs).

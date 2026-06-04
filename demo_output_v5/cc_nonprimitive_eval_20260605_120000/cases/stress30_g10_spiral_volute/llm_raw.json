@@ -1,0 +1,151 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "spiral-volute-001",
+  "part_name": "spiral_volute",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "comp_volute",
+      "owner_dialect": "loft_sweep",
+      "root_node": "n3"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n1",
+      "component": "comp_volute",
+      "dialect": "loft_sweep",
+      "op": "create_sweep_path",
+      "op_version": "1.0.0",
+      "phase": "path",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "curve",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "path_points": [
+          {
+            "x_mm": 0,
+            "y_mm": 0,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 8,
+            "y_mm": 3,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 14,
+            "y_mm": 10,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 16,
+            "y_mm": 20,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 12,
+            "y_mm": 32,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 2,
+            "y_mm": 40,
+            "z_mm": 0
+          },
+          {
+            "x_mm": -12,
+            "y_mm": 42,
+            "z_mm": 0
+          },
+          {
+            "x_mm": -28,
+            "y_mm": 36,
+            "z_mm": 0
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n2",
+      "component": "comp_volute",
+      "dialect": "loft_sweep",
+      "op": "sweep_profile",
+      "op_version": "1.0.0",
+      "phase": "sweep",
+      "inputs": [
+        {
+          "node": "n1",
+          "output": "curve"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "shape": "circle",
+        "radius_mm": 12
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n3",
+      "component": "comp_volute",
+      "dialect": "loft_sweep",
+      "op": "sweep_profile",
+      "op_version": "1.0.0",
+      "phase": "sweep",
+      "inputs": [
+        {
+          "node": "n1",
+          "output": "curve"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "shape": "circle",
+        "radius_mm": 12
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": null
+}

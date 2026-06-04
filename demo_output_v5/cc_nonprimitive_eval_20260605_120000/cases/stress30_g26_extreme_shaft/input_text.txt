@@ -1,0 +1,1 @@
+细长中空轴,单位mm. revolve_profile station1 r=8 z=0-500. cut_center_bore diameter_mm=6 (外径16内径6壁厚5mm).

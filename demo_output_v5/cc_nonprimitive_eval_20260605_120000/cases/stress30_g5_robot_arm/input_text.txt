@@ -1,0 +1,5 @@
+工业机器人手臂段,单位mm.
+组件arm_tube(axisymmetric): revolve_profile station1 r=65 z=0-500. cut_center_bore diameter_mm=110 (壁厚10mm).
+组件flange_a(axisymmetric): revolve_profile station1 r=90 z=0-25. cut_center_bore diameter_mm=110. cut_circular_hole_pattern count=8 pcd_mm=150 hole_dia_mm=14.
+组件flange_b(axisymmetric): revolve_profile station1 r=90 z=0-25. cut_center_bore diameter_mm=110. cut_circular_hole_pattern count=8 pcd_mm=150 hole_dia_mm=14.
+装配__assembly__(composition): 依次boolean_union(每次2 inputs).

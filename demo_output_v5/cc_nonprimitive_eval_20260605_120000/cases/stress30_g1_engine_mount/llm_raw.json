@@ -1,0 +1,673 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "engine-mount-bracket-assembly-001",
+  "part_name": "汽车发动机悬置支架总成",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0"
+    },
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "base_plate",
+      "owner_dialect": "sketch_extrude",
+      "root_node": "bp_cleanup"
+    },
+    {
+      "id": "bushing_left",
+      "owner_dialect": "axisymmetric",
+      "root_node": "bl_cleanup"
+    },
+    {
+      "id": "bushing_right",
+      "owner_dialect": "axisymmetric",
+      "root_node": "br_cleanup"
+    },
+    {
+      "id": "mount_bracket",
+      "owner_dialect": "sketch_extrude",
+      "root_node": "mb_cleanup"
+    },
+    {
+      "id": "__assembly__",
+      "owner_dialect": "composition",
+      "root_node": "asm_union3"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "bp_extrude",
+      "component": "base_plate",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 300,
+        "height_mm": 200,
+        "depth_mm": 25,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "bp_hole_pattern",
+      "component": "base_plate",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_pattern_linear",
+      "op_version": "1.0.0",
+      "phase": "hole_pattern",
+      "inputs": [
+        {
+          "node": "bp_extrude",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "hole_dia_mm": 14,
+        "count_x": 2,
+        "count_y": 2,
+        "spacing_x_mm": 250,
+        "spacing_y_mm": 150,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "bp_cleanup",
+      "component": "base_plate",
+      "dialect": "sketch_extrude",
+      "op": "apply_safe_fillet",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "bp_hole_pattern",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "radius_mm": 2,
+        "target": "all"
+      },
+      "required": false,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "bl_revolve",
+      "component": "bushing_left",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r": 30,
+            "z": 0
+          },
+          {
+            "r": 30,
+            "z": 50
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "bl_bore",
+      "component": "bushing_left",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "bl_revolve",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 16,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "bl_cleanup",
+      "component": "bushing_left",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "bl_bore",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 0.5,
+        "target": "all"
+      },
+      "required": false,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "br_revolve",
+      "component": "bushing_right",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r": 30,
+            "z": 0
+          },
+          {
+            "r": 30,
+            "z": 50
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "br_bore",
+      "component": "bushing_right",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "br_revolve",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 16,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "br_cleanup",
+      "component": "bushing_right",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "br_bore",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 0.5,
+        "target": "all"
+      },
+      "required": false,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "mb_extrude",
+      "component": "mount_bracket",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 80,
+        "height_mm": 60,
+        "depth_mm": 15,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "mb_hole1",
+      "component": "mount_bracket",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "mb_extrude",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 10,
+        "position_mm": [
+          -25,
+          0
+        ],
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "mb_hole2",
+      "component": "mount_bracket",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "mb_hole1",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 10,
+        "position_mm": [
+          25,
+          0
+        ],
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "mb_rib",
+      "component": "mount_bracket",
+      "dialect": "sketch_extrude",
+      "op": "add_rib",
+      "op_version": "1.0.0",
+      "phase": "boss_rib",
+      "inputs": [
+        {
+          "node": "mb_hole2",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 8,
+        "height_mm": 20,
+        "length_mm": 40,
+        "position_mm": [
+          0,
+          0,
+          7.5
+        ],
+        "direction": "Y"
+      },
+      "required": false,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "mb_cleanup",
+      "component": "mount_bracket",
+      "dialect": "sketch_extrude",
+      "op": "apply_safe_fillet",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "mb_rib",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "radius_mm": 1,
+        "target": "all"
+      },
+      "required": false,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "asm_translate_bp",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "translate_solid",
+      "op_version": "1.0.0",
+      "phase": "transform",
+      "inputs": [
+        {
+          "node": "bp_cleanup",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "vector_mm": [
+          0,
+          0,
+          0
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "asm_translate_bl",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "translate_solid",
+      "op_version": "1.0.0",
+      "phase": "transform",
+      "inputs": [
+        {
+          "node": "bl_cleanup",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "vector_mm": [
+          -125,
+          -75,
+          25
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "asm_translate_br",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "translate_solid",
+      "op_version": "1.0.0",
+      "phase": "transform",
+      "inputs": [
+        {
+          "node": "br_cleanup",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "vector_mm": [
+          125,
+          75,
+          25
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "asm_translate_mb",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "translate_solid",
+      "op_version": "1.0.0",
+      "phase": "transform",
+      "inputs": [
+        {
+          "node": "mb_cleanup",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "vector_mm": [
+          0,
+          0,
+          25
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "asm_union1",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "node": "asm_translate_bp",
+          "output": "body"
+        },
+        {
+          "node": "asm_translate_bl",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "clean_after": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "asm_union2",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "node": "asm_union1",
+          "output": "body"
+        },
+        {
+          "node": "asm_translate_br",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "clean_after": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "asm_union3",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "node": "asm_union2",
+          "output": "body"
+        },
+        {
+          "node": "asm_translate_mb",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "clean_after": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": null
+}

@@ -1,0 +1,158 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "6a7e4b1c-2d3f-40a5-b8c9-e1f2a3b4c5d6",
+  "part_name": "hollow_bracket",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0"
+    },
+    {
+      "dialect": "shell_housing",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "comp_bracket",
+      "owner_dialect": "sketch_extrude",
+      "root_node": "node_hole_manual"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "node_base",
+      "component": "comp_bracket",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 200,
+        "height_mm": 160,
+        "depth_mm": 70,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "node_shell",
+      "component": "comp_bracket",
+      "dialect": "shell_housing",
+      "op": "shell_body",
+      "op_version": "1.0.0",
+      "phase": "shell",
+      "inputs": [
+        {
+          "node": "node_base",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 3.0,
+        "open_faces": [
+          "top"
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "node_hole_pattern",
+      "component": "comp_bracket",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_pattern_linear",
+      "op_version": "1.0.0",
+      "phase": "hole_pattern",
+      "inputs": [
+        {
+          "node": "node_shell",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "hole_dia_mm": 8,
+        "count_x": 2,
+        "count_y": 2,
+        "spacing_x_mm": 150,
+        "spacing_y_mm": 110,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "node_hole_manual",
+      "component": "comp_bracket",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "node_hole_pattern",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 15,
+        "position_mm": [
+          0,
+          60
+        ],
+        "axis": "Y",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": null
+}

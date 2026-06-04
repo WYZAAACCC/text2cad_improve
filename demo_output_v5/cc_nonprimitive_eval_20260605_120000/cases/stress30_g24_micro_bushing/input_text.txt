@@ -1,0 +1,1 @@
+微型轴套,单位mm. revolve_profile station1 r=3 z=0-10. cut_center_bore diameter_mm=5.5 (壁厚仅0.5mm).

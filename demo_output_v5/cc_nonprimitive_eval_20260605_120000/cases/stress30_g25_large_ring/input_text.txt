@@ -1,0 +1,1 @@
+大直径环件,单位mm. revolve_profile station1 r=500 z=0-30. cut_center_bore diameter_mm=900 (内径900外径1000). 36个螺栓孔: cut_circular_hole_pattern count=36 pcd_mm=950 hole_dia_mm=15.

@@ -1,0 +1,1 @@
+薄壁轴套, 单位mm. revolve_profile 外径12内径10厚20: station1 r=6 z=0-20. cut_center_bore diameter_mm=10. 此零件壁厚仅1mm.

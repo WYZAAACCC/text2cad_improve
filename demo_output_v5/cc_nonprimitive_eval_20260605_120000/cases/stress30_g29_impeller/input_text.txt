@@ -1,0 +1,4 @@
+离心叶轮,单位mm.
+组件hub(axisymmetric): revolve_profile station1 r=150 z=0-35. cut_center_bore diameter_mm=40. 6个叶片均布.
+组件blade(axisymmetric): revolve_profile station1 r=5 z=0-20 长条形.
+装配__assembly__(composition): boolean_union.

@@ -1,0 +1,67 @@
+{
+  "ok": false,
+  "stage": "params",
+  "issues": [
+    {
+      "code": "invalid_params",
+      "message": "node 'n1' params invalid for op 'revolve_profile': 7 validation errors for RevolveProfileParams\naxis\n  Input should be 'Z' [type=literal_error, input_value='+Z', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error\nprofile_stations.0.z_front_mm\n  Field required [type=missing, input_value={'r_mm': 35, 'z_mm': 0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.0.z_rear_mm\n  Field required [type=missing, input_value={'r_mm': 35, 'z_mm': 0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.0.z_mm\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\nprofile_stations.1.z_front_mm\n  Field required [type=missing, input_value={'r_mm': 35, 'z_mm': 30}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.1.z_rear_mm\n  Field required [type=missing, input_value={'r_mm': 35, 'z_mm': 30}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.1.z_mm\n  Extra inputs are not permitted [type=extra_forbidden, input_value=30, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n1",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n2' params invalid for op 'cut_center_bore': 1 validation error for CutCenterBoreParams\naxis\n  Input should be 'Z' [type=literal_error, input_value='+Z', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n2",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n3' params invalid for op 'cut_circular_hole_pattern': 1 validation error for CutCircularHolePatternParams\naxis\n  Input should be 'Z' [type=literal_error, input_value='+Z', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n3",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n5' params invalid for op 'apply_safe_chamfer': 1 validation error for ApplySafeChamferParams\ntarget\n  Input should be 'all_external_edges' [type=literal_error, input_value='outer_edges', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n5",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n6' params invalid for op 'apply_safe_chamfer': 1 validation error for ApplySafeChamferParams\ntarget\n  Input should be 'all_external_edges' [type=literal_error, input_value='bore_edges', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n6",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "root_terminal",
+    "registry",
+    "params"
+  ]
+}

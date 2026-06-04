@@ -1,0 +1,34 @@
+{
+  "ok": false,
+  "stage": "params",
+  "issues": [
+    {
+      "code": "invalid_params",
+      "message": "node 'node_revolve' params invalid for op 'revolve_profile': 14 validation errors for RevolveProfileParams\nprofile_stations.0.z_front_mm\n  Field required [type=missing, input_value={'r_mm': 150, 'z_mm': 0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.0.z_rear_mm\n  Field required [type=missing, input_value={'r_mm': 150, 'z_mm': 0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.0.z_mm\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\nprofile_stations.1.z_front_mm\n  Field required [type=missing, input_value={'r_mm': 150, 'z_mm': 400}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.1.z_rear_mm\n  Field required [type=missing, input_value={'r_mm': 150, 'z_mm': 400}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.1.z_mm\n  Extra inputs are not permitted [type=extra_forbidden, input_value=400, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\nprofile_stations.2.r_mm\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than\nprofile_stations.2.z_front_mm\n  Field required [type=missing, input_value={'r_mm': 0, 'z_mm': 400}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.2.z_rear_mm\n  Field required [type=missing, input_value={'r_mm': 0, 'z_mm': 400}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.2.z_mm\n  Extra inputs are not permitted [type=extra_forbidden, input_value=400, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\nprofile_stations.3.r_mm\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than\nprofile_stations.3.z_front_mm\n  Field required [type=missing, input_value={'r_mm': 0, 'z_mm': 0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.3.z_rear_mm\n  Field required [type=missing, input_value={'r_mm': 0, 'z_mm': 0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.3.z_mm\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "node_revolve",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'node_cleanup' params invalid for op 'apply_safe_chamfer': 1 validation error for ApplySafeChamferParams\ntarget\n  Input should be 'all_external_edges' [type=literal_error, input_value='bore_edge', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "node_cleanup",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "root_terminal",
+    "registry",
+    "params"
+  ]
+}

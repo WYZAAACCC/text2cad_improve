@@ -1,0 +1,1 @@
+薄壁压力容器,单位mm. revolve_profile station1 r=150 z=0-400. cut_center_bore diameter_mm=290 (内径290外径300壁厚5mm). 两端半球封头.

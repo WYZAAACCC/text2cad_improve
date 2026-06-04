@@ -263,6 +263,7 @@ def auto_fix_with_report(
     _apply_fix("fix_phase_ordering", lambda d: _fix_phase_ordering(d, dialect_registry))
     _apply_fix("fix_profile_stations", lambda d: _fix_profile_stations(d), severity="semantic_guess", confidence=0.85)
     _apply_fix("fill_default_params", lambda d: _fill_default_params(d))
+    _apply_fix("fix_null_hints", lambda d: _fix_null_hints(d))
     _apply_fix("remove_extra_params", lambda d: _remove_extra_params(d))
 
     after_hash = stable_hash(doc)
@@ -818,6 +819,13 @@ def _fill_default_params(doc: dict) -> dict:
         for k, v in defaults.get(op, {}).items():
             if k not in node.get("params", {}):
                 node["params"][k] = v
+    return doc
+
+
+def _fix_null_hints(doc: dict) -> dict:
+    """Fix llm_validation_hints: null -> {} (DeepSeek v4-pro common error)."""
+    if doc.get("llm_validation_hints") is None:
+        doc["llm_validation_hints"] = {}
     return doc
 
 

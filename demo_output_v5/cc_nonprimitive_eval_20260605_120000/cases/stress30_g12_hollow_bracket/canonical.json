@@ -1,8 +1,8 @@
 {
   "schema_version": "g_cad_core_v0.2",
   "canonical_version": "canonical_gcad_v0.2",
-  "document_id": "aero-hollow-bracket-001",
-  "part_name": "Aerospace Hollow Structural Bracket",
+  "document_id": "6a7e4b1c-2d3f-40a5-b8c9-e1f2a3b4c5d6",
+  "part_name": "hollow_bracket",
   "units": "mm",
   "trust_level": "reference_geometry",
   "selected_dialects": [
@@ -19,17 +19,17 @@
   ],
   "components": [
     {
-      "id": "bracket",
+      "id": "comp_bracket",
       "owner_dialect": "sketch_extrude",
       "kind_hint": null,
-      "root_node": "shell_1",
+      "root_node": "node_hole_manual",
       "output_aliases": {}
     }
   ],
   "nodes": [
     {
-      "id": "rect_extrude",
-      "component": "bracket",
+      "id": "node_base",
+      "component": "comp_bracket",
       "dialect": "sketch_extrude",
       "op": "extrude_rectangle",
       "op_version": "1.0.0",
@@ -39,21 +39,22 @@
         {
           "name": "body",
           "type": "solid",
-          "value_id": "solid:bracket:rect_extrude:body"
+          "value_id": "solid:comp_bracket:node_base:body"
         }
       ],
       "params": {
         "width_mm": 200,
-        "height_mm": 120,
-        "depth_mm": 60,
+        "height_mm": 160,
+        "depth_mm": 70,
         "plane": "XY",
         "centered": true,
-        "direction": "+"
+        "direction": "+",
+        "draft_angle_deg": 0
       },
       "typed_params": {
         "width_mm": 200.0,
-        "height_mm": 120.0,
-        "depth_mm": 60.0,
+        "height_mm": 160.0,
+        "depth_mm": 70.0,
         "plane": "XY",
         "centered": true,
         "direction": "+",
@@ -69,15 +70,15 @@
       ]
     },
     {
-      "id": "pocket_1",
-      "component": "bracket",
+      "id": "node_hole_manual",
+      "component": "comp_bracket",
       "dialect": "sketch_extrude",
-      "op": "cut_rectangular_pocket",
+      "op": "cut_hole",
       "op_version": "1.0.0",
       "phase": "primary_cut",
       "inputs": [
         {
-          "producer_node": "rect_extrude",
+          "producer_node": "node_hole_pattern",
           "producer_component": null,
           "output": "body",
           "resolved_type": "solid"
@@ -87,25 +88,27 @@
         {
           "name": "body",
           "type": "solid",
-          "value_id": "solid:bracket:pocket_1:body"
+          "value_id": "solid:comp_bracket:node_hole_manual:body"
         }
       ],
       "params": {
-        "width_mm": 180,
-        "height_mm": 100,
-        "depth_mm": 50,
-        "plane": "XY",
-        "centered": true,
-        "direction": "+"
+        "diameter_mm": 15,
+        "position_mm": [
+          0,
+          60
+        ],
+        "axis": "Y",
+        "through_all": true
       },
       "typed_params": {
-        "width_mm": 180.0,
-        "height_mm": 100.0,
-        "depth_mm": 50.0,
-        "plane": "XY",
-        "centered": true,
-        "direction": "+",
-        "draft_angle_deg": 0.0
+        "diameter_mm": 15.0,
+        "position_mm": [
+          0.0,
+          60.0
+        ],
+        "axis": "Y",
+        "through_all": true,
+        "depth_mm": null
       },
       "required": true,
       "degradation_policy": "fail",
@@ -117,15 +120,15 @@
       ]
     },
     {
-      "id": "rib_1",
-      "component": "bracket",
+      "id": "node_hole_pattern",
+      "component": "comp_bracket",
       "dialect": "sketch_extrude",
-      "op": "add_rib",
+      "op": "cut_hole_pattern_linear",
       "op_version": "1.0.0",
-      "phase": "boss_rib",
+      "phase": "hole_pattern",
       "inputs": [
         {
-          "producer_node": "pocket_1",
+          "producer_node": "node_shell",
           "producer_component": null,
           "output": "body",
           "resolved_type": "solid"
@@ -135,103 +138,46 @@
         {
           "name": "body",
           "type": "solid",
-          "value_id": "solid:bracket:rib_1:body"
+          "value_id": "solid:comp_bracket:node_hole_pattern:body"
         }
       ],
       "params": {
-        "thickness_mm": 6,
-        "height_mm": 20,
-        "length_mm": 100,
-        "position_mm": [
-          -60,
-          0,
-          0
-        ],
-        "direction": "Y"
+        "hole_dia_mm": 8,
+        "count_x": 2,
+        "count_y": 2,
+        "spacing_x_mm": 150,
+        "spacing_y_mm": 110,
+        "axis": "Z",
+        "through_all": true
       },
       "typed_params": {
-        "thickness_mm": 6.0,
-        "height_mm": 20.0,
-        "length_mm": 100.0,
-        "position_mm": [
-          -60.0,
-          0.0,
-          0.0
-        ],
-        "direction": "Y"
+        "hole_dia_mm": 8.0,
+        "count_x": 2,
+        "count_y": 2,
+        "spacing_x_mm": 150.0,
+        "spacing_y_mm": 110.0,
+        "axis": "Z",
+        "through_all": true
       },
       "required": true,
       "degradation_policy": "fail",
       "operation_effects": [
-        "adds_material"
+        "cuts_material"
       ],
       "postconditions": [
         "valid_solid"
       ]
     },
     {
-      "id": "rib_2",
-      "component": "bracket",
-      "dialect": "sketch_extrude",
-      "op": "add_rib",
-      "op_version": "1.0.0",
-      "phase": "boss_rib",
-      "inputs": [
-        {
-          "producer_node": "rib_1",
-          "producer_component": null,
-          "output": "body",
-          "resolved_type": "solid"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "body",
-          "type": "solid",
-          "value_id": "solid:bracket:rib_2:body"
-        }
-      ],
-      "params": {
-        "thickness_mm": 6,
-        "height_mm": 20,
-        "length_mm": 100,
-        "position_mm": [
-          60,
-          0,
-          0
-        ],
-        "direction": "Y"
-      },
-      "typed_params": {
-        "thickness_mm": 6.0,
-        "height_mm": 20.0,
-        "length_mm": 100.0,
-        "position_mm": [
-          60.0,
-          0.0,
-          0.0
-        ],
-        "direction": "Y"
-      },
-      "required": true,
-      "degradation_policy": "fail",
-      "operation_effects": [
-        "adds_material"
-      ],
-      "postconditions": [
-        "valid_solid"
-      ]
-    },
-    {
-      "id": "shell_1",
-      "component": "bracket",
+      "id": "node_shell",
+      "component": "comp_bracket",
       "dialect": "shell_housing",
       "op": "shell_body",
       "op_version": "1.0.0",
       "phase": "shell",
       "inputs": [
         {
-          "producer_node": "rib_2",
+          "producer_node": "node_base",
           "producer_component": null,
           "output": "body",
           "resolved_type": "solid"
@@ -241,11 +187,11 @@
         {
           "name": "body",
           "type": "solid",
-          "value_id": "solid:bracket:shell_1:body"
+          "value_id": "solid:comp_bracket:node_shell:body"
         }
       ],
       "params": {
-        "thickness_mm": 3
+        "thickness_mm": 3.0
       },
       "typed_params": {
         "thickness_mm": 3.0,
@@ -277,6 +223,6 @@
     "no_structural_validation": true,
     "no_life_prediction": true
   },
-  "canonical_graph_hash": "sha256:34ff04446e33558027d58a989e140e7af994fadf22e4bc41b193e138218a90ee",
-  "raw_graph_hash": "sha256:51710f81e761711409dfff249b740d30af4518bca0a6319a5aa0f781304ffc2b"
+  "canonical_graph_hash": "sha256:9cad46edad38610968174e8a8020d30365e957f8800b9ba17f315452896c7e02",
+  "raw_graph_hash": "sha256:ffc687b5f2faf164c20f997e694de55a69a9a7c2e29951c4394d124fd843feae"
 }

@@ -1,0 +1,122 @@
+{
+  "ok": false,
+  "stage": "params",
+  "issues": [
+    {
+      "code": "invalid_params",
+      "message": "node 'housing_base_holes' params invalid for op 'cut_hole_pattern_linear': 1 validation error for CutHolePatternLinearParams\naxis\n  Input should be 'X', 'Y' or 'Z' [type=literal_error, input_value='+Z', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "housing_base_holes",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'housing_base_root' params invalid for op 'apply_safe_fillet': 1 validation error for ApplySafeFilletParams\ntarget\n  Input should be 'all_external_edges' [type=literal_error, input_value='all', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "housing_base_root",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'bearing_a_revolve' params invalid for op 'revolve_profile': 16 validation errors for RevolveProfileParams\naxis\n  Input should be 'Z' [type=literal_error, input_value='+Z', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error\nprofile_stations.0.r_mm\n  Field required [type=missing, input_value={'r': 80, 'z': 0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.0.z_front_mm\n  Field required [type=missing, input_value={'r': 80, 'z': 0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.0.z_rear_mm\n  Field required [type=missing, input_value={'r': 80, 'z': 0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.0.r\n  Extra inputs are not permitted [type=extra_forbidden, input_value=80, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\nprofile_stations.0.z\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\nprofile_stations.1.r_mm\n  Field required [type=missing, input_value={'r': 80, 'z': 70}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.1.z_front_mm\n  Field required [type=missing, input_value={'r': 80, 'z': 70}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.1.z_rear_mm\n  Field required [type=missing, input_value={'r': 80, 'z': 70}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.1.r\n  Extra inputs are not permitted [type=extra_forbidden, input_value=80, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\nprofile_stations.1.z\n  Extra inputs are not permitted [type=extra_forbidden, input_value=70, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\nprofile_stations.2.r_mm\n  Field required [type=missing, input_value={'r': 60, 'z': 75}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.2.z_front_mm\n  Field required [type=missing, input_value={'r': 60, 'z': 75}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.2.z_rear_mm\n  Field required [type=missing, input_value={'r': 60, 'z': 75}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.2.r\n  Extra inputs are not permitted [type=extra_forbidden, input_value=60, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\nprofile_stations.2.z\n  Extra inputs are not permitted [type=extra_forbidden, input_value=75, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "bearing_a_revolve",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'bearing_a_bore' params invalid for op 'cut_center_bore': 1 validation error for CutCenterBoreParams\naxis\n  Input should be 'Z' [type=literal_error, input_value='+Z', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "bearing_a_bore",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'bearing_a_holes' params invalid for op 'cut_circular_hole_pattern': 1 validation error for CutCircularHolePatternParams\naxis\n  Input should be 'Z' [type=literal_error, input_value='+Z', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "bearing_a_holes",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'bearing_a_root' params invalid for op 'apply_safe_chamfer': 1 validation error for ApplySafeChamferParams\ntarget\n  Input should be 'all_external_edges' [type=literal_error, input_value='all', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "bearing_a_root",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'bearing_b_revolve' params invalid for op 'revolve_profile': 16 validation errors for RevolveProfileParams\naxis\n  Input should be 'Z' [type=literal_error, input_value='+Z', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error\nprofile_stations.0.r_mm\n  Field required [type=missing, input_value={'r': 80, 'z': 0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.0.z_front_mm\n  Field required [type=missing, input_value={'r': 80, 'z': 0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.0.z_rear_mm\n  Field required [type=missing, input_value={'r': 80, 'z': 0}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.0.r\n  Extra inputs are not permitted [type=extra_forbidden, input_value=80, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\nprofile_stations.0.z\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\nprofile_stations.1.r_mm\n  Field required [type=missing, input_value={'r': 80, 'z': 70}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.1.z_front_mm\n  Field required [type=missing, input_value={'r': 80, 'z': 70}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.1.z_rear_mm\n  Field required [type=missing, input_value={'r': 80, 'z': 70}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.1.r\n  Extra inputs are not permitted [type=extra_forbidden, input_value=80, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\nprofile_stations.1.z\n  Extra inputs are not permitted [type=extra_forbidden, input_value=70, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\nprofile_stations.2.r_mm\n  Field required [type=missing, input_value={'r': 60, 'z': 75}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.2.z_front_mm\n  Field required [type=missing, input_value={'r': 60, 'z': 75}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.2.z_rear_mm\n  Field required [type=missing, input_value={'r': 60, 'z': 75}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nprofile_stations.2.r\n  Extra inputs are not permitted [type=extra_forbidden, input_value=60, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\nprofile_stations.2.z\n  Extra inputs are not permitted [type=extra_forbidden, input_value=75, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "bearing_b_revolve",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'bearing_b_bore' params invalid for op 'cut_center_bore': 1 validation error for CutCenterBoreParams\naxis\n  Input should be 'Z' [type=literal_error, input_value='+Z', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "bearing_b_bore",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'bearing_b_holes' params invalid for op 'cut_circular_hole_pattern': 1 validation error for CutCircularHolePatternParams\naxis\n  Input should be 'Z' [type=literal_error, input_value='+Z', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "bearing_b_holes",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'bearing_b_root' params invalid for op 'apply_safe_chamfer': 1 validation error for ApplySafeChamferParams\ntarget\n  Input should be 'all_external_edges' [type=literal_error, input_value='all', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "bearing_b_root",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "root_terminal",
+    "registry",
+    "params"
+  ]
+}

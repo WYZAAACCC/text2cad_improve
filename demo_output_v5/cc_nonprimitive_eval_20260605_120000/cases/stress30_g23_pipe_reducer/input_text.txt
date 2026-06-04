@@ -1,0 +1,4 @@
+变径管装配,单位mm.
+组件reducer(loft_sweep): loft_sections从直径100圆截面过渡到直径60圆截面长度150mm.
+组件flange(axisymmetric): revolve_profile station1 r=60 z=0-20. cut_center_bore diameter_mm=60. cut_circular_hole_pattern count=6 pcd_mm=90 hole_dia_mm=12.
+装配__assembly__(composition): boolean_union.

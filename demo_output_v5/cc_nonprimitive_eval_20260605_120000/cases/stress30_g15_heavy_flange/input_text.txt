@@ -1,0 +1,1 @@
+重型法兰,单位mm. revolve_profile station1 r=200 z=0-55. cut_center_bore diameter_mm=120. 外圈24孔: cut_circular_hole_pattern count=24 pcd_mm=340 hole_dia_mm=18. 内圈12孔: cut_circular_hole_pattern count=12 pcd_mm=200 hole_dia_mm=12.

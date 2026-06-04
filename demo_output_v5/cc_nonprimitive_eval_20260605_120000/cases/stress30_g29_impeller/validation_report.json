@@ -1,0 +1,20 @@
+{
+  "ok": false,
+  "stage": "structure",
+  "issues": [
+    {
+      "code": "pydantic_validation_failed",
+      "message": "1 validation error for RawGcadDocument\nllm_validation_hints\n  Input should be a valid dictionary [type=dict_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/dict_type",
+      "severity": "error",
+      "stage": "structure",
+      "node_id": null,
+      "component_id": null,
+      "path": "/",
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure"
+  ]
+}

@@ -1,0 +1,1 @@
+空心支架,单位mm. extrude_rectangle width_mm=200 height_mm=160 depth_mm=70 centered=true. shell_body thickness_mm=3.0. cut_hole_pattern_linear hole_dia_mm=8 count_x=2 count_y=2 spacing_x_mm=150 spacing_y_mm=110. cut_hole diameter_mm=15 position_mm=[0,60] axis=Y.

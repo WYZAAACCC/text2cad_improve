@@ -1,0 +1,20 @@
+{
+  "ok": false,
+  "stage": "structure",
+  "issues": [
+    {
+      "code": "pydantic_validation_failed",
+      "message": "1 validation error for RawGcadDocument\nnodes.7.degradation_policy\n  Input should be 'fail' or 'may_skip_with_warning' [type=literal_error, input_value='pass_through', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+      "severity": "error",
+      "stage": "structure",
+      "node_id": null,
+      "component_id": null,
+      "path": "/",
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure"
+  ]
+}

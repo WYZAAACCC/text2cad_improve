@@ -1,20 +1,66 @@
 {
-  "ok": false,
-  "stage": "structure",
+  "ok": true,
+  "stage": "complete",
   "issues": [
     {
-      "code": "pydantic_validation_failed",
-      "message": "1 validation error for RawGcadDocument\nllm_validation_hints\n  Input should be a valid dictionary [type=dict_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/dict_type",
-      "severity": "error",
-      "stage": "structure",
-      "node_id": null,
+      "code": "LEGACY_SIDE_HOLE_REQUIRES_3D_POSITION",
+      "message": "Legacy cut_hole node 'n_hole_front' uses axis='Y' with 2D position_mm. The Z coordinate is ambiguous and will default to the bounding-box midplane. Use cut_hole_v2 with target_face + center_uv_mm for explicit semantics.",
+      "severity": "warning",
+      "stage": "geometry_preflight",
+      "node_id": "n_hole_front",
       "component_id": null,
-      "path": "/",
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "LEGACY_SIDE_HOLE_REQUIRES_3D_POSITION",
+      "message": "Legacy cut_hole node 'n_hole_back' uses axis='Y' with 2D position_mm. The Z coordinate is ambiguous and will default to the bounding-box midplane. Use cut_hole_v2 with target_face + center_uv_mm for explicit semantics.",
+      "severity": "warning",
+      "stage": "geometry_preflight",
+      "node_id": "n_hole_back",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "LEGACY_SIDE_HOLE_REQUIRES_3D_POSITION",
+      "message": "Legacy cut_hole node 'n_hole_right' uses axis='X' with 2D position_mm. The Z coordinate is ambiguous and will default to the bounding-box midplane. Use cut_hole_v2 with target_face + center_uv_mm for explicit semantics.",
+      "severity": "warning",
+      "stage": "geometry_preflight",
+      "node_id": "n_hole_right",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "LEGACY_SIDE_HOLE_REQUIRES_3D_POSITION",
+      "message": "Legacy cut_hole node 'n_hole_left' uses axis='X' with 2D position_mm. The Z coordinate is ambiguous and will default to the bounding-box midplane. Use cut_hole_v2 with target_face + center_uv_mm for explicit semantics.",
+      "severity": "warning",
+      "stage": "geometry_preflight",
+      "node_id": "n_hole_left",
+      "component_id": null,
+      "path": null,
       "expected": null,
       "actual": null
     }
   ],
   "stages_run": [
-    "structure"
+    "structure",
+    "root_terminal",
+    "registry",
+    "params",
+    "ownership",
+    "graph",
+    "typecheck",
+    "phase",
+    "composition",
+    "hole_semantics",
+    "safety",
+    "canonicalize",
+    "dialect_semantics",
+    "geometry_preflight"
   ]
 }

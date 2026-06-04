@@ -1,0 +1,1 @@
+精密基座,单位mm. 底板(sketch_extrude): extrude_rectangle width_mm=305 height_mm=280 depth_mm=15 centered=true. 四角定位孔: cut_hole_pattern_linear hole_dia_mm=30 count_x=2 count_y=2 spacing_x_mm=255 spacing_y_mm=230. 中心轴承座(axisymmetric): revolve_profile station1 r=30 z=0-20. cut_center_bore diameter_mm=20. apply_safe_chamfer distance_mm=0.5 target=all_external_edges.

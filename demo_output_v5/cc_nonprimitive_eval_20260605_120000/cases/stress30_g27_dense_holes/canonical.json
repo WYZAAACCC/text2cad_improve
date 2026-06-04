@@ -1,8 +1,8 @@
 {
   "schema_version": "g_cad_core_v0.2",
   "canonical_version": "canonical_gcad_v0.2",
-  "document_id": "dense_hole_array_test_plate",
-  "part_name": "dense_hole_array_test_plate",
+  "document_id": "multi-hole-plate-200x150x10",
+  "part_name": "multi_hole_plate_200x150x10",
   "units": "mm",
   "trust_level": "reference_geometry",
   "selected_dialects": [
@@ -17,13 +17,13 @@
       "id": "plate",
       "owner_dialect": "sketch_extrude",
       "kind_hint": null,
-      "root_node": "n_hole_pattern",
+      "root_node": "node_cleanup",
       "output_aliases": {}
     }
   ],
   "nodes": [
     {
-      "id": "n_base",
+      "id": "node_base",
       "component": "plate",
       "dialect": "sketch_extrude",
       "op": "extrude_rectangle",
@@ -34,7 +34,7 @@
         {
           "name": "body",
           "type": "solid",
-          "value_id": "solid:plate:n_base:body"
+          "value_id": "solid:plate:node_base:body"
         }
       ],
       "params": {
@@ -43,7 +43,8 @@
         "depth_mm": 10,
         "plane": "XY",
         "centered": true,
-        "direction": "+"
+        "direction": "+",
+        "draft_angle_deg": 0
       },
       "typed_params": {
         "width_mm": 200.0,
@@ -64,7 +65,7 @@
       ]
     },
     {
-      "id": "n_hole_pattern",
+      "id": "node_holes",
       "component": "plate",
       "dialect": "sketch_extrude",
       "op": "cut_hole_pattern_linear",
@@ -72,7 +73,7 @@
       "phase": "hole_pattern",
       "inputs": [
         {
-          "producer_node": "n_base",
+          "producer_node": "node_base",
           "producer_component": null,
           "output": "body",
           "resolved_type": "solid"
@@ -82,15 +83,15 @@
         {
           "name": "body",
           "type": "solid",
-          "value_id": "solid:plate:n_hole_pattern:body"
+          "value_id": "solid:plate:node_holes:body"
         }
       ],
       "params": {
         "hole_dia_mm": 3,
         "count_x": 20,
         "count_y": 15,
-        "spacing_x_mm": 9,
-        "spacing_y_mm": 9,
+        "spacing_x_mm": 8,
+        "spacing_y_mm": 8,
         "axis": "Z",
         "through_all": true
       },
@@ -98,8 +99,8 @@
         "hole_dia_mm": 3.0,
         "count_x": 20,
         "count_y": 15,
-        "spacing_x_mm": 9.0,
-        "spacing_y_mm": 9.0,
+        "spacing_x_mm": 8.0,
+        "spacing_y_mm": 8.0,
         "axis": "Z",
         "through_all": true
       },
@@ -107,6 +108,45 @@
       "degradation_policy": "fail",
       "operation_effects": [
         "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "node_cleanup",
+      "component": "plate",
+      "dialect": "sketch_extrude",
+      "op": "apply_safe_fillet",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "producer_node": "node_holes",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:plate:node_cleanup:body"
+        }
+      ],
+      "params": {
+        "radius_mm": 0.5,
+        "target": "all_external_edges"
+      },
+      "typed_params": {
+        "radius_mm": 0.5,
+        "target": "all_external_edges"
+      },
+      "required": false,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "modifies_solid"
       ],
       "postconditions": [
         "valid_solid"
@@ -131,6 +171,6 @@
     "no_structural_validation": true,
     "no_life_prediction": true
   },
-  "canonical_graph_hash": "sha256:f520f4f55e812a90a58cc6ffd657db5a1fb7d35270f50375ea3b382ee0bde4c8",
-  "raw_graph_hash": "sha256:5ecbf17e502bac68d767fda9debca2bc5321a766623dbd862ac9a7e75e20028a"
+  "canonical_graph_hash": "sha256:d71055370fcfd96198f3f1b81b2cc20f207097ccb621c4085b7282b31075cf01",
+  "raw_graph_hash": "sha256:f432d6050e881cc0625c61dbab68d9004fdf4513560cec8efdf92f31ce13024e"
 }

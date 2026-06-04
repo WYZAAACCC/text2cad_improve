@@ -1,0 +1,6 @@
+球阀装配,单位mm.
+组件valve_body(axisymmetric): revolve_profile station1 r=80 z=0-80,station2 r=50 z=80-160. cut_center_bore diameter_mm=30.
+组件ball(axisymmetric): revolve_profile station1 r=50 z=0-50. cut_center_bore diameter_mm=40 (球体通孔).
+组件flange_a(axisymmetric): revolve_profile station1 r=60 z=0-20. cut_center_bore diameter_mm=30. cut_circular_hole_pattern count=4 pcd_mm=90 hole_dia_mm=14.
+组件flange_b(axisymmetric): revolve_profile station1 r=60 z=0-20. cut_center_bore diameter_mm=30. cut_circular_hole_pattern count=4 pcd_mm=90 hole_dia_mm=14.
+装配__assembly__(composition): 依次boolean_union(每次2 inputs).

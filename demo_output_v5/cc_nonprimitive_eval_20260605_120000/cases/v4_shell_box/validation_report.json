@@ -1,20 +1,33 @@
 {
-  "ok": false,
-  "stage": "structure",
+  "ok": true,
+  "stage": "complete",
   "issues": [
     {
-      "code": "pydantic_validation_failed",
-      "message": "1 validation error for RawGcadDocument\nllm_validation_hints\n  Input should be a valid dictionary [type=dict_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/dict_type",
-      "severity": "error",
-      "stage": "structure",
-      "node_id": null,
+      "code": "LEGACY_PATTERN_SIDE_HOLE_DEGRADED",
+      "message": "Legacy cut_hole_pattern_linear node 'n4' uses axis='Y' but the handler currently only supports Z-axis (XY plane). Use cut_hole_pattern_linear_v2 for side-face patterns.",
+      "severity": "warning",
+      "stage": "geometry_preflight",
+      "node_id": "n4",
       "component_id": null,
-      "path": "/",
+      "path": null,
       "expected": null,
       "actual": null
     }
   ],
   "stages_run": [
-    "structure"
+    "structure",
+    "root_terminal",
+    "registry",
+    "params",
+    "ownership",
+    "graph",
+    "typecheck",
+    "phase",
+    "composition",
+    "hole_semantics",
+    "safety",
+    "canonicalize",
+    "dialect_semantics",
+    "geometry_preflight"
   ]
 }

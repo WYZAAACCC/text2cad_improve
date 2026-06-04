@@ -1,0 +1,55 @@
+{
+  "ok": true,
+  "stage": "complete",
+  "issues": [
+    {
+      "code": "ls_multiple_solid_roots",
+      "message": "loft_sweep component has 2 disconnected solid outputs",
+      "severity": "warning",
+      "stage": "dialect_semantics",
+      "node_id": null,
+      "component_id": "comp_volute",
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "ls_sweep_self_intersection_risk",
+      "message": "sweep radius (12.0mm) >= 0.45 * shortest segment (8.5mm). May self-intersect.",
+      "severity": "warning",
+      "stage": "geometry_preflight",
+      "node_id": "n2",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "ls_sweep_self_intersection_risk",
+      "message": "sweep radius (12.0mm) >= 0.45 * shortest segment (8.5mm). May self-intersect.",
+      "severity": "warning",
+      "stage": "geometry_preflight",
+      "node_id": "n3",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "root_terminal",
+    "registry",
+    "params",
+    "ownership",
+    "graph",
+    "typecheck",
+    "phase",
+    "composition",
+    "hole_semantics",
+    "safety",
+    "canonicalize",
+    "dialect_semantics",
+    "geometry_preflight"
+  ]
+}

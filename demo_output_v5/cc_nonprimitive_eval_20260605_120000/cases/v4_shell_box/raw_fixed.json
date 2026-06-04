@@ -175,5 +175,5 @@
     "no_structural_validation": true,
     "no_life_prediction": true
   },
-  "llm_validation_hints": null
+  "llm_validation_hints": {}
 }
