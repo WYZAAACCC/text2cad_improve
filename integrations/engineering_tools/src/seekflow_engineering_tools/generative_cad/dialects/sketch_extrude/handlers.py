@@ -9,6 +9,7 @@ from __future__ import annotations
 from seekflow_engineering_tools.generative_cad.ir.canonical import CanonicalNode
 from seekflow_engineering_tools.generative_cad.runtime.context import RuntimeContext
 from seekflow_engineering_tools.generative_cad.runtime.handles import SolidHandle
+from seekflow_engineering_tools.generative_cad.runtime.recovery import handle_feature_failure
 from seekflow_engineering_tools.generative_cad.runtime.resolve import resolve_input_object
 
 
@@ -246,9 +247,10 @@ def handle_se_fillet(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]
             try:
                 body = _fillet_by_target(body, r / 2.0, target)
             except Exception:
-                ctx.warnings.append(
-                    f"Safe fillet skipped on '{node.id}': geometry does not support fillet. "
-                    f"Part is valid without fillet."
+                return handle_feature_failure(
+                    node=node, ctx=ctx, original_body=body,
+                    op_name="apply_safe_fillet",
+                    reason=f"fillet failed at radius={r}mm and fallback radius={r/2.0}mm",
                 )
     return {"body": _store_solid(node, ctx, body)}
 
@@ -265,9 +267,10 @@ def handle_se_chamfer(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str
             try:
                 body = _chamfer_by_target(body, d / 2.0, target)
             except Exception:
-                ctx.warnings.append(
-                    f"Safe chamfer skipped on '{node.id}': geometry does not support chamfer. "
-                    f"Part is valid without chamfer."
+                return handle_feature_failure(
+                    node=node, ctx=ctx, original_body=body,
+                    op_name="apply_safe_chamfer",
+                    reason=f"chamfer failed at distance={d}mm and fallback distance={d/2.0}mm",
                 )
     return {"body": _store_solid(node, ctx, body)}
 

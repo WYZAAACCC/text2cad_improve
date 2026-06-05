@@ -1,0 +1,21 @@
+{
+  "part_intent": {
+    "object_type": "flange",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "mechanical"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "Flange is a rotationally symmetric solid: rectangular radial-axial profile revolved around center axis, with center bore, annular grooves on both faces, and circular bolt hole pattern — all covered by axisymmetric dialect operations (revolve_profile, cut_center_bore, cut_annular_groove, cut_circular_hole_pattern)."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only — not qualified for manufacturing, structural validation, or certification."
+  ]
+}

@@ -9,6 +9,7 @@ from __future__ import annotations
 from seekflow_engineering_tools.generative_cad.ir.canonical import CanonicalNode
 from seekflow_engineering_tools.generative_cad.runtime.context import RuntimeContext
 from seekflow_engineering_tools.generative_cad.runtime.handles import SolidHandle, FrameHandle
+from seekflow_engineering_tools.generative_cad.runtime.recovery import handle_feature_failure
 from seekflow_engineering_tools.generative_cad.runtime.resolve import (
     resolve_input_object,
 )
@@ -21,26 +22,6 @@ def _store_solid(node: CanonicalNode, ctx: RuntimeContext, obj) -> str:
     ctx.object_store.put_solid(SolidHandle(id=sid, component_id=node.component, producer_node=node.id), obj)
     ctx.bind_node_output(node.id, "body", sid)
     return sid
-
-
-def _degrade(node: CanonicalNode, ctx: RuntimeContext, body, op_name: str) -> str:
-    """Return unmodified body with warning when operation fails.
-
-    v6.3: If node.required is True, this is a HARD FAIL — the feature is
-    structurally necessary and cannot be silently skipped.
-    """
-    if getattr(node, "required", True):
-        raise RuntimeError(
-            f"Required operation '{op_name}' failed on '{node.id}': "
-            f"geometry does not support this operation and degradation is not allowed. "
-            f"Fix the parameters or mark the node as required=False with "
-            f"degradation_policy='may_skip_with_warning' if this feature is decorative."
-        )
-    ctx.warnings.append(
-        f"'{op_name}' skipped on '{node.id}': geometry does not support this operation. "
-        f"Part is valid without it."
-    )
-    return _store_solid(node, ctx, body)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -121,8 +102,10 @@ def handle_cut_center_bore(node: CanonicalNode, ctx: RuntimeContext) -> dict[str
         bore = cq.Workplane("XY").circle(dia / 2.0).extrude(bb.zlen + 10, both=True)
         result = body.cut(bore)
     except Exception as e:
-        ctx.warnings.append(f"cut_center_bore failed on '{node.id}': {e}")
-        return {"body": _store_solid(node, ctx, body)}
+        return handle_feature_failure(
+            node=node, ctx=ctx, original_body=body,
+            op_name="cut_center_bore", exc=e,
+        )
     return {"body": _store_solid(node, ctx, result)}
 
 
@@ -134,10 +117,11 @@ def handle_cut_circular_hole_pattern(node: CanonicalNode, ctx: RuntimeContext) -
     pcd = float(p.get("pcd_mm", 0))
     hole_dia = float(p.get("hole_dia_mm", 0))
     if count < 2 or pcd <= 0 or hole_dia <= 0:
-        ctx.warnings.append(
-            f"circular_hole_pattern on '{node.id}': invalid params. Skipping."
+        return handle_feature_failure(
+            node=node, ctx=ctx, original_body=body,
+            op_name="cut_circular_hole_pattern",
+            reason=f"invalid params: count={count}, pcd={pcd}, hole_dia={hole_dia}",
         )
-        return {"body": _store_solid(node, ctx, body)}
     try:
         bb = body.val().BoundingBox()
         z_len = bb.zlen + 10
@@ -181,8 +165,10 @@ def handle_cut_circular_hole_pattern(node: CanonicalNode, ctx: RuntimeContext) -
             holes = wp.circle(hole_radius).extrude(z_len, both=True)
             result = body.cut(holes)
     except Exception as e:
-        ctx.warnings.append(f"circular_hole_pattern failed on '{node.id}': {e}")
-        return {"body": _store_solid(node, ctx, body)}
+        return handle_feature_failure(
+            node=node, ctx=ctx, original_body=body,
+            op_name="cut_circular_hole_pattern", exc=e,
+        )
     return {"body": _store_solid(node, ctx, result)}
 
 
@@ -195,8 +181,11 @@ def handle_cut_annular_groove(node: CanonicalNode, ctx: RuntimeContext) -> dict[
     depth = float(p.get("depth_mm", 0))
     side = p.get("side", "front")
     if inner <= 0 or outer <= 0 or outer <= inner:
-        ctx.warnings.append(f"annular_groove on '{node.id}': invalid diameters. Skipping.")
-        return {"body": _store_solid(node, ctx, body)}
+        return handle_feature_failure(
+            node=node, ctx=ctx, original_body=body,
+            op_name="cut_annular_groove",
+            reason=f"invalid diameters: inner={inner}, outer={outer}",
+        )
     try:
         bb = body.val().BoundingBox()
         z_pos = bb.zmax if side == "front" else bb.zmin
@@ -207,8 +196,10 @@ def handle_cut_annular_groove(node: CanonicalNode, ctx: RuntimeContext) -> dict[
         )
         result = body.cut(ring)
     except Exception as e:
-        ctx.warnings.append(f"annular_groove failed on '{node.id}': {e}")
-        return {"body": _store_solid(node, ctx, body)}
+        return handle_feature_failure(
+            node=node, ctx=ctx, original_body=body,
+            op_name="cut_annular_groove", exc=e,
+        )
     return {"body": _store_solid(node, ctx, result)}
 
 
@@ -222,10 +213,11 @@ def handle_cut_rim_slot_pattern(node: CanonicalNode, ctx: RuntimeContext) -> dic
     profile = p.get("slot_profile", {})
     stations = profile.get("stations", []) if isinstance(profile, dict) else []
     if count < 2 or slot_depth <= 0 or len(stations) < 2:
-        ctx.warnings.append(
-            f"rim_slot_pattern on '{node.id}': invalid params. Skipping."
+        return handle_feature_failure(
+            node=node, ctx=ctx, original_body=body,
+            op_name="cut_rim_slot_pattern",
+            reason=f"invalid params: count={count}, slot_depth={slot_depth}, stations={len(stations)}",
         )
-        return {"body": _store_solid(node, ctx, body)}
     try:
         bb = body.val().BoundingBox()
         outer_r = max(bb.xlen, bb.ylen) / 2.0
@@ -246,8 +238,10 @@ def handle_cut_rim_slot_pattern(node: CanonicalNode, ctx: RuntimeContext) -> dic
             combined = combined.union(cutter.rotate((0, 0, 0), (0, 0, 1), angle))
         result = body.cut(combined)
     except Exception as e:
-        ctx.warnings.append(f"rim_slot_pattern failed on '{node.id}': {e}")
-        return {"body": _store_solid(node, ctx, body)}
+        return handle_feature_failure(
+            node=node, ctx=ctx, original_body=body,
+            op_name="cut_rim_slot_pattern", exc=e,
+        )
     return {"body": _store_solid(node, ctx, result)}
 
 
@@ -266,9 +260,10 @@ def handle_apply_safe_chamfer(node: CanonicalNode, ctx: RuntimeContext) -> dict[
             try:
                 body = _chamfer_by_target(body, distance / 2.0, target)
             except Exception:
-                ctx.warnings.append(
-                    f"Safe chamfer skipped on '{node.id}': geometry does not support chamfer. "
-                    f"Part is valid without chamfer."
+                return handle_feature_failure(
+                    node=node, ctx=ctx, original_body=body,
+                    op_name="apply_safe_chamfer",
+                    reason=f"chamfer failed at distance={distance}mm and fallback distance={distance/2.0}mm",
                 )
     return {"body": _store_solid(node, ctx, body)}
 
@@ -318,8 +313,11 @@ def handle_cut_internal_thread(node: CanonicalNode, ctx: RuntimeContext) -> dict
     start_angle = float(p.get("start_angle_deg", 0))
 
     if nom_dia <= 0 or pitch <= 0 or depth <= 0:
-        ctx.warnings.append(f"cut_internal_thread on '{node.id}': invalid params. Skipping.")
-        return {"body": _store_solid(node, ctx, body)}
+        return handle_feature_failure(
+            node=node, ctx=ctx, original_body=body,
+            op_name="cut_internal_thread",
+            reason=f"invalid params: nom_dia={nom_dia}, pitch={pitch}, depth={depth}",
+        )
 
     try:
         # V-thread profile: 60-degree triangular cutter
@@ -339,8 +337,10 @@ def handle_cut_internal_thread(node: CanonicalNode, ctx: RuntimeContext) -> dict
         thread_solid = cutter.sweep(helix)
         result = body.cut(thread_solid)
     except Exception as e:
-        ctx.warnings.append(f"cut_internal_thread failed on '{node.id}': {e}")
-        return {"body": _store_solid(node, ctx, body)}
+        return handle_feature_failure(
+            node=node, ctx=ctx, original_body=body,
+            op_name="cut_internal_thread", exc=e,
+        )
     return {"body": _store_solid(node, ctx, result)}
 
 
@@ -356,8 +356,11 @@ def handle_cut_external_thread(node: CanonicalNode, ctx: RuntimeContext) -> dict
     start_angle = float(p.get("start_angle_deg", 0))
 
     if nom_dia <= 0 or pitch <= 0 or length <= 0:
-        ctx.warnings.append(f"cut_external_thread on '{node.id}': invalid params. Skipping.")
-        return {"body": _store_solid(node, ctx, body)}
+        return handle_feature_failure(
+            node=node, ctx=ctx, original_body=body,
+            op_name="cut_external_thread",
+            reason=f"invalid params: nom_dia={nom_dia}, pitch={pitch}, length={length}",
+        )
 
     try:
         thread_depth = 0.866 * pitch
@@ -374,6 +377,8 @@ def handle_cut_external_thread(node: CanonicalNode, ctx: RuntimeContext) -> dict
         thread_solid = cutter.sweep(helix)
         result = body.cut(thread_solid)
     except Exception as e:
-        ctx.warnings.append(f"cut_external_thread failed on '{node.id}': {e}")
-        return {"body": _store_solid(node, ctx, body)}
+        return handle_feature_failure(
+            node=node, ctx=ctx, original_body=body,
+            op_name="cut_external_thread", exc=e,
+        )
     return {"body": _store_solid(node, ctx, result)}

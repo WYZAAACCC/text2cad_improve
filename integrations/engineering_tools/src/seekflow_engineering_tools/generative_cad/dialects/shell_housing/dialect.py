@@ -84,8 +84,11 @@ class ShellHousingDialect:
                 e = execute_operation(node=node, op_spec=op_spec, ctx=ctx)
                 for name, hid in e.outputs.items():
                     outputs[name] = hid
-            except Exception:
-                if node.degradation_policy == "may_skip_with_warning":
+            except Exception as exc:
+                if not getattr(node, "required", True) and node.degradation_policy == "may_skip_with_warning":
+                    ctx.warnings.append(f"Optional {node.id!r} ({node.op}) skipped: {exc}")
+                    ctx.degraded_features.append({"node_id": node.id, "op": node.op, "reason": str(exc)})
+                    ctx.operation_metrics.append({"node_id": node.id, "op": node.op, "status": "degraded", "reason": str(exc)})
                     continue
                 raise
         return outputs

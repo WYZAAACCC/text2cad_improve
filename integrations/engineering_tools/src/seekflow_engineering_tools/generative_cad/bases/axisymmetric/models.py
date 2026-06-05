@@ -6,11 +6,13 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from seekflow_engineering_tools.generative_cad.ir.expr import DimExprOrFloat
+
 
 class ProfileStation(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    r_mm: float = Field(gt=0)
+    r_mm: DimExprOrFloat = Field()  # positivity enforced by BeforeValidator
     z_front_mm: float
     z_rear_mm: float
     label: str | None = None
@@ -32,7 +34,7 @@ class RevolveProfileParams(BaseModel):
 class CutCenterBoreParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    diameter_mm: float = Field(gt=0)
+    diameter_mm: DimExprOrFloat = Field()  # positivity enforced by BeforeValidator
     axis: Literal["Z"] = "Z"
     through_all: bool = True
 
@@ -41,12 +43,16 @@ class CutAnnularGrooveParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     side: Literal["front", "rear"]
-    inner_dia_mm: float = Field(gt=0)
-    outer_dia_mm: float = Field(gt=0)
-    depth_mm: float = Field(gt=0)
+    inner_dia_mm: DimExprOrFloat = Field()  # positivity enforced by BeforeValidator
+    outer_dia_mm: DimExprOrFloat = Field()  # positivity enforced by BeforeValidator
+    depth_mm: DimExprOrFloat = Field()  # positivity enforced by BeforeValidator
 
     @model_validator(mode="after")
     def validate_dia(self):
+        # Skip comparison if either value is a DimExpr (dict) — the comparison
+        # will be validated at analysis time after DimExpr resolution.
+        if isinstance(self.inner_dia_mm, dict) or isinstance(self.outer_dia_mm, dict):
+            return self
         if self.inner_dia_mm >= self.outer_dia_mm:
             raise ValueError("inner_dia_mm must be < outer_dia_mm")
         return self
@@ -56,8 +62,8 @@ class CutCircularHolePatternParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     count: int = Field(ge=2, le=240)
-    pcd_mm: float = Field(gt=0)
-    hole_dia_mm: float = Field(gt=0)
+    pcd_mm: DimExprOrFloat = Field()  # positivity enforced by BeforeValidator
+    hole_dia_mm: DimExprOrFloat = Field()  # positivity enforced by BeforeValidator
     axis: Literal["Z"] = "Z"
     through_all: bool = True
 
@@ -87,12 +93,12 @@ class CutRimSlotPatternParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     count: int = Field(ge=2, le=360)
-    slot_depth_mm: float = Field(gt=0)
+    slot_depth_mm: DimExprOrFloat = Field()  # positivity enforced by BeforeValidator
     slot_profile: RimSlotProfile
 
 
 class ApplySafeChamferParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    distance_mm: float = Field(gt=0)
+    distance_mm: DimExprOrFloat = Field()  # positivity enforced by BeforeValidator
     target: Literal["all_external_edges"] = "all_external_edges"

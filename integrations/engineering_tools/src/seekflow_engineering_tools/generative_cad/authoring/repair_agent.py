@@ -16,8 +16,15 @@ def build_repair_prompt(
     raw_doc: dict,
     validation_issues: list,
     dialect_registry,
+    *,
+    extra_diagnostics: dict | None = None,
 ) -> str:
-    """构建修复 prompt: 验证错误 + 完整 contract。"""
+    """构建修复 prompt: 验证错误 + 完整 contract + compiler diagnostics。
+
+    v6.3: extra_diagnostics may contain 'compiler_middle_end', 'planning_report',
+    and 'geometry_health_summary' sections from the compiler middle-end.
+    These provide the LLM with richer diagnostic context for repair decisions.
+    """
     # 提取相关 dialect 的 contract
     dialects_in_doc = set()
     for node in raw_doc.get("nodes", []):
@@ -53,6 +60,12 @@ def build_repair_prompt(
                     param_strs.append(f"{pname}=one of {enum_vals} [{req}]")
                 else:
                     param_strs.append(f"{pname}:{ptype} [{req}]")
+            # v6.3: Note DimExpr support for key numeric fields
+            if op_name in ("revolve_profile", "cut_center_bore", "cut_circular_hole_pattern",
+                           "cut_annular_groove", "apply_safe_chamfer", "cut_rim_slot_pattern",
+                           "extrude_rectangle"):
+                param_strs.append("NOTE: numeric params accept DimExpr: "
+                    '{"kind":"dim_expr","op":"ref","args":[{"root_kind":"node","root_id":"<id>","path":["radius_max_mm"]}]}')
             contract_lines.append(
                 f"  op='{op_name}' v='{spec.op_version}' phase='{spec.phase}' "
                 f"inputs={list(spec.input_types)} outputs={list(spec.output_types)}"
@@ -65,10 +78,36 @@ def build_repair_prompt(
         for i in validation_issues[:20]
     )
 
-    return f"""You are repairing a RawGcadDocument that failed validation.
+    prompt = f"""You are repairing a RawGcadDocument that failed validation.
 
 VALIDATION ERRORS:
-{issues_str}
+{issues_str}"""
+
+    # ── v6.3: Include compiler diagnostics ──
+    if extra_diagnostics:
+        compiler = extra_diagnostics.get("compiler_middle_end")
+        if compiler and compiler.get("diagnostics"):
+            comp_str = "\n".join(
+                f"  [{d.get('code','?')}] [{d.get('severity','?')}] {d.get('message','?')}"
+                for d in compiler["diagnostics"][:10]
+            )
+            prompt += f"""
+
+COMPILER ANALYSIS (semantic + feasibility):
+{comp_str}"""
+
+        planning = extra_diagnostics.get("planning_report")
+        if planning and planning.get("issues"):
+            plan_str = "\n".join(
+                f"  [{i.get('code','?')}] {i.get('message','?')}"
+                for i in planning["issues"][:10]
+            )
+            prompt += f"""
+
+PLANNING WARNINGS (optimization suggestions):
+{plan_str}"""
+
+    prompt += f"""
 
 CURRENT RawGcadDocument:
 {json.dumps(raw_doc, indent=2, ensure_ascii=False)}
@@ -85,7 +124,11 @@ TASK: Fix ALL validation errors by outputting a corrected RawGcadDocument.
 - Output name for solids must be 'body', for frames must be 'outer_frame'.
 - selected_dialects version must match the dialect version.
 - ALL 7 safety flags must be explicitly true.
+- For numeric dimensions, you may use DimExpr to reference upstream values:
+  e.g. "diameter_mm": {{"kind":"dim_expr","op":"ref","args":[{{"root_kind":"node","root_id":"n1","path":["radius_max_mm"]}}]}}
+- DimExpr operations: const, ref, add, sub, mul, div, min, max, abs, clamp.
 """
+    return prompt
 
 
 def call_deepseek_repair(system: str, user: str, tool_schema: dict, model: str = "deepseek-v4-pro") -> dict:

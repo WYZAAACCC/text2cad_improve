@@ -1,0 +1,84 @@
+{
+  "total": 4,
+  "passed": 1,
+  "validated": 1,
+  "elapsed_min": 1.4,
+  "cases": [
+    {
+      "case_id": "v63_washer",
+      "stage": "STARTED",
+      "l1_ok": true,
+      "l2_ok": true,
+      "validation_ok": true,
+      "runtime_ok": true,
+      "step_ok": true,
+      "elapsed_l1_s": 8.9,
+      "elapsed_l2_s": 16.2,
+      "elapsed_runtime_s": 3.1,
+      "step_size_kb": 34.5,
+      "errors": [],
+      "metadata_sections": [
+        "compiler_middle_end",
+        "core_validation",
+        "dialect_semantics",
+        "geometry_health_summary",
+        "geometry_postcheck",
+        "geometry_preflight",
+        "inspection_validation",
+        "planning_report",
+        "runtime_postconditions"
+      ]
+    },
+    {
+      "case_id": "v63_flange",
+      "stage": "STARTED",
+      "l1_ok": true,
+      "l2_ok": true,
+      "validation_ok": false,
+      "runtime_ok": false,
+      "step_ok": false,
+      "elapsed_l1_s": 15.7,
+      "elapsed_l2_s": 20.1,
+      "elapsed_runtime_s": 0,
+      "step_size_kb": 0,
+      "errors": [
+        "Validation: 1 errors"
+      ],
+      "metadata_sections": []
+    },
+    {
+      "case_id": "v63_stepped_shaft",
+      "stage": "STARTED",
+      "l1_ok": false,
+      "l2_ok": false,
+      "validation_ok": false,
+      "runtime_ok": false,
+      "step_ok": false,
+      "elapsed_l1_s": 0,
+      "elapsed_l2_s": 0,
+      "elapsed_runtime_s": 0,
+      "step_size_kb": 0,
+      "errors": [
+        "L1: 'NoneType' object is not iterable"
+      ],
+      "metadata_sections": []
+    },
+    {
+      "case_id": "v63_cross_block",
+      "stage": "STARTED",
+      "l1_ok": false,
+      "l2_ok": false,
+      "validation_ok": false,
+      "runtime_ok": false,
+      "step_ok": false,
+      "elapsed_l1_s": 0,
+      "elapsed_l2_s": 0,
+      "elapsed_runtime_s": 0,
+      "step_size_kb": 0,
+      "errors": [
+        "L1: Model returned no tool call. Ensure strict tool calling is enabled and the schema is valid."
+      ],
+      "metadata_sections": []
+    }
+  ]
+}

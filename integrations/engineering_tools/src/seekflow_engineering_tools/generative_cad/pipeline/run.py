@@ -120,6 +120,42 @@ def run_canonical_gcad(
     )
 
     try:
+        # ════════════════════════════════════════════════════════════
+        # v6.3: Compiler Middle-End (sidecar analysis)
+        # ════════════════════════════════════════════════════════════
+        from seekflow_engineering_tools.generative_cad.compiler.pass_manager import (
+            build_compiler_module,
+        )
+        from seekflow_engineering_tools.generative_cad.compiler.config import (
+            middle_end_enabled,
+            FAIL_ON_MIDDLE_END_ERROR,
+        )
+
+        compiler_module = build_compiler_module(canonical)
+        ctx.compiler_diagnostics = list(compiler_module.diagnostics)
+        ctx.planning_report = compiler_module.planning_report
+
+        if middle_end_enabled() and not compiler_module.ok:
+            if FAIL_ON_MIDDLE_END_ERROR:
+                return GcadRunResult(
+                    ok=False,
+                    error=(
+                        "compiler middle-end failed: "
+                        + "; ".join(
+                            i["message"]
+                            for i in compiler_module.diagnostics
+                            if i.get("severity") == "error"
+                        )
+                    ),
+                    warnings=ctx.warnings,
+                    degraded_features=ctx.degraded_features,
+                    operation_metrics=ctx.operation_metrics,
+                )
+            ctx.warnings.append(
+                "compiler middle-end errors suppressed (FAIL_ON_MIDDLE_END_ERROR=False)"
+            )
+        # ════════════════════════════════════════════════════════════
+
         _run_components(canonical, ctx)
 
         # ════════════════════════════════════════════════════════════
@@ -280,6 +316,47 @@ def run_canonical_gcad(
             "errors": geo_postcheck.errors,
             "warnings": geo_postcheck.warnings,
         }
+
+        # ── v6.3: Compiler middle-end diagnostics in metadata ──
+        # Always write this section, even when diagnostics are empty —
+        # provides an audit trail that the compiler ran and found no issues.
+        validation["compiler_middle_end"] = {
+            "ok": not any(
+                d.get("severity") == "error" for d in ctx.compiler_diagnostics
+            ),
+            "passes_run": getattr(compiler_module, "enabled_passes", []),
+            "diagnostics": ctx.compiler_diagnostics,
+        }
+
+        # ── v6.3 Phase 2: Geometry health summary ──
+        if ctx.geometry_health_log:
+            health_entries = list(ctx.geometry_health_log.values())
+            error_count = sum(
+                1 for h in health_entries if h.get("status") == "error"
+            )
+            warning_count = sum(
+                1 for h in health_entries if h.get("status") == "warning"
+            )
+            validation["geometry_health_summary"] = {
+                "ok": error_count == 0,
+                "total_ops_checked": len(health_entries),
+                "errors": error_count,
+                "warnings": warning_count,
+                "entries": {
+                    key: {
+                        "status": h.get("status"),
+                        "score": h.get("score"),
+                        "closed": h.get("closed"),
+                        "volume_mm3": h.get("volume_mm3"),
+                        "body_count": h.get("body_count"),
+                    }
+                    for key, h in ctx.geometry_health_log.items()
+                },
+            }
+
+        # ── v6.3 Phase 3: Planning report in metadata ──
+        if ctx.planning_report:
+            validation["planning_report"] = ctx.planning_report
 
         metadata = build_generative_metadata_v3(
             canonical=canonical, ctx=ctx,

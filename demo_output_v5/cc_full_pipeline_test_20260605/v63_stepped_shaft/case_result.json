@@ -1,0 +1,17 @@
+{
+  "case_id": "v63_stepped_shaft",
+  "stage": "STARTED",
+  "l1_ok": false,
+  "l2_ok": false,
+  "validation_ok": false,
+  "runtime_ok": false,
+  "step_ok": false,
+  "elapsed_l1_s": 0,
+  "elapsed_l2_s": 0,
+  "elapsed_runtime_s": 0,
+  "step_size_kb": 0,
+  "errors": [
+    "L1: 'NoneType' object is not iterable"
+  ],
+  "metadata_sections": []
+}

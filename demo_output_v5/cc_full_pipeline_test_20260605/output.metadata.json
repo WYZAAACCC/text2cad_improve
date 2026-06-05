@@ -1,0 +1,181 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "reference_geometry",
+    "document_id": "test_washer_v63",
+    "part_name": "test_washer_v63",
+    "selected_dialects": [
+      {
+        "dialect": "axisymmetric",
+        "version": "0.2.0",
+        "contract_hash": "sha256:test"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "n1",
+        "dialect": "axisymmetric",
+        "op": "revolve_profile",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n2",
+        "dialect": "axisymmetric",
+        "op": "cut_center_bore",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n3",
+        "dialect": "axisymmetric",
+        "op": "cut_circular_hole_pattern",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "",
+    "canonical_graph_hash": "sha256:test",
+    "paths": {
+      "canonical_ir_path": "<in_memory>",
+      "validation_seed_path": "<in_memory>",
+      "step_path": "E:\\auto_detection_process\\demo_output_v5\\cc_full_pipeline_test_20260605\\output.step",
+      "metadata_path": "E:\\auto_detection_process\\demo_output_v5\\cc_full_pipeline_test_20260605\\output.metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:f5fa3ddab29b79d85fd6b7f5a86ae680d49afcc6943f0af12aa9ded6ac3d2f67",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [],
+    "degraded_features": [],
+    "operation_metrics": [
+      {
+        "node_id": "n1",
+        "op": "revolve_profile",
+        "status": "ok"
+      },
+      {
+        "node_id": "n2",
+        "op": "cut_center_bore",
+        "status": "ok"
+      },
+      {
+        "node_id": "n3",
+        "op": "cut_circular_hole_pattern",
+        "status": "ok"
+      }
+    ],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {},
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": true,
+      "stage": "dialect_semantics",
+      "issues": []
+    },
+    "geometry_preflight": {
+      "ok": true,
+      "stage": "geometry_preflight",
+      "issues": []
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "geometry_postcheck": {
+      "ok": true,
+      "volume_mm3": 125915.033555879,
+      "n_solids": 1,
+      "bbox_mm": [
+        100.0,
+        100.0,
+        20.0
+      ],
+      "closed": false,
+      "is_valid_solid": false,
+      "errors": [],
+      "warnings": []
+    },
+    "compiler_middle_end": {
+      "ok": true,
+      "passes_run": [
+        "fact_propagation",
+        "planning"
+      ],
+      "diagnostics": []
+    },
+    "geometry_health_summary": {
+      "ok": true,
+      "total_ops_checked": 3,
+      "errors": 0,
+      "warnings": 3,
+      "entries": {
+        "n1.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 157079.6326794897,
+          "body_count": 1
+        },
+        "n2.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 131946.89145077136,
+          "body_count": 1
+        },
+        "n3.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 125915.033555879,
+          "body_count": 1
+        }
+      }
+    },
+    "planning_report": {
+      "ok": true,
+      "issues": [],
+      "optimization_opportunities": []
+    }
+  }
+}

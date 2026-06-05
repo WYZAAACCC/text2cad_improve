@@ -1,0 +1,21 @@
+{
+  "part_intent": {
+    "object_type": "washer",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "general_mechanical"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "Plain washer: outer dia 100, inner bore 40, thickness 20 — directly mappable to revolve_profile + cut_center_bore + cut_circular_hole_pattern (6x Ø8 on PCD 70). Axisymmetric dialect is the correct generative route."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only. Not for manufacturing or structural certification."
+  ]
+}

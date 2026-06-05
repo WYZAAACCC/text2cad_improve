@@ -1,0 +1,25 @@
+{
+  "case_id": "v63_washer",
+  "stage": "STARTED",
+  "l1_ok": true,
+  "l2_ok": true,
+  "validation_ok": true,
+  "runtime_ok": true,
+  "step_ok": true,
+  "elapsed_l1_s": 8.9,
+  "elapsed_l2_s": 16.2,
+  "elapsed_runtime_s": 3.1,
+  "step_size_kb": 34.5,
+  "errors": [],
+  "metadata_sections": [
+    "compiler_middle_end",
+    "core_validation",
+    "dialect_semantics",
+    "geometry_health_summary",
+    "geometry_postcheck",
+    "geometry_preflight",
+    "inspection_validation",
+    "planning_report",
+    "runtime_postconditions"
+  ]
+}

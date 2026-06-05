@@ -1,0 +1,17 @@
+{
+  "case_id": "v63_flange",
+  "stage": "STARTED",
+  "l1_ok": true,
+  "l2_ok": true,
+  "validation_ok": false,
+  "runtime_ok": false,
+  "step_ok": false,
+  "elapsed_l1_s": 15.7,
+  "elapsed_l2_s": 20.1,
+  "elapsed_runtime_s": 0,
+  "step_size_kb": 0,
+  "errors": [
+    "Validation: 1 errors"
+  ],
+  "metadata_sections": []
+}

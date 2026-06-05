@@ -179,7 +179,6 @@ def generate_validate_build_step(
 
             # Save spatial contract sidecar for Phase C constraint resolution
             if spatial_result.constraint_graph is not None:
-                import json
                 sc_path = out_dir / "spatial_contract.json"
                 sc_path.write_text(
                     json.dumps(

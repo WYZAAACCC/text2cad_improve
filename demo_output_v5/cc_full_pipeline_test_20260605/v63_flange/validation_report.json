@@ -1,0 +1,20 @@
+{
+  "ok": false,
+  "stage": "structure",
+  "issues": [
+    {
+      "code": "pydantic_validation_failed",
+      "message": "1 validation error for RawGcadDocument\nconstraints\n  Value error, constraints.expected_bbox_mm must be [x, y, z] [type=value_error, input_value={'require_step_file': Tru...x_runtime_seconds': 120}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error",
+      "severity": "error",
+      "stage": "structure",
+      "node_id": null,
+      "component_id": null,
+      "path": "/",
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure"
+  ]
+}

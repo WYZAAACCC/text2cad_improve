@@ -1,0 +1,17 @@
+{
+  "case_id": "v63_cross_block",
+  "stage": "STARTED",
+  "l1_ok": false,
+  "l2_ok": false,
+  "validation_ok": false,
+  "runtime_ok": false,
+  "step_ok": false,
+  "elapsed_l1_s": 0,
+  "elapsed_l2_s": 0,
+  "elapsed_runtime_s": 0,
+  "step_size_kb": 0,
+  "errors": [
+    "L1: Model returned no tool call. Ensure strict tool calling is enabled and the schema is valid."
+  ],
+  "metadata_sections": []
+}

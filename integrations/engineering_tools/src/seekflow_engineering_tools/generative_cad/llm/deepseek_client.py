@@ -49,13 +49,28 @@ class DeepSeekToolCaller:
             base_url=model_config.base_url,
         )
 
+        # v6.3: Transform Pydantic JSON Schema to DeepSeek strict-mode subset.
+        # DeepSeek requires additionalProperties as boolean, all properties in
+        # required, and no unsupported keywords (minLength, maxLength, etc.).
+        from seekflow_engineering_tools.generative_cad.authoring.strict_schema import (
+            to_deepseek_strict_schema,
+        )
+        strict_params = to_deepseek_strict_schema(tool_schema)
+
+        # v6.3: Use strict=False to avoid DeepSeek known bug (issue #1069)
+        # where strict=True drops the closing quote on first property key.
+        # DeepSeek v4 also requires tool_choice="auto" (not a specific function)
+        # because thinking mode does not support specific tool_choice (issue #1376).
+        # References:
+        # - https://github.com/deepseek-ai/DeepSeek-V3/issues/1069
+        # - https://github.com/deepseek-ai/DeepSeek-V3/issues/1376
         tools = [{
             "type": "function",
             "function": {
                 "name": tool_name,
                 "description": tool_description,
-                "strict": True,
-                "parameters": tool_schema,
+                "strict": False,
+                "parameters": strict_params,
             },
         }]
 
@@ -64,11 +79,9 @@ class DeepSeekToolCaller:
                 model=model_config.model,
                 messages=messages,
                 tools=tools,
-                tool_choice={
-                    "type": "function",
-                    "function": {"name": tool_name},
-                },
+                tool_choice="auto",
                 timeout=model_config.timeout_s,
+                extra_body={"thinking": {"type": "disabled"}},
                 **({"temperature": model_config.temperature} if model_config.temperature is not None else {}),
             )
         except Exception as exc:

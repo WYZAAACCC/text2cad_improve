@@ -167,17 +167,48 @@ def build_repair_prompt_v2(
     raw_document: dict,
     validation_report: dict,
     repair_state: dict,
+    *,
+    extra_diagnostics: dict | None = None,
 ) -> dict:
-    """Build a repair prompt for iterative patch generation."""
+    """Build a repair prompt for iterative patch generation.
+
+    v6.3: extra_diagnostics may contain 'compiler_middle_end',
+    'planning_report', and 'geometry_health_summary' sections
+    produced by the compiler middle-end. These are passed to the LLM
+    alongside validation issues for more informed repair decisions.
+    """
     from seekflow_engineering_tools.generative_cad.repair.patch import RepairPatchV2
+
+    user_parts = [
+        f"RawGcadDocument: {raw_document}",
+        f"Validation Issues: {validation_report.get('issues', [])}",
+    ]
+
+    # ── v6.3: Include compiler diagnostics in repair prompt ──
+    if extra_diagnostics:
+        compiler = extra_diagnostics.get("compiler_middle_end")
+        if compiler and compiler.get("diagnostics"):
+            user_parts.append(
+                f"Compiler Diagnostics (semantic + feasibility analysis): "
+                f"{compiler['diagnostics']}"
+            )
+        planning = extra_diagnostics.get("planning_report")
+        if planning and planning.get("issues"):
+            user_parts.append(
+                f"Planning Warnings (optimization opportunities): "
+                f"{planning['issues']}"
+            )
+        health = extra_diagnostics.get("geometry_health_summary")
+        if health:
+            user_parts.append(
+                f"Geometry Health Summary: {health}"
+            )
+
+    user_parts.append(f"Repair State: {repair_state}")
 
     return {
         "system": REPAIR_PATCH_SYSTEM_PROMPT_V2,
-        "user": (
-            f"RawGcadDocument: {raw_document}\n\n"
-            f"Validation Issues: {validation_report.get('issues', [])}\n\n"
-            f"Repair State: {repair_state}"
-        ),
+        "user": "\n\n".join(user_parts),
         "output_schema": RepairPatchV2.model_json_schema(),
     }
 
@@ -419,6 +450,21 @@ def build_level2_tool(contracts: dict[str, dict] | None = None) -> dict:
         for fname in ["distance_mm", "radius_mm"]:
             if fname in ps_props:
                 ps_props[fname]["description"] = "尺寸(mm)。必须是正数，且不超出零件边界。"
+
+        # ── v6.3: DimExpr support note ──
+        # Add DimExpr hint to the first numeric field in each params model
+        numeric_keys = ["diameter_mm", "width_mm", "pcd_mm", "hole_dia_mm",
+                        "inner_dia_mm", "outer_dia_mm", "depth_mm", "slot_depth_mm",
+                        "distance_mm", "radius_mm", "thickness_mm", "length_mm",
+                        "height_mm", "spacing_x_mm", "spacing_y_mm",
+                        "spacing_u_mm", "spacing_v_mm"]
+        for nk in numeric_keys:
+            if nk in ps_props and "DimExpr" not in str(ps_props[nk].get("description", "")):
+                current = ps_props[nk].get("description", "尺寸(mm)")
+                ps_props[nk]["description"] = (
+                    f"{current} 也可用DimExpr表达式代替具体数值，如: "
+                    r'{"kind":"dim_expr","op":"ref","args":[{"root_kind":"node","root_id":"n1","path":["radius_max_mm"]}]}'
+                )
         for fname in ["count", "count_x", "count_y", "count_u", "count_v"]:
             if fname in ps_props:
                 ps_props[fname]["description"] = "数量。必须是>=1的整数。"

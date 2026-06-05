@@ -40,6 +40,13 @@ class RuntimeContext:
     placed_component_bboxes: dict[str, Any] = field(default_factory=dict)
     # v6.3: Enforce strict geometry semantics (reject ambiguous legacy hole params)
     strict_geometry_semantics: bool = True
+    # v6.3: Compiler middle-end diagnostics (populated by CompilerModule)
+    compiler_diagnostics: list[dict[str, Any]] = field(default_factory=list)
+    # v6.3: Planning report from compiler middle-end (Phase 3+)
+    planning_report: dict[str, Any] | None = None
+    # v6.3 Phase 2: Per-operation geometry health records
+    # Key: "{node_id}.{output_name}", Value: GeometryHealth.model_dump()
+    geometry_health_log: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     @property
     def geometry_runtime_name(self) -> str:

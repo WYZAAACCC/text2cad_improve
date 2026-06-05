@@ -131,11 +131,15 @@ class TestOperationResultBehavior:
             execute_operation(node=node, op_spec=op_spec, ctx=ctx)
 
     def test_v1_dict_adapter_allowed_for_builtin_ops(self, tmp_path):
-        """Legacy dict handler continues working through adapter."""
+        """Legacy dict handler continues working through adapter.
+
+        Uses required=False to avoid Phase 2 geometry health enforcement
+        on the plain object() mock solid.
+        """
         from seekflow_engineering_tools.generative_cad.dialects.executor import execute_operation
         from seekflow_engineering_tools.generative_cad.runtime.handles import SolidHandle
 
-        node = self._canonical_node()
+        node = self._canonical_node(required=False, degradation_policy="may_skip_with_warning")
         ctx = self._runtime_context(tmp_path)
         sid = "solid:c1:n1:body"
         ctx.object_store.put_solid(SolidHandle(id=sid, type="solid"), object())
@@ -149,14 +153,18 @@ class TestOperationResultBehavior:
         assert result.outputs == {"body": sid}
 
     def test_v2_result_metrics_warnings_propagate(self, tmp_path):
-        """OperationResult metrics, warnings, degraded_features flow into ctx."""
+        """OperationResult metrics, warnings, degraded_features flow into ctx.
+
+        Uses required=False to avoid Phase 2 geometry health enforcement
+        on the plain object() mock solid.
+        """
         from seekflow_engineering_tools.generative_cad.dialects.executor import execute_operation
         from seekflow_engineering_tools.generative_cad.dialects.results import (
             OperationResult, OperationOutput, OperationMetric,
         )
         from seekflow_engineering_tools.generative_cad.runtime.handles import SolidHandle
 
-        node = self._canonical_node()
+        node = self._canonical_node(required=False, degradation_policy="may_skip_with_warning")
         ctx = self._runtime_context(tmp_path)
         sid = "solid:c1:n1:body"
         ctx.object_store.put_solid(SolidHandle(id=sid, type="solid"), object())

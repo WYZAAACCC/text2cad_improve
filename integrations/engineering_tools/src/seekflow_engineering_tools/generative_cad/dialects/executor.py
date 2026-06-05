@@ -70,7 +70,10 @@ def execute_operation(
     _validate_operation_result(node=node, op_spec=op_spec, result=result, ctx=ctx)
 
     # Runtime geometry validation (BRepCheck, closed solid, positive volume)
-    if any(e in ("creates_solid", "modifies_solid") for e in op_spec.effects):
+    # v6.3: run on ALL geometry-modifying ops, not just creates_solid/modifies_solid.
+    # cuts_material and adds_material also produce/modify solids and must be checked.
+    if any(e in ("creates_solid", "modifies_solid", "cuts_material", "adds_material")
+           for e in op_spec.effects):
         _validate_geometry(node=node, result=result, ctx=ctx)
 
     # Propagate side-channel data
@@ -135,10 +138,16 @@ def _validate_operation_result(
 
 
 def _validate_geometry(*, node, result, ctx) -> None:
-    """Run BRepCheck + closed solid + volume checks on geometry-producing ops."""
+    """Run BRepCheck + closed solid + volume checks on geometry-producing ops.
+
+    v6.3 Phase 2: Records GeometryHealth in ctx.geometry_health_log.
+    If health.status == "error" and node.required is True, raises RuntimeError.
+    Legacy warnings behavior is preserved for backward compatibility.
+    """
     try:
-        from seekflow_engineering_tools.generative_cad.validation.geometry_validate import (
-            validate_solid_geometry,
+        from seekflow_engineering_tools.generative_cad.runtime.health import (
+            GeometryHealth,
+            inspect_geometry_health,
         )
         for output in result.outputs:
             if output.value_type != "solid":
@@ -148,17 +157,47 @@ def _validate_geometry(*, node, result, ctx) -> None:
             except KeyError:
                 ctx.warnings.append(f"Geometry check skipped on '{node.id}': handle not found")
                 continue
-            geo_report = validate_solid_geometry(solid, ctx.tolerance)
-            for issue in geo_report.issues:
-                if issue.severity == "error":
-                    ctx.warnings.append(
-                        f"Geometry error on '{node.id}.{output.name}': [{issue.code}] {issue.message}"
-                    )
-                else:
-                    ctx.warnings.append(
-                        f"Geometry warning on '{node.id}.{output.name}': [{issue.code}] {issue.message}"
+
+            # ── v6.3 Phase 2: Structured health assessment ──
+            try:
+                health = inspect_geometry_health(
+                    solid_obj=solid,
+                    geometry_runtime=ctx.geometry_runtime,
+                    tolerance=ctx.tolerance,
+                )
+            except Exception as exc:
+                health = GeometryHealth(
+                    status="unknown",
+                    issues=[{"code": "health_inspection_failed", "message": str(exc), "severity": "warning"}],
+                )
+
+            # Record in context
+            health_key = f"{node.id}.{output.name}"
+            ctx.geometry_health_log[health_key] = health.model_dump()
+
+            # Log issues as warnings (preserve legacy behavior)
+            for issue in health.issues:
+                prefix = "Geometry error" if issue.get("severity") == "error" else "Geometry warning"
+                ctx.warnings.append(
+                    f"{prefix} on '{node.id}.{output.name}': [{issue.get('code', '?')}] {issue.get('message', '?')}"
+                )
+
+            # ── v6.3 Phase 2: required feature health enforcement ──
+            if health.status == "error":
+                if getattr(node, "required", True):
+                    raise RuntimeError(
+                        f"Required operation '{node.op}' on node '{node.id}' "
+                        f"produced unhealthy geometry (status={health.status}): "
+                        f"closed={health.closed}, volume={health.volume_mm3}, "
+                        f"bodies={health.body_count}. "
+                        f"Issues: {[i.get('code') for i in health.issues]}. "
+                        f"Mark the node as required=False with "
+                        f"degradation_policy='may_skip_with_warning' if this "
+                        f"defect is acceptable."
                     )
     except ImportError:
         pass  # OCCT bindings not available — skip geometry validation
+    except RuntimeError:
+        raise  # Re-raise required enforcement errors
     except Exception as e:
         ctx.warnings.append(f"Geometry validation skipped on '{node.id}': {e}")

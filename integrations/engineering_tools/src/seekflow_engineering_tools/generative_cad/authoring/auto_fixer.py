@@ -247,6 +247,10 @@ def auto_fix_with_report(
             ))
 
     # Fix order matters — later fixes may depend on earlier ones
+    _apply_fix("fix_missing_ids", lambda d: _fix_missing_ids(d))
+    _apply_fix("remove_extra_top_fields", lambda d: _remove_extra_top_fields(d))
+    _apply_fix("fix_selected_dialects", lambda d: _fix_selected_dialects(d))
+    _apply_fix("fix_missing_position_mm", lambda d: _fix_missing_position_mm(d))
     _apply_fix("fix_output_names", lambda d: _fix_output_names(d))
     _apply_fix("fix_input_output_names", lambda d: _fix_input_output_names(d))
     _apply_fix("fix_op_versions", lambda d: _fix_op_versions(d, dialect_registry))
@@ -556,12 +560,24 @@ def _fix_unknown_ops(doc: dict, dialect_registry=None) -> dict:
     for node in nodes:
         did = node.get("dialect", "")
         op = node.get("op", "")
+        # v6.3: Normalize op_version — LLM often outputs "2" instead of "1.0.0"
+        ver = node.get("op_version")
+        if ver and ver not in ("1.0.0", "1.0", "0.2.0"):
+            # Try to normalize: "2" → "1.0.0", "v2" → "1.0.0"
+            node["op_version"] = "1.0.0"
+
         # Allow nodes with known dialects even if op lookup fails
         is_valid = (did, op) in valid_ops
         if not is_valid:
-            # Try matching: if op name exists in ANY dialect, keep it
-            found = any((d, op) in valid_ops for d in dialect_registry.list_ids())
-            if not found:
+            # Try matching: if op name exists in ANY dialect, keep it and fix dialect
+            found_dialect = None
+            for d in dialect_registry.list_ids():
+                if (d, op) in valid_ops:
+                    found_dialect = d
+                    break
+            if found_dialect:
+                node["dialect"] = found_dialect
+            else:
                 removed_ids.add(node.get("id", ""))
                 continue
         kept_nodes.append(node)
@@ -819,6 +835,74 @@ def _fill_default_params(doc: dict) -> dict:
         for k, v in defaults.get(op, {}).items():
             if k not in node.get("params", {}):
                 node["params"][k] = v
+    return doc
+
+
+def _fix_missing_ids(doc: dict) -> dict:
+    """Fix missing document_id / part_name (DeepSeek v4-pro common omission)."""
+    if not doc.get("document_id") or not str(doc.get("document_id", "")).strip():
+        # Generate from part_name or use a safe default
+        part = str(doc.get("part_name", "")).strip()
+        doc["document_id"] = f"gcad_{part}" if part else "gcad_autofix"
+    if not doc.get("part_name") or not str(doc.get("part_name", "")).strip():
+        doc["part_name"] = "autofix_part"
+    return doc
+
+
+def _remove_extra_top_fields(doc: dict) -> dict:
+    """Remove top-level fields not in RawGcadDocument schema (LLM hallucination)."""
+    ALLOWED_TOP_KEYS = {
+        "schema_version", "document_id", "part_name", "units", "trust_level",
+        "selected_dialects", "components", "nodes", "constraints", "safety",
+        "llm_validation_hints",
+    }
+    for key in list(doc.keys()):
+        if key not in ALLOWED_TOP_KEYS:
+            del doc[key]
+    return doc
+
+
+def _fix_missing_position_mm(doc: dict) -> dict:
+    """Fix cut_hole nodes: add default position_mm, strip V2-only fields.
+
+    DeepSeek v4-pro often generates V2-style params (target_face, center_uv_mm,
+    normal_axis) for legacy V1 cut_hole ops. This strips those V2 fields.
+    """
+    V2_ONLY_FIELDS = {"target_face", "center_uv_mm", "normal_axis",
+                      "origin_mode", "through_mode", "depth_mm",
+                      "start_offset_mm", "placement", "scope"}
+    for node in doc.get("nodes", []):
+        op = node.get("op", "")
+        if op in ("cut_hole",):
+            params = node.get("params", {})
+            # Strip V2-only fields
+            for key in V2_ONLY_FIELDS:
+                params.pop(key, None)
+            # Set defaults for required V1 fields
+            if "position_mm" not in params:
+                params["position_mm"] = [0, 0]
+            if "axis" not in params:
+                params["axis"] = "Z"
+            if "diameter_mm" not in params and "dia_mm" in params:
+                params["diameter_mm"] = params.pop("dia_mm")
+            if "diameter_mm" not in params:
+                params["diameter_mm"] = 5.0  # sensible default
+    return doc
+
+
+def _fix_selected_dialects(doc: dict) -> dict:
+    """Fix missing/invalid selected_dialects (LLM omission)."""
+    if not doc.get("selected_dialects"):
+        # Reconstruct from nodes
+        dialects_in_use = set()
+        for node in doc.get("nodes", []):
+            d = node.get("dialect", "")
+            if d:
+                dialects_in_use.add(d)
+        if dialects_in_use:
+            doc["selected_dialects"] = [
+                {"dialect": d, "version": "0.2.0"} for d in sorted(dialects_in_use)
+            ]
     return doc
 
 
