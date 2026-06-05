@@ -1,0 +1,21 @@
+{
+  "part_intent": {
+    "object_type": "stepped_shaft",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "general_mechanical"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "3-segment stepped shaft is a rotationally symmetric solid built from a radial-axial profile. revolve_profile covers the stepped profile, cut_center_bore covers the 10mm through-hole. Single axisymmetric body, no assembly needed."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Output is reference geometry only — not manufacturing-ready, not certified, not structurally validated."
+  ]
+}
