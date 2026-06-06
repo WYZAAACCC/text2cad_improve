@@ -57,13 +57,13 @@ class DeepSeekToolCaller:
         )
         strict_params = to_deepseek_strict_schema(tool_schema)
 
-        # v6.3: Use strict=False to avoid DeepSeek known bug (issue #1069)
-        # where strict=True drops the closing quote on first property key.
-        # DeepSeek v4 also requires tool_choice="auto" (not a specific function)
-        # because thinking mode does not support specific tool_choice (issue #1376).
+        # v6.3: Use strict=False to avoid DeepSeek known bug (issue #1069).
+        # Use tool_choice="required" to force the model to always call the tool.
+        # With thinking disabled (extra_body), tool_choice="required" is supported
+        # on deepseek-v4-pro (the issue #1376 only affects thinking mode).
         # References:
-        # - https://github.com/deepseek-ai/DeepSeek-V3/issues/1069
-        # - https://github.com/deepseek-ai/DeepSeek-V3/issues/1376
+        # - https://github.com/deepseek-ai/DeepSeek-V3/issues/1069 (strict JSON bug)
+        # - https://github.com/deepseek-ai/DeepSeek-V3/issues/1376 (thinking+tools)
         tools = [{
             "type": "function",
             "function": {
@@ -79,7 +79,7 @@ class DeepSeekToolCaller:
                 model=model_config.model,
                 messages=messages,
                 tools=tools,
-                tool_choice="auto",
+                tool_choice="required",
                 timeout=model_config.timeout_s,
                 extra_body={"thinking": {"type": "disabled"}},
                 **({"temperature": model_config.temperature} if model_config.temperature is not None else {}),

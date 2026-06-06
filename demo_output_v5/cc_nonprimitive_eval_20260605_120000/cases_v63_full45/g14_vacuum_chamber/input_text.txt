@@ -1,0 +1,1 @@
+真空腔体外径200内径180长400,单位mm. 前后盖板220x220x20. 前盖观察窗直径100. 后盖2个直径50泵接口. 用axisymmetric+sketch_extrude+composition.

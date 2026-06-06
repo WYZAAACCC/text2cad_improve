@@ -1,0 +1,37 @@
+{
+  "part_intent": {
+    "object_type": "variable_cross_section_duct",
+    "dominant_geometry": "lofted_transition",
+    "engineering_domain": "ductwork_hvac"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0",
+      "reason": "Three cross-sections (circle D100, rectangle 120x80, circle D80) with axial spacing 150 mm require a loft operation across sections — loft_sweep is the only dialect that supports loft."
+    },
+    {
+      "dialect": "sketch_profile",
+      "version": "0.2.0",
+      "reason": "Non-circular intermediate section (rectangle 120x80) requires a 2D profile sketch; sketch_profile provides the sketch phase to define this cross-section."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "Three independent sections must be positioned along the loft axis and combined; composition provides translate/place and boolean operations if needed."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [
+    {
+      "skill_id": "duct_cross_section_transition",
+      "skill_version": "0.1.0",
+      "reason": "Variable cross-section duct from circular to rectangular to circular is a standard HVAC transition fitting."
+    }
+  ],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Loft output is reference geometry only — not manufacturing-ready, not certified, not suitable for production without further validation."
+  ]
+}

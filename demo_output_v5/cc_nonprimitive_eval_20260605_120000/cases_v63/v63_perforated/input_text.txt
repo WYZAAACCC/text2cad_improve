@@ -1,0 +1,1 @@
+设计一块多孔安装板200x150x10mm。板上需要规则的孔阵列。使用sketch_extrude方言的cut_hole_pattern_linear操作，hole_dia_mm=3, count_x=20, count_y=15, spacing_x_mm=8, spacing_y_mm=8。单位mm。

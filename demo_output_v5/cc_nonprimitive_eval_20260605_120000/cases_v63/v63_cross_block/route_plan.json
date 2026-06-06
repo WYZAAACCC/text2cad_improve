@@ -1,0 +1,21 @@
+{
+  "part_intent": {
+    "object_type": "test_block",
+    "dominant_geometry": "prismatic_block",
+    "engineering_domain": "general_mechanical"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "正方体基体通过extrude_rectangle生成；顶面通孔、前面侧孔、左右面侧孔均可通过cut_hole和cut_hole_pattern_linear表达，完全覆盖请求的棱柱加工测试块几何"
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "此为参考几何，非制造就绪模型；无公差/表面粗糙度/加工工艺信息"
+  ]
+}

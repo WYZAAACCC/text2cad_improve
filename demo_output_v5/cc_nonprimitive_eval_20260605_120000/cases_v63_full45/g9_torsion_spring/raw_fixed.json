@@ -1,0 +1,69 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "helical_torsion_spring_15coil",
+  "part_name": "15圈扭簧",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "spring",
+      "owner_dialect": "loft_sweep",
+      "kind_hint": "helical_spring",
+      "root_node": "n_helix"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_helix",
+      "component": "spring",
+      "dialect": "loft_sweep",
+      "op": "helix_sweep",
+      "op_version": "1.0.0",
+      "phase": "helix",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "radius_mm": 60,
+        "height_mm": 225,
+        "pitch_mm": 15,
+        "profile_radius_mm": 4,
+        "turns": 15,
+        "variable_pitch": false,
+        "start_pitch_mm": null,
+        "end_pitch_mm": null
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {}
+}

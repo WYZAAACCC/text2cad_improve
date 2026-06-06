@@ -1,0 +1,21 @@
+{
+  "part_intent": {
+    "object_type": "3D pipe/tube",
+    "dominant_geometry": "swept circular profile along a 6-point 3D path",
+    "engineering_domain": "general mechanical / piping"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0",
+      "reason": "The loft_sweep dialect supports create_sweep_path and sweep_profile operations needed to sweep a circular cross-section along a multi-point 3D path."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only — not manufacturing-ready, not certified, not validated for structural integrity."
+  ]
+}

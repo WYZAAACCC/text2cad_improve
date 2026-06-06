@@ -1,0 +1,23 @@
+{
+  "ok": false,
+  "stage": "params",
+  "issues": [
+    {
+      "code": "invalid_params",
+      "message": "node 'n_ball_revolve' params invalid for op 'revolve_profile': 2 validation errors for RevolveProfileParams\nprofile_stations.0.r_mm\n  Value error, Dimension must be positive, got 0 [type=value_error, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error\nprofile_stations.3.r_mm\n  Value error, Dimension must be positive, got 0 [type=value_error, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_ball_revolve",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "root_terminal",
+    "registry",
+    "params"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "part_intent": {
+    "object_type": "equipment_enclosure",
+    "dominant_geometry": "prismatic_shell",
+    "engineering_domain": "general_mechanical"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "Prismatic enclosure with extrude_rectangle, shell_body, rectangular opening, and mounting holes — all match sketch_extrude_base main_ops."
+    },
+    {
+      "dialect": "shell_housing",
+      "version": "0.2.0",
+      "reason": "Shell body thickness 4mm requires shell_housing dialect for hollowing the extruded solid."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only — not manufacturing-ready, not structurally validated."
+  ]
+}

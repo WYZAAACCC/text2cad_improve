@@ -1,0 +1,141 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "perforated-plate-200x150x10",
+  "part_name": "perforated_plate_200x150x10",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+    }
+  ],
+  "components": [
+    {
+      "id": "plate",
+      "owner_dialect": "sketch_extrude",
+      "kind_hint": "plate",
+      "root_node": "n2",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n1",
+      "component": "plate",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:plate:n1:body"
+        }
+      ],
+      "params": {
+        "width_mm": 200,
+        "height_mm": 150,
+        "depth_mm": 10,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0
+      },
+      "typed_params": {
+        "width_mm": 200.0,
+        "height_mm": 150.0,
+        "depth_mm": 10.0,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0.0
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n2",
+      "component": "plate",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_pattern_linear",
+      "op_version": "1.0.0",
+      "phase": "hole_pattern",
+      "inputs": [
+        {
+          "producer_node": "n1",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:plate:n2:body"
+        }
+      ],
+      "params": {
+        "hole_dia_mm": 3,
+        "count_x": 20,
+        "count_y": 15,
+        "spacing_x_mm": 8,
+        "spacing_y_mm": 8,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "hole_dia_mm": 3.0,
+        "count_x": 20,
+        "count_y": 15,
+        "spacing_x_mm": 8.0,
+        "spacing_y_mm": 8.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": [
+      200.0,
+      150.0,
+      10.0
+    ],
+    "bbox_tolerance_mm": 2.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:337b4c3f333978520912f960caafb853a395e632c5bdce35f15b8e47d4e8e8c2",
+  "raw_graph_hash": "sha256:ab41f7cc2b7f79d59ccfb3ef34e432406e141805be9b2cc37aa37ad6c66e0991"
+}

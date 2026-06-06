@@ -1,0 +1,26 @@
+{
+  "part_intent": {
+    "object_type": "robot_arm_segment",
+    "dominant_geometry": "axisymmetric_tube_with_flanges",
+    "engineering_domain": "robotics_structural"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "Tube body (OD130/ID110) and both end flanges (OD180, thickness25) share a common axis — revolve_profile for tube+flanges, plus cut_circular_hole_pattern for the M14 holes on PCD150 at each flange."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "Multiple independent components: central tube body and two end flanges need to be combined. Boolean union ensures single solid; circular_pattern handles 8x M14 bolt holes per flange."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only. Not manufacturing-ready, not structurally validated, not certified for production use."
+  ]
+}

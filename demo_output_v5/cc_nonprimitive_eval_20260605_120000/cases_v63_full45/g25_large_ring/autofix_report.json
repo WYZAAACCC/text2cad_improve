@@ -1,0 +1,25 @@
+{
+  "applied": true,
+  "before_hash": "sha256:b8f42cc9c81c276fdea629770d19610162b58e5e9efca52d9e68239687f9b428",
+  "after_hash": "sha256:5dd30617cea5051c9df12fa48aefdc4b735d4b43f45787e34ac0ece52eabf861",
+  "entries": [
+    {
+      "rule_id": "fix_profile_stations",
+      "path": "/",
+      "old_value": "<hash:sha256:b8f42>",
+      "new_value": "<hash:sha256:1add2>",
+      "severity": "semantic_guess",
+      "confidence": 0.85,
+      "message": "Applied fix: fix_profile_stations"
+    },
+    {
+      "rule_id": "fix_null_hints",
+      "path": "/",
+      "old_value": "<hash:sha256:1add2>",
+      "new_value": "<hash:sha256:5dd30>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_null_hints"
+    }
+  ]
+}

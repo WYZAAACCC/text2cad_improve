@@ -1,0 +1,337 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "concept_geometry",
+    "document_id": "perforated-plate-200x150x10",
+    "part_name": "perforated_plate_200x150x10",
+    "selected_dialects": [
+      {
+        "dialect": "sketch_extrude",
+        "version": "0.2.0",
+        "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "n1",
+        "dialect": "sketch_extrude",
+        "op": "extrude_rectangle",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n2",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole_pattern_linear",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:ab41f7cc2b7f79d59ccfb3ef34e432406e141805be9b2cc37aa37ad6c66e0991",
+    "canonical_graph_hash": "sha256:337b4c3f333978520912f960caafb853a395e632c5bdce35f15b8e47d4e8e8c2",
+    "paths": {
+      "canonical_ir_path": "<in_memory>",
+      "validation_seed_path": "<in_memory>",
+      "step_path": "E:\\auto_detection_process\\demo_output_v5\\cc_nonprimitive_eval_20260605_120000\\cases_v63_full45\\v4_perforated\\output.step",
+      "metadata_path": "E:\\auto_detection_process\\demo_output_v5\\cc_nonprimitive_eval_20260605_120000\\cases_v63_full45\\v4_perforated\\output.metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:9012d4a9f841b772e500e377ef324ba6a0ac647e6355ab3e686369b73ef76e42",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [],
+    "degraded_features": [],
+    "operation_metrics": [
+      {
+        "node_id": "n1",
+        "op": "extrude_rectangle",
+        "status": "ok"
+      },
+      {
+        "node_id": "n2",
+        "op": "cut_hole_pattern_linear",
+        "status": "ok"
+      }
+    ],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {
+        "structure": {
+          "ok": true,
+          "stage": "structure",
+          "issues": [],
+          "stages_run": [
+            "structure"
+          ]
+        },
+        "root_terminal": {
+          "ok": true,
+          "stage": "structure",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "root_terminal"
+          ]
+        },
+        "registry": {
+          "ok": true,
+          "stage": "registry",
+          "issues": [],
+          "stages_run": [
+            "registry"
+          ]
+        },
+        "params": {
+          "ok": true,
+          "stage": "params",
+          "issues": [],
+          "stages_run": [
+            "params"
+          ]
+        },
+        "ownership": {
+          "ok": true,
+          "stage": "ownership",
+          "issues": [],
+          "stages_run": [
+            "ownership"
+          ]
+        },
+        "graph": {
+          "ok": true,
+          "stage": "graph",
+          "issues": [],
+          "stages_run": [
+            "graph"
+          ]
+        },
+        "typecheck": {
+          "ok": true,
+          "stage": "typecheck",
+          "issues": [],
+          "stages_run": [
+            "typecheck"
+          ]
+        },
+        "phase": {
+          "ok": true,
+          "stage": "phase",
+          "issues": [],
+          "stages_run": [
+            "phase"
+          ]
+        },
+        "composition": {
+          "ok": true,
+          "stage": "composition",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "root_terminal",
+            "registry",
+            "params",
+            "ownership",
+            "graph",
+            "typecheck",
+            "phase",
+            "composition"
+          ]
+        },
+        "hole_semantics": {
+          "ok": true,
+          "stage": "geometry_preflight",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "root_terminal",
+            "registry",
+            "params",
+            "ownership",
+            "graph",
+            "typecheck",
+            "phase",
+            "composition",
+            "hole_semantics"
+          ]
+        },
+        "safety": {
+          "ok": true,
+          "stage": "safety",
+          "issues": [],
+          "stages_run": [
+            "safety"
+          ]
+        }
+      },
+      "canonicalize": {
+        "ok": true,
+        "stage": "canonicalize",
+        "issues": [],
+        "stages_run": [
+          "canonicalize"
+        ]
+      },
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": true,
+      "stage": "dialect_semantics",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "root_terminal",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "hole_semantics",
+        "safety",
+        "canonicalize",
+        "dialect_semantics"
+      ]
+    },
+    "geometry_preflight": {
+      "ok": true,
+      "stage": "geometry_preflight",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "root_terminal",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "hole_semantics",
+        "safety",
+        "canonicalize",
+        "dialect_semantics",
+        "geometry_preflight"
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "geometry_postcheck": {
+      "ok": true,
+      "volume_mm3": 278794.24958827294,
+      "n_solids": 1,
+      "bbox_mm": [
+        200.0,
+        150.0,
+        10.0
+      ],
+      "closed": false,
+      "is_valid_solid": false,
+      "errors": [],
+      "warnings": []
+    },
+    "compiler_middle_end": {
+      "ok": true,
+      "passes_run": [
+        "fact_propagation",
+        "planning"
+      ],
+      "diagnostics": [
+        {
+          "stage": "planning",
+          "code": "large_pattern_risk",
+          "message": "Large linear hole pattern on node 'n2': total=300 (x=20, y=15) >= 120.",
+          "severity": "warning",
+          "node_id": "n2",
+          "component_id": "plate",
+          "details": {
+            "count_x": 20,
+            "count_y": 15,
+            "total": 300
+          }
+        }
+      ]
+    },
+    "geometry_health_summary": {
+      "ok": true,
+      "total_ops_checked": 2,
+      "errors": 0,
+      "warnings": 2,
+      "entries": {
+        "n1.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 300000.0,
+          "body_count": 1
+        },
+        "n2.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 278794.24958827294,
+          "body_count": 1
+        }
+      }
+    },
+    "planning_report": {
+      "ok": true,
+      "issues": [
+        {
+          "code": "large_pattern_risk",
+          "severity": "warning",
+          "message": "Large linear hole pattern on node 'n2': total=300 (x=20, y=15) >= 120.",
+          "node_id": "n2",
+          "component_id": "plate",
+          "suggestion": "Reduce pattern dimensions or split across multiple patterns.",
+          "details": {
+            "count_x": 20,
+            "count_y": 15,
+            "total": 300
+          }
+        }
+      ],
+      "optimization_opportunities": []
+    }
+  }
+}

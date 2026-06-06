@@ -1,0 +1,1 @@
+设计六面钻孔块100x100x100mm,单位mm. extrude_rectangle width_mm=100 height_mm=100 depth_mm=100 centered=true. 顶面cut_hole直径20 axis=Z. 底面cut_hole直径15 axis=Z偏移[15,0]. 前面2个cut_hole直径12 axis=Y位置[20,20]和[-20,20]. 右面左面cut_hole直径10 axis=X.

@@ -1,0 +1,1 @@
+大直径环外径1000内径900厚30,单位mm. revolve_profile r=500 z=0-30. cut_center_bore diameter_mm=900. cut_circular_hole_pattern count=36 pcd_mm=950 hole_dia_mm=15.

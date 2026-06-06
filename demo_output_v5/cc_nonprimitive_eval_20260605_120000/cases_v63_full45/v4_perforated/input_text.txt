@@ -1,0 +1,1 @@
+设计多孔板200x150x10mm,单位mm. extrude_rectangle width_mm=200 height_mm=150 depth_mm=10 centered=true. cut_hole_pattern_linear hole_dia_mm=3 count_x=20 count_y=15 spacing_x_mm=8 spacing_y_mm=8.

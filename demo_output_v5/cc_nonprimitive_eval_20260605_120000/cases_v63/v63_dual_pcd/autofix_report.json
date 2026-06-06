@@ -1,0 +1,25 @@
+{
+  "applied": true,
+  "before_hash": "sha256:6baed666e433215490f68110b1b4a7895b42ec322c5e75e0904fca5358a7a021",
+  "after_hash": "sha256:1126270da6a5f5c8d8159c1dfd10742f7abaea52db5cf96ff4a5a7012c83bb38",
+  "entries": [
+    {
+      "rule_id": "fix_root_node",
+      "path": "/",
+      "old_value": "<hash:sha256:6baed>",
+      "new_value": "<hash:sha256:c7ef8>",
+      "severity": "semantic_guess",
+      "confidence": 0.95,
+      "message": "Applied fix: fix_root_node"
+    },
+    {
+      "rule_id": "fix_null_hints",
+      "path": "/",
+      "old_value": "<hash:sha256:c7ef8>",
+      "new_value": "<hash:sha256:11262>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_null_hints"
+    }
+  ]
+}

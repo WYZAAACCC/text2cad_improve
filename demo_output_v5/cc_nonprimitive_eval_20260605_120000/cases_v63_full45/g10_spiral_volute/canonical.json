@@ -1,0 +1,197 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "a7f3c9e1-4b2d-4a8e-9c5f-6e7d8a9b0c12",
+  "part_name": "Involute Volute 8pt Spiral",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0",
+      "contract_hash": "sha256:e65e433162c910d28028903e691e48174e56dcc8b400a35f8f9f124adcc6ff17"
+    }
+  ],
+  "components": [
+    {
+      "id": "volute_comp",
+      "owner_dialect": "loft_sweep",
+      "kind_hint": "volute",
+      "root_node": "n_sweep",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_path",
+      "component": "volute_comp",
+      "dialect": "loft_sweep",
+      "op": "create_sweep_path",
+      "op_version": "1.0.0",
+      "phase": "path",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "curve",
+          "type": "curve",
+          "value_id": "curve:volute_comp:n_path:curve"
+        }
+      ],
+      "params": {
+        "path_points": [
+          {
+            "x_mm": 0,
+            "y_mm": 0,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 15,
+            "y_mm": 8,
+            "z_mm": 2
+          },
+          {
+            "x_mm": 28,
+            "y_mm": 20,
+            "z_mm": 4
+          },
+          {
+            "x_mm": 38,
+            "y_mm": 36,
+            "z_mm": 6
+          },
+          {
+            "x_mm": 44,
+            "y_mm": 56,
+            "z_mm": 8
+          },
+          {
+            "x_mm": 46,
+            "y_mm": 78,
+            "z_mm": 10
+          },
+          {
+            "x_mm": 44,
+            "y_mm": 102,
+            "z_mm": 12
+          },
+          {
+            "x_mm": 38,
+            "y_mm": 128,
+            "z_mm": 14
+          }
+        ]
+      },
+      "typed_params": {
+        "path_points": [
+          {
+            "x_mm": 0.0,
+            "y_mm": 0.0,
+            "z_mm": 0.0
+          },
+          {
+            "x_mm": 15.0,
+            "y_mm": 8.0,
+            "z_mm": 2.0
+          },
+          {
+            "x_mm": 28.0,
+            "y_mm": 20.0,
+            "z_mm": 4.0
+          },
+          {
+            "x_mm": 38.0,
+            "y_mm": 36.0,
+            "z_mm": 6.0
+          },
+          {
+            "x_mm": 44.0,
+            "y_mm": 56.0,
+            "z_mm": 8.0
+          },
+          {
+            "x_mm": 46.0,
+            "y_mm": 78.0,
+            "z_mm": 10.0
+          },
+          {
+            "x_mm": 44.0,
+            "y_mm": 102.0,
+            "z_mm": 12.0
+          },
+          {
+            "x_mm": 38.0,
+            "y_mm": 128.0,
+            "z_mm": 14.0
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_frame"
+      ],
+      "postconditions": []
+    },
+    {
+      "id": "n_sweep",
+      "component": "volute_comp",
+      "dialect": "loft_sweep",
+      "op": "sweep_profile",
+      "op_version": "1.0.0",
+      "phase": "sweep",
+      "inputs": [
+        {
+          "producer_node": "n_path",
+          "producer_component": null,
+          "output": "curve",
+          "resolved_type": "curve"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:volute_comp:n_sweep:body"
+        }
+      ],
+      "params": {
+        "shape": "circle",
+        "radius_mm": 12,
+        "width_mm": 10,
+        "height_mm": 10
+      },
+      "typed_params": {
+        "shape": "circle",
+        "radius_mm": 12.0,
+        "width_mm": 10.0,
+        "height_mm": 10.0
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": []
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:491c06a7cce516f3cb7e73de802ea91b8e12ad5a07d86a4e1c8776aea725cda7",
+  "raw_graph_hash": "sha256:979533699249f2727b7918b734bfdd6ced1a6f2a142e35eae93cb011e9150273"
+}

@@ -1,0 +1,33 @@
+{
+  "part_intent": {
+    "object_type": "precision_base_plate",
+    "dominant_geometry": "prismatic_plate_with_holes_and_boss",
+    "engineering_domain": "mechanical_mounting"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "Prismatic base plate 305x280x15mm with extrude_rectangle, corner holes, and center bearing boss — well within sketch_extrude_base typical parts (mounting plates, adapter plates)."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "Center bearing boss (diameter 40mm, inner bore 20mm, height 20mm) is a separate cylindrical feature that must be placed on the plate; composition enables placement and boolean union of the boss onto the base plate."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [
+    {
+      "skill_id": "plate_with_hole_pattern",
+      "skill_version": "0.2.0",
+      "reason": "Rectangular plate with four-corner hole pattern and central cylindrical boss is a standard prismatic machining pattern covered by sketch_extrude operations."
+    }
+  ],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Output is reference geometry only — not manufacturing-ready, not certified, not validated for structural integrity.",
+    "Tolerances, surface finish, and material are not specified; this model is for conceptual reference only."
+  ]
+}

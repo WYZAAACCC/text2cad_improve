@@ -1,0 +1,25 @@
+{
+  "applied": true,
+  "before_hash": "sha256:412c0cf0640ad4010174f41e61a3016cafb48806d782b52c7b02d058eee4f0ac",
+  "after_hash": "sha256:36353912521a163e1baa2743326122b52e54727f2e338b85c7e2432ee44bac4b",
+  "entries": [
+    {
+      "rule_id": "fix_v2_placement_scope",
+      "path": "/",
+      "old_value": "<hash:sha256:412c0>",
+      "new_value": "<hash:sha256:3a05d>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_v2_placement_scope"
+    },
+    {
+      "rule_id": "fix_null_hints",
+      "path": "/",
+      "old_value": "<hash:sha256:3a05d>",
+      "new_value": "<hash:sha256:36353>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_null_hints"
+    }
+  ]
+}

@@ -1,0 +1,131 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "a7f3c9e1-4b2d-4a8e-9c5f-6e7d8a9b0c12",
+  "part_name": "Involute Volute 8pt Spiral",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "volute_comp",
+      "owner_dialect": "loft_sweep",
+      "kind_hint": "volute",
+      "root_node": "n_sweep"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_path",
+      "component": "volute_comp",
+      "dialect": "loft_sweep",
+      "op": "create_sweep_path",
+      "op_version": "1.0.0",
+      "phase": "path",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "curve",
+          "type": "curve"
+        }
+      ],
+      "params": {
+        "path_points": [
+          {
+            "x_mm": 0,
+            "y_mm": 0,
+            "z_mm": 0
+          },
+          {
+            "x_mm": 15,
+            "y_mm": 8,
+            "z_mm": 2
+          },
+          {
+            "x_mm": 28,
+            "y_mm": 20,
+            "z_mm": 4
+          },
+          {
+            "x_mm": 38,
+            "y_mm": 36,
+            "z_mm": 6
+          },
+          {
+            "x_mm": 44,
+            "y_mm": 56,
+            "z_mm": 8
+          },
+          {
+            "x_mm": 46,
+            "y_mm": 78,
+            "z_mm": 10
+          },
+          {
+            "x_mm": 44,
+            "y_mm": 102,
+            "z_mm": 12
+          },
+          {
+            "x_mm": 38,
+            "y_mm": 128,
+            "z_mm": 14
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_sweep",
+      "component": "volute_comp",
+      "dialect": "loft_sweep",
+      "op": "sweep_profile",
+      "op_version": "1.0.0",
+      "phase": "sweep",
+      "inputs": [
+        {
+          "node": "n_path",
+          "output": "curve"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "shape": "circle",
+        "radius_mm": 12,
+        "width_mm": 10,
+        "height_mm": 10
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {}
+}

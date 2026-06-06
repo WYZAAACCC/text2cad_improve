@@ -1,0 +1,34 @@
+{
+  "applied": true,
+  "before_hash": "sha256:84140bae610814d0fdcd519c5df98ec903e81710e02905632eca547a88bccb2d",
+  "after_hash": "sha256:fb824b4267b0ac053ce968b34ad2a61b54760d4478d7f8ba1754ea9dbf50a788",
+  "entries": [
+    {
+      "rule_id": "fix_chamfer_zero_distance",
+      "path": "/",
+      "old_value": "<hash:sha256:84140>",
+      "new_value": "<hash:sha256:30f9a>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_chamfer_zero_distance"
+    },
+    {
+      "rule_id": "fix_root_node",
+      "path": "/",
+      "old_value": "<hash:sha256:30f9a>",
+      "new_value": "<hash:sha256:1f4e1>",
+      "severity": "semantic_guess",
+      "confidence": 0.95,
+      "message": "Applied fix: fix_root_node"
+    },
+    {
+      "rule_id": "fix_null_hints",
+      "path": "/",
+      "old_value": "<hash:sha256:1f4e1>",
+      "new_value": "<hash:sha256:fb824>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_null_hints"
+    }
+  ]
+}

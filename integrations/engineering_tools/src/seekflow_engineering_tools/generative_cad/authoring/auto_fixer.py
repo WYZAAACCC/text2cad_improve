@@ -250,7 +250,10 @@ def auto_fix_with_report(
     _apply_fix("fix_missing_ids", lambda d: _fix_missing_ids(d))
     _apply_fix("remove_extra_top_fields", lambda d: _remove_extra_top_fields(d))
     _apply_fix("fix_selected_dialects", lambda d: _fix_selected_dialects(d))
+    _apply_fix("fix_constraints", lambda d: _fix_constraints(d))
+    _apply_fix("fix_v2_placement_scope", lambda d: _fix_v2_placement_scope(d))
     _apply_fix("fix_missing_position_mm", lambda d: _fix_missing_position_mm(d))
+    _apply_fix("fix_chamfer_zero_distance", lambda d: _fix_chamfer_zero_distance(d))
     _apply_fix("fix_output_names", lambda d: _fix_output_names(d))
     _apply_fix("fix_input_output_names", lambda d: _fix_input_output_names(d))
     _apply_fix("fix_op_versions", lambda d: _fix_op_versions(d, dialect_registry))
@@ -887,6 +890,57 @@ def _fix_missing_position_mm(doc: dict) -> dict:
                 params["diameter_mm"] = params.pop("dia_mm")
             if "diameter_mm" not in params:
                 params["diameter_mm"] = 5.0  # sensible default
+    return doc
+
+
+def _fix_v2_placement_scope(doc: dict) -> dict:
+    """Fix cut_hole_v2/drill_hole_3d invalid placement.scope (LLM sets it to string/null)."""
+    for node in doc.get("nodes", []):
+        params = node.get("params", {})
+        placement = params.get("placement")
+        if isinstance(placement, dict):
+            # Fix scope: if not a dict, set to empty dict (FeatureScope default)
+            if "scope" in placement and not isinstance(placement["scope"], dict):
+                placement["scope"] = {}
+        # Fix top-level scope on V2 params
+        for key in ("scope",):
+            if key in params and not isinstance(params[key], dict):
+                params[key] = {}
+    return doc
+
+
+def _fix_chamfer_zero_distance(doc: dict) -> dict:
+    """Remove chamfer/fillet nodes with distance/radius <= 0 (LLM error).
+    Also handles negative distance_mm values."""
+    nodes = doc.get("nodes", [])
+    kept = []
+    for node in nodes:
+        op = node.get("op", "")
+        if op in ("apply_safe_chamfer", "apply_safe_fillet"):
+            params = node.get("params", {})
+            key = "distance_mm" if op == "apply_safe_chamfer" else "radius_mm"
+            val = params.get(key, 0)
+            if isinstance(val, (int, float)) and val <= 0:
+                continue  # Remove this node
+        kept.append(node)
+    if len(kept) < len(nodes):
+        doc["nodes"] = kept
+    return doc
+
+
+def _fix_constraints(doc: dict) -> dict:
+    """Fix invalid constraints fields (LLM often sets expected_bbox_mm to null/single number)."""
+    c = doc.get("constraints", {})
+    if isinstance(c, dict):
+        bbox = c.get("expected_bbox_mm")
+        if bbox is not None and not (isinstance(bbox, list) and len(bbox) == 3):
+            c["expected_bbox_mm"] = None  # Remove invalid bbox, make it optional
+        # Ensure required bool flags
+        for key in ("require_step_file", "require_metadata_sidecar", "require_closed_solid"):
+            if key in c and not isinstance(c[key], bool):
+                c[key] = True
+        if "expected_body_count" in c and not isinstance(c["expected_body_count"], int):
+            c["expected_body_count"] = 1
     return doc
 
 

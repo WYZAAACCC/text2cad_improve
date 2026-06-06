@@ -1,0 +1,1 @@
+离心叶轮,单位mm. 轮毂外径300内径40高35. 6个均布叶片厚5高20. 用axisymmetric+composition.

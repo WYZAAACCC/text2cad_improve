@@ -1,0 +1,21 @@
+{
+  "part_intent": {
+    "object_type": "mounting_plate",
+    "dominant_geometry": "prismatic_plate_with_hole_array",
+    "engineering_domain": "general_mechanical"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "Prismatic mounting plate with linear hole pattern — extrude_rectangle for base and cut_hole_pattern_linear for hole array are both in sketch_extrude main_ops."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only. Not for manufacturing or certification."
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "part_intent": {
+    "object_type": "heat_sink",
+    "dominant_geometry": "prismatic_plate_with_parallel_fins",
+    "engineering_domain": "thermal_management"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "Base plate and rectangular fins are prismatic; extrude_rectangle and linear pattern cover the core geometry."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "Fins must be positioned at 12mm pitch across the plate; composition handles linear_pattern_component and boolean_union of fin bodies."
+    },
+    {
+      "dialect": "sketch_profile",
+      "version": "0.2.0",
+      "reason": "6mm mounting holes at four corners require circular cut profiles on the base plate, covered by sketch_profile hole operations."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only; not validated for thermal performance, structural integrity, or manufacturing."
+  ]
+}

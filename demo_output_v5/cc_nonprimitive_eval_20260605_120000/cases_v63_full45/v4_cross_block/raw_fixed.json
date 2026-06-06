@@ -1,0 +1,322 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "6f_hole_block_100x100x100",
+  "part_name": "six_face_hole_block",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "block",
+      "owner_dialect": "sketch_extrude",
+      "kind_hint": "cuboid",
+      "root_node": "n_final"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_base",
+      "component": "block",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 100,
+        "height_mm": 100,
+        "depth_mm": 100,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_hole_top",
+      "component": "block",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_v2",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "n_base",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 20,
+        "placement": {
+          "target_face": "top",
+          "center_uv_mm": [
+            0,
+            0
+          ],
+          "normal_axis": "+Z",
+          "origin_mode": "face_center",
+          "through_mode": "through_all",
+          "depth_mm": null,
+          "start_offset_mm": 0,
+          "scope": {}
+        }
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_hole_bottom",
+      "component": "block",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_v2",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "n_hole_top",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 15,
+        "placement": {
+          "target_face": "bottom",
+          "center_uv_mm": [
+            15,
+            0
+          ],
+          "normal_axis": "-Z",
+          "origin_mode": "face_center",
+          "through_mode": "through_all",
+          "depth_mm": null,
+          "start_offset_mm": 0,
+          "scope": {}
+        }
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_hole_front_a",
+      "component": "block",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_v2",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "n_hole_bottom",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 12,
+        "placement": {
+          "target_face": "front",
+          "center_uv_mm": [
+            20,
+            20
+          ],
+          "normal_axis": "+Y",
+          "origin_mode": "face_center",
+          "through_mode": "through_all",
+          "depth_mm": null,
+          "start_offset_mm": 0,
+          "scope": {}
+        }
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_hole_front_b",
+      "component": "block",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_v2",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "n_hole_front_a",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 12,
+        "placement": {
+          "target_face": "front",
+          "center_uv_mm": [
+            -20,
+            20
+          ],
+          "normal_axis": "+Y",
+          "origin_mode": "face_center",
+          "through_mode": "through_all",
+          "depth_mm": null,
+          "start_offset_mm": 0,
+          "scope": {}
+        }
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_hole_right",
+      "component": "block",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_v2",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "n_hole_front_b",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 10,
+        "placement": {
+          "target_face": "right",
+          "center_uv_mm": [
+            0,
+            0
+          ],
+          "normal_axis": "+X",
+          "origin_mode": "face_center",
+          "through_mode": "through_all",
+          "depth_mm": null,
+          "start_offset_mm": 0,
+          "scope": {}
+        }
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_hole_left",
+      "component": "block",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_v2",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "n_hole_right",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 10,
+        "placement": {
+          "target_face": "left",
+          "center_uv_mm": [
+            0,
+            0
+          ],
+          "normal_axis": "-X",
+          "origin_mode": "face_center",
+          "through_mode": "through_all",
+          "depth_mm": null,
+          "start_offset_mm": 0,
+          "scope": {}
+        }
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_final",
+      "component": "block",
+      "dialect": "sketch_extrude",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "n_hole_left",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 2,
+        "target": "all_external_edges"
+      },
+      "required": false,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 2,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {}
+}

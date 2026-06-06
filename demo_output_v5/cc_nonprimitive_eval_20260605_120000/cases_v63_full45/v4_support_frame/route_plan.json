@@ -1,0 +1,31 @@
+{
+  "part_intent": {
+    "object_type": "four-column frame",
+    "dominant_geometry": "prismatic with cylindrical columns",
+    "engineering_domain": "structural_frame"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "Bottom plate 400x300x20 with corner mounting holes is a prismatic machined plate — extrude_rectangle + cut_hole cover the plate and 16mm holes."
+    },
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "Four cylindrical columns diameter 50 height 200 are axisymmetric solids — revolve_profile or equivalent covers each column."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "Four columns must be placed at corners and unioned with bottom plate and top plate — translate_solid/place_component + boolean_union across independent components."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only — not manufacturing-ready, not structurally validated."
+  ]
+}

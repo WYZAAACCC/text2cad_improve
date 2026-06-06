@@ -1,0 +1,33 @@
+{
+  "part_intent": {
+    "object_type": "engine_mount_bracket_assembly",
+    "dominant_geometry": "prismatic_with_cylindrical_bushings",
+    "engineering_domain": "automotive_powertrain_mounting"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "底板300x200x25为矩形棱柱体，安装支架80x60x15为矩形棱柱体，均适合sketch_extrude的extrude_rectangle、cut_hole等操作"
+    },
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "衬套外径60内径16高50为回转体，适合axisymmetric的revolve_profile和cut_center_bore"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "需要将底板、2个衬套、安装支架进行空间定位并通过boolean_union合并为总成"
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "输出为参考几何，不可用于制造认证、疲劳分析或适航验证",
+    "M14/M10螺纹孔仅作为通孔几何表示，不包含真实螺纹牙型",
+    "衬套与支架的压装/焊接等工艺连接不在几何模型中表达"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "part_intent": {
+    "object_type": "hydraulic_manifold_block",
+    "dominant_geometry": "prismatic_block_with_multi_axis_ported_holes",
+    "engineering_domain": "hydraulics"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "Prismatic block 120x100x150mm with extrude_rectangle, plus cut_hole operations on Z, Y, and X axes — all within sketch_extrude main_ops: extrude_rectangle, cut_hole."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "This is reference geometry only — not manufacturing-ready, not certified, not validated for pressure or flow. Port placement and hole intersections are geometric only; no flow simulation, no structural analysis, no thread/surface finish specification."
+  ]
+}

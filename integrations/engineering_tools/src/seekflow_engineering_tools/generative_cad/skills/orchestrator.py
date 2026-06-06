@@ -146,6 +146,13 @@ def build_level2_authoring_prompt(
             dialect = d_reg.get(sd.dialect)
             if pkg is not None and dialect is not None:
                 usage_skills[sd.dialect] = pkg.level2_usage_markdown
+            elif dialect is not None:
+                # Dialect exists but has no BasePackage (e.g. loft_sweep, shell_housing).
+                # Generate a minimal usage skill from the dialect's contract + op specs.
+                # This allows L2 authoring for all registered dialects, even those
+                # without a dedicated BasePackage.
+                if strict_usage_skill:
+                    usage_skills[sd.dialect] = _build_minimal_usage_skill(dialect)
             elif strict_usage_skill:
                 raise ValueError(
                     f"Selected dialect {sd.dialect!r} has no registered "
@@ -161,6 +168,55 @@ def build_level2_authoring_prompt(
         "contracts": contracts,
         "usage_skills": usage_skills or {},
     }
+
+
+def _build_minimal_usage_skill(dialect) -> str:
+    """Build a minimal Level-2 usage markdown from a dialect's contract + op specs.
+
+    Used when a dialect has no registered BasePackage (e.g. loft_sweep, shell_housing).
+    Generates LLM-friendly operation documentation from the dialect's own metadata.
+    """
+    lines = [
+        f"# {dialect.dialect_id} v{dialect.version} — Usage Guide",
+        "",
+        f"Phase order: {' → '.join(dialect.phase_order)}",
+        "",
+        "## Available Operations",
+        "",
+    ]
+    for (op_name, _), spec in dialect.op_specs().items():
+        ps = spec.params_model.model_json_schema()
+        props = ps.get("properties", {})
+        required = ps.get("required", [])
+        param_strs = []
+        for pname, pinfo in props.items():
+            req_mark = "*" if pname in required else ""
+            ptype = pinfo.get("type", "?")
+            desc = pinfo.get("description", "")
+            ref = pinfo.get("$ref", "")
+            if ref:
+                ref_name = ref.split("/")[-1]
+                nested = ps.get("$defs", {}).get(ref_name, {})
+                nested_props = nested.get("properties", {})
+                fields = ", ".join(
+                    f"{k}:{v.get('type','?')}" for k, v in nested_props.items()
+                )
+                param_strs.append(f"{pname}{req_mark}=[{fields}]")
+            elif "enum" in pinfo:
+                param_strs.append(f"{pname}{req_mark}=one of {pinfo['enum']}")
+            else:
+                param_strs.append(f"{pname}{req_mark}:{ptype}" + (f" ({desc})" if desc else ""))
+        lines.append(
+            f"### {op_name} (phase={spec.phase})"
+        )
+        lines.append(f"Inputs: {list(spec.input_types)} → Outputs: {list(spec.output_types)}")
+        lines.append(f"Params: {' | '.join(param_strs[:10])}")
+        if spec.summary:
+            lines.append(f"Description: {spec.summary}")
+        if spec.common_mistakes:
+            lines.append(f"Common mistakes: {'; '.join(spec.common_mistakes[:3])}")
+        lines.append("")
+    return "\n".join(lines)
 
 
 def build_repair_prompt_v2(

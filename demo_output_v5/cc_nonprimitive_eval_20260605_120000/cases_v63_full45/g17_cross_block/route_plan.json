@@ -1,0 +1,21 @@
+{
+  "part_intent": {
+    "object_type": "prismatic_block_with_holes",
+    "dominant_geometry": "rectangular_cubic",
+    "engineering_domain": "general_prismatic_machined"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "100mm cube with extrude_rectangle plus holes on top, front, left, right faces matches sketch_extrude_base ops: extrude_rectangle, cut_hole, cut_hole_pattern_linear."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only — not manufacturing-ready, not certified."
+  ]
+}

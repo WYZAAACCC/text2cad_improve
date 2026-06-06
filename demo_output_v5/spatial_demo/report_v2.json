@@ -1,0 +1,16 @@
+{
+  "case_id": "",
+  "ok": false,
+  "step_ok": false,
+  "raw_original_valid": false,
+  "autofix_applied": false,
+  "raw_fixed_valid": false,
+  "canonical_valid": false,
+  "runtime_valid": false,
+  "artifact_valid": false,
+  "semantic_valid": null,
+  "final_error": "Raw assembly failed — no raw_document produced",
+  "hashes": {},
+  "autofix": {},
+  "validation_stages_run": []
+}

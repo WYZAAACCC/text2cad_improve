@@ -1,0 +1,420 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "concept_geometry",
+    "document_id": "double_circle_bolt_flange",
+    "part_name": "Double Circle Bolt Flange",
+    "selected_dialects": [
+      {
+        "dialect": "axisymmetric",
+        "version": "0.2.0",
+        "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "n1",
+        "dialect": "axisymmetric",
+        "op": "revolve_profile",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n2",
+        "dialect": "axisymmetric",
+        "op": "cut_center_bore",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n3",
+        "dialect": "axisymmetric",
+        "op": "cut_circular_hole_pattern",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n4",
+        "dialect": "axisymmetric",
+        "op": "cut_circular_hole_pattern",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:4ffde30e8b416968ff7a37a4fd7566540fc299f0f03ffd036378c993b7829180",
+    "canonical_graph_hash": "sha256:bebe5c4dc48009927fab9401d4263fee0c57b3a9186f5add1f22c865b7568b59",
+    "paths": {
+      "canonical_ir_path": "<in_memory>",
+      "validation_seed_path": "<in_memory>",
+      "step_path": "E:\\auto_detection_process\\demo_output_v5\\cc_nonprimitive_eval_20260605_120000\\cases_v63_full45\\v4_dual_pcd\\output.step",
+      "metadata_path": "E:\\auto_detection_process\\demo_output_v5\\cc_nonprimitive_eval_20260605_120000\\cases_v63_full45\\v4_dual_pcd\\output.metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:1b8e60a3d42175cc65f444d10841be89e314ccb1afbc1b2629e6de0f1870ce6f",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [],
+    "degraded_features": [],
+    "operation_metrics": [
+      {
+        "node_id": "n1",
+        "op": "revolve_profile",
+        "status": "ok"
+      },
+      {
+        "node_id": "n2",
+        "op": "cut_center_bore",
+        "status": "ok"
+      },
+      {
+        "node_id": "n3",
+        "op": "cut_circular_hole_pattern",
+        "status": "ok"
+      },
+      {
+        "node_id": "n4",
+        "op": "cut_circular_hole_pattern",
+        "status": "ok"
+      }
+    ],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {
+        "structure": {
+          "ok": true,
+          "stage": "structure",
+          "issues": [],
+          "stages_run": [
+            "structure"
+          ]
+        },
+        "root_terminal": {
+          "ok": true,
+          "stage": "structure",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "root_terminal"
+          ]
+        },
+        "registry": {
+          "ok": true,
+          "stage": "registry",
+          "issues": [],
+          "stages_run": [
+            "registry"
+          ]
+        },
+        "params": {
+          "ok": true,
+          "stage": "params",
+          "issues": [],
+          "stages_run": [
+            "params"
+          ]
+        },
+        "ownership": {
+          "ok": true,
+          "stage": "ownership",
+          "issues": [],
+          "stages_run": [
+            "ownership"
+          ]
+        },
+        "graph": {
+          "ok": true,
+          "stage": "graph",
+          "issues": [],
+          "stages_run": [
+            "graph"
+          ]
+        },
+        "typecheck": {
+          "ok": true,
+          "stage": "typecheck",
+          "issues": [],
+          "stages_run": [
+            "typecheck"
+          ]
+        },
+        "phase": {
+          "ok": true,
+          "stage": "phase",
+          "issues": [],
+          "stages_run": [
+            "phase"
+          ]
+        },
+        "composition": {
+          "ok": true,
+          "stage": "composition",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "root_terminal",
+            "registry",
+            "params",
+            "ownership",
+            "graph",
+            "typecheck",
+            "phase",
+            "composition"
+          ]
+        },
+        "hole_semantics": {
+          "ok": true,
+          "stage": "geometry_preflight",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "root_terminal",
+            "registry",
+            "params",
+            "ownership",
+            "graph",
+            "typecheck",
+            "phase",
+            "composition",
+            "hole_semantics"
+          ]
+        },
+        "safety": {
+          "ok": true,
+          "stage": "safety",
+          "issues": [],
+          "stages_run": [
+            "safety"
+          ]
+        }
+      },
+      "canonicalize": {
+        "ok": true,
+        "stage": "canonicalize",
+        "issues": [],
+        "stages_run": [
+          "canonicalize"
+        ]
+      },
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": true,
+      "stage": "dialect_semantics",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "root_terminal",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "hole_semantics",
+        "safety",
+        "canonicalize",
+        "dialect_semantics"
+      ]
+    },
+    "geometry_preflight": {
+      "ok": true,
+      "stage": "geometry_preflight",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "root_terminal",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "hole_semantics",
+        "safety",
+        "canonicalize",
+        "dialect_semantics",
+        "geometry_preflight"
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "geometry_postcheck": {
+      "ok": true,
+      "volume_mm3": 2555999.7829606524,
+      "n_solids": 1,
+      "bbox_mm": [
+        300.0,
+        300.0,
+        40.0
+      ],
+      "closed": false,
+      "is_valid_solid": false,
+      "errors": [],
+      "warnings": []
+    },
+    "compiler_middle_end": {
+      "ok": true,
+      "passes_run": [
+        "fact_propagation",
+        "planning"
+      ],
+      "diagnostics": [
+        {
+          "stage": "planning",
+          "code": "hole_pattern_should_batch",
+          "message": "Hole pattern on node 'n3': count=12 >= 8. Consider using compound-based batch cut.",
+          "severity": "info",
+          "node_id": "n3",
+          "component_id": "flange",
+          "details": {
+            "count": 12,
+            "threshold": 8
+          }
+        },
+        {
+          "stage": "planning",
+          "code": "hole_pattern_should_batch",
+          "message": "Hole pattern on node 'n4': count=8 >= 8. Consider using compound-based batch cut.",
+          "severity": "info",
+          "node_id": "n4",
+          "component_id": "flange",
+          "details": {
+            "count": 8,
+            "threshold": 8
+          }
+        }
+      ]
+    },
+    "geometry_health_summary": {
+      "ok": true,
+      "total_ops_checked": 4,
+      "errors": 0,
+      "warnings": 4,
+      "entries": {
+        "n1.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 2827433.388230814,
+          "body_count": 1
+        },
+        "n2.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 2714336.0527015817,
+          "body_count": 1
+        },
+        "n3.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 2592190.9303300087,
+          "body_count": 1
+        },
+        "n4.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 2555999.7829606524,
+          "body_count": 1
+        }
+      }
+    },
+    "planning_report": {
+      "ok": true,
+      "issues": [
+        {
+          "code": "hole_pattern_should_batch",
+          "severity": "info",
+          "message": "Hole pattern on node 'n3': count=12 >= 8. Consider using compound-based batch cut.",
+          "node_id": "n3",
+          "component_id": "flange",
+          "suggestion": "Use batch_cut with a compound of all hole cylinders instead of sequential individual cuts.",
+          "details": {
+            "count": 12,
+            "threshold": 8
+          }
+        },
+        {
+          "code": "hole_pattern_should_batch",
+          "severity": "info",
+          "message": "Hole pattern on node 'n4': count=8 >= 8. Consider using compound-based batch cut.",
+          "node_id": "n4",
+          "component_id": "flange",
+          "suggestion": "Use batch_cut with a compound of all hole cylinders instead of sequential individual cuts.",
+          "details": {
+            "count": 8,
+            "threshold": 8
+          }
+        }
+      ],
+      "optimization_opportunities": [
+        {
+          "code": "hole_pattern_should_batch",
+          "severity": "info",
+          "message": "Hole pattern on node 'n3': count=12 >= 8. Consider using compound-based batch cut.",
+          "node_id": "n3",
+          "component_id": "flange",
+          "suggestion": "Use batch_cut with a compound of all hole cylinders instead of sequential individual cuts.",
+          "details": {
+            "count": 12,
+            "threshold": 8
+          }
+        },
+        {
+          "code": "hole_pattern_should_batch",
+          "severity": "info",
+          "message": "Hole pattern on node 'n4': count=8 >= 8. Consider using compound-based batch cut.",
+          "node_id": "n4",
+          "component_id": "flange",
+          "suggestion": "Use batch_cut with a compound of all hole cylinders instead of sequential individual cuts.",
+          "details": {
+            "count": 8,
+            "threshold": 8
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,1 @@
+薄壁压力容器外径300内径290高400,单位mm. revolve_profile壁厚5mm两端半球封头. 用axisymmetric+shell_housing.

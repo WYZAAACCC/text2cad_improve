@@ -1,0 +1,27 @@
+{
+  "part_intent": {
+    "object_type": "3d_bent_pipe",
+    "dominant_geometry": "swept_tubular_path",
+    "engineering_domain": "piping_routing"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0",
+      "reason": "The core of the request is a 6-point 3D path sweep with radius 15 mm. loft_sweep supports path definition and sweep operations for tubular routing geometry."
+    },
+    {
+      "dialect": "sketch_profile",
+      "version": "0.2.0",
+      "reason": "A circular cross-section profile of radius 15 mm must be defined to sweep along the 3D path. sketch_profile provides the 2D profile grammar for non-rectangular extruded/cut geometry including circular profiles."
+    }
+  ],
+  "selected_primitive": "null",
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only; not for manufacturing or structural validation.",
+    "The 6-point 3D path (0,0,0) to (550,30,350) with sweep radius 15 mm is expressible within the loft_sweep dialect for path+sweep operations."
+  ]
+}

@@ -1,0 +1,123 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "thin_wall_pressure_vessel_300x400",
+  "part_name": "ThinWallPressureVessel",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0"
+    },
+    {
+      "dialect": "shell_housing",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "vessel",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": "thin_wall_pressure_vessel",
+      "root_node": "n_shell"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_revolve",
+      "component": "vessel",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 150,
+            "z_front_mm": 0,
+            "z_rear_mm": 2,
+            "label": "bottom_cap_start"
+          },
+          {
+            "r_mm": 150,
+            "z_front_mm": 2,
+            "z_rear_mm": 398,
+            "label": "cylindrical_body"
+          },
+          {
+            "r_mm": 150,
+            "z_front_mm": 398,
+            "z_rear_mm": 400,
+            "label": "top_cap_end"
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_shell",
+      "component": "vessel",
+      "dialect": "shell_housing",
+      "op": "shell_body",
+      "op_version": "1.0.0",
+      "phase": "shell",
+      "inputs": [
+        {
+          "node": "n_revolve",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 5,
+        "open_faces": null
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": [
+      -150,
+      -150,
+      0,
+      150,
+      150,
+      400
+    ],
+    "bbox_tolerance_mm": 2,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": null
+}

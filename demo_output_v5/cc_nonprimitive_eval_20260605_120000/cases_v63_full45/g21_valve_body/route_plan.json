@@ -1,0 +1,32 @@
+{
+  "part_intent": {
+    "object_type": "valve_body_assembly",
+    "dominant_geometry": "axisymmetric_hollow_spherical_shell_with_flanges",
+    "engineering_domain": "fluid_handling_valve"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "Valve body is fundamentally axisymmetric: spherical shell (revolve_profile), center bore, flanges, and circular bolt-hole patterns all fit revolve+coaxial operations."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "Two independent flanges (inlet and outlet) with different diameters and bolt-hole patterns must be combined with the spherical body, plus the valve stem boss is a lateral feature requiring placement and boolean union."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [
+    "valve_stem_bore_lateral_to_flow_axis",
+    "certified_manufacturing_readiness",
+    "structural_validation"
+  ],
+  "safety_notes": [
+    "This system cannot certify the valve body for manufacturing, pressure containment, or structural integrity. Output is reference geometry only.",
+    "No deterministic primitive exists for a spherical valve body with dual flanges and lateral stem boss; generative route selected.",
+    "Note: axisymmetric dialect is shown as base_id 'axisymmetric_base' v0.1.0 in the catalog, but the selection tool enum only offers 'axisymmetric' v0.2.0 — using that dialect ID per the tool constraint."
+  ]
+}

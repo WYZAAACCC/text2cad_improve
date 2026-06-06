@@ -1,0 +1,1 @@
+设计四柱框架,单位mm. 底板400x300x20有四角安装孔16mm. 4圆柱直径50高200. 顶板400x300x15. 用sketch_extrude+axisymmetric+composition.

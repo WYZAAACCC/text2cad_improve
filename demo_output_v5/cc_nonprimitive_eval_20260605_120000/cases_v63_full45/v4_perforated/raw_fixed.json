@@ -1,0 +1,103 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "perforated-plate-200x150x10",
+  "part_name": "perforated_plate_200x150x10",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "plate",
+      "owner_dialect": "sketch_extrude",
+      "kind_hint": "plate",
+      "root_node": "n2"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n1",
+      "component": "plate",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 200,
+        "height_mm": 150,
+        "depth_mm": 10,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n2",
+      "component": "plate",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_pattern_linear",
+      "op_version": "1.0.0",
+      "phase": "hole_pattern",
+      "inputs": [
+        {
+          "node": "n1",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "hole_dia_mm": 3,
+        "count_x": 20,
+        "count_y": 15,
+        "spacing_x_mm": 8,
+        "spacing_y_mm": 8,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": [
+      200,
+      150,
+      10
+    ],
+    "bbox_tolerance_mm": 2,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {}
+}

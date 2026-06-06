@@ -1,0 +1,88 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "helix-spring-15t-001",
+  "part_name": "Helix_Spring_15Turns",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0",
+      "contract_hash": "sha256:e65e433162c910d28028903e691e48174e56dcc8b400a35f8f9f124adcc6ff17"
+    }
+  ],
+  "components": [
+    {
+      "id": "spring_comp",
+      "owner_dialect": "loft_sweep",
+      "kind_hint": "spring",
+      "root_node": "n_helix",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_helix",
+      "component": "spring_comp",
+      "dialect": "loft_sweep",
+      "op": "helix_sweep",
+      "op_version": "1.0.0",
+      "phase": "helix",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:spring_comp:n_helix:body"
+        }
+      ],
+      "params": {
+        "radius_mm": 60,
+        "height_mm": 225,
+        "pitch_mm": 15,
+        "profile_radius_mm": 4,
+        "turns": 15,
+        "variable_pitch": false,
+        "start_pitch_mm": null,
+        "end_pitch_mm": null
+      },
+      "typed_params": {
+        "radius_mm": 60.0,
+        "height_mm": 225.0,
+        "pitch_mm": 15.0,
+        "profile_radius_mm": 4.0,
+        "turns": 15.0,
+        "variable_pitch": false,
+        "start_pitch_mm": null,
+        "end_pitch_mm": null
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": []
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:f69424e13988c0f5cca29223889cd72f68e365590c671996c94aaf5096cb3c10",
+  "raw_graph_hash": "sha256:0aea6d197fdaa9f249a6921681e9a1ef76a6f52f843dbba978d6dcc90a370c6b"
+}

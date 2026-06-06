@@ -1,0 +1,304 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "heavy-flange-400-120-55",
+  "part_name": "Heavy Flange",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+    }
+  ],
+  "components": [
+    {
+      "id": "flange",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": "flange",
+      "root_node": "n_final",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_revolve",
+      "component": "flange",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:flange:n_revolve:body"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame",
+          "value_id": "frame:flange:n_revolve:outer_frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 200,
+            "z_front_mm": 0,
+            "z_rear_mm": 3,
+            "label": "base_bottom_chamfer"
+          },
+          {
+            "r_mm": 200,
+            "z_front_mm": 3,
+            "z_rear_mm": 52,
+            "label": "main_body"
+          },
+          {
+            "r_mm": 200,
+            "z_front_mm": 52,
+            "z_rear_mm": 55,
+            "label": "top_chamfer"
+          },
+          {
+            "r_mm": 60,
+            "z_front_mm": 55,
+            "z_rear_mm": 56,
+            "label": "bore_top"
+          }
+        ]
+      },
+      "typed_params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 200.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 3.0,
+            "label": "base_bottom_chamfer"
+          },
+          {
+            "r_mm": 200.0,
+            "z_front_mm": 3.0,
+            "z_rear_mm": 52.0,
+            "label": "main_body"
+          },
+          {
+            "r_mm": 200.0,
+            "z_front_mm": 52.0,
+            "z_rear_mm": 55.0,
+            "label": "top_chamfer"
+          },
+          {
+            "r_mm": 60.0,
+            "z_front_mm": 55.0,
+            "z_rear_mm": 56.0,
+            "label": "bore_top"
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid",
+        "creates_frame"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_center_bore",
+      "component": "flange",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n_revolve",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:flange:n_center_bore:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 120,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 120.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_outer_pattern",
+      "component": "flange",
+      "dialect": "axisymmetric",
+      "op": "cut_circular_hole_pattern",
+      "op_version": "1.0.0",
+      "phase": "pattern_cut",
+      "inputs": [
+        {
+          "producer_node": "n_center_bore",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:flange:n_outer_pattern:body"
+        }
+      ],
+      "params": {
+        "count": 24,
+        "pcd_mm": 340,
+        "hole_dia_mm": 18,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "count": 24,
+        "pcd_mm": 340.0,
+        "hole_dia_mm": 18.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_inner_pattern",
+      "component": "flange",
+      "dialect": "axisymmetric",
+      "op": "cut_circular_hole_pattern",
+      "op_version": "1.0.0",
+      "phase": "pattern_cut",
+      "inputs": [
+        {
+          "producer_node": "n_outer_pattern",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:flange:n_inner_pattern:body"
+        }
+      ],
+      "params": {
+        "count": 12,
+        "pcd_mm": 200,
+        "hole_dia_mm": 12,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "count": 12,
+        "pcd_mm": 200.0,
+        "hole_dia_mm": 12.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_final",
+      "component": "flange",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "producer_node": "n_inner_pattern",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:flange:n_final:body"
+        }
+      ],
+      "params": {
+        "distance_mm": 2,
+        "target": "all_external_edges"
+      },
+      "typed_params": {
+        "distance_mm": 2.0,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "modifies_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:75ee8d50a18fa5a2cb137ec788ec33c889fbcd49f02dec3315f2dd76f538108c",
+  "raw_graph_hash": "sha256:aceca86c5bafde1b75d8a851a00947f8fb580827e9a5ff595174aa5ca4ba846c"
+}

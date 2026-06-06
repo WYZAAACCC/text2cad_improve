@@ -1,0 +1,79 @@
+{
+  "ok": false,
+  "stage": "ownership",
+  "issues": [
+    {
+      "code": "owner_dialect_not_selected",
+      "message": "component 'stem_boss' owner_dialect 'sketch_extrude' not in selected_dialects",
+      "severity": "error",
+      "stage": "ownership",
+      "node_id": null,
+      "component_id": "stem_boss",
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "node_dialect_not_selected",
+      "message": "node 'n_stem_block' dialect 'sketch_extrude' not in selected_dialects",
+      "severity": "error",
+      "stage": "ownership",
+      "node_id": "n_stem_block",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "owner_dialect_not_selected",
+      "message": "component 'stem_boss' owner_dialect 'sketch_extrude' not in selected_dialects",
+      "severity": "error",
+      "stage": "ownership",
+      "node_id": null,
+      "component_id": "stem_boss",
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "node_dialect_not_selected",
+      "message": "node 'n_stem_hole_v2' dialect 'sketch_extrude' not in selected_dialects",
+      "severity": "error",
+      "stage": "ownership",
+      "node_id": "n_stem_hole_v2",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "owner_dialect_not_selected",
+      "message": "component 'stem_boss' owner_dialect 'sketch_extrude' not in selected_dialects",
+      "severity": "error",
+      "stage": "ownership",
+      "node_id": null,
+      "component_id": "stem_boss",
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "node_dialect_not_selected",
+      "message": "node 'n_stem_final' dialect 'sketch_extrude' not in selected_dialects",
+      "severity": "error",
+      "stage": "ownership",
+      "node_id": "n_stem_final",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "root_terminal",
+    "registry",
+    "params",
+    "ownership"
+  ]
+}

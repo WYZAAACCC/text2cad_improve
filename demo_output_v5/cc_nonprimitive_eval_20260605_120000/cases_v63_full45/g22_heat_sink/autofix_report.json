@@ -1,0 +1,34 @@
+{
+  "applied": true,
+  "before_hash": "sha256:e30acfd402ff4b9a7dc38209314ebeda956403df89ada6b612dbdb3fb8dcbef8",
+  "after_hash": "sha256:aa23d386da2be49a48d4d8272ee58d15f645db0763415cee51272072ccbca95f",
+  "entries": [
+    {
+      "rule_id": "fix_v2_placement_scope",
+      "path": "/",
+      "old_value": "<hash:sha256:e30ac>",
+      "new_value": "<hash:sha256:755b6>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_v2_placement_scope"
+    },
+    {
+      "rule_id": "fix_phase_ordering",
+      "path": "/",
+      "old_value": "<hash:sha256:755b6>",
+      "new_value": "<hash:sha256:fa3ea>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_phase_ordering"
+    },
+    {
+      "rule_id": "fix_null_hints",
+      "path": "/",
+      "old_value": "<hash:sha256:fa3ea>",
+      "new_value": "<hash:sha256:aa23d>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_null_hints"
+    }
+  ]
+}

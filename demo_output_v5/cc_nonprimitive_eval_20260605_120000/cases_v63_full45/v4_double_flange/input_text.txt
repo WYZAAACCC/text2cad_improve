@@ -1,0 +1,1 @@
+设计双法兰短管,单位mm. 管段外径80内径60长200. 两端法兰外径140厚20各6个M12孔PCD110. 用axisymmetric+composition.

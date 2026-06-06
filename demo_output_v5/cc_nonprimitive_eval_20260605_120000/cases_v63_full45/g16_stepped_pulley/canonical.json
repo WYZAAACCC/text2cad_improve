@@ -1,0 +1,355 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "multi-step-pulley-9stages",
+  "part_name": "9级多级带轮",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+    }
+  ],
+  "components": [
+    {
+      "id": "pulley",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": "pulley",
+      "root_node": "n_center_bore",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_revolve",
+      "component": "pulley",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:pulley:n_revolve:body"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame",
+          "value_id": "frame:pulley:n_revolve:outer_frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 120,
+            "z_front_mm": 0,
+            "z_rear_mm": 3,
+            "label": "stage1_enter"
+          },
+          {
+            "r_mm": 120,
+            "z_front_mm": 3,
+            "z_rear_mm": 9,
+            "label": "stage1"
+          },
+          {
+            "r_mm": 105,
+            "z_front_mm": 9,
+            "z_rear_mm": 12,
+            "label": "step1_2"
+          },
+          {
+            "r_mm": 105,
+            "z_front_mm": 12,
+            "z_rear_mm": 18,
+            "label": "stage2"
+          },
+          {
+            "r_mm": 90,
+            "z_front_mm": 18,
+            "z_rear_mm": 21,
+            "label": "step2_3"
+          },
+          {
+            "r_mm": 90,
+            "z_front_mm": 21,
+            "z_rear_mm": 27,
+            "label": "stage3"
+          },
+          {
+            "r_mm": 78,
+            "z_front_mm": 27,
+            "z_rear_mm": 30,
+            "label": "step3_4"
+          },
+          {
+            "r_mm": 78,
+            "z_front_mm": 30,
+            "z_rear_mm": 36,
+            "label": "stage4"
+          },
+          {
+            "r_mm": 65,
+            "z_front_mm": 36,
+            "z_rear_mm": 39,
+            "label": "step4_5"
+          },
+          {
+            "r_mm": 65,
+            "z_front_mm": 39,
+            "z_rear_mm": 45,
+            "label": "stage5"
+          },
+          {
+            "r_mm": 55,
+            "z_front_mm": 45,
+            "z_rear_mm": 48,
+            "label": "step5_6"
+          },
+          {
+            "r_mm": 55,
+            "z_front_mm": 48,
+            "z_rear_mm": 54,
+            "label": "stage6"
+          },
+          {
+            "r_mm": 45,
+            "z_front_mm": 54,
+            "z_rear_mm": 57,
+            "label": "step6_7"
+          },
+          {
+            "r_mm": 45,
+            "z_front_mm": 57,
+            "z_rear_mm": 63,
+            "label": "stage7"
+          },
+          {
+            "r_mm": 35,
+            "z_front_mm": 63,
+            "z_rear_mm": 66,
+            "label": "step7_8"
+          },
+          {
+            "r_mm": 35,
+            "z_front_mm": 66,
+            "z_rear_mm": 72,
+            "label": "stage8"
+          },
+          {
+            "r_mm": 25,
+            "z_front_mm": 72,
+            "z_rear_mm": 75,
+            "label": "step8_9"
+          },
+          {
+            "r_mm": 25,
+            "z_front_mm": 75,
+            "z_rear_mm": 81,
+            "label": "stage9"
+          },
+          {
+            "r_mm": 25,
+            "z_front_mm": 81,
+            "z_rear_mm": 87,
+            "label": "stage9_exit"
+          }
+        ]
+      },
+      "typed_params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 120.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 3.0,
+            "label": "stage1_enter"
+          },
+          {
+            "r_mm": 120.0,
+            "z_front_mm": 3.0,
+            "z_rear_mm": 9.0,
+            "label": "stage1"
+          },
+          {
+            "r_mm": 105.0,
+            "z_front_mm": 9.0,
+            "z_rear_mm": 12.0,
+            "label": "step1_2"
+          },
+          {
+            "r_mm": 105.0,
+            "z_front_mm": 12.0,
+            "z_rear_mm": 18.0,
+            "label": "stage2"
+          },
+          {
+            "r_mm": 90.0,
+            "z_front_mm": 18.0,
+            "z_rear_mm": 21.0,
+            "label": "step2_3"
+          },
+          {
+            "r_mm": 90.0,
+            "z_front_mm": 21.0,
+            "z_rear_mm": 27.0,
+            "label": "stage3"
+          },
+          {
+            "r_mm": 78.0,
+            "z_front_mm": 27.0,
+            "z_rear_mm": 30.0,
+            "label": "step3_4"
+          },
+          {
+            "r_mm": 78.0,
+            "z_front_mm": 30.0,
+            "z_rear_mm": 36.0,
+            "label": "stage4"
+          },
+          {
+            "r_mm": 65.0,
+            "z_front_mm": 36.0,
+            "z_rear_mm": 39.0,
+            "label": "step4_5"
+          },
+          {
+            "r_mm": 65.0,
+            "z_front_mm": 39.0,
+            "z_rear_mm": 45.0,
+            "label": "stage5"
+          },
+          {
+            "r_mm": 55.0,
+            "z_front_mm": 45.0,
+            "z_rear_mm": 48.0,
+            "label": "step5_6"
+          },
+          {
+            "r_mm": 55.0,
+            "z_front_mm": 48.0,
+            "z_rear_mm": 54.0,
+            "label": "stage6"
+          },
+          {
+            "r_mm": 45.0,
+            "z_front_mm": 54.0,
+            "z_rear_mm": 57.0,
+            "label": "step6_7"
+          },
+          {
+            "r_mm": 45.0,
+            "z_front_mm": 57.0,
+            "z_rear_mm": 63.0,
+            "label": "stage7"
+          },
+          {
+            "r_mm": 35.0,
+            "z_front_mm": 63.0,
+            "z_rear_mm": 66.0,
+            "label": "step7_8"
+          },
+          {
+            "r_mm": 35.0,
+            "z_front_mm": 66.0,
+            "z_rear_mm": 72.0,
+            "label": "stage8"
+          },
+          {
+            "r_mm": 25.0,
+            "z_front_mm": 72.0,
+            "z_rear_mm": 75.0,
+            "label": "step8_9"
+          },
+          {
+            "r_mm": 25.0,
+            "z_front_mm": 75.0,
+            "z_rear_mm": 81.0,
+            "label": "stage9"
+          },
+          {
+            "r_mm": 25.0,
+            "z_front_mm": 81.0,
+            "z_rear_mm": 87.0,
+            "label": "stage9_exit"
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid",
+        "creates_frame"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_center_bore",
+      "component": "pulley",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n_revolve",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:pulley:n_center_bore:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 30,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 30.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:464d236e64be5483e623e36b12b1d583e63841e932e0bd12d5b222c6551c3632",
+  "raw_graph_hash": "sha256:1e0b7708dd0292aeda88dabfafcbfeac3d1197bce009745bbb926fd425aaec46"
+}

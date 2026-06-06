@@ -1,0 +1,23 @@
+{
+  "part_intent": {
+    "object_type": "helical_coil_spring",
+    "dominant_geometry": "helix_sweep",
+    "engineering_domain": "general_mechanical"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0",
+      "reason": "Helical spring requires helix path + circular profile sweep — loft_sweep dialect provides helix and sweep operations."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [
+    "No deterministic primitive exists for helical coil springs; involute_spur_gear and axisymmetric_turbine_disk do not match."
+  ],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only — not manufacturing-ready, not structurally validated."
+  ]
+}

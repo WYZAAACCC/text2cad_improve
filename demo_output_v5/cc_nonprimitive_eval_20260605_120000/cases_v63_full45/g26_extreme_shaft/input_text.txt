@@ -1,0 +1,1 @@
+细长中空轴外径16内径6长500mm,单位mm. revolve_profile壁厚5mm.

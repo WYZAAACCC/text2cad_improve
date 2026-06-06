@@ -1,0 +1,69 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "helix_coil_20_turns",
+  "part_name": "20圈螺旋管",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "coil",
+      "owner_dialect": "loft_sweep",
+      "kind_hint": null,
+      "root_node": "n_helix"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_helix",
+      "component": "coil",
+      "dialect": "loft_sweep",
+      "op": "helix_sweep",
+      "op_version": "1.0.0",
+      "phase": "helix",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "radius_mm": 100,
+        "height_mm": 400,
+        "pitch_mm": 20,
+        "profile_radius_mm": 6,
+        "turns": 20,
+        "variable_pitch": false,
+        "start_pitch_mm": null,
+        "end_pitch_mm": null
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": null
+}

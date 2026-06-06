@@ -1,0 +1,1 @@
+电机端盖外径250内径40,单位mm. revolve_profile+extrude_rectangle接线盒60x40x30. 6个M10安装孔PCD200. 用composition.

@@ -1,0 +1,32 @@
+{
+  "part_intent": {
+    "object_type": "reducing_pipe",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "piping"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.1.0",
+      "reason": "变径管主体是旋转对称体，可用 revolve_profile 生成锥管段"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "需要组合变径管主体、两端法兰以及螺栓孔等多个独立组件"
+    },
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0",
+      "reason": "用户明确指定 loft_sections，用于 D100→D60 变径段的放样过渡"
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "输出为参考几何体，不可直接用于制造或认证",
+    "螺栓孔 M12 通孔 PCD90 仅作几何表达，不含螺纹细节及强度校核"
+  ]
+}

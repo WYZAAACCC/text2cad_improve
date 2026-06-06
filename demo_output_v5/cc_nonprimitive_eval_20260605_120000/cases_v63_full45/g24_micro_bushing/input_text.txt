@@ -1,0 +1,1 @@
+微型轴套外径6内径5.5长10mm,单位mm. revolve_profile壁厚0.25mm. 端面倒角0.2mm.

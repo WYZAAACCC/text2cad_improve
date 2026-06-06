@@ -1,0 +1,312 @@
+{
+  "total": 44,
+  "passed": 13,
+  "sw": 0,
+  "elapsed_min": 30.6,
+  "cases": [
+    {
+      "id": "v4_flange",
+      "status": "STEP_OK",
+      "step_kb": 43,
+      "sw": false,
+      "sw_msg": "SW_DISABLED"
+    },
+    {
+      "id": "v4_shaft",
+      "status": "STEP_OK",
+      "step_kb": 37,
+      "sw": false,
+      "sw_msg": "SW_DISABLED"
+    },
+    {
+      "id": "v4_valve_block",
+      "status": "RT_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "error": "required cut_hole_v2 failed on 'n_p_port': Null TopoDS_Shape object\n^^^^^^^^^^^^^^^\n  File \"E:\\auto_"
+    },
+    {
+      "id": "v4_cross_block",
+      "status": "RT_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "error": "required cut_hole_v2 failed on 'n_hole_top': Null TopoDS_Shape object\n^^^^^^^^^^^^^\n  File \"E:\\auto_"
+    },
+    {
+      "id": "v4_dual_pcd",
+      "status": "STEP_OK",
+      "step_kb": 96,
+      "sw": false,
+      "sw_msg": "SW_DISABLED"
+    },
+    {
+      "id": "v4_perforated",
+      "status": "STEP_OK",
+      "step_kb": 1334,
+      "sw": false,
+      "sw_msg": "SW_DISABLED"
+    },
+    {
+      "id": "v4_ribbed_base",
+      "status": "STEP_OK",
+      "step_kb": 160,
+      "sw": false,
+      "sw_msg": "SW_DISABLED"
+    },
+    {
+      "id": "v4_shell_box",
+      "status": "L1_FAIL",
+      "step_kb": 0,
+      "sw": false
+    },
+    {
+      "id": "v4_spring",
+      "status": "RT_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "error": "Required operation 'helix_sweep' on node 'n_helix' produced unhealthy geometry (status=error): close"
+    },
+    {
+      "id": "v4_3d_pipe",
+      "status": "RT_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "error": "Required operation 'sweep_profile' on node 'n_sweep' produced unhealthy geometry (status=error): clo"
+    },
+    {
+      "id": "v4_var_duct",
+      "status": "RT_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "error": "loft_sections failed on 'n_loft': Nothing to loft\nTraceback (most recent call last):\n  File \"E:\\auto"
+    },
+    {
+      "id": "v4_support_frame",
+      "status": "RT_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "error": "required cut_hole_v2 failed on 'n_bp_hole1': Null TopoDS_Shape object\n^^^^^^^^^^^^^\n  File \"E:\\auto_"
+    },
+    {
+      "id": "v4_double_flange",
+      "status": "RT_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "error": "Required operation 'apply_safe_chamfer' failed on node 'pipe_outer_chamfer': chamfer failed at dista"
+    },
+    {
+      "id": "v4_large_ring",
+      "status": "STEP_OK",
+      "step_kb": 375,
+      "sw": false,
+      "sw_msg": "SW_DISABLED"
+    },
+    {
+      "id": "v4_thin_sleeve",
+      "status": "VAL_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "n_err": 1
+    },
+    {
+      "id": "g1_engine_mount",
+      "status": "VAL_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "n_err": 2
+    },
+    {
+      "id": "g2_gearbox_housing",
+      "status": "L1_FAIL",
+      "step_kb": 0,
+      "sw": false
+    },
+    {
+      "id": "g3_hyd_manifold",
+      "status": "RT_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "error": "required cut_hole_v2 failed on 'n_p_port': Null TopoDS_Shape object\n^^^^^^^^^^^^^^^\n  File \"E:\\auto_"
+    },
+    {
+      "id": "g4_pump_casing",
+      "status": "RT_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "error": "Operation 'apply_safe_chamfer' failed on node 'n_volute_final': chamfer failed at distance=1.0mm and"
+    },
+    {
+      "id": "g5_robot_arm",
+      "status": "RT_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "error": "Required operation 'apply_safe_chamfer' failed on node 'n_flange_front_final': chamfer failed at dis"
+    },
+    {
+      "id": "g6_helix_coil",
+      "status": "RT_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "error": "Required operation 'helix_sweep' on node 'n_helix' produced unhealthy geometry (status=error): close"
+    },
+    {
+      "id": "g7_3d_tube",
+      "status": "RT_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "error": "Required operation 'sweep_profile' on node 'n_sweep' produced unhealthy geometry (status=error): clo"
+    },
+    {
+      "id": "g8_var_duct",
+      "status": "VAL_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "n_err": 1
+    },
+    {
+      "id": "g9_torsion_spring",
+      "status": "RT_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "error": "Required operation 'helix_sweep' on node 'n_helix' produced unhealthy geometry (status=error): close"
+    },
+    {
+      "id": "g10_spiral_volute",
+      "status": "RT_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "error": "Required operation 'sweep_profile' on node 'n_sweep' produced unhealthy geometry (status=error): clo"
+    },
+    {
+      "id": "g11_pressure_vessel",
+      "status": "STEP_OK",
+      "step_kb": 19,
+      "sw": false,
+      "sw_msg": "SW_DISABLED"
+    },
+    {
+      "id": "g12_hollow_bracket",
+      "status": "L1_FAIL",
+      "step_kb": 0,
+      "sw": false
+    },
+    {
+      "id": "g13_enclosure",
+      "status": "RT_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "error": "required cut_hole_v2 failed on 'n_mount_hole_bl': Null TopoDS_Shape object\ntoCut, cut_op))\n         "
+    },
+    {
+      "id": "g14_vacuum_chamber",
+      "status": "RT_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "error": "required cut_hole_v2 failed on 'n_front_window': Null TopoDS_Shape object\n^^^^^^^^^\n  File \"E:\\auto_"
+    },
+    {
+      "id": "g15_heavy_flange",
+      "status": "STEP_OK",
+      "step_kb": 371,
+      "sw": false,
+      "sw_msg": "SW_DISABLED"
+    },
+    {
+      "id": "g16_stepped_pulley",
+      "status": "STEP_OK",
+      "step_kb": 39,
+      "sw": false,
+      "sw_msg": "SW_DISABLED"
+    },
+    {
+      "id": "g17_cross_block",
+      "status": "RT_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "error": "required cut_hole_v2 failed on 'n_top_hole': Null TopoDS_Shape object\n^^^^^^^^^^^^^\n  File \"E:\\auto_"
+    },
+    {
+      "id": "g18_ribbed_panel",
+      "status": "STEP_OK",
+      "step_kb": 2458,
+      "sw": false,
+      "sw_msg": "SW_DISABLED"
+    },
+    {
+      "id": "g19_precision_base",
+      "status": "RT_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "error": "required cut_hole_v2 failed on 'n_corner_hole_1': Null TopoDS_Shape object\n^^^^^^^^\n  File \"E:\\auto_"
+    },
+    {
+      "id": "g20_motor_endbell",
+      "status": "RT_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "error": "Required operation 'apply_safe_chamfer' failed on node 'n_box_final': chamfer failed at distance=1.0"
+    },
+    {
+      "id": "g21_valve_body",
+      "status": "VAL_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "n_err": 6
+    },
+    {
+      "id": "g22_heat_sink",
+      "status": "RT_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "error": "required cut_hole_v2 failed on 'n_mount_hole_1': Null TopoDS_Shape object\n^^^^^^^^^\n  File \"E:\\auto_"
+    },
+    {
+      "id": "g23_pipe_reducer",
+      "status": "VAL_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "n_err": 1
+    },
+    {
+      "id": "g24_micro_bushing",
+      "status": "L1_FAIL",
+      "step_kb": 0,
+      "sw": false
+    },
+    {
+      "id": "g25_large_ring",
+      "status": "STEP_OK",
+      "step_kb": 169,
+      "sw": false,
+      "sw_msg": "SW_DISABLED"
+    },
+    {
+      "id": "g26_extreme_shaft",
+      "status": "STEP_OK",
+      "step_kb": 69,
+      "sw": false,
+      "sw_msg": "SW_DISABLED"
+    },
+    {
+      "id": "g28_ball_valve",
+      "status": "VAL_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "n_err": 1
+    },
+    {
+      "id": "g29_impeller",
+      "status": "RT_FAIL",
+      "step_kb": 0,
+      "sw": false,
+      "error": "geometry postcheck failed: Final geometry has 4 solid bodies (expected 1). This means boolean_union "
+    },
+    {
+      "id": "g30_hyd_cylinder",
+      "status": "STEP_OK",
+      "step_kb": 86,
+      "sw": false,
+      "sw_msg": "SW_DISABLED"
+    }
+  ]
+}

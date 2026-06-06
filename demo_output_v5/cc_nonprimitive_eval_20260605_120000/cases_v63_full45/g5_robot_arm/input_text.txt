@@ -1,0 +1,1 @@
+机器人手臂段,单位mm. 管段外径130内径110长500. 两端法兰外径180厚25各8个M14孔PCD150. 用axisymmetric+composition.

@@ -1,0 +1,1 @@
+设计双圈螺栓法兰,单位mm. revolve_profile外径300内径60厚40:station1 r=150 z=0-40. cut_center_bore diameter_mm=60. 外圈cut_circular_hole_pattern count=12 pcd_mm=240 hole_dia_mm=18. 内圈cut_circular_hole_pattern count=8 pcd_mm=160 hole_dia_mm=12.

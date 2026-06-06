@@ -1,0 +1,33 @@
+{
+  "ok": true,
+  "stage": "complete",
+  "issues": [
+    {
+      "code": "ls_sweep_self_intersection_risk",
+      "message": "sweep radius (12.0mm) >= 0.45 * shortest segment (17.1mm). May self-intersect.",
+      "severity": "warning",
+      "stage": "geometry_preflight",
+      "node_id": "n_sweep",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "root_terminal",
+    "registry",
+    "params",
+    "ownership",
+    "graph",
+    "typecheck",
+    "phase",
+    "composition",
+    "hole_semantics",
+    "safety",
+    "canonicalize",
+    "dialect_semantics",
+    "geometry_preflight"
+  ]
+}

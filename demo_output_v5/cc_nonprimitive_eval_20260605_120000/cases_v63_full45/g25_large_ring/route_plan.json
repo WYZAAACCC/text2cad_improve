@@ -1,0 +1,21 @@
+{
+  "part_intent": {
+    "object_type": "large_diameter_ring_with_hole_pattern",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "general_mechanical"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "Requested operations — revolve_profile, cut_center_bore, cut_circular_hole_pattern — map directly to axisymmetric_base main_ops. The part is a rotationally symmetric ring/disk."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only. Not airworthy, not certified, not for manufacturing. No structural validation or fatigue/life prediction is provided."
+  ]
+}

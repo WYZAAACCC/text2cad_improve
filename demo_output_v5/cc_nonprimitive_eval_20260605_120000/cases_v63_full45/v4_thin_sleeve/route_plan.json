@@ -1,0 +1,21 @@
+{
+  "part_intent": {
+    "object_type": "thin-walled bushing/sleeve",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "general_mechanical"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "Thin-walled bushing is a classic axisymmetric part: revolve_profile for the outer wall (r=6, z=0-20) and cut_center_bore for the inner bore (diameter 10mm). axisymmetric dialect provides exactly these operations."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only. This system cannot certify or guarantee manufacturing readiness."
+  ]
+}

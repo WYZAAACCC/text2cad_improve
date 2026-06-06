@@ -1,0 +1,634 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "double-flange-short-pipe-001",
+  "part_name": "Double_Flange_Short_Pipe",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "pipe",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": "pipe",
+      "root_node": "pipe_final"
+    },
+    {
+      "id": "flange_a",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": "flange",
+      "root_node": "flange_a_final"
+    },
+    {
+      "id": "flange_b",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": "flange",
+      "root_node": "flange_b_final"
+    },
+    {
+      "id": "__assembly__",
+      "owner_dialect": "composition",
+      "kind_hint": "assembly",
+      "root_node": "assembly_final"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "pipe_base",
+      "component": "pipe",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 30,
+            "z_front_mm": 0,
+            "z_rear_mm": 2,
+            "label": "pipe_inner_bottom"
+          },
+          {
+            "r_mm": 40,
+            "z_front_mm": 0,
+            "z_rear_mm": 200,
+            "label": "pipe_outer"
+          },
+          {
+            "r_mm": 30,
+            "z_front_mm": 200,
+            "z_rear_mm": 202,
+            "label": "pipe_inner_top"
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "flange_a_base",
+      "component": "flange_a",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 30,
+            "z_front_mm": 0,
+            "z_rear_mm": 1,
+            "label": "flange_bore_start"
+          },
+          {
+            "r_mm": 70,
+            "z_front_mm": 0,
+            "z_rear_mm": 20,
+            "label": "flange_outer"
+          },
+          {
+            "r_mm": 30,
+            "z_front_mm": 20,
+            "z_rear_mm": 21,
+            "label": "flange_bore_end"
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "flange_b_base",
+      "component": "flange_b",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 30,
+            "z_front_mm": 0,
+            "z_rear_mm": 1,
+            "label": "flange_bore_start"
+          },
+          {
+            "r_mm": 70,
+            "z_front_mm": 0,
+            "z_rear_mm": 20,
+            "label": "flange_outer"
+          },
+          {
+            "r_mm": 30,
+            "z_front_mm": 20,
+            "z_rear_mm": 21,
+            "label": "flange_bore_end"
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "place_flange_a",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "place_component",
+      "op_version": "1.0.0",
+      "phase": "transform",
+      "inputs": [
+        {
+          "output": "body",
+          "component": "flange_a"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "position_mm": [
+          0,
+          0,
+          0
+        ],
+        "component_id": "flange_a"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "place_flange_b",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "translate_solid",
+      "op_version": "1.0.0",
+      "phase": "transform",
+      "inputs": [
+        {
+          "output": "body",
+          "component": "flange_b"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "vector_mm": [
+          0,
+          0,
+          200
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "place_pipe",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "place_component",
+      "op_version": "1.0.0",
+      "phase": "transform",
+      "inputs": [
+        {
+          "output": "body",
+          "component": "pipe"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "position_mm": [
+          0,
+          0,
+          0
+        ],
+        "component_id": "pipe"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "pipe_bore",
+      "component": "pipe",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "pipe_base",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 60,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "flange_a_bore",
+      "component": "flange_a",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "flange_a_base",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 60,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "flange_b_bore",
+      "component": "flange_b",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "flange_b_base",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 60,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "union_a",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "node": "place_pipe",
+          "output": "body"
+        },
+        {
+          "node": "place_flange_a",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {},
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "assembly_final",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "node": "union_a",
+          "output": "body"
+        },
+        {
+          "node": "place_flange_b",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {},
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "flange_a_holes",
+      "component": "flange_a",
+      "dialect": "axisymmetric",
+      "op": "cut_circular_hole_pattern",
+      "op_version": "1.0.0",
+      "phase": "pattern_cut",
+      "inputs": [
+        {
+          "node": "flange_a_bore",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "count": 6,
+        "pcd_mm": 110,
+        "hole_dia_mm": 12,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "flange_b_holes",
+      "component": "flange_b",
+      "dialect": "axisymmetric",
+      "op": "cut_circular_hole_pattern",
+      "op_version": "1.0.0",
+      "phase": "pattern_cut",
+      "inputs": [
+        {
+          "node": "flange_b_bore",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "count": 6,
+        "pcd_mm": 110,
+        "hole_dia_mm": 12,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "pipe_outer_chamfer",
+      "component": "pipe",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "pipe_bore",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 1,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "pipe_final",
+      "component": "pipe",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "pipe_outer_chamfer",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 1,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "flange_a_chamfer",
+      "component": "flange_a",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "flange_a_holes",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 1,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "flange_a_final",
+      "component": "flange_a",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "flange_a_chamfer",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 1,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "flange_b_chamfer",
+      "component": "flange_b",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "flange_b_holes",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 1,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "flange_b_final",
+      "component": "flange_b",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "flange_b_chamfer",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 1,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {}
+}

@@ -1,0 +1,1 @@
+设计液压阀块120x100x150mm,单位mm. extrude_rectangle width_mm=120 height_mm=100 depth_mm=150 centered=true. cut_hole P口直径20mm顶面axis=Z. cut_hole A/B口直径15mm前面axis=Y位置[30,20]和[-30,20]. cut_hole进油口直径25mm右面axis=X.

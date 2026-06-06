@@ -1,0 +1,40 @@
+{
+  "part_intent": {
+    "object_type": "hydraulic_cylinder_end_cover",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "hydraulics"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "Rotationally symmetric part: revolve_profile for outer 70mm / inner 30mm / thickness 30mm body, cut_center_bore for ID, cut_annular_groove for seal groove (width 5mm, depth 3mm), cut_circular_hole_pattern for 6x M8 holes on PCD 55mm"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "May be needed to combine axisymmetric body with any auxiliary features or to position bolt-hole pattern relative to the revolve axis if not handled within axisymmetric dialect"
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [
+    {
+      "skill_id": "hydraulic_seal_groove",
+      "skill_version": "0.1.0",
+      "reason": "Seal groove width 5mm depth 3mm requires annular groove on end face — standard hydraulic cylinder end-cap feature"
+    }
+  ],
+  "unsupported_capabilities": [
+    "manufacturing-ready certification",
+    "structural validation",
+    "M8 thread form (holes modelled as plain through/bottomed bores)",
+    "O-ring elastomer modelling",
+    "surface finish and tolerance callouts"
+  ],
+  "safety_notes": [
+    "Output is reference geometry only — not certified for production.",
+    "M8 mounting holes are modelled as plain cylindrical bores; actual thread geometry is not generated.",
+    "Seal groove dimensions (width 5mm, depth 3mm) are interpreted as an annular groove on the end face; actual O-ring/gasket compatibility must be verified by the engineer."
+  ]
+}

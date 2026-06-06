@@ -1,0 +1,208 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "d39dd0fd-7660-4d71-b3c5-5a1e9e8e5c2a",
+  "part_name": "large_diameter_ring",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+    }
+  ],
+  "components": [
+    {
+      "id": "ring",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": "ring",
+      "root_node": "n3",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n1",
+      "component": "ring",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:ring:n1:body"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame",
+          "value_id": "frame:ring:n1:outer_frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 500,
+            "z_front_mm": 0,
+            "z_rear_mm": 2,
+            "label": "outer_bottom_chamfer_lead"
+          },
+          {
+            "r_mm": 500,
+            "z_front_mm": 2,
+            "z_rear_mm": 28,
+            "label": "outer_main"
+          },
+          {
+            "r_mm": 250.0,
+            "z_front_mm": 28,
+            "z_rear_mm": 29.0,
+            "label": "outer_top_chamfer_lead"
+          }
+        ]
+      },
+      "typed_params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 500.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 2.0,
+            "label": "outer_bottom_chamfer_lead"
+          },
+          {
+            "r_mm": 500.0,
+            "z_front_mm": 2.0,
+            "z_rear_mm": 28.0,
+            "label": "outer_main"
+          },
+          {
+            "r_mm": 250.0,
+            "z_front_mm": 28.0,
+            "z_rear_mm": 29.0,
+            "label": "outer_top_chamfer_lead"
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid",
+        "creates_frame"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n2",
+      "component": "ring",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n1",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:ring:n2:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 900,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 900.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n3",
+      "component": "ring",
+      "dialect": "axisymmetric",
+      "op": "cut_circular_hole_pattern",
+      "op_version": "1.0.0",
+      "phase": "pattern_cut",
+      "inputs": [
+        {
+          "producer_node": "n2",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:ring:n3:body"
+        }
+      ],
+      "params": {
+        "count": 36,
+        "pcd_mm": 950,
+        "hole_dia_mm": 15,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "count": 36,
+        "pcd_mm": 950.0,
+        "hole_dia_mm": 15.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:2f2b3657dc33934f132957e0c850e349216b69c9abc4d7b0c8430f410f1485c7",
+  "raw_graph_hash": "sha256:768fe6a33c75cb4985929208b47636fb015c2a6359a131e423283115bc5b3ecc"
+}

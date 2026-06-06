@@ -1,0 +1,309 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "concept_geometry",
+    "document_id": "multi-step-pulley-9stages",
+    "part_name": "9级多级带轮",
+    "selected_dialects": [
+      {
+        "dialect": "axisymmetric",
+        "version": "0.2.0",
+        "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "n_revolve",
+        "dialect": "axisymmetric",
+        "op": "revolve_profile",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_center_bore",
+        "dialect": "axisymmetric",
+        "op": "cut_center_bore",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:1e0b7708dd0292aeda88dabfafcbfeac3d1197bce009745bbb926fd425aaec46",
+    "canonical_graph_hash": "sha256:464d236e64be5483e623e36b12b1d583e63841e932e0bd12d5b222c6551c3632",
+    "paths": {
+      "canonical_ir_path": "<in_memory>",
+      "validation_seed_path": "<in_memory>",
+      "step_path": "E:\\auto_detection_process\\demo_output_v5\\cc_nonprimitive_eval_20260605_120000\\cases_v63_full45\\g16_stepped_pulley\\output.step",
+      "metadata_path": "E:\\auto_detection_process\\demo_output_v5\\cc_nonprimitive_eval_20260605_120000\\cases_v63_full45\\g16_stepped_pulley\\output.metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:a5907296f5f82a3650e5fa4472d2b91218713581b946b8173f0908c6c1097ac8",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [],
+    "degraded_features": [],
+    "operation_metrics": [
+      {
+        "node_id": "n_revolve",
+        "op": "revolve_profile",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_center_bore",
+        "op": "cut_center_bore",
+        "status": "ok"
+      }
+    ],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {
+        "structure": {
+          "ok": true,
+          "stage": "structure",
+          "issues": [],
+          "stages_run": [
+            "structure"
+          ]
+        },
+        "root_terminal": {
+          "ok": true,
+          "stage": "structure",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "root_terminal"
+          ]
+        },
+        "registry": {
+          "ok": true,
+          "stage": "registry",
+          "issues": [],
+          "stages_run": [
+            "registry"
+          ]
+        },
+        "params": {
+          "ok": true,
+          "stage": "params",
+          "issues": [],
+          "stages_run": [
+            "params"
+          ]
+        },
+        "ownership": {
+          "ok": true,
+          "stage": "ownership",
+          "issues": [],
+          "stages_run": [
+            "ownership"
+          ]
+        },
+        "graph": {
+          "ok": true,
+          "stage": "graph",
+          "issues": [],
+          "stages_run": [
+            "graph"
+          ]
+        },
+        "typecheck": {
+          "ok": true,
+          "stage": "typecheck",
+          "issues": [],
+          "stages_run": [
+            "typecheck"
+          ]
+        },
+        "phase": {
+          "ok": true,
+          "stage": "phase",
+          "issues": [],
+          "stages_run": [
+            "phase"
+          ]
+        },
+        "composition": {
+          "ok": true,
+          "stage": "composition",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "root_terminal",
+            "registry",
+            "params",
+            "ownership",
+            "graph",
+            "typecheck",
+            "phase",
+            "composition"
+          ]
+        },
+        "hole_semantics": {
+          "ok": true,
+          "stage": "geometry_preflight",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "root_terminal",
+            "registry",
+            "params",
+            "ownership",
+            "graph",
+            "typecheck",
+            "phase",
+            "composition",
+            "hole_semantics"
+          ]
+        },
+        "safety": {
+          "ok": true,
+          "stage": "safety",
+          "issues": [],
+          "stages_run": [
+            "safety"
+          ]
+        }
+      },
+      "canonicalize": {
+        "ok": true,
+        "stage": "canonicalize",
+        "issues": [],
+        "stages_run": [
+          "canonicalize"
+        ]
+      },
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": true,
+      "stage": "dialect_semantics",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "root_terminal",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "hole_semantics",
+        "safety",
+        "canonicalize",
+        "dialect_semantics"
+      ]
+    },
+    "geometry_preflight": {
+      "ok": true,
+      "stage": "geometry_preflight",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "root_terminal",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "hole_semantics",
+        "safety",
+        "canonicalize",
+        "dialect_semantics",
+        "geometry_preflight"
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "geometry_postcheck": {
+      "ok": true,
+      "volume_mm3": 1384754.3514419629,
+      "n_solids": 1,
+      "bbox_mm": [
+        240.0,
+        240.0,
+        87.0
+      ],
+      "closed": false,
+      "is_valid_solid": false,
+      "errors": [],
+      "warnings": []
+    },
+    "compiler_middle_end": {
+      "ok": true,
+      "passes_run": [
+        "fact_propagation",
+        "planning"
+      ],
+      "diagnostics": []
+    },
+    "geometry_health_summary": {
+      "ok": true,
+      "total_ops_checked": 2,
+      "errors": 0,
+      "warnings": 2,
+      "entries": {
+        "n_revolve.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 1446251.0276359832,
+          "body_count": 1
+        },
+        "n_center_bore.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 1384754.3514419629,
+          "body_count": 1
+        }
+      }
+    },
+    "planning_report": {
+      "ok": true,
+      "issues": [],
+      "optimization_opportunities": []
+    }
+  }
+}

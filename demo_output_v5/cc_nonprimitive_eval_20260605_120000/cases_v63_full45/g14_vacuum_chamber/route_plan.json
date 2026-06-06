@@ -1,0 +1,44 @@
+{
+  "part_intent": {
+    "object_type": "vacuum_chamber_assembly",
+    "dominant_geometry": "axisymmetric_cylinder_with_rectangular_end_plates",
+    "engineering_domain": "vacuum_systems"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "Vacuum chamber body: OD 200 mm, ID 180 mm, length 400 mm — a hollow axisymmetric cylinder, naturally expressed via revolve_profile with cut_center_bore."
+    },
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "Front and rear cover plates (220×220×20 mm) are rectangular prismatic plates; extrude_rectangle and cut_hole handle the observation window (Ø100) and pump ports (2×Ø50)."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "Three independent components (chamber body, front cover, rear cover) must be assembled; composition provides translate_solid, place_component, boolean_union for assembly."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [
+    {
+      "skill_id": "vacuum_chamber_design",
+      "skill_version": "0.1.0",
+      "reason": "Domain context for vacuum chamber geometry: cylindrical body with end flanges, viewport, and pump port placement conventions."
+    }
+  ],
+  "unsupported_capabilities": [
+    "no manufacturing certification",
+    "no structural FEA validation",
+    "no vacuum leak-rate guarantee",
+    "no ASME/PED compliance"
+  ],
+  "safety_notes": [
+    "Reference geometry only — not certified for vacuum service or pressure vessel code compliance.",
+    "Wall thickness (10 mm) is parametric only; no strength or buckling validation is performed.",
+    "Assembly is geometric only; no weld/seal detail is generated."
+  ]
+}

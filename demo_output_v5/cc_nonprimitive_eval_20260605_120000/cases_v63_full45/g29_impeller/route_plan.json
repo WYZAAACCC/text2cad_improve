@@ -1,0 +1,40 @@
+{
+  "part_intent": {
+    "object_type": "centrifugal_impeller",
+    "dominant_geometry": "axisymmetric_hub_with_radial_blades",
+    "engineering_domain": "turbomachinery"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "Hub body is a rotationally symmetric solid: outer dia 300, inner bore 40, height 35. Revolve_profile to create the hub, cut_center_bore for the 40 mm bore."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "6 equally spaced blades (thickness 5, height 20) placed on the hub outer surface require circular_pattern_component (count 6) and boolean_union to combine blade solids with the hub."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [
+    {
+      "skill_id": "centrifugal_impeller",
+      "skill_version": "0.1.0",
+      "reason": "Centrifugal impeller domain: hub + radial blades layout pattern."
+    }
+  ],
+  "unsupported_capabilities": [
+    "Blade aerodynamic profiling (airfoil curvature, inlet/outlet angles, splitter blades)",
+    "Flow-path optimization or CFD validation",
+    "Manufacturing-ready tolerances, surface finish specifications",
+    "Structural integrity or fatigue life prediction",
+    "Certified/airworthy geometry"
+  ],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only. Not validated for manufacturing, structural analysis, or aerodynamic performance.",
+    "No certification or airworthiness claim is implied.",
+    "Blade geometry via axisymmetric+composition is simplified (straight radial blades of uniform thickness); real impeller blades typically require lofted 3D profiles not expressible in these dialects alone."
+  ]
+}

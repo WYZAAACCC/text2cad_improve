@@ -1,0 +1,1 @@
+设计变截面风管,单位mm. loft_sections sections=[{z:0,circle,r:50},{z:150,rectangle,w:120,h:80},{z:300,circle,r:40}].

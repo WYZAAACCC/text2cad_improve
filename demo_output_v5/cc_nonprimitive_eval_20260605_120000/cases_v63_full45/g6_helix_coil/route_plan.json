@@ -1,0 +1,21 @@
+{
+  "part_intent": {
+    "object_type": "helical_coil",
+    "dominant_geometry": "helix_sweep",
+    "engineering_domain": "piping_tubing"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0",
+      "reason": "Helix sweep with circular profile requires loft_sweep dialect for helical path generation and profile sweep."
+    }
+  ],
+  "selected_primitive": "null",
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only. Not for manufacturing, certification, or structural validation."
+  ]
+}

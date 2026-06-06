@@ -1,0 +1,1 @@
+离心泵蜗壳总成,单位mm. 蜗壳主体外径120到60渐变. 排出法兰150x100x20. 底座250x200x30. 用axisymmetric+sketch_extrude+composition.

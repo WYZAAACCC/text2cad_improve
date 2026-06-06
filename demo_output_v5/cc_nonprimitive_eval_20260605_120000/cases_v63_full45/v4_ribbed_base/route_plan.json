@@ -1,0 +1,21 @@
+{
+  "part_intent": {
+    "object_type": "stiffened_base_plate",
+    "dominant_geometry": "prismatic",
+    "engineering_domain": "structural_mounting"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "The part is a prismatic mounting plate with extrude_rectangle, cut_hole_pattern_linear, and add_rib operations — all core ops of sketch_extrude_base."
+    }
+  ],
+  "selected_primitive": "null",
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only — not certified, not airworthy, not manufacturing-ready."
+  ]
+}

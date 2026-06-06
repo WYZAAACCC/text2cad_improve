@@ -1,0 +1,21 @@
+{
+  "part_intent": {
+    "object_type": "flange",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "mechanical"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "Flange is axisymmetric: revolve_profile for outer disk, cut_center_bore for central hole, cut_circular_hole_pattern for bolt circle — all operations match the axisymmetric dialect."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Output is reference geometry only; not certified for manufacturing, structural validation, or installation."
+  ]
+}

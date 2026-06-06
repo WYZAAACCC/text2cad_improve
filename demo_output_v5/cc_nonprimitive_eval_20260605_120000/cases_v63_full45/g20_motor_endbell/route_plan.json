@@ -1,0 +1,31 @@
+{
+  "part_intent": {
+    "object_type": "motor_end_cap_with_junction_box",
+    "dominant_geometry": "axisymmetric_revolved_body_with_prismatic_attachment",
+    "engineering_domain": "electric_motor_housing"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "Motor end cap is a rotationally symmetric body with outer dia 250, inner bore 40 — revolve_profile is the canonical axisymmetric op; cut_center_bore, cut_circular_hole_pattern for 6x M10 on PCD200 are also axisymmetric ops."
+    },
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "Junction box 60x40x30 is a prismatic rectangular body — extrude_rectangle is the canonical sketch_extrude op."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "Union of end cap and junction box + placement of junction box on the end cap exterior requires boolean_union and place_component/translate_solid from composition dialect."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only; not manufacturing-ready, not certified, not airworthy."
+  ]
+}

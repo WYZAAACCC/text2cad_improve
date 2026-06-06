@@ -1,0 +1,21 @@
+{
+  "part_intent": {
+    "object_type": "细长中空轴",
+    "dominant_geometry": "axisymmetric_thin_wall_tube",
+    "engineering_domain": "general_mechanical"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "细长中空轴为旋转对称体，外径16mm内径6mm长500mm，壁厚5mm，使用revolve_profile操作生成，axisymmetric方言原生支持revolve_profile和cut_center_bore"
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "生成几何为参考几何，不具备制造认证、结构验证或适航保证。细长比约31:1 (500/16)，实际制造需考虑挠度、振动和加工刚性。"
+  ]
+}

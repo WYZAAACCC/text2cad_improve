@@ -1,0 +1,21 @@
+{
+  "part_intent": {
+    "object_type": "involute_spiral_scroll",
+    "dominant_geometry": "spiral_sweep",
+    "engineering_domain": "fluid_machinery"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0",
+      "reason": "The part requires a spiral path and circular profile sweep (round radius 12 mm along an involute scroll with 8 points). The loft_sweep dialect supports path and sweep operations needed for scroll geometry."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Generative CAD output is reference geometry only. Not for manufacturing or certification."
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "part_intent": {
+    "object_type": "flange",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "general_mechanical"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "法兰为旋转对称体，可通过axisymmetric方言的revolve_profile生成主体，cut_center_bore生成内孔，cut_circular_hole_pattern生成外圈12孔和内圈8孔螺栓孔。"
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "axisymmetric dialect 生成的是参考几何，非制造就绪模型。螺栓孔为贯穿通孔，无螺纹特征。"
+  ]
+}

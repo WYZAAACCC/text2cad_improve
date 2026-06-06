@@ -1,0 +1,28 @@
+{
+  "part_intent": {
+    "object_type": "assembly",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "piping_valves"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "Valve body, ball, flanges, stem are all axisymmetric — revolve profiles with center bores and hole patterns."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "Assembly of independent components: valve body, ball, flanges, stem. Placement, transform, and boolean operations across parts."
+    }
+  ],
+  "selected_primitive": "null",
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "This is reference geometry only — not certified, not manufacturing-ready, not airworthy.",
+    "No simulation truth, fatigue/life prediction, or structural validation is implied.",
+    "The axisymmetric dialect cannot express non-axisymmetric features like non-circular stem cross-sections if needed."
+  ]
+}

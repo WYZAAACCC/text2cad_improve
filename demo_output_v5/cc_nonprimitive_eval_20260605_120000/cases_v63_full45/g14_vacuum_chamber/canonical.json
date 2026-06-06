@@ -1,0 +1,778 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "canonical_version": "canonical_gcad_v0.2",
+  "document_id": "vacuum_chamber_assembly",
+  "part_name": "真空腔体组件",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+    },
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "contract_hash": "sha256:1ff66c680d94f60891bf00260f365ffa2a0d213d5571a2366a3f1c27748f5382"
+    }
+  ],
+  "components": [
+    {
+      "id": "cylindrical_body",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": null,
+      "root_node": "n_body_final",
+      "output_aliases": {}
+    },
+    {
+      "id": "front_cover",
+      "owner_dialect": "sketch_extrude",
+      "kind_hint": null,
+      "root_node": "n_front_final",
+      "output_aliases": {}
+    },
+    {
+      "id": "rear_cover",
+      "owner_dialect": "sketch_extrude",
+      "kind_hint": null,
+      "root_node": "n_rear_final",
+      "output_aliases": {}
+    },
+    {
+      "id": "__assembly__",
+      "owner_dialect": "composition",
+      "kind_hint": null,
+      "root_node": "n_asm_final",
+      "output_aliases": {}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_body_base",
+      "component": "cylindrical_body",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:cylindrical_body:n_body_base:body"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame",
+          "value_id": "frame:cylindrical_body:n_body_base:outer_frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 100,
+            "z_front_mm": 0,
+            "z_rear_mm": 3,
+            "label": null
+          },
+          {
+            "r_mm": 100,
+            "z_front_mm": 3,
+            "z_rear_mm": 400,
+            "label": null
+          },
+          {
+            "r_mm": 90,
+            "z_front_mm": 400,
+            "z_rear_mm": 403,
+            "label": null
+          }
+        ]
+      },
+      "typed_params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 100.0,
+            "z_front_mm": 0.0,
+            "z_rear_mm": 3.0,
+            "label": null
+          },
+          {
+            "r_mm": 100.0,
+            "z_front_mm": 3.0,
+            "z_rear_mm": 400.0,
+            "label": null
+          },
+          {
+            "r_mm": 90.0,
+            "z_front_mm": 400.0,
+            "z_rear_mm": 403.0,
+            "label": null
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid",
+        "creates_frame"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_front_base",
+      "component": "front_cover",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:front_cover:n_front_base:body"
+        }
+      ],
+      "params": {
+        "width_mm": 220,
+        "height_mm": 220,
+        "depth_mm": 20,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0
+      },
+      "typed_params": {
+        "width_mm": 220.0,
+        "height_mm": 220.0,
+        "depth_mm": 20.0,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0.0
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_rear_base",
+      "component": "rear_cover",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:rear_cover:n_rear_base:body"
+        }
+      ],
+      "params": {
+        "width_mm": 220,
+        "height_mm": 220,
+        "depth_mm": 20,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0
+      },
+      "typed_params": {
+        "width_mm": 220.0,
+        "height_mm": 220.0,
+        "depth_mm": 20.0,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0.0
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "creates_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_place_front",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "place_component",
+      "op_version": "1.0.0",
+      "phase": "transform",
+      "inputs": [
+        {
+          "producer_node": null,
+          "producer_component": "front_cover",
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:__assembly__:n_place_front:body"
+        }
+      ],
+      "params": {
+        "position_mm": [
+          0,
+          0,
+          403
+        ],
+        "component_id": "front_cover"
+      },
+      "typed_params": {
+        "position_mm": [
+          0.0,
+          0.0,
+          403.0
+        ],
+        "component_id": "front_cover"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "places_component"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_place_rear",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "place_component",
+      "op_version": "1.0.0",
+      "phase": "transform",
+      "inputs": [
+        {
+          "producer_node": null,
+          "producer_component": "rear_cover",
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:__assembly__:n_place_rear:body"
+        }
+      ],
+      "params": {
+        "position_mm": [
+          0,
+          0,
+          -20
+        ],
+        "component_id": "rear_cover"
+      },
+      "typed_params": {
+        "position_mm": [
+          0.0,
+          0.0,
+          -20.0
+        ],
+        "component_id": "rear_cover"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "places_component"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_body_bore",
+      "component": "cylindrical_body",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n_body_base",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:cylindrical_body:n_body_bore:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 180,
+        "axis": "Z",
+        "through_all": true
+      },
+      "typed_params": {
+        "diameter_mm": 180.0,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_front_window",
+      "component": "front_cover",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_v2",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n_front_base",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:front_cover:n_front_window:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 100,
+        "placement": {
+          "target_face": "top",
+          "center_uv_mm": [
+            0,
+            0
+          ],
+          "normal_axis": "+Z",
+          "origin_mode": "face_center",
+          "through_mode": "through_all",
+          "depth_mm": null,
+          "start_offset_mm": 0,
+          "scope": {}
+        }
+      },
+      "typed_params": {
+        "diameter_mm": 100.0,
+        "placement": {
+          "target_face": "top",
+          "center_uv_mm": [
+            0.0,
+            0.0
+          ],
+          "normal_axis": "+Z",
+          "origin_mode": "face_center",
+          "through_mode": "through_all",
+          "depth_mm": null,
+          "start_offset_mm": 0.0,
+          "scope": {
+            "target_component": null,
+            "target_stage": null,
+            "include_features": [],
+            "exclude_features": [],
+            "required": true
+          }
+        }
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_rear_port1",
+      "component": "rear_cover",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_v2",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n_rear_base",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:rear_cover:n_rear_port1:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 50,
+        "placement": {
+          "target_face": "top",
+          "center_uv_mm": [
+            0,
+            -55
+          ],
+          "normal_axis": "+Z",
+          "origin_mode": "face_center",
+          "through_mode": "through_all",
+          "depth_mm": null,
+          "start_offset_mm": 0,
+          "scope": {}
+        }
+      },
+      "typed_params": {
+        "diameter_mm": 50.0,
+        "placement": {
+          "target_face": "top",
+          "center_uv_mm": [
+            0.0,
+            -55.0
+          ],
+          "normal_axis": "+Z",
+          "origin_mode": "face_center",
+          "through_mode": "through_all",
+          "depth_mm": null,
+          "start_offset_mm": 0.0,
+          "scope": {
+            "target_component": null,
+            "target_stage": null,
+            "include_features": [],
+            "exclude_features": [],
+            "required": true
+          }
+        }
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_rear_port2",
+      "component": "rear_cover",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_v2",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "producer_node": "n_rear_port1",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:rear_cover:n_rear_port2:body"
+        }
+      ],
+      "params": {
+        "diameter_mm": 50,
+        "placement": {
+          "target_face": "top",
+          "center_uv_mm": [
+            0,
+            55
+          ],
+          "normal_axis": "+Z",
+          "origin_mode": "face_center",
+          "through_mode": "through_all",
+          "depth_mm": null,
+          "start_offset_mm": 0,
+          "scope": {}
+        }
+      },
+      "typed_params": {
+        "diameter_mm": 50.0,
+        "placement": {
+          "target_face": "top",
+          "center_uv_mm": [
+            0.0,
+            55.0
+          ],
+          "normal_axis": "+Z",
+          "origin_mode": "face_center",
+          "through_mode": "through_all",
+          "depth_mm": null,
+          "start_offset_mm": 0.0,
+          "scope": {
+            "target_component": null,
+            "target_stage": null,
+            "include_features": [],
+            "exclude_features": [],
+            "required": true
+          }
+        }
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "cuts_material"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_union_front",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "producer_node": null,
+          "producer_component": "cylindrical_body",
+          "output": "body",
+          "resolved_type": "solid"
+        },
+        {
+          "producer_node": "n_place_front",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:__assembly__:n_union_front:body"
+        }
+      ],
+      "params": {},
+      "typed_params": {
+        "clean_after": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "boolean_union"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_asm_final",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "producer_node": "n_union_front",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        },
+        {
+          "producer_node": "n_place_rear",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:__assembly__:n_asm_final:body"
+        }
+      ],
+      "params": {},
+      "typed_params": {
+        "clean_after": true
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "boolean_union"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_front_final",
+      "component": "front_cover",
+      "dialect": "sketch_extrude",
+      "op": "apply_safe_fillet",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "producer_node": "n_front_window",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:front_cover:n_front_final:body"
+        }
+      ],
+      "params": {
+        "radius_mm": 2,
+        "target": "all_external_edges"
+      },
+      "typed_params": {
+        "radius_mm": 2.0,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "modifies_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_rear_final",
+      "component": "rear_cover",
+      "dialect": "sketch_extrude",
+      "op": "apply_safe_fillet",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "producer_node": "n_rear_port2",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:rear_cover:n_rear_final:body"
+        }
+      ],
+      "params": {
+        "radius_mm": 2,
+        "target": "all_external_edges"
+      },
+      "typed_params": {
+        "radius_mm": 2.0,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "modifies_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    },
+    {
+      "id": "n_body_final",
+      "component": "cylindrical_body",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "producer_node": "n_body_bore",
+          "producer_component": null,
+          "output": "body",
+          "resolved_type": "solid"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid",
+          "value_id": "solid:cylindrical_body:n_body_final:body"
+        }
+      ],
+      "params": {
+        "distance_mm": 1,
+        "target": "all_external_edges"
+      },
+      "typed_params": {
+        "distance_mm": 1.0,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail",
+      "operation_effects": [
+        "modifies_solid"
+      ],
+      "postconditions": [
+        "valid_solid"
+      ]
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1.0,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "canonical_graph_hash": "sha256:643a8fde88ad3c7170bfa36045ea33d20f46f24e83c03c5adfe73e8e28dca0e5",
+  "raw_graph_hash": "sha256:1fdad47692723bf176a7045bc826164ed39a76ef894d3f997feb0b0e93525dd8"
+}

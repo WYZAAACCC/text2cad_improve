@@ -1,0 +1,1 @@
+散热器328x228x8mm,单位mm. extrude_rectangle后18片鳍片厚2高100间距12. 四角6mm安装孔.

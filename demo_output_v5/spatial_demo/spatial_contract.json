@@ -1,0 +1,616 @@
+{
+  "components": [
+    {
+      "component_id": "base_plate",
+      "display_name": "底板",
+      "role": "base_plate",
+      "kind_hint": "rectangular_plate",
+      "primary_dialect_hint": "sketch_extrude",
+      "known_dimensions": [
+        {
+          "name": "length",
+          "value_mm": 400.0,
+          "axis": "X",
+          "is_exact": true
+        },
+        {
+          "name": "width",
+          "value_mm": 300.0,
+          "axis": "Y",
+          "is_exact": true
+        },
+        {
+          "name": "thickness",
+          "value_mm": 20.0,
+          "axis": "Z",
+          "is_exact": true
+        }
+      ],
+      "source_text": "底板400x300x20mm",
+      "confidence": {
+        "value": 1.0,
+        "reason": "user_explicit dimensions"
+      }
+    },
+    {
+      "component_id": "top_plate",
+      "display_name": "顶板",
+      "role": "top_plate",
+      "kind_hint": "rectangular_plate",
+      "primary_dialect_hint": "sketch_extrude",
+      "known_dimensions": [
+        {
+          "name": "length",
+          "value_mm": 400.0,
+          "axis": "X",
+          "is_exact": true
+        },
+        {
+          "name": "width",
+          "value_mm": 300.0,
+          "axis": "Y",
+          "is_exact": true
+        },
+        {
+          "name": "thickness",
+          "value_mm": 15.0,
+          "axis": "Z",
+          "is_exact": true
+        }
+      ],
+      "source_text": "顶板400x300x15mm",
+      "confidence": {
+        "value": 1.0,
+        "reason": "user_explicit dimensions"
+      }
+    },
+    {
+      "component_id": "pillar_front_left",
+      "display_name": "前左柱",
+      "role": "pillar",
+      "kind_hint": "cylinder",
+      "primary_dialect_hint": "axisymmetric",
+      "known_dimensions": [
+        {
+          "name": "diameter",
+          "value_mm": 50.0,
+          "axis": "X",
+          "is_exact": true
+        }
+      ],
+      "source_text": "4根圆柱直径50mm",
+      "confidence": {
+        "value": 1.0,
+        "reason": "user_explicit diameter; height unknown, position unknown"
+      }
+    },
+    {
+      "component_id": "pillar_front_right",
+      "display_name": "前右柱",
+      "role": "pillar",
+      "kind_hint": "cylinder",
+      "primary_dialect_hint": "axisymmetric",
+      "known_dimensions": [
+        {
+          "name": "diameter",
+          "value_mm": 50.0,
+          "axis": "X",
+          "is_exact": true
+        }
+      ],
+      "source_text": "4根圆柱直径50mm",
+      "confidence": {
+        "value": 1.0,
+        "reason": "user_explicit diameter"
+      }
+    },
+    {
+      "component_id": "pillar_rear_left",
+      "display_name": "后左柱",
+      "role": "pillar",
+      "kind_hint": "cylinder",
+      "primary_dialect_hint": "axisymmetric",
+      "known_dimensions": [
+        {
+          "name": "diameter",
+          "value_mm": 50.0,
+          "axis": "X",
+          "is_exact": true
+        }
+      ],
+      "source_text": "4根圆柱直径50mm",
+      "confidence": {
+        "value": 1.0,
+        "reason": "user_explicit diameter"
+      }
+    },
+    {
+      "component_id": "pillar_rear_right",
+      "display_name": "后右柱",
+      "role": "pillar",
+      "kind_hint": "cylinder",
+      "primary_dialect_hint": "axisymmetric",
+      "known_dimensions": [
+        {
+          "name": "diameter",
+          "value_mm": 50.0,
+          "axis": "X",
+          "is_exact": true
+        }
+      ],
+      "source_text": "4根圆柱直径50mm",
+      "confidence": {
+        "value": 1.0,
+        "reason": "user_explicit diameter"
+      }
+    },
+    {
+      "component_id": "mounting_hole_fl",
+      "display_name": "底板安装孔(前左)",
+      "role": "mounting_hole",
+      "kind_hint": "through_hole",
+      "primary_dialect_hint": "axisymmetric",
+      "known_dimensions": [],
+      "source_text": "有四角安装孔",
+      "confidence": {
+        "value": 0.9,
+        "reason": "user_explicit: 4 corner mounting holes; diameter not specified"
+      }
+    },
+    {
+      "component_id": "mounting_hole_fr",
+      "display_name": "底板安装孔(前右)",
+      "role": "mounting_hole",
+      "kind_hint": "through_hole",
+      "primary_dialect_hint": "axisymmetric",
+      "known_dimensions": [],
+      "source_text": "有四角安装孔",
+      "confidence": {
+        "value": 0.9,
+        "reason": "user_explicit: 4 corner mounting holes"
+      }
+    },
+    {
+      "component_id": "mounting_hole_rl",
+      "display_name": "底板安装孔(后左)",
+      "role": "mounting_hole",
+      "kind_hint": "through_hole",
+      "primary_dialect_hint": "axisymmetric",
+      "known_dimensions": [],
+      "source_text": "有四角安装孔",
+      "confidence": {
+        "value": 0.9,
+        "reason": "user_explicit: 4 corner mounting holes"
+      }
+    },
+    {
+      "component_id": "mounting_hole_rr",
+      "display_name": "底板安装孔(后右)",
+      "role": "mounting_hole",
+      "kind_hint": "through_hole",
+      "primary_dialect_hint": "axisymmetric",
+      "known_dimensions": [],
+      "source_text": "有四角安装孔",
+      "confidence": {
+        "value": 0.9,
+        "reason": "user_explicit: 4 corner mounting holes"
+      }
+    }
+  ],
+  "local_frames": [
+    {
+      "component_id": "base_plate",
+      "origin_semantics": "center_bottom",
+      "x_axis_semantics": "global_X",
+      "y_axis_semantics": "global_Y",
+      "z_axis_semantics": "global_Z",
+      "confidence": {
+        "value": 0.95,
+        "reason": "standard for rectangular plates: origin at bottom face center"
+      }
+    },
+    {
+      "component_id": "top_plate",
+      "origin_semantics": "center_bottom",
+      "x_axis_semantics": "global_X",
+      "y_axis_semantics": "global_Y",
+      "z_axis_semantics": "global_Z",
+      "confidence": {
+        "value": 0.95,
+        "reason": "standard for rectangular plates; bottom face contacts pillar tops"
+      }
+    },
+    {
+      "component_id": "pillar_front_left",
+      "origin_semantics": "center_bottom",
+      "x_axis_semantics": "global_X",
+      "y_axis_semantics": "global_Y",
+      "z_axis_semantics": "global_Z",
+      "confidence": {
+        "value": 0.9,
+        "reason": "cylindrical pillar: center_bottom origin is standard for placement on base plate"
+      }
+    },
+    {
+      "component_id": "pillar_front_right",
+      "origin_semantics": "center_bottom",
+      "x_axis_semantics": "global_X",
+      "y_axis_semantics": "global_Y",
+      "z_axis_semantics": "global_Z",
+      "confidence": {
+        "value": 0.9,
+        "reason": "same as other pillars"
+      }
+    },
+    {
+      "component_id": "pillar_rear_left",
+      "origin_semantics": "center_bottom",
+      "x_axis_semantics": "global_X",
+      "y_axis_semantics": "global_Y",
+      "z_axis_semantics": "global_Z",
+      "confidence": {
+        "value": 0.9,
+        "reason": "same as other pillars"
+      }
+    },
+    {
+      "component_id": "pillar_rear_right",
+      "origin_semantics": "center_bottom",
+      "x_axis_semantics": "global_X",
+      "y_axis_semantics": "global_Y",
+      "z_axis_semantics": "global_Z",
+      "confidence": {
+        "value": 0.9,
+        "reason": "same as other pillars"
+      }
+    },
+    {
+      "component_id": "mounting_hole_fl",
+      "origin_semantics": "center",
+      "x_axis_semantics": "global_X",
+      "y_axis_semantics": "global_Y",
+      "z_axis_semantics": "global_Z",
+      "confidence": {
+        "value": 0.85,
+        "reason": "through hole; center at hole axis"
+      }
+    },
+    {
+      "component_id": "mounting_hole_fr",
+      "origin_semantics": "center",
+      "x_axis_semantics": "global_X",
+      "y_axis_semantics": "global_Y",
+      "z_axis_semantics": "global_Z",
+      "confidence": {
+        "value": 0.85,
+        "reason": "same as other mounting holes"
+      }
+    },
+    {
+      "component_id": "mounting_hole_rl",
+      "origin_semantics": "center",
+      "x_axis_semantics": "global_X",
+      "y_axis_semantics": "global_Y",
+      "z_axis_semantics": "global_Z",
+      "confidence": {
+        "value": 0.85,
+        "reason": "same as other mounting holes"
+      }
+    },
+    {
+      "component_id": "mounting_hole_rr",
+      "origin_semantics": "center",
+      "x_axis_semantics": "global_X",
+      "y_axis_semantics": "global_Y",
+      "z_axis_semantics": "global_Z",
+      "confidence": {
+        "value": 0.85,
+        "reason": "same as other mounting holes"
+      }
+    }
+  ],
+  "constraints": [
+    {
+      "constraint_id": "c_rel_top_above_pillars",
+      "type": "stack",
+      "entities": [
+        "pillar_front_left",
+        "top_plate"
+      ],
+      "bindings": {
+        "lower_zmax": {
+          "component_id": "pillar_front_left",
+          "axis": "Z",
+          "edge": "max"
+        },
+        "upper_zmin": {
+          "component_id": "top_plate",
+          "axis": "Z",
+          "edge": "min"
+        }
+      },
+      "offset_mm": 0.0,
+      "spacing_mm": null,
+      "axis": "Z",
+      "tolerance_mm": 0.5,
+      "source": "user_explicit",
+      "required": true
+    },
+    {
+      "constraint_id": "c_rel_pillars_on_base",
+      "type": "stack",
+      "entities": [
+        "pillar_front_left",
+        "base_plate"
+      ],
+      "bindings": {
+        "a_face": {
+          "component_id": "pillar_front_left",
+          "axis": "Z",
+          "edge": "max"
+        },
+        "b_face": {
+          "component_id": "base_plate",
+          "axis": "Z",
+          "edge": "min"
+        }
+      },
+      "offset_mm": 0.0,
+      "spacing_mm": null,
+      "axis": "Z",
+      "tolerance_mm": 0.5,
+      "source": "llm_inferred",
+      "required": true
+    },
+    {
+      "constraint_id": "c_rel_pillars_on_base_fr",
+      "type": "stack",
+      "entities": [
+        "pillar_front_right",
+        "base_plate"
+      ],
+      "bindings": {
+        "a_face": {
+          "component_id": "pillar_front_right",
+          "axis": "Z",
+          "edge": "max"
+        },
+        "b_face": {
+          "component_id": "base_plate",
+          "axis": "Z",
+          "edge": "min"
+        }
+      },
+      "offset_mm": 0.0,
+      "spacing_mm": null,
+      "axis": "Z",
+      "tolerance_mm": 0.5,
+      "source": "llm_inferred",
+      "required": true
+    },
+    {
+      "constraint_id": "c_rel_pillars_on_base_rl",
+      "type": "stack",
+      "entities": [
+        "pillar_rear_left",
+        "base_plate"
+      ],
+      "bindings": {
+        "a_face": {
+          "component_id": "pillar_rear_left",
+          "axis": "Z",
+          "edge": "max"
+        },
+        "b_face": {
+          "component_id": "base_plate",
+          "axis": "Z",
+          "edge": "min"
+        }
+      },
+      "offset_mm": 0.0,
+      "spacing_mm": null,
+      "axis": "Z",
+      "tolerance_mm": 0.5,
+      "source": "llm_inferred",
+      "required": true
+    },
+    {
+      "constraint_id": "c_rel_pillars_on_base_rr",
+      "type": "stack",
+      "entities": [
+        "pillar_rear_right",
+        "base_plate"
+      ],
+      "bindings": {
+        "a_face": {
+          "component_id": "pillar_rear_right",
+          "axis": "Z",
+          "edge": "max"
+        },
+        "b_face": {
+          "component_id": "base_plate",
+          "axis": "Z",
+          "edge": "min"
+        }
+      },
+      "offset_mm": 0.0,
+      "spacing_mm": null,
+      "axis": "Z",
+      "tolerance_mm": 0.5,
+      "source": "llm_inferred",
+      "required": true
+    },
+    {
+      "constraint_id": "c_rel_top_on_pillars_fl",
+      "type": "stack",
+      "entities": [
+        "top_plate",
+        "pillar_front_left"
+      ],
+      "bindings": {
+        "a_face": {
+          "component_id": "top_plate",
+          "axis": "Z",
+          "edge": "max"
+        },
+        "b_face": {
+          "component_id": "pillar_front_left",
+          "axis": "Z",
+          "edge": "min"
+        }
+      },
+      "offset_mm": 0.0,
+      "spacing_mm": null,
+      "axis": "Z",
+      "tolerance_mm": 0.5,
+      "source": "llm_inferred",
+      "required": true
+    },
+    {
+      "constraint_id": "c_rel_top_on_pillars_fr",
+      "type": "stack",
+      "entities": [
+        "top_plate",
+        "pillar_front_right"
+      ],
+      "bindings": {
+        "a_face": {
+          "component_id": "top_plate",
+          "axis": "Z",
+          "edge": "max"
+        },
+        "b_face": {
+          "component_id": "pillar_front_right",
+          "axis": "Z",
+          "edge": "min"
+        }
+      },
+      "offset_mm": 0.0,
+      "spacing_mm": null,
+      "axis": "Z",
+      "tolerance_mm": 0.5,
+      "source": "llm_inferred",
+      "required": true
+    },
+    {
+      "constraint_id": "c_rel_top_on_pillars_rl",
+      "type": "stack",
+      "entities": [
+        "top_plate",
+        "pillar_rear_left"
+      ],
+      "bindings": {
+        "a_face": {
+          "component_id": "top_plate",
+          "axis": "Z",
+          "edge": "max"
+        },
+        "b_face": {
+          "component_id": "pillar_rear_left",
+          "axis": "Z",
+          "edge": "min"
+        }
+      },
+      "offset_mm": 0.0,
+      "spacing_mm": null,
+      "axis": "Z",
+      "tolerance_mm": 0.5,
+      "source": "llm_inferred",
+      "required": true
+    },
+    {
+      "constraint_id": "c_rel_top_on_pillars_rr",
+      "type": "stack",
+      "entities": [
+        "top_plate",
+        "pillar_rear_right"
+      ],
+      "bindings": {
+        "a_face": {
+          "component_id": "top_plate",
+          "axis": "Z",
+          "edge": "max"
+        },
+        "b_face": {
+          "component_id": "pillar_rear_right",
+          "axis": "Z",
+          "edge": "min"
+        }
+      },
+      "offset_mm": 0.0,
+      "spacing_mm": null,
+      "axis": "Z",
+      "tolerance_mm": 0.5,
+      "source": "llm_inferred",
+      "required": true
+    },
+    {
+      "constraint_id": "c_rel_pillars_symmetric_x",
+      "type": "symmetric",
+      "entities": [
+        "pillar_front_left",
+        "pillar_front_right"
+      ],
+      "bindings": {},
+      "offset_mm": 0.0,
+      "spacing_mm": null,
+      "axis": null,
+      "tolerance_mm": 0.5,
+      "source": "llm_inferred",
+      "required": true
+    },
+    {
+      "constraint_id": "c_rel_pillars_symmetric_y",
+      "type": "symmetric",
+      "entities": [
+        "pillar_front_left",
+        "pillar_rear_left"
+      ],
+      "bindings": {},
+      "offset_mm": 0.0,
+      "spacing_mm": null,
+      "axis": null,
+      "tolerance_mm": 0.5,
+      "source": "llm_inferred",
+      "required": true
+    },
+    {
+      "constraint_id": "c_rel_holes_through_base",
+      "type": "stack",
+      "entities": [
+        "mounting_hole_fl",
+        "base_plate"
+      ],
+      "bindings": {
+        "a_face": {
+          "component_id": "mounting_hole_fl",
+          "axis": "Z",
+          "edge": "max"
+        },
+        "b_face": {
+          "component_id": "base_plate",
+          "axis": "Z",
+          "edge": "min"
+        }
+      },
+      "offset_mm": 0.0,
+      "spacing_mm": null,
+      "axis": "Z",
+      "tolerance_mm": 0.5,
+      "source": "llm_inferred",
+      "required": true
+    }
+  ],
+  "assumptions": [
+    "底板和顶板均为矩形平板，400mm沿X轴，300mm沿Y轴",
+    "底板底面Z=0，顶面Z=20mm",
+    "4根圆柱直径均为50mm，均匀分布在四角",
+    "柱子底面与底板上表面接触(faces_contact)，柱子顶面与顶板底面接触",
+    "顶板与底板在XY平面上对齐（centered）",
+    "安装孔为通孔，位于底板四角",
+    "使用右手坐标系：X右Y前Z上",
+    "柱子采用center_bottom局部坐标系放置在底板上表面"
+  ],
+  "solved_assembly_bbox_mm": null,
+  "expected_body_count": null
+}

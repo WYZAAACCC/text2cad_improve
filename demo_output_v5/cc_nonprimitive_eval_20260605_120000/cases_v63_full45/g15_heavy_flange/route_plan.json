@@ -1,0 +1,43 @@
+{
+  "part_intent": {
+    "object_type": "heavy_flange",
+    "dominant_geometry": "axisymmetric_disk_with_bolt_hole_rings",
+    "engineering_domain": "structural_mechanical_piping"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "Flange is rotationally symmetric: revolve outer profile, center bore, and two concentric bolt circle patterns (outer 24x M18 PCD340, inner 12x M12 PCD200 at 15° start angle)."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "Two independent bolt hole ring patterns on the same flange body require boolean cut composition from separately defined hole pattern placements."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [
+    {
+      "skill_id": "circular_bolt_hole_pattern",
+      "skill_version": "0.1.0",
+      "reason": "Two bolt circles: outer 24x Ø18 on PCD340, inner 12x Ø12 on PCD200 with 15° start angle."
+    },
+    {
+      "skill_id": "axisymmetric_revolve",
+      "skill_version": "0.1.0",
+      "reason": "Flange body from revolved rectangular cross-section (OD 400, ID 120, thickness 55 mm)."
+    }
+  ],
+  "unsupported_capabilities": [
+    "thread_modeling",
+    "tolerance_specification",
+    "material_assignment",
+    "manufacturing_drawing",
+    "weld_prep"
+  ],
+  "safety_notes": [
+    "No manufacturing certification or structural validation is implied. Output is reference geometry only."
+  ]
+}

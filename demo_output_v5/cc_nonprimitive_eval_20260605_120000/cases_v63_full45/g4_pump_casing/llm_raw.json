@@ -1,0 +1,680 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "volute_pump_assembly_001",
+  "part_name": "centrifugal_pump_volute_assembly",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0"
+    },
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "volute_body",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": "volute_housing",
+      "root_node": "n_volute_final"
+    },
+    {
+      "id": "discharge_flange",
+      "owner_dialect": "sketch_extrude",
+      "kind_hint": "flange_plate",
+      "root_node": "n_flange_final"
+    },
+    {
+      "id": "base_plate",
+      "owner_dialect": "sketch_extrude",
+      "kind_hint": "mounting_base",
+      "root_node": "n_base_final"
+    },
+    {
+      "id": "__assembly__",
+      "owner_dialect": "composition",
+      "kind_hint": "assembly",
+      "root_node": "n_union_all"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_volute_revolve",
+      "component": "volute_body",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 60,
+            "z_front_mm": 0,
+            "z_rear_mm": 5,
+            "label": "base_start"
+          },
+          {
+            "r_mm": 60,
+            "z_front_mm": 5,
+            "z_rear_mm": 60,
+            "label": "upper_outer_60"
+          },
+          {
+            "r_mm": 40,
+            "z_front_mm": 60,
+            "z_rear_mm": 80,
+            "label": "mid_taper_50"
+          },
+          {
+            "r_mm": 30,
+            "z_front_mm": 80,
+            "z_rear_mm": 100,
+            "label": "upper_inner_30"
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_volute_bore",
+      "component": "volute_body",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "n_volute_revolve",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 40,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_volute_groove",
+      "component": "volute_body",
+      "dialect": "axisymmetric",
+      "op": "cut_annular_groove",
+      "op_version": "1.0.0",
+      "phase": "annular_detail",
+      "inputs": [
+        {
+          "node": "n_volute_bore",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "side": "front",
+        "inner_dia_mm": 50,
+        "outer_dia_mm": 90,
+        "depth_mm": 8
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_volute_bolt_holes",
+      "component": "volute_body",
+      "dialect": "axisymmetric",
+      "op": "cut_circular_hole_pattern",
+      "op_version": "1.0.0",
+      "phase": "pattern_cut",
+      "inputs": [
+        {
+          "node": "n_volute_groove",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "count": 6,
+        "pcd_mm": 100,
+        "hole_dia_mm": 8,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_volute_chamfer",
+      "component": "volute_body",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "n_volute_bolt_holes",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 2,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_volute_final",
+      "component": "volute_body",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "n_volute_chamfer",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 1,
+        "target": "all_external_edges"
+      },
+      "required": false,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_flange_extrude",
+      "component": "discharge_flange",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 150,
+        "height_mm": 100,
+        "depth_mm": 20,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_flange_hole_v2_1",
+      "component": "discharge_flange",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_v2",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "n_flange_extrude",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 50,
+        "placement": {
+          "target_face": "top",
+          "center_uv_mm": [
+            0,
+            0
+          ],
+          "normal_axis": "+Z",
+          "origin_mode": "face_center",
+          "through_mode": "through_all",
+          "depth_mm": null,
+          "start_offset_mm": 0,
+          "scope": null
+        }
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_flange_bolt_holes_v2",
+      "component": "discharge_flange",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_pattern_linear_v2",
+      "op_version": "1.0.0",
+      "phase": "hole_pattern",
+      "inputs": [
+        {
+          "node": "n_flange_hole_v2_1",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "hole_dia_mm": 10,
+        "count_u": 2,
+        "count_v": 2,
+        "spacing_u_mm": 110,
+        "spacing_v_mm": 60,
+        "placement": {
+          "target_face": "top",
+          "center_uv_mm": [
+            0,
+            0
+          ],
+          "normal_axis": "+Z",
+          "origin_mode": "face_center",
+          "through_mode": "through_all",
+          "depth_mm": null,
+          "start_offset_mm": 0,
+          "scope": null
+        }
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_flange_chamfer",
+      "component": "discharge_flange",
+      "dialect": "sketch_extrude",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "n_flange_bolt_holes_v2",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 1,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_flange_final",
+      "component": "discharge_flange",
+      "dialect": "sketch_extrude",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "n_flange_chamfer",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 1,
+        "target": "all_external_edges"
+      },
+      "required": false,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_base_extrude",
+      "component": "base_plate",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 250,
+        "height_mm": 200,
+        "depth_mm": 30,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_base_mount_holes_v2",
+      "component": "base_plate",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_pattern_linear_v2",
+      "op_version": "1.0.0",
+      "phase": "hole_pattern",
+      "inputs": [
+        {
+          "node": "n_base_extrude",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "hole_dia_mm": 12,
+        "count_u": 2,
+        "count_v": 2,
+        "spacing_u_mm": 200,
+        "spacing_v_mm": 150,
+        "placement": {
+          "target_face": "top",
+          "center_uv_mm": [
+            0,
+            0
+          ],
+          "normal_axis": "+Z",
+          "origin_mode": "face_center",
+          "through_mode": "through_all",
+          "depth_mm": null,
+          "start_offset_mm": 0,
+          "scope": null
+        }
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_base_chamfer",
+      "component": "base_plate",
+      "dialect": "sketch_extrude",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "n_base_mount_holes_v2",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 2,
+        "target": "all_external_edges"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_base_final",
+      "component": "base_plate",
+      "dialect": "sketch_extrude",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "n_base_chamfer",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 1,
+        "target": "all_external_edges"
+      },
+      "required": false,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_place_volute",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "place_component",
+      "op_version": "1.0.0",
+      "phase": "transform",
+      "inputs": [
+        {
+          "node": "n_volute_final",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "position_mm": [
+          0,
+          0,
+          30
+        ],
+        "component_id": "volute_body"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_place_flange",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "place_component",
+      "op_version": "1.0.0",
+      "phase": "transform",
+      "inputs": [
+        {
+          "node": "n_flange_final",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "position_mm": [
+          0,
+          60,
+          90
+        ],
+        "component_id": "discharge_flange"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_place_base",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "place_component",
+      "op_version": "1.0.0",
+      "phase": "transform",
+      "inputs": [
+        {
+          "node": "n_base_final",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "position_mm": [
+          0,
+          0,
+          0
+        ],
+        "component_id": "base_plate"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_union_volute_flange",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "node": "n_place_volute",
+          "output": "body"
+        },
+        {
+          "node": "n_place_flange",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "clean_after": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_union_all",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_union",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "node": "n_union_volute_flange",
+          "output": "body"
+        },
+        {
+          "node": "n_place_base",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "clean_after": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": null
+}

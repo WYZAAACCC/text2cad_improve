@@ -1,0 +1,1 @@
+空心支架200x160x70mm,单位mm. extrude_rectangle后shell_body厚3mm. 四角8mm安装孔. 侧面2个15mm过孔.

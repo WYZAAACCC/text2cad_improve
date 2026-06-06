@@ -1,0 +1,13 @@
+{
+  "part_intent": {
+    "object_type": "torsion_spring",
+    "dominant_geometry": "helical_sweep",
+    "engineering_domain": "mechanical_spring"
+  },
+  "route_decision": "deterministic_primitive",
+  "selected_dialects": [],
+  "selected_primitive": "involute_spur_gear",
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": []
+}

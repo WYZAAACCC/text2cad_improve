@@ -1,0 +1,1 @@
+设计电子外壳200x150x100mm,单位mm. extrude_rectangle width_mm=200 height_mm=150 depth_mm=100 centered=true. shell_body thickness_mm=3. 面板开口cut_rectangular_pocket宽80高50深3.

@@ -1,0 +1,309 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "housing_300x200x150",
+  "part_name": "Equipment Housing 300x200x150",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0"
+    },
+    {
+      "dialect": "shell_housing",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "housing",
+      "owner_dialect": "sketch_extrude",
+      "kind_hint": "equipment_housing",
+      "root_node": "n_mount_holes"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_base",
+      "component": "housing",
+      "dialect": "sketch_extrude",
+      "op": "extrude_rectangle",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 300,
+        "height_mm": 200,
+        "depth_mm": 150,
+        "plane": "XY",
+        "centered": true,
+        "direction": "+",
+        "draft_angle_deg": 0
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_front_cutout",
+      "component": "housing",
+      "dialect": "sketch_extrude",
+      "op": "cut_rectangular_pocket",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "n_shell",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "width_mm": 100,
+        "height_mm": 60,
+        "depth_mm": 4,
+        "plane": "YZ",
+        "centered": true,
+        "direction": "-",
+        "draft_angle_deg": 0
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_mount_hole_bl",
+      "component": "housing",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_v2",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "n_front_cutout",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 6,
+        "placement": {
+          "target_face": "bottom",
+          "center_uv_mm": [
+            -130,
+            -80
+          ],
+          "normal_axis": "+Z",
+          "origin_mode": "face_center",
+          "through_mode": "through_all",
+          "depth_mm": null,
+          "start_offset_mm": 0,
+          "scope": {}
+        }
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_mount_hole_br",
+      "component": "housing",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_v2",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "n_mount_hole_bl",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 6,
+        "placement": {
+          "target_face": "bottom",
+          "center_uv_mm": [
+            130,
+            -80
+          ],
+          "normal_axis": "+Z",
+          "origin_mode": "face_center",
+          "through_mode": "through_all",
+          "depth_mm": null,
+          "start_offset_mm": 0,
+          "scope": {}
+        }
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_mount_hole_tl",
+      "component": "housing",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_v2",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "n_mount_hole_br",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 6,
+        "placement": {
+          "target_face": "bottom",
+          "center_uv_mm": [
+            -130,
+            80
+          ],
+          "normal_axis": "+Z",
+          "origin_mode": "face_center",
+          "through_mode": "through_all",
+          "depth_mm": null,
+          "start_offset_mm": 0,
+          "scope": {}
+        }
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_mount_hole_tr",
+      "component": "housing",
+      "dialect": "sketch_extrude",
+      "op": "cut_hole_v2",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "n_mount_hole_tl",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 6,
+        "placement": {
+          "target_face": "bottom",
+          "center_uv_mm": [
+            130,
+            80
+          ],
+          "normal_axis": "+Z",
+          "origin_mode": "face_center",
+          "through_mode": "through_all",
+          "depth_mm": null,
+          "start_offset_mm": 0,
+          "scope": {}
+        }
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_shell",
+      "component": "housing",
+      "dialect": "shell_housing",
+      "op": "shell_body",
+      "op_version": "1.0.0",
+      "phase": "shell",
+      "inputs": [
+        {
+          "node": "n_base",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 4
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_mount_holes",
+      "component": "housing",
+      "dialect": "shell_housing",
+      "op": "shell_body",
+      "op_version": "1.0.0",
+      "phase": "shell",
+      "inputs": [
+        {
+          "node": "n_mount_hole_tr",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "thickness_mm": 4
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": [
+      300,
+      200,
+      150
+    ],
+    "bbox_tolerance_mm": 2,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {}
+}

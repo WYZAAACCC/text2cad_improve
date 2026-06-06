@@ -1,0 +1,26 @@
+{
+  "part_intent": {
+    "object_type": "hydraulic_manifold_block",
+    "dominant_geometry": "prismatic_rectangular_block",
+    "engineering_domain": "hydraulics"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "Prismatic rectangular block with extrude_rectangle base, holes on multiple orthogonal faces (top P-port, front work-ports, right drain-port), corner mounting holes, and chamfer — all matching sketch_extrude_base main_ops: extrude_rectangle, cut_hole, cut_hole_pattern_linear (for 4-corner pattern), apply_safe_chamfer."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "Multiple independent hole features on different faces (top, front, right) must be positioned and combined; composition provides boolean_cut across components."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Reference geometry only — not for manufacturing. No CFD, no FEA, no structural validation, no certification implied."
+  ]
+}

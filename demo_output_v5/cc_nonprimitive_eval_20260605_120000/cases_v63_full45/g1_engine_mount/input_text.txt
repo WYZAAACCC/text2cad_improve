@@ -1,0 +1,1 @@
+汽车发动机悬置支架总成,单位mm. 底板300x200x25有4个M14安装孔. 2个衬套外径60内径16高50. 安装支架80x60x15带2个M10孔. 用sketch_extrude+axisymmetric+composition做boolean_union.

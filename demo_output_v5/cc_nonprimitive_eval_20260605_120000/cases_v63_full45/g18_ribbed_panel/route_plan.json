@@ -1,0 +1,26 @@
+{
+  "part_intent": {
+    "object_type": "stiffened_panel",
+    "dominant_geometry": "prismatic_plate_with_orthogonal_rib_grid",
+    "engineering_domain": "structural_panel"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "Base panel (extrude_rectangle 550x400x8) plus ribs as add_rib features. sketch_extrude_base covers extrude_rectangle and add_rib for prismatic stiffened panels."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "Linear pattern of longitudinal and transverse ribs across the panel, requiring translate/pattern operations to place the rib grid."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "Ribbed panel is reference geometry only; not structurally validated. No fatigue/life or airworthiness certification implied. Rib spacing ~60mm is approximate — exact integer division of 550mm and 400mm by spacing may require user adjustment."
+  ]
+}

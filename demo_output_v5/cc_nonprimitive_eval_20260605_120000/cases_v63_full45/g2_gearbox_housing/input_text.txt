@@ -1,0 +1,1 @@
+减速器箱体总成500x350x40,单位mm. 箱体底板有矩形凹槽440x290深30. 2个轴承座外径80内径50高70各6个M12孔PCD120. 用sketch_extrude+axisymmetric+composition.

@@ -1,0 +1,31 @@
+{
+  "part_intent": {
+    "object_type": "centrifugal_pump_volute_assembly",
+    "dominant_geometry": "axisymmetric_volute_with_prismatic_flange_and_base",
+    "engineering_domain": "fluid_handling_turbomachinery"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "蜗壳主体外径120到60渐变 — 旋转对称主体，适用axisymmetric revolve_profile"
+    },
+    {
+      "dialect": "sketch_extrude",
+      "version": "0.2.0",
+      "reason": "排出法兰150x100x20矩形板及底座250x200x30矩形板 — 棱柱体，适用sketch_extrude extrude_rectangle"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "蜗壳主体+排出法兰+底座三个独立组件需要布尔并集组合为总成"
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "生成几何为参考几何体，非制造就绪。不包含结构验证、疲劳寿命预测或认证。"
+  ]
+}

@@ -1,0 +1,1 @@
+设备外壳300x200x150mm,单位mm. extrude_rectangle后shell_body厚4mm. 前面板100x60开口. 安装孔6mm四角.

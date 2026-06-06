@@ -1,0 +1,27 @@
+{
+  "part_intent": {
+    "object_type": "duct",
+    "dominant_geometry": "variable_cross_section_loft",
+    "engineering_domain": "fluid_flow"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "loft_sweep",
+      "version": "0.2.0",
+      "reason": "Variable cross-section duct requires loft_op across three sections (circle→rectangle→circle) along Z-axis with explicit z-coordinate profiles."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [
+    {
+      "skill_id": "loft_sections_from_profiles",
+      "skill_version": "0.2.0",
+      "reason": "Three loft sections at z=0 (circle r50), z=150 (rectangle 120x80), z=300 (circle r40) define the variable duct geometry."
+    }
+  ],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "No manufacturing or certification claims made. Output is reference geometry only."
+  ]
+}

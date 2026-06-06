@@ -1,0 +1,23 @@
+{
+  "ok": false,
+  "stage": "params",
+  "issues": [
+    {
+      "code": "invalid_params",
+      "message": "node 'n_loft' params invalid for op 'loft_sections': 5 validation errors for LoftSectionsParams\nsections.0.width_mm\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than\nsections.0.height_mm\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than\nsections.1.radius_mm\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than\nsections.2.width_mm\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than\nsections.2.height_mm\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_loft",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "root_terminal",
+    "registry",
+    "params"
+  ]
+}

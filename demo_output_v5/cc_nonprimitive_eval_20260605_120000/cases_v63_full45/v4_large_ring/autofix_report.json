@@ -1,0 +1,16 @@
+{
+  "applied": true,
+  "before_hash": "sha256:3fac5208998902fb16f4d005194b5d59d4f8123a224a37552c9b6e04c5b4c888",
+  "after_hash": "sha256:5e94fe40fd8aa292e950b30796aaa845b00ccda2d17bc4cf749ca77ce426c31a",
+  "entries": [
+    {
+      "rule_id": "fix_null_hints",
+      "path": "/",
+      "old_value": "<hash:sha256:3fac5>",
+      "new_value": "<hash:sha256:5e94f>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_null_hints"
+    }
+  ]
+}

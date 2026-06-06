@@ -1,0 +1,67 @@
+{
+  "ok": false,
+  "stage": "params",
+  "issues": [
+    {
+      "code": "invalid_params",
+      "message": "node 'n2' params invalid for op 'cut_hole_v2': 1 validation error for CutHoleV2Params\nplacement.scope\n  Input should be a valid dictionary or instance of FeatureScope [type=model_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/model_type",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n2",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n3' params invalid for op 'cut_hole_v2': 1 validation error for CutHoleV2Params\nplacement.scope\n  Input should be a valid dictionary or instance of FeatureScope [type=model_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/model_type",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n3",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n4' params invalid for op 'cut_hole_v2': 1 validation error for CutHoleV2Params\nplacement.scope\n  Input should be a valid dictionary or instance of FeatureScope [type=model_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/model_type",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n4",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n5' params invalid for op 'cut_hole_v2': 1 validation error for CutHoleV2Params\nplacement.scope\n  Input should be a valid dictionary or instance of FeatureScope [type=model_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/model_type",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n5",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n6' params invalid for op 'cut_hole_v2': 1 validation error for CutHoleV2Params\nplacement.scope\n  Input should be a valid dictionary or instance of FeatureScope [type=model_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/model_type",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n6",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "root_terminal",
+    "registry",
+    "params"
+  ]
+}
