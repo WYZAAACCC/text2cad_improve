@@ -1,0 +1,7 @@
+INFO:     Started server process [43296]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8081 (Press CTRL+C to quit)
+Object graph extraction attempt 1/3 failed: Tool call arguments were not valid JSON: Extra data: line 1 column 6900 (char 6899)
+[PLAN] 8 unknowns, caller=yes
+[PLAN] 8 unknowns, caller=yes

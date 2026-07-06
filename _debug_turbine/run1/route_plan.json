@@ -1,0 +1,27 @@
+{
+  "part_intent": {
+    "object_type": "high_pressure_turbine_disk",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "turbomachinery"
+  },
+  "route_decision": "deterministic_primitive",
+  "selected_dialects": [],
+  "selected_primitive": "axisymmetric_turbine_disk",
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [
+    "曲面过渡辐板变厚度20mm至35mm",
+    "辐板前后环形封严凸台(直径350mm处, 高3mm宽5mm)",
+    "轮缘前后封严篦齿(高2mm)",
+    "GH4169材料属性映射",
+    "前后级连接螺栓孔精确定位与配合",
+    "叶片安装槽精确尺寸(槽宽6mm深10mm)沿轴向贯穿",
+    "制造就绪/适航认证",
+    "疲劳寿命预测",
+    "结构强度验证"
+  ],
+  "safety_notes": [
+    "该涡轮盘几何体仅为参考几何，非适航、非认证、不可用于制造。",
+    "primitive参数与用户需求存在部分偏差：辐板为曲面变厚度过渡而非等厚，环形封严凸台和轮缘篦齿细节可能需要后处理。",
+    "轮缘叶片安装槽为矩形槽(rectangular)，与用户描述的简单矩形槽匹配，但槽宽6mm/深10mm需确认primitive参数映射。"
+  ]
+}

@@ -1,0 +1,535 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "concept_geometry",
+    "document_id": "hpt_disk_v1",
+    "part_name": "HPT_Disk_GH4169",
+    "selected_dialects": [
+      {
+        "dialect": "axisymmetric",
+        "version": "0.2.0",
+        "contract_hash": "sha256:bfba1f2ee8f946d96648b063a2a543edf6699b156052b763d96223379c0dab4d"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "n_revolve",
+        "dialect": "axisymmetric",
+        "op": "revolve_profile",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_bore",
+        "dialect": "axisymmetric",
+        "op": "cut_center_bore",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_front_seal_groove",
+        "dialect": "axisymmetric",
+        "op": "cut_annular_groove",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_rear_seal_groove",
+        "dialect": "axisymmetric",
+        "op": "cut_annular_groove",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_front_labyrinth",
+        "dialect": "axisymmetric",
+        "op": "cut_annular_groove",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_rear_labyrinth",
+        "dialect": "axisymmetric",
+        "op": "cut_annular_groove",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_bolt_holes",
+        "dialect": "axisymmetric",
+        "op": "cut_circular_hole_pattern",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_blade_slots",
+        "dialect": "axisymmetric",
+        "op": "cut_rim_slot_pattern",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_final",
+        "dialect": "axisymmetric",
+        "op": "apply_safe_chamfer",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:150fc86d153fa6bcf5a3c26d97c29e895c6bf2f5a88a7d8457ae3800567c6d2a",
+    "canonical_graph_hash": "sha256:06ea2c0bbf946f2a9a3ea909922a68ffb28f1aa8b645f77b64a68e431472f5c3",
+    "paths": {
+      "canonical_ir_path": "<in_memory>",
+      "validation_seed_path": "<in_memory>",
+      "step_path": "E:\\auto_detection_process\\app\\text-to-cad\\server\\output\\485bf81d80264448\\output.step",
+      "metadata_path": "E:\\auto_detection_process\\app\\text-to-cad\\server\\output\\485bf81d80264448\\output.metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:384c879425c3c4706027a1b88ff5f91f4152dcdc2e23a7417c939e74b8f3fb58",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [
+      "Geometry warning on 'n_blade_slots.body': [brep_check_error] BRepCheck failed: Result(): incompatible function arguments. The following argument types are supported:\n    1. (self: OCP.OCP.BRepCheck.BRepCheck_Analyzer, theSubS: OCP.OCP.TopoDS.TopoDS_Shape) -> OCP.OCP.BRepCheck.BRepCheck_Result\n\nInvoked with: <OCP.OCP.BRepCheck.BRepCheck_Analyzer object at 0x0000028C1F25E730>",
+      "Geometry warning on 'n_front_labyrinth.body': [brep_check_error] BRepCheck failed: Result(): incompatible function arguments. The following argument types are supported:\n    1. (self: OCP.OCP.BRepCheck.BRepCheck_Analyzer, theSubS: OCP.OCP.TopoDS.TopoDS_Shape) -> OCP.OCP.BRepCheck.BRepCheck_Result\n\nInvoked with: <OCP.OCP.BRepCheck.BRepCheck_Analyzer object at 0x0000028C51A7C8B0>",
+      "Geometry warning on 'n_rear_labyrinth.body': [brep_check_error] BRepCheck failed: Result(): incompatible function arguments. The following argument types are supported:\n    1. (self: OCP.OCP.BRepCheck.BRepCheck_Analyzer, theSubS: OCP.OCP.TopoDS.TopoDS_Shape) -> OCP.OCP.BRepCheck.BRepCheck_Result\n\nInvoked with: <OCP.OCP.BRepCheck.BRepCheck_Analyzer object at 0x0000028C528E2E70>",
+      "Optional feature 'apply_safe_chamfer' skipped on node 'n_final': chamfer failed at distance=1.0mm and fallback distance=0.5mm. Part is valid without this feature.",
+      "Geometry warning on 'n_final.body': [brep_check_error] BRepCheck failed: Result(): incompatible function arguments. The following argument types are supported:\n    1. (self: OCP.OCP.BRepCheck.BRepCheck_Analyzer, theSubS: OCP.OCP.TopoDS.TopoDS_Shape) -> OCP.OCP.BRepCheck.BRepCheck_Result\n\nInvoked with: <OCP.OCP.BRepCheck.BRepCheck_Analyzer object at 0x0000028C529454F0>"
+    ],
+    "degraded_features": [
+      {
+        "node_id": "n_final",
+        "op": "apply_safe_chamfer",
+        "op_name": "apply_safe_chamfer",
+        "reason": "chamfer failed at distance=1.0mm and fallback distance=0.5mm"
+      }
+    ],
+    "operation_metrics": [
+      {
+        "node_id": "n_revolve",
+        "op": "revolve_profile",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_bore",
+        "op": "cut_center_bore",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_bolt_holes",
+        "op": "cut_circular_hole_pattern",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_front_seal_groove",
+        "op": "cut_annular_groove",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_rear_seal_groove",
+        "op": "cut_annular_groove",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_blade_slots",
+        "op": "cut_rim_slot_pattern",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_front_labyrinth",
+        "op": "cut_annular_groove",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_rear_labyrinth",
+        "op": "cut_annular_groove",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_final",
+        "op": "apply_safe_chamfer",
+        "status": "degraded",
+        "reason": "chamfer failed at distance=1.0mm and fallback distance=0.5mm"
+      },
+      {
+        "node_id": "n_final",
+        "op": "apply_safe_chamfer",
+        "status": "ok"
+      }
+    ],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [
+    "Geometry warning on 'n_blade_slots.body': [brep_check_error] BRepCheck failed: Result(): incompatible function arguments. The following argument types are supported:\n    1. (self: OCP.OCP.BRepCheck.BRepCheck_Analyzer, theSubS: OCP.OCP.TopoDS.TopoDS_Shape) -> OCP.OCP.BRepCheck.BRepCheck_Result\n\nInvoked with: <OCP.OCP.BRepCheck.BRepCheck_Analyzer object at 0x0000028C1F25E730>",
+    "Geometry warning on 'n_front_labyrinth.body': [brep_check_error] BRepCheck failed: Result(): incompatible function arguments. The following argument types are supported:\n    1. (self: OCP.OCP.BRepCheck.BRepCheck_Analyzer, theSubS: OCP.OCP.TopoDS.TopoDS_Shape) -> OCP.OCP.BRepCheck.BRepCheck_Result\n\nInvoked with: <OCP.OCP.BRepCheck.BRepCheck_Analyzer object at 0x0000028C51A7C8B0>",
+    "Geometry warning on 'n_rear_labyrinth.body': [brep_check_error] BRepCheck failed: Result(): incompatible function arguments. The following argument types are supported:\n    1. (self: OCP.OCP.BRepCheck.BRepCheck_Analyzer, theSubS: OCP.OCP.TopoDS.TopoDS_Shape) -> OCP.OCP.BRepCheck.BRepCheck_Result\n\nInvoked with: <OCP.OCP.BRepCheck.BRepCheck_Analyzer object at 0x0000028C528E2E70>",
+    "Optional feature 'apply_safe_chamfer' skipped on node 'n_final': chamfer failed at distance=1.0mm and fallback distance=0.5mm. Part is valid without this feature.",
+    "Geometry warning on 'n_final.body': [brep_check_error] BRepCheck failed: Result(): incompatible function arguments. The following argument types are supported:\n    1. (self: OCP.OCP.BRepCheck.BRepCheck_Analyzer, theSubS: OCP.OCP.TopoDS.TopoDS_Shape) -> OCP.OCP.BRepCheck.BRepCheck_Result\n\nInvoked with: <OCP.OCP.BRepCheck.BRepCheck_Analyzer object at 0x0000028C529454F0>"
+  ],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {
+        "structure": {
+          "ok": true,
+          "stage": "structure",
+          "issues": [],
+          "stages_run": [
+            "structure"
+          ]
+        },
+        "root_terminal": {
+          "ok": true,
+          "stage": "structure",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "root_terminal"
+          ]
+        },
+        "registry": {
+          "ok": true,
+          "stage": "registry",
+          "issues": [],
+          "stages_run": [
+            "registry"
+          ]
+        },
+        "params": {
+          "ok": true,
+          "stage": "params",
+          "issues": [],
+          "stages_run": [
+            "params"
+          ]
+        },
+        "ownership": {
+          "ok": true,
+          "stage": "ownership",
+          "issues": [],
+          "stages_run": [
+            "ownership"
+          ]
+        },
+        "graph": {
+          "ok": true,
+          "stage": "graph",
+          "issues": [],
+          "stages_run": [
+            "graph"
+          ]
+        },
+        "typecheck": {
+          "ok": true,
+          "stage": "typecheck",
+          "issues": [],
+          "stages_run": [
+            "typecheck"
+          ]
+        },
+        "phase": {
+          "ok": true,
+          "stage": "phase",
+          "issues": [],
+          "stages_run": [
+            "phase"
+          ]
+        },
+        "composition": {
+          "ok": true,
+          "stage": "composition",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "root_terminal",
+            "registry",
+            "params",
+            "ownership",
+            "graph",
+            "typecheck",
+            "phase",
+            "composition"
+          ]
+        },
+        "hole_semantics": {
+          "ok": true,
+          "stage": "geometry_preflight",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "root_terminal",
+            "registry",
+            "params",
+            "ownership",
+            "graph",
+            "typecheck",
+            "phase",
+            "composition",
+            "hole_semantics"
+          ]
+        },
+        "safety": {
+          "ok": true,
+          "stage": "safety",
+          "issues": [],
+          "stages_run": [
+            "safety"
+          ]
+        }
+      },
+      "canonicalize": {
+        "ok": true,
+        "stage": "canonicalize",
+        "issues": [],
+        "stages_run": [
+          "canonicalize"
+        ]
+      },
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": true,
+      "stage": "dialect_semantics",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "root_terminal",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "hole_semantics",
+        "safety",
+        "canonicalize",
+        "dialect_semantics"
+      ]
+    },
+    "geometry_preflight": {
+      "ok": true,
+      "stage": "geometry_preflight",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "root_terminal",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "hole_semantics",
+        "safety",
+        "canonicalize",
+        "dialect_semantics",
+        "geometry_preflight"
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "geometry_postcheck": {
+      "ok": true,
+      "volume_mm3": 4362895.487826648,
+      "n_solids": 1,
+      "bbox_mm": [
+        600.0,
+        600.0,
+        85.0
+      ],
+      "closed": false,
+      "is_valid_solid": false,
+      "errors": [],
+      "warnings": []
+    },
+    "compiler_middle_end": {
+      "ok": true,
+      "passes_run": [
+        "fact_propagation",
+        "planning"
+      ],
+      "diagnostics": [
+        {
+          "stage": "planning",
+          "code": "hole_pattern_should_batch",
+          "message": "Hole pattern on node 'n_bolt_holes': count=12 >= 8. Consider using compound-based batch cut.",
+          "severity": "info",
+          "node_id": "n_bolt_holes",
+          "component_id": "hpt_disk",
+          "details": {
+            "count": 12,
+            "threshold": 8
+          }
+        },
+        {
+          "stage": "planning",
+          "code": "hole_pattern_should_batch",
+          "message": "Rim slot pattern on node 'n_blade_slots': count=72 >= 8. Consider batch cutting.",
+          "severity": "info",
+          "node_id": "n_blade_slots",
+          "component_id": "hpt_disk",
+          "details": {
+            "count": 72,
+            "threshold": 8
+          }
+        }
+      ]
+    },
+    "geometry_health_summary": {
+      "ok": true,
+      "total_ops_checked": 9,
+      "errors": 0,
+      "warnings": 9,
+      "entries": {
+        "n_revolve.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 5276304.861704058,
+          "body_count": 1
+        },
+        "n_bore.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 4490906.69830661,
+          "body_count": 1
+        },
+        "n_bolt_holes.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 4382333.256198546,
+          "body_count": 1
+        },
+        "n_front_seal_groove.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 4372522.062341387,
+          "body_count": 1
+        },
+        "n_rear_seal_groove.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 4372522.062341387,
+          "body_count": 1
+        },
+        "n_blade_slots.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 4370279.534634408,
+          "body_count": 1
+        },
+        "n_front_labyrinth.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 4362895.487826648,
+          "body_count": 1
+        },
+        "n_rear_labyrinth.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 4362895.487826648,
+          "body_count": 1
+        },
+        "n_final.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 4362895.487826648,
+          "body_count": 1
+        }
+      }
+    },
+    "planning_report": {
+      "ok": true,
+      "issues": [
+        {
+          "code": "hole_pattern_should_batch",
+          "severity": "info",
+          "message": "Hole pattern on node 'n_bolt_holes': count=12 >= 8. Consider using compound-based batch cut.",
+          "node_id": "n_bolt_holes",
+          "component_id": "hpt_disk",
+          "suggestion": "Use batch_cut with a compound of all hole cylinders instead of sequential individual cuts.",
+          "details": {
+            "count": 12,
+            "threshold": 8
+          }
+        },
+        {
+          "code": "hole_pattern_should_batch",
+          "severity": "info",
+          "message": "Rim slot pattern on node 'n_blade_slots': count=72 >= 8. Consider batch cutting.",
+          "node_id": "n_blade_slots",
+          "component_id": "hpt_disk",
+          "suggestion": "Use batch_cut with a compound of all slot cutters.",
+          "details": {
+            "count": 72,
+            "threshold": 8
+          }
+        }
+      ],
+      "optimization_opportunities": [
+        {
+          "code": "hole_pattern_should_batch",
+          "severity": "info",
+          "message": "Hole pattern on node 'n_bolt_holes': count=12 >= 8. Consider using compound-based batch cut.",
+          "node_id": "n_bolt_holes",
+          "component_id": "hpt_disk",
+          "suggestion": "Use batch_cut with a compound of all hole cylinders instead of sequential individual cuts.",
+          "details": {
+            "count": 12,
+            "threshold": 8
+          }
+        },
+        {
+          "code": "hole_pattern_should_batch",
+          "severity": "info",
+          "message": "Rim slot pattern on node 'n_blade_slots': count=72 >= 8. Consider batch cutting.",
+          "node_id": "n_blade_slots",
+          "component_id": "hpt_disk",
+          "suggestion": "Use batch_cut with a compound of all slot cutters.",
+          "details": {
+            "count": 72,
+            "threshold": 8
+          }
+        }
+      ]
+    }
+  }
+}
