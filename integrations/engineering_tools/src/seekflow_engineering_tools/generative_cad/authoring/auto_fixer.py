@@ -84,6 +84,13 @@ DEFAULT_ALLOWED_AUTOFIX_CATEGORIES: set[AutoFixCategory] = {
     AutoFixCategory.CONTEXT_SAFE,
 }
 
+# v6.2: severity 字符串到 AutoFixCategory 的映射 — 用于 _apply_fix 强制 category 检查
+SEVERITY_TO_CATEGORY: dict[str, AutoFixCategory] = {
+    "safe_alias": AutoFixCategory.CONTEXT_SAFE,
+    "semantic_guess": AutoFixCategory.SEMANTIC_GUESS,
+    "destructive": AutoFixCategory.DESTRUCTIVE,
+}
+
 
 # ── Audit data structures ────────────────────────────────────────────────────
 
@@ -232,6 +239,19 @@ def auto_fix_with_report(
     ):
         """Apply one fix and record all changes by comparing before/after hashes."""
         nonlocal doc
+        # v6.2: 强制 category 检查 — 拒绝不在允许集合中的 fix
+        cat = SEVERITY_TO_CATEGORY.get(severity, AutoFixCategory.SEMANTIC_GUESS)
+        if cat not in DEFAULT_ALLOWED_AUTOFIX_CATEGORIES:
+            entries.append(AutoFixEntry(
+                rule_id=name,
+                path="/",
+                old_value="<skipped>",
+                new_value="<skipped>",
+                severity=severity,
+                confidence=confidence,
+                message=f"Fix '{name}' skipped: category '{severity}' not in allowed categories {sorted(c.value for c in DEFAULT_ALLOWED_AUTOFIX_CATEGORIES)}",
+            ))
+            return  # 不执行 fix
         before = stable_hash(doc)
         doc = fix_fn(doc)
         after = stable_hash(doc)
@@ -254,6 +274,7 @@ def auto_fix_with_report(
     _apply_fix("fix_v2_placement_scope", lambda d: _fix_v2_placement_scope(d))
     _apply_fix("fix_missing_position_mm", lambda d: _fix_missing_position_mm(d))
     _apply_fix("fix_chamfer_zero_distance", lambda d: _fix_chamfer_zero_distance(d))
+    _apply_fix("fix_chamfer_fillet_optional", lambda d: _fix_chamfer_fillet_optional(d))
     _apply_fix("fix_output_names", lambda d: _fix_output_names(d))
     _apply_fix("fix_input_output_names", lambda d: _fix_input_output_names(d))
     _apply_fix("fix_op_versions", lambda d: _fix_op_versions(d, dialect_registry))
@@ -269,6 +290,7 @@ def auto_fix_with_report(
     _apply_fix("fix_phase_names", lambda d: _fix_phase_names(d, dialect_registry))
     _apply_fix("fix_phase_ordering", lambda d: _fix_phase_ordering(d, dialect_registry))
     _apply_fix("fix_profile_stations", lambda d: _fix_profile_stations(d), severity="semantic_guess", confidence=0.85)
+    _apply_fix("fix_slot_station_order", lambda d: _fix_slot_station_order(d))
     _apply_fix("fill_default_params", lambda d: _fill_default_params(d))
     _apply_fix("fix_null_hints", lambda d: _fix_null_hints(d))
     _apply_fix("remove_extra_params", lambda d: _remove_extra_params(d))
@@ -519,7 +541,12 @@ def _fix_cross_component_refs(doc: dict) -> dict:
 
 
 def _fix_root_node(doc: dict) -> dict:
-    """修正 root_node 引用。"""
+    """修正 root_node 引用。优先选 required=True 的最后 body 节点。
+
+    如果当前 root_node 指向 required=False 节点，且有 required=True 的 body 节点，
+    则替换为 required=True 的最后一个 body 节点。这避免 optional 节点失败导致整个
+    component 输出绑定为空。
+    """
     node_ids = {n["id"] for n in doc.get("nodes", [])}
     node_by_comp: dict[str, list] = {}
     for n in doc.get("nodes", []):
@@ -528,18 +555,29 @@ def _fix_root_node(doc: dict) -> dict:
 
     for comp in doc.get("components", []):
         rn = comp.get("root_node", "")
-        if rn and rn not in node_ids:
-            cid = comp.get("id", "")
-            comp_nodes = node_by_comp.get(cid, [])
-            if comp_nodes:
-                # 优先选择最后一个 produce body:solid 的节点
-                body_nodes = [n for n in comp_nodes
-                              if any(o.get("name") == "body" and o.get("type") == "solid"
-                                     for o in n.get("outputs", []))]
-                if body_nodes:
-                    comp["root_node"] = body_nodes[-1]["id"]
-                else:
-                    comp["root_node"] = comp_nodes[-1]["id"]
+        # 检查当前 root_node 是否 required=False — 如果是则替换
+        if rn and rn in node_ids:
+            root_node_obj = next(
+                (n for n in node_by_comp.get(comp.get("id", ""), []) if n.get("id") == rn),
+                None,
+            )
+            if root_node_obj and root_node_obj.get("required", True):
+                continue  # 当前 root_node 是 required=True，保留
+            # fall through 重新选择
+        cid = comp.get("id", "")
+        comp_nodes = node_by_comp.get(cid, [])
+        if comp_nodes:
+            body_nodes = [n for n in comp_nodes
+                          if any(o.get("name") == "body" and o.get("type") == "solid"
+                                 for o in n.get("outputs", []))]
+            # 优先 required=True 的 body 节点
+            required_body_nodes = [n for n in body_nodes if n.get("required", True)]
+            if required_body_nodes:
+                comp["root_node"] = required_body_nodes[-1]["id"]
+            elif body_nodes:
+                comp["root_node"] = body_nodes[-1]["id"]
+            else:
+                comp["root_node"] = comp_nodes[-1]["id"]
     return doc
 
 
@@ -687,6 +725,28 @@ def _fix_profile_stations(doc: dict) -> dict:
         z_fronts = {s.get("z_front_mm") for s in stations}
         z_rears = {s.get("z_rear_mm") for s in stations}
 
+        # ── 区域描述风格检测（Z 区间重叠）──
+        # 这是 LLM 把 bore/hub/web/rim 分区域输出的典型模式。
+        # 无法安全转换为外轮廓连续段 — 标记为需要 LLM repair，不做 silent 修改。
+        if len(stations) >= 2:
+            z_ranges = [(s.get("z_front_mm", 0), s.get("z_rear_mm", 0)) for s in stations]
+            overlap_count = 0
+            for i, (zf1, zr1) in enumerate(z_ranges):
+                for j, (zf2, zr2) in enumerate(z_ranges[i+1:], i+1):
+                    if zf1 < zr2 and zf2 < zr1:
+                        overlap_count += 1
+            if overlap_count > 0:
+                node.setdefault("autofix_hints", []).append({
+                    "issue": "regional_profile_stations",
+                    "message": (
+                        "profile_stations has overlapping Z ranges (regional description style). "
+                        "Must be outer contour continuous segments (Z single-valued). "
+                        "Cannot auto-fix — requires LLM repair."
+                    ),
+                })
+                continue  # 不修改，让 LLM repair 处理
+
+        # ── 原有逻辑：2 stations 共享相同 Z 区间（扁平 profile）──
         if len(z_fronts) == 1 and len(z_rears) == 1:
             # 这是一个扁平 profile — LLM 错误地把所有 station 放在同一高度
             z_start = list(z_fronts)[0]
@@ -737,6 +797,27 @@ def _fix_profile_stations(doc: dict) -> dict:
                 stations[-1] = last
                 node["params"]["profile_stations"] = stations
 
+    return doc
+
+
+def _fix_slot_station_order(doc: dict) -> dict:
+    """修复 cut_rim_slot_pattern 的 slot_profile.stations depth 非递减顺序。
+
+    RimSlotProfile.validate_depth_order 要求 depth_mm 非递减，但 LLM 经常输出
+    递减顺序（如 [12, 8, 4]）。此规则按 depth_mm 升序排序 stations。
+    """
+    for node in doc.get("nodes", []):
+        if node.get("op") != "cut_rim_slot_pattern":
+            continue
+        sp = node.get("params", {}).get("slot_profile", {})
+        if not isinstance(sp, dict):
+            continue
+        stations = sp.get("stations", [])
+        if not stations or len(stations) < 2:
+            continue
+        depths = [s.get("depth_mm", 0) for s in stations]
+        if depths != sorted(depths):
+            sp["stations"] = sorted(stations, key=lambda s: s.get("depth_mm", 0))
     return doc
 
 
@@ -957,6 +1038,24 @@ def _fix_selected_dialects(doc: dict) -> dict:
             doc["selected_dialects"] = [
                 {"dialect": d, "version": "0.2.0"} for d in sorted(dialects_in_use)
             ]
+    return doc
+
+
+def _fix_chamfer_fillet_optional(doc: dict) -> dict:
+    """Mark chamfer/fillet nodes as optional so complex geometry doesn't
+    fail the entire pipeline when OCCT can't execute them.
+
+    Chamfer and fillet are decorative finishing operations.  On complex
+    revolved bodies (turbine disks, etc.) OCCT/CadQuery may fail with
+    'ChFi3d_Builder: only 2 faces'.  Marking them required=False with
+    degradation_policy='may_skip_with_warning' allows the pipeline to
+    skip the failed operation and still output the main geometry.
+    """
+    for node in doc.get("nodes", []):
+        op = node.get("op", "")
+        if op in ("apply_safe_chamfer", "apply_safe_fillet"):
+            node["required"] = False
+            node["degradation_policy"] = "may_skip_with_warning"
     return doc
 
 

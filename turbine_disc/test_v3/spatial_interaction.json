@@ -1,0 +1,20 @@
+{
+  "session_id": "spatial_b933ae053ce0",
+  "questions": [
+    {
+      "id": "q_UNK_001",
+      "text": "辐板段 (web) 的轴向厚度？",
+      "answer": "等厚 8mm（推荐，典型高压涡轮辐板）"
+    },
+    {
+      "id": "q_UNK_002",
+      "text": "轮毂段 (hub) 的轴向壁厚？",
+      "answer": "壁厚 20mm（推荐）"
+    },
+    {
+      "id": "q_UNK_003",
+      "text": "榫槽位于轮缘的哪个轴向区间？",
+      "answer": "Z=25→95 全覆盖轮缘主体（推荐）"
+    }
+  ]
+}

@@ -54,6 +54,7 @@ class TestImportGateFlagsV08:
                 "geometry_preflight": {"ok": True},
                 "runtime_postconditions": {"ok": True},
                 "inspection_validation": {"ok": True},
+                "geometry_postcheck": {"ok": True},
             },
         }
 
@@ -61,7 +62,7 @@ class TestImportGateFlagsV08:
         from seekflow_engineering_tools.generative_cad.pipeline.import_artifact import REQUIRED_GATE_FLAGS
         assert "step_exists" in REQUIRED_GATE_FLAGS
         assert "step_import_allowed" in REQUIRED_GATE_FLAGS
-        assert len(REQUIRED_GATE_FLAGS) == 12
+        assert len(REQUIRED_GATE_FLAGS) == 13
 
     def test_step_import_allowed_defaults_false(self):
         """step_import_allowed must be False by default in all early-return paths."""

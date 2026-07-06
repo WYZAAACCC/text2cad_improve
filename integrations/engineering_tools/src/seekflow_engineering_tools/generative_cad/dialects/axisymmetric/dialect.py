@@ -143,6 +143,34 @@ class AxisymmetricDialect:
                         message=f"max radius ({max_r}) must be > 0, got min radius ({min_r})",
                         severity="error", node_id=n.id))
 
+        # ── A009: revolve_profile 最小半径校验 ──
+        # 检测极小半径填充段（0 < r_mm < MIN_PROFILE_RADIUS）。
+        # LLM 常输出 r=1.0 的 "hub_lower_fill"/"hub_upper_fill" 段，
+        # 这些段产生退化的细针状实体，应移除或增大半径。
+        MIN_PROFILE_RADIUS = 0.5  # mm
+        for n in nodes:
+            if n.op != "revolve_profile":
+                continue
+            ps = n.typed_params.get("profile_stations") or n.params.get("profile_stations", [])
+            for i, s in enumerate(ps):
+                r = s.get("r_mm", 0)
+                if isinstance(r, dict):
+                    continue  # DimExpr, skip — validated at analysis time
+                label = s.get("label", "") or ""
+                if is_finite(r) and 0 < r < MIN_PROFILE_RADIUS:
+                    issues.append(ValidationIssue(
+                        stage=stage, code="a009_radius_too_small",
+                        message=(
+                            f"revolve_profile station {i} (label={label!r}) has radius {r:.3f}mm "
+                            f"< minimum {MIN_PROFILE_RADIUS}mm. Sub-millimeter radii produce "
+                            f"degenerate needle-like solids. Either increase radius to >= {MIN_PROFILE_RADIUS}mm, "
+                            f"or remove this station and let adjacent stations connect directly."
+                        ),
+                        severity="error", node_id=n.id,
+                        expected={"min_r_mm": MIN_PROFILE_RADIUS},
+                        actual={"r_mm": r},
+                    ))
+
         # Second pass: validate cuts against envelope
         for n in nodes:
             # A002: center bore
@@ -245,6 +273,98 @@ class AxisymmetricDialect:
                     issues.append(ValidationIssue(stage=stage, code="a004_groove_outside_profile",
                         message=f"groove outer radius ({outer/2}) >= profile max ({profile_max_radius}) - margin ({MARGIN})",
                         severity="error", node_id=n.id))
+
+        # ── A007: 多 groove Z 区间冲突检测 ──
+        # 检测多个 cut_annular_groove 的 Z 区间是否重叠。
+        # 仅对指定了 z_position_mm 的 groove 进行检测（无 z_position_mm 时
+        # 区间依赖 profile zmin/zmax，冲突检测复杂度高且不常见）。
+        groove_intervals: list[tuple[float, float, str]] = []  # (zmin, zmax, node_id)
+        for n in nodes:
+            if n.op != "cut_annular_groove":
+                continue
+            z_pos = n.typed_params.get("z_position_mm") or n.params.get("z_position_mm")
+            depth = n.typed_params.get("depth_mm") or n.params.get("depth_mm", 0)
+            side = n.typed_params.get("side") or n.params.get("side", "")
+            if not is_finite(z_pos) or not is_finite(depth):
+                continue
+            # side="front": 从 z_pos 向 +Z 切削 depth → 区间 [z_pos, z_pos+depth]
+            # side="rear":  从 z_pos 向 -Z 切削 depth → 区间 [z_pos-depth, z_pos]
+            if side == "front":
+                zmin, zmax = z_pos, z_pos + depth
+            elif side == "rear":
+                zmin, zmax = z_pos - depth, z_pos
+            else:
+                continue
+            groove_intervals.append((zmin, zmax, n.id))
+
+        for i in range(len(groove_intervals)):
+            for j in range(i + 1, len(groove_intervals)):
+                zf1, zr1, nid1 = groove_intervals[i]
+                zf2, zr2, nid2 = groove_intervals[j]
+                if zf1 < zr2 and zf2 < zr1:  # Z 区间严格重叠
+                    issues.append(ValidationIssue(
+                        stage=stage, code="a007_groove_z_overlap",
+                        message=(
+                            f"cut_annular_groove nodes {nid1!r} (Z={zf1:.1f}→{zr1:.1f}) "
+                            f"and {nid2!r} (Z={zf2:.1f}→{zr2:.1f}) have overlapping Z intervals. "
+                            f"Multiple grooves cutting the same Z region will destroy each other's geometry. "
+                            f"Adjust z_position_mm/depth_mm to avoid overlap."
+                        ),
+                        severity="error", node_id=nid1,
+                    ))
+
+        # ── A005: bore-vs-profile coplanar detection ──
+        # 检测 profile 是否有内壁站点（r_mm ~= bore_radius），这种情况下 bore cut 会
+        # 产生共面切割，导致 2-Solid 拓扑失败。
+        if center_bore_radius is not None and profile_max_radius is not None:
+            for n2 in nodes:
+                if n2.op != "revolve_profile":
+                    continue
+                ps2 = n2.typed_params.get("profile_stations") or n2.params.get("profile_stations", [])
+                for i, s in enumerate(ps2):
+                    r = s.get("r_mm", 0)
+                    if is_finite(r) and abs(r - center_bore_radius) < MARGIN:
+                        issues.append(ValidationIssue(
+                            stage=stage, code="a005_bore_profile_coplanar",
+                            message=(
+                                f"revolve_profile station {i} radius ({r:.1f}mm) ~= "
+                                f"center bore radius ({center_bore_radius:.1f}mm). "
+                                f"Bore cut will create coplanar faces → 2-Solid topology failure. "
+                                f"Either remove the inner-wall station (let bore cut define the inner wall), "
+                                f"or reduce station radius to < {center_bore_radius - MARGIN:.1f}mm."
+                            ),
+                            severity="error", node_id=n2.id,
+                            expected={"station_r_mm": f"< {center_bore_radius - MARGIN:.1f}"},
+                            actual={"station_r_mm": r},
+                        ))
+
+        # ── A006: revolve_profile Z 重叠检测 ──
+        # 检测"区域描述"风格：多个 station 的 Z 区间重叠
+        # 这是 LLM 把 bore/hub/web/rim 分区域输出的典型模式，违反 Z 单值约束
+        for n in nodes:
+            if n.op != "revolve_profile":
+                continue
+            ps = n.typed_params.get("profile_stations") or n.params.get("profile_stations", [])
+            if len(ps) < 2:
+                continue
+            z_ranges = [(s.get("z_front_mm", 0), s.get("z_rear_mm", 0)) for s in ps]
+            overlap_count = 0
+            for i, (zf1, zr1) in enumerate(z_ranges):
+                for j, (zf2, zr2) in enumerate(z_ranges[i+1:], i+1):
+                    if zf1 < zr2 and zf2 < zr1:  # Z 区间严格重叠
+                        overlap_count += 1
+            if overlap_count > 0:
+                issues.append(ValidationIssue(
+                    stage=stage, code="a006_profile_z_overlap",
+                    message=(
+                        f"revolve_profile stations have {overlap_count} overlapping Z ranges. "
+                        f"This indicates regional description style (bore/hub/web/rim), "
+                        f"which violates the Z single-valued outer contour constraint. "
+                        f"Convert to outer contour continuous segments where each Z position "
+                        f"has exactly one radius."
+                    ),
+                    severity="error", node_id=n.id,
+                ))
 
         return ValidationReport(ok=not any(i.severity == "error" for i in issues),
                                stage=stage, issues=issues)

@@ -12,6 +12,7 @@ REQUIRED_VALIDATION_STAGES = [
     "geometry_preflight",
     "runtime_postconditions",
     "inspection_validation",
+    "geometry_postcheck",
 ]
 
 REQUIRED_SAFETY_FLAGS = [

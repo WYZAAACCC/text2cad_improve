@@ -1,0 +1,20 @@
+{
+  "session_id": "spatial_5fecadf4e42f",
+  "questions": [
+    {
+      "id": "q_unk_seal_groove_radial_range_1",
+      "text": "前侧密封槽第1道Z位置？",
+      "answer": "A: Z=20（前侧Rim起始面）"
+    },
+    {
+      "id": "q_unk_seal_groove_radial_range_2",
+      "text": "前侧密封槽第2道Z位置？",
+      "answer": "A: Z=20（与第1道同面）"
+    },
+    {
+      "id": "q_unk_seal_groove_type",
+      "text": "环形槽还是端面槽？",
+      "answer": "A: 环形槽（从径向切入）"
+    }
+  ]
+}

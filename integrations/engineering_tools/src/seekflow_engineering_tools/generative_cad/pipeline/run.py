@@ -365,6 +365,7 @@ def run_canonical_gcad(
             validation_seed_path=Path(validation_seed_path) if validation_seed_path else Path("<in_memory>"),
             step_path=out_step,
             metadata_path=metadata_path,
+            unsupported_capabilities=getattr(canonical, 'unsupported_capabilities', None) or [],
         )
         metadata_path.write_text(
             json.dumps(metadata, indent=2, ensure_ascii=False, default=str),

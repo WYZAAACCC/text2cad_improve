@@ -1,0 +1,18 @@
+[
+  {
+    "id": "1ec2226abe81",
+    "name": "测试法兰盘",
+    "thumbnailUrl": "",
+    "tags": [
+      "法兰",
+      "测试",
+      "200mm"
+    ],
+    "createdAt": 1783106112822.124,
+    "data": {
+      "stepFileUrl": "/api/files/3e0d10851bdd436c/output.step",
+      "stlFileUrl": "/api/files/3e0d10851bdd436c/output.stl",
+      "stepFileSize": "43 KB"
+    }
+  }
+]

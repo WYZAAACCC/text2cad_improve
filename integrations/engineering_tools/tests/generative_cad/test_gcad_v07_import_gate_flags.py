@@ -54,6 +54,7 @@ class TestImportGateFlags:
                 "geometry_preflight": {"ok": False, "issues": [{"code": "preflight_failed", "message": "bad"}]},
                 "runtime_postconditions": {"ok": True},
                 "inspection_validation": {"ok": None, "skipped": True},
+                "geometry_postcheck": {"ok": True},
             },
         }
 

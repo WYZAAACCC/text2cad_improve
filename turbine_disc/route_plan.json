@@ -1,0 +1,23 @@
+{
+  "part_intent": {
+    "object_type": "high_pressure_turbine_disk",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "turbomachinery"
+  },
+  "route_decision": "deterministic_primitive",
+  "selected_dialects": [],
+  "selected_primitive": "axisymmetric_turbine_disk",
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [
+    "multi_stage_fir_tree_slot_with_3_stations_and_asymmetric_profile",
+    "front_hub_dual_annular_seal_grooves_at_specific_diameters",
+    "global_1.5mm_chamfer_on_all_edges"
+  ],
+  "safety_notes": [
+    "This primitive produces non-flight reference geometry only. Not airworthy, not certified, not for manufacturing.",
+    "Rim slot multi-stage profile with 3 stations (depth=12/8/4mm, half_width=4/5.5/7mm) exceeds the primitive's single-stage slot parameterisation; slot geometry will be approximated.",
+    "Front hub annular seal grooves at specific diameters (200-210mm, 220-230mm) are not directly parameterised by seal_land_start_dia/pitch; use annular details parameters if needed.",
+    "Global 1.5mm chamfer approximated via edge_chamfer_mm parameter.",
+    "All geometry is reference only — trust_level=reference_geometry."
+  ]
+}

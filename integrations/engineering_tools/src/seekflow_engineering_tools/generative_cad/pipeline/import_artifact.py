@@ -13,6 +13,7 @@ REQUIRED_GATE_FLAGS = [
     "step_exists", "metadata_exists", "metadata_valid", "safety_valid",
     "contract_hash_valid", "core_validation_ok", "dialect_semantics_ok",
     "geometry_preflight_ok", "runtime_postconditions_ok", "inspection_ok",
+    "geometry_postcheck_ok",
     "native_rebuild_allowed", "step_import_allowed",
 ]
 
@@ -45,6 +46,7 @@ def validate_generative_step_artifact_for_native_import(
         "geometry_preflight_ok": False,
         "runtime_postconditions_ok": False,
         "inspection_ok": False,
+        "geometry_postcheck_ok": False,
         "native_rebuild_allowed": False,
         "step_import_allowed": False,
     }
@@ -160,6 +162,13 @@ def validate_generative_step_artifact_for_native_import(
         issues.append({"code": "inspection_not_ok", "message": "inspection_validation.ok must be true for native import"})
         return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
 
+    # Geometry postcheck — gate flag reflects actual state
+    geo_pc = val.get("geometry_postcheck", {})
+    gate["geometry_postcheck_ok"] = isinstance(geo_pc, dict) and geo_pc.get("ok") is True
+    if not gate["geometry_postcheck_ok"]:
+        issues.append({"code": "geometry_postcheck_not_ok", "message": "geometry_postcheck.ok must be true for native import"})
+        return {"ok": False, "issues": issues, "metadata": metadata, "gate": gate}
+
     gate["native_rebuild_allowed"] = False
     gate["step_import_allowed"] = True
 
@@ -177,6 +186,7 @@ def validate_generative_step_artifact_for_native_import(
         "step_exists", "metadata_exists", "metadata_valid", "safety_valid",
         "contract_hash_valid", "core_validation_ok", "dialect_semantics_ok",
         "geometry_preflight_ok", "runtime_postconditions_ok", "inspection_ok",
+        "geometry_postcheck_ok",
         "step_import_allowed",
     ]
     if not all(gate.get(k) is True for k in REQUIRED_TRUE_FLAGS):

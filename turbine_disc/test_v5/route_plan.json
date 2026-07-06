@@ -1,0 +1,36 @@
+{
+  "part_intent": {
+    "object_type": "turbine_disk",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "turbomachinery"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "Rotationally symmetric turbine disk with revolve_profile, cut_center_bore, cut_annular_groove, cut_circular_hole_pattern, cut_rim_slot_pattern, and apply_safe_chamfer — all within the axisymmetric dialect's core ops."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [
+    {
+      "skill_id": "turbine_disk_reference",
+      "skill_version": "0.1.0",
+      "reason": "Reference geometry turbine disk with web recess via cut_annular_groove, multi-station rim slots, bolt holes, and seal grooves."
+    }
+  ],
+  "unsupported_capabilities": [
+    "manufacturing-ready/certified/airworthy/installable output",
+    "structural validation / fatigue life prediction",
+    "simulation truth",
+    "internal cooling networks",
+    "freeform surfaces",
+    "non-axisymmetric housings"
+  ],
+  "safety_notes": [
+    "All operations use safety=True, trust_level='reference_geometry'.",
+    "This is non-flight reference geometry only — not for manufacturing, certification, or structural substantiation.",
+    "cut_annular_groove web recess modeled as side-cut groove per user specification; no zero-width stations."
+  ]
+}

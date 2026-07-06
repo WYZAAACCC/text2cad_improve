@@ -126,6 +126,14 @@ def validate_final_geometry(
     closed = _check_closed(solid)
     is_valid = closed is True and volume is not None and volume > 0
 
+    # fail-closed: 无效实体必须阻断产出
+    # closed=None 表示无法检测（inspection artifact），不阻塞；closed=False 必须阻塞
+    if closed is False:
+        errors.append("Final solid is not closed (B-Rep topology broken)")
+    # is_valid_solid 综合校验：closed=True 且 volume>0；若 closed=True 但 volume<=0 则矛盾，阻塞
+    if closed is True and (volume is None or volume <= 0):
+        errors.append("Final solid is invalid (closed=True but volume is non-positive)")
+
     ok = len(errors) == 0
 
     return GeometryPostcheckResult(

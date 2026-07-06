@@ -131,6 +131,7 @@ def build_level2_authoring_prompt(
             if dialect is not None:
                 contracts[sd.dialect] = dialect.contract()
 
+    anti_examples: dict[str, list[dict]] = {}
     if usage_skills is None:
         usage_skills = {}
         from seekflow_engineering_tools.generative_cad.base_packages.registry import (
@@ -146,6 +147,7 @@ def build_level2_authoring_prompt(
             dialect = d_reg.get(sd.dialect)
             if pkg is not None and dialect is not None:
                 usage_skills[sd.dialect] = pkg.level2_usage_markdown
+                anti_examples[sd.dialect] = list(pkg.anti_examples) if pkg.anti_examples else []
             elif dialect is not None:
                 # Dialect exists but has no BasePackage (e.g. loft_sweep, shell_housing).
                 # Generate a minimal usage skill from the dialect's contract + op specs.
@@ -167,6 +169,7 @@ def build_level2_authoring_prompt(
         "selected_dialects": [sd.model_dump() for sd in selection_plan.selected_dialects],
         "contracts": contracts,
         "usage_skills": usage_skills or {},
+        "anti_examples": anti_examples,
     }
 
 

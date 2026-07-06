@@ -88,15 +88,6 @@ def run_spatial_authoring_frontend(
                 failures=["failed to extract MechanicalObjectGraphDraft"],
             )
 
-    # ── Single-component fast path ──
-    if len(object_graph.components) <= 1:
-        return SpatialFrontendResult(
-            ok=True,
-            final_status="VERIFIED",
-            object_graph=object_graph,
-            assumption_ledger=ledger,
-        )
-
     # ── Step 2: Archetype matching ──
     _apply_archetypes(object_graph, mode, ledger)
 
@@ -108,8 +99,24 @@ def run_spatial_authoring_frontend(
         normalized_list = normalize_answers(
             user_answers, object_graph, answer_normalizer_caller, llm_config
         )
+        # Guard: filter relations to only those referencing known component IDs.
+        # LLM answer normalizer can hallucinate entity names (e.g. 'bolt_circle',
+        # 'seal_ring') that don't exist in the object graph. In-place list.extend()
+        # bypasses Pydantic model validators, so we validate manually here.
+        import logging
+        _log = logging.getLogger(__name__)
+        valid_ids = {c.component_id for c in object_graph.components}
         for na in normalized_list:
-            object_graph.candidate_relations.extend(na.relations_added)
+            for rel in na.relations_added:
+                unknown = set(rel.entities) - valid_ids
+                if unknown:
+                    _log.warning(
+                        "Dropping hallucinated relation %s (type=%s): "
+                        "entities %s not in component IDs %s",
+                        rel.relation_id, rel.type, unknown, valid_ids,
+                    )
+                else:
+                    object_graph.candidate_relations.append(rel)
             for assumption_text in na.assumptions_added:
                 ledger.add(AssumptionEntry(
                     assumption_id=f"user_answer_{na.question_id}",
@@ -139,7 +146,11 @@ def run_spatial_authoring_frontend(
         from seekflow_engineering_tools.generative_cad.authoring.spatial.question_planner import (
             plan_questions,
         )
-        questions = plan_questions(object_graph, budget=question_budget)
+        questions = plan_questions(
+            object_graph, budget=question_budget,
+            question_caller=question_caller,
+            llm_config=llm_config,
+        )
         if questions:
             session = SpatialSessionState(
                 session_id=(
@@ -190,27 +201,44 @@ def _extract_object_graph(
     llm_config: AuthoringLlmConfig,
     mode: SpatialModeType,
 ) -> MechanicalObjectGraphDraft | None:
-    """Call LLM to extract MechanicalObjectGraphDraft."""
+    """Call LLM to extract MechanicalObjectGraphDraft, with retries."""
     from seekflow_engineering_tools.generative_cad.authoring.spatial.prompts import (
         OBJECT_GRAPH_SYSTEM_PROMPT,
     )
     from seekflow_engineering_tools.generative_cad.authoring.spatial.tool_schemas import (
         build_object_graph_tool_schema_for_mode,
     )
-    try:
-        result = caller.call_strict_tool(
-            messages=[
-                {"role": "system", "content": OBJECT_GRAPH_SYSTEM_PROMPT},
-                {"role": "user", "content": user_request},
-            ],
-            tool_name="emit_object_graph",
-            tool_description="Extract components and spatial relationships",
-            tool_schema=build_object_graph_tool_schema_for_mode(mode),
-            model_config=llm_config.author,
-        )
-        return MechanicalObjectGraphDraft.model_validate(result.arguments)
-    except Exception:
-        return None
+    import logging
+    _log = logging.getLogger(__name__)
+
+    last_error = None
+    for attempt in range(3):
+        try:
+            result = caller.call_strict_tool(
+                messages=[
+                    {"role": "system", "content": OBJECT_GRAPH_SYSTEM_PROMPT},
+                    {"role": "user", "content": user_request},
+                ],
+                tool_name="emit_object_graph",
+                tool_description="Extract components and spatial relationships",
+                tool_schema=build_object_graph_tool_schema_for_mode(mode),
+                model_config=llm_config.author,
+            )
+            graph = MechanicalObjectGraphDraft.model_validate(result.arguments)
+            _log.info(
+                "Object graph extracted: %d components, %d unknowns",
+                len(graph.components), len(graph.unknowns),
+            )
+            return graph
+        except Exception as e:
+            last_error = e
+            _log.warning("Object graph extraction attempt %d/3 failed: %s", attempt + 1, e)
+            if attempt < 2:
+                import time as _time
+                _time.sleep(2)
+
+    _log.error("Object graph extraction failed after 3 attempts: %s", last_error)
+    return None
 
 
 def _apply_archetypes(

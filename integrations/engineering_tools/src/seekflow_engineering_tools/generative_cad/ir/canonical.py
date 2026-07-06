@@ -63,6 +63,8 @@ class CanonicalNode(BaseModel):
     operation_effects: list[str] = Field(default_factory=list)
     postconditions: list[str] = Field(default_factory=list)
 
+    autofix_hints: list[dict[str, Any]] | None = Field(default=None)
+
 
 class CanonicalGcadDocument(BaseModel):
     model_config = ConfigDict(extra="forbid")

@@ -1,0 +1,50 @@
+{
+  "verdict": "CORRECT — pure outer contour with Hub+Rim+Fill",
+  "station_count": 5,
+  "profile_stations": [
+    {
+      "r_mm": 1,
+      "z_front_mm": 0,
+      "z_rear_mm": 5,
+      "label": "bore_lower"
+    },
+    {
+      "r_mm": 130,
+      "z_front_mm": 5,
+      "z_rear_mm": 20,
+      "label": "bore_transition"
+    },
+    {
+      "r_mm": 250,
+      "z_front_mm": 20,
+      "z_rear_mm": 100,
+      "label": "rim_body"
+    },
+    {
+      "r_mm": 130,
+      "z_front_mm": 100,
+      "z_rear_mm": 115,
+      "label": "rim_upper_transition"
+    },
+    {
+      "r_mm": 1,
+      "z_front_mm": 115,
+      "z_rear_mm": 120,
+      "label": "bore_upper"
+    }
+  ],
+  "checks": {
+    "hub_present": true,
+    "rim_present": true,
+    "center_fill": true,
+    "zero_width_stations": 0,
+    "z_overlaps": 0,
+    "z_order_ok": true
+  },
+  "layered_modeling": {
+    "web_groove_node": "n_web_groove",
+    "z_position_mm": 42,
+    "depth_mm": 35,
+    "note": "LLM correctly used cut_annular_groove with z_position_mm for web recess"
+  }
+}

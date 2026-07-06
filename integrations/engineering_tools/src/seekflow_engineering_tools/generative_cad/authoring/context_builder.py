@@ -26,6 +26,9 @@ class AuthoringContext(BaseModel):
     selected_dialects: list[str]
     dialect_contracts: dict[str, dict]
     level2_usage_skills: dict[str, str]
+    base_package_examples: dict[str, list[dict]] = Field(default_factory=dict)
+    base_package_anti_examples: dict[str, list[dict]] = Field(default_factory=dict)
+    base_package_manifests: dict[str, dict] = Field(default_factory=dict)
     tool_schema_hash: str = ""
     context_hash: str = ""
 
@@ -36,6 +39,9 @@ class AuthoringContext(BaseModel):
             "contracts": self.dialect_contracts,
             "usage_skill_hashes": {
                 k: stable_hash(v) for k, v in self.level2_usage_skills.items()
+            },
+            "anti_examples_hashes": {
+                k: stable_hash(v) for k, v in self.base_package_anti_examples.items()
             },
         })
         return self
@@ -56,6 +62,9 @@ def build_authoring_context(
     selected_dialects: list[str] = []
     dialect_contracts: dict[str, dict] = {}
     level2_usage_skills: dict[str, str] = {}
+    base_package_examples: dict[str, list[dict]] = {}
+    base_package_anti_examples: dict[str, list[dict]] = {}
+    base_package_manifests: dict[str, dict] = {}
 
     for sd in route_plan.selected_dialects:
         did = sd.dialect
@@ -92,12 +101,37 @@ def build_authoring_context(
         # 4. Load Level-2 usage skill
         level2_usage_skills[did] = pkg.level2_usage_markdown
 
+        # 5. Load examples (for few-shot prompt injection)
+        examples_list: list[dict] = []
+        for ex in pkg.examples:
+            if hasattr(ex, "model_dump"):
+                examples_list.append(ex.model_dump())
+            elif isinstance(ex, dict):
+                examples_list.append(ex)
+        base_package_examples[did] = examples_list
+
+        # 6. Load anti-examples (for negative guidance prompt injection)
+        anti_list: list[dict] = []
+        for ae in pkg.anti_examples:
+            if isinstance(ae, dict):
+                anti_list.append(ae)
+        base_package_anti_examples[did] = anti_list
+
+        # 7. Load manifest (for prompt injection)
+        if hasattr(pkg.manifest, "model_dump"):
+            base_package_manifests[did] = pkg.manifest.model_dump()
+        elif isinstance(pkg.manifest, dict):
+            base_package_manifests[did] = pkg.manifest
+
     # Compute context hash
     ctx = AuthoringContext(
         route_plan=route_plan,
         selected_dialects=selected_dialects,
         dialect_contracts=dialect_contracts,
         level2_usage_skills=level2_usage_skills,
+        base_package_examples=base_package_examples,
+        base_package_anti_examples=base_package_anti_examples,
+        base_package_manifests=base_package_manifests,
     )
     ctx.compute_hashes()
 

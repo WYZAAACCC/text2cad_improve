@@ -1,0 +1,33 @@
+{
+  "ok": false,
+  "stage": "geometry_preflight",
+  "issues": [
+    {
+      "code": "a004_groove_outside_profile",
+      "message": "groove outer radius (250.0) >= profile max (250.0) - margin (1.0)",
+      "severity": "error",
+      "stage": "geometry_preflight",
+      "node_id": "n_web_groove",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "root_terminal",
+    "registry",
+    "params",
+    "ownership",
+    "graph",
+    "typecheck",
+    "phase",
+    "composition",
+    "hole_semantics",
+    "safety",
+    "canonicalize",
+    "dialect_semantics",
+    "geometry_preflight"
+  ]
+}

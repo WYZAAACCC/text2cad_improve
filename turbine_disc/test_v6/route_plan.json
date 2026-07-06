@@ -1,0 +1,21 @@
+{
+  "part_intent": {
+    "object_type": "axisymmetric_turbine_disk",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "turbomachinery"
+  },
+  "route_decision": "deterministic_primitive",
+  "selected_dialects": [],
+  "selected_primitive": "axisymmetric_turbine_disk",
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [
+    "榫槽多级渐变深度stations（primitive仅支持rim_slot_stage_*系列参数，不直接支持stations列表）",
+    "前侧密封槽2道独立定义（primitive使用seal_land_count统一控制，不直接支持两道不同直径的独立密封槽）",
+    "侧向cut_annular_groove的z_position_mm精确定位（primitive使用mid_web_recess_*参数，语义映射为凹陷而非z定位槽）"
+  ],
+  "safety_notes": [
+    "该primitive为非飞行参考几何体，不可用于适航认证、制造或结构验证",
+    "trust_level=reference_geometry，所有输出仅作概念参考",
+    "safety全True已确认"
+  ]
+}

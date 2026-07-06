@@ -54,6 +54,7 @@ class TestImportGateRelease:
                 "geometry_preflight": {"ok": True},
                 "runtime_postconditions": {"ok": True},
                 "inspection_validation": {"ok": True},
+                "geometry_postcheck": {"ok": True},
             },
         }
 
@@ -78,7 +79,7 @@ class TestImportGateRelease:
             "step_exists", "metadata_exists", "metadata_valid", "safety_valid",
             "contract_hash_valid", "core_validation_ok", "dialect_semantics_ok",
             "geometry_preflight_ok", "runtime_postconditions_ok", "inspection_ok",
-            "step_import_allowed",
+            "geometry_postcheck_ok", "step_import_allowed",
         ]
         for key in required_true:
             assert result["gate"][key] is True, f"gate flag {key} should be True"

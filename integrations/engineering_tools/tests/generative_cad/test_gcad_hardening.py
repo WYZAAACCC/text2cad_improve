@@ -156,6 +156,7 @@ class TestMetadataV2Mutation:
                 "core_validation": {"ok": True}, "dialect_semantics": {"ok": True},
                 "geometry_preflight": {"ok": True}, "runtime_postconditions": {"ok": True},
                 "inspection_validation": {"ok": True},
+                "geometry_postcheck": {"ok": True},
             },
         }
 

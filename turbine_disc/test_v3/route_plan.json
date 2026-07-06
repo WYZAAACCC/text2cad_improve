@@ -1,0 +1,17 @@
+{
+  "part_intent": {
+    "object_type": "turbine_disk",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "turbomachinery"
+  },
+  "route_decision": "deterministic_primitive",
+  "selected_dialects": [],
+  "selected_primitive": "axisymmetric_turbine_disk",
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [
+    "multi-depth fir-tree slot profile: stations [{depth:4, half_width:7}, {depth:8, half_width:5}, {depth:12, half_width:4}] — primitive supports only single-stage rim_slot parameters, not progressive multi-stage station arrays; front-side dual seal lands at specific diameters φ200-210 and φ220-230 — primitive seal_land params apply uniform pitch/start_dia, not two distinct diameter ranges; precise profile_stations with Z-monotonic outer contour and centerline fill from r=1mm — primitive uses parametric hub-web-rim, not explicit profile station lists"
+  ],
+  "safety_notes": [
+    "Primitive is non-flight reference geometry only; not airworthy, not certified, not for manufacturing. All safety=True, trust_level=reference_geometry."
+  ]
+}

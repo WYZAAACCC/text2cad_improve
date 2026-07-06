@@ -1,0 +1,22 @@
+{
+  "session_id": "spatial_a3a6234a1c09",
+  "mode": "precision",
+  "questions": [
+    {
+      "id": "q_unknown_material",
+      "text": "高压涡轮盘选择哪种材料？",
+      "answer": "A: IN718镍基高温合金"
+    },
+    {
+      "id": "q_unknown_tenon_z_location",
+      "text": "榫槽Z方向起止位置？",
+      "answer": "A: Z=25->95"
+    },
+    {
+      "id": "q_unknown_seal_groove_z_position",
+      "text": "密封槽Z方向精确位置？",
+      "answer": "A: Z=8, Z=14"
+    }
+  ],
+  "note": "Spatial frontend triggered 3 questions. All answered with recommended option A. ContinueSpatial returned needsClarification=false, spatialGraphKey passed to doGenerate."
+}

@@ -57,7 +57,7 @@ def _make_washer_node_params():
                 "profile_stations": [
                     {"r_mm": 40.0, "z_front_mm": 0.0, "z_rear_mm": 2.0},
                     {"r_mm": 40.0, "z_front_mm": 2.0, "z_rear_mm": 12.0},
-                    {"r_mm": 15.0, "z_front_mm": 12.0, "z_rear_mm": 13.0},
+                    {"r_mm": 14.0, "z_front_mm": 12.0, "z_rear_mm": 13.0},
                 ],
             },
         ),

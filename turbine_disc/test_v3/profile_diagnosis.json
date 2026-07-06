@@ -1,0 +1,69 @@
+{
+  "note": "LLM original output. Failed validation at geometry_preflight with 2 A001 zero-width station errors.",
+  "validation_errors": [
+    {
+      "code": "a001_z_order",
+      "message": "z_rear=42 == z_front=42"
+    },
+    {
+      "code": "a001_z_order",
+      "message": "z_rear=78 == z_front=78"
+    }
+  ],
+  "profile_stations": [
+    {
+      "r_mm": 1,
+      "z_front_mm": 0,
+      "z_rear_mm": 5,
+      "label": "start_fill"
+    },
+    {
+      "r_mm": 130,
+      "z_front_mm": 5,
+      "z_rear_mm": 20,
+      "label": "hub_lower"
+    },
+    {
+      "r_mm": 250,
+      "z_front_mm": 20,
+      "z_rear_mm": 42,
+      "label": "rim_lower"
+    },
+    {
+      "r_mm": 250,
+      "z_front_mm": 42,
+      "z_rear_mm": 42,
+      "label": null
+    },
+    {
+      "r_mm": 210,
+      "z_front_mm": 42,
+      "z_rear_mm": 78,
+      "label": "web"
+    },
+    {
+      "r_mm": 250,
+      "z_front_mm": 78,
+      "z_rear_mm": 78,
+      "label": null
+    },
+    {
+      "r_mm": 250,
+      "z_front_mm": 78,
+      "z_rear_mm": 100,
+      "label": "rim_upper"
+    },
+    {
+      "r_mm": 130,
+      "z_front_mm": 100,
+      "z_rear_mm": 115,
+      "label": "hub_upper"
+    },
+    {
+      "r_mm": 1,
+      "z_front_mm": 115,
+      "z_rear_mm": 120,
+      "label": "end_fill"
+    }
+  ]
+}

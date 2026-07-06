@@ -1,0 +1,25 @@
+{
+  "part_intent": {
+    "object_type": "axisymmetric_turbine_disk",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "turbomachinery"
+  },
+  "route_decision": "deterministic_primitive",
+  "selected_dialects": [],
+  "selected_primitive": "axisymmetric_turbine_disk",
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [
+    "multi_stage_fir_tree_with_undercut_and_alternating_lobe_neck_profile",
+    "front_face_annular_groove_web_recess_from_side",
+    "front_seal_grooves_as_front_face_annular_details",
+    "certified_airworthy_manufacturing_ready_output"
+  ],
+  "safety_notes": [
+    "Output is reference geometry only; not airworthy, not certified, not for manufacturing",
+    "Fir-tree slot profile with 4 alternating wide/narrow stations (lobe 8mm, neck 5mm, lobe 7mm, root 3mm) exceeds simple 3-parameter fir-tree — the deterministic primitive may approximate but cannot guarantee the exact 4-station alternating undercut profile",
+    "Web recess via cut_annular_groove from front side at z=42.5mm is an axial offset groove — primitive covers mid_web_recess but may not map to the exact z_position/side semantics",
+    "Front seal grooves (2× φ200-210 depth4, φ220-230 depth4) may not map exactly to the seal_land parameters which use pitch-based spacing",
+    "All safety flags True, trust_level=reference_geometry per user specification",
+    "Chamfer 1.5mm maps to edge_chamfer_mm"
+  ]
+}

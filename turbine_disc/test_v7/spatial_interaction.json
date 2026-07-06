@@ -1,0 +1,3 @@
+{
+  "note": "No spatial interaction in this test — request sent directly via /api/generate with forceRoute in body, bypassing spatial frontend."
+}

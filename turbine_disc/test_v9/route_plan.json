@@ -1,0 +1,43 @@
+{
+  "part_intent": {
+    "object_type": "高压涡轮盘",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "航空发动机/涡轮机械"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "航空发动机高压涡轮盘为旋转对称零件，需 revolve_profile 定义外轮廓、cut_center_bore 中心孔、cut_annular_groove 切削Web凹陷、cut_circular_hole_pattern 螺栓孔、cut_rim_slot_pattern 枞树槽、apply_safe_chamfer 倒角"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "多个独立特征（中心孔、螺栓孔阵列、枞树槽阵列、密封槽、倒角）需要在axisymmetric基体上进行布尔差组合"
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [
+    {
+      "skill_id": "turbomachinery_disk_structural",
+      "skill_version": "0.1.0",
+      "reason": "涡轮盘包含枞树槽交替宽窄、Web凹陷、密封槽等典型涡轮盘特征，需涡轮机械领域知识"
+    }
+  ],
+  "unsupported_capabilities": [
+    "疲劳寿命预测",
+    "结构强度验证",
+    "适航认证",
+    "制造就绪评估",
+    "枞树槽精确轮廓（无专用枞树槽profile引擎仅生成参考几何）",
+    "生产级别公差与表面粗糙度"
+  ],
+  "safety_notes": [
+    "本系统无法认证航空发动机零件适航性",
+    "输出为参考几何，不可直接用于制造",
+    "枞树槽几何由通用槽操作近似，非精确fir-tree profile",
+    "所有safety标记为True",
+    "材料属性未定义，不适用于应力分析"
+  ]
+}

@@ -1,0 +1,21 @@
+生成一个航空发动机高压涡轮盘，axisymmetric零件。
+
+**建模规则：**
+- revolve_profile只描述纯外轮廓（每个Z位置的最大半径）
+- Web凹陷用cut_annular_groove从侧面切削（z_position_mm指定起始位置）
+- z_rear必须严格>z_front
+- 榫槽stations从浅到深排列
+- safety全True，trust_level="reference_geometry"
+
+## 外轮廓（revolve_profile，每个Z唯一半径）
+r=1 Z=0->5 | r=130 Z=5->20 | r=250 Z=20->100 | r=130 Z=100->115 | r=1 Z=115->120
+
+## Web凹陷（cut_annular_groove，从前侧面切削）
+z_position_mm=42.5 side=front depth_mm=35 inner_dia_mm=420 outer_dia_mm=496
+
+## 特征
+- 中心孔 φ120贯通
+- 螺栓孔 PCD280 12×φ14贯通
+- 榫槽60个 stations=[{depth:4 half_width:7},{depth:8 half_width:5},{depth:12 half_width:4}]
+- 前侧密封槽2道 φ200-210深4 φ220-230深4
+- 倒角1.5mm

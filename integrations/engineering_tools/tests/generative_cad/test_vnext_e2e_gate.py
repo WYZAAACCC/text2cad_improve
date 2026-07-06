@@ -59,6 +59,7 @@ class TestVNextE2EGate:
                 "geometry_preflight": {"ok": True},
                 "runtime_postconditions": {"ok": True},
                 "inspection_validation": {"ok": True},
+                "geometry_postcheck": {"ok": True},
             },
         }
 
@@ -123,6 +124,7 @@ class TestVNextE2EGate:
                 "geometry_preflight": {"ok": True},
                 "runtime_postconditions": {"ok": True},
                 "inspection_validation": {"ok": True},
+                "geometry_postcheck": {"ok": True},
             },
         }
 

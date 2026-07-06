@@ -1,0 +1,37 @@
+{
+  "part_intent": {
+    "object_type": "turbine_disk",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "turbomachinery"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "Axisymmetric turbine disk with revolve profile, center bore, annular groove for web recess, circular bolt hole pattern, fir-tree rim slot pattern with alternating lobe/neck widths, seal grooves, and chamfers — all within the axisymmetric dialect's supported ops."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "Multiple independent axisymmetric features — main disk body, bolt hole pattern, rim slot pattern, seal grooves — must be combined via boolean operations."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [
+    {
+      "skill_id": "turbine_disk_design",
+      "skill_version": "0.1.0",
+      "reason": "High-pressure turbine disk domain knowledge required for fir-tree slot alternating lobe/neck sequencing, web recess placement, seal groove sizing, and bolt PCD layout."
+    }
+  ],
+  "unsupported_capabilities": [
+    "The deterministic primitive axisymmetric_turbine_disk does not support multi-stage fir-tree slots with alternating lobe/neck widths per stage; the four-stage alternating profile [{depth:4 hw:8},{depth:7 hw:5},{depth:10 hw:7},{depth:12 hw:3}] cannot be expressed as uniform lobe_width/neck_width parameters. Generative route is chosen for flexible rim slot definition."
+  ],
+  "safety_notes": [
+    "This is reference geometry only — not certified, not airworthy, not for manufacturing or fatigue/life prediction.",
+    "No structural validation, no simulation truth.",
+    "Fir-tree slot half-width alternation (lobe→neck→lobe→neck) is enforced via explicit stage-level parameters; monotonic-decrease guard active.",
+    "All safety flags are True per user request."
+  ]
+}

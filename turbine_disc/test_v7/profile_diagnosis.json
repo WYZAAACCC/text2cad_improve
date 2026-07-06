@@ -1,0 +1,43 @@
+{
+  "verdict": "CORRECT",
+  "station_count": 5,
+  "profile_stations": [
+    {
+      "r_mm": 1,
+      "z_front_mm": 0,
+      "z_rear_mm": 5,
+      "label": "stub_start"
+    },
+    {
+      "r_mm": 130,
+      "z_front_mm": 5,
+      "z_rear_mm": 20,
+      "label": "bore_rise"
+    },
+    {
+      "r_mm": 250,
+      "z_front_mm": 20,
+      "z_rear_mm": 100,
+      "label": "rim_main"
+    },
+    {
+      "r_mm": 130,
+      "z_front_mm": 100,
+      "z_rear_mm": 115,
+      "label": "bore_fall"
+    },
+    {
+      "r_mm": 1,
+      "z_front_mm": 115,
+      "z_rear_mm": 120,
+      "label": "stub_end"
+    }
+  ],
+  "checks": {
+    "hub_present": true,
+    "rim_present": true,
+    "center_fill": true,
+    "zero_width": 0,
+    "z_overlaps": 0
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "applied": true,
+  "before_hash": "sha256:13378799d09f8960f112ebe69ba49e7ec1d6ba4cbb4a17ec2128925ecc795135",
+  "after_hash": "sha256:b3b23c84c50484bd88cc99b88d9e41e86083a519ae3ca8c9c00722630484cc07",
+  "entries": [
+    {
+      "rule_id": "fix_chamfer_fillet_optional",
+      "path": "/",
+      "old_value": "<hash:sha256:13378>",
+      "new_value": "<hash:sha256:802a2>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_chamfer_fillet_optional"
+    },
+    {
+      "rule_id": "fix_phase_ordering",
+      "path": "/",
+      "old_value": "<hash:sha256:802a2>",
+      "new_value": "<hash:sha256:cf7fb>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_phase_ordering"
+    },
+    {
+      "rule_id": "fix_null_hints",
+      "path": "/",
+      "old_value": "<hash:sha256:cf7fb>",
+      "new_value": "<hash:sha256:b3b23>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_null_hints"
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+生成一个航空发动机高压涡轮盘（High Pressure Turbine Disk），这是一个旋转对称（axisymmetric）零件。
+
+## 整体尺寸
+- 轮盘最大外径：500mm
+- 中心孔径：120mm
+- 轮盘总轴向宽度：120mm
+- 单位：mm
+
+## 截面轮廓（从中心到外缘）
+轮盘由四个主要区域组成：Bore（中心孔）→ Hub（轮毂）→ Web（辐板）→ Rim（轮缘）。
+
+### Hub 区域（r=60mm 到 r=130mm）
+- 中心通孔直径 120mm（半径 60mm）
+- 轮毂外径 260mm（半径 130mm）
+- 轮毂轴向宽度 110mm（Z=5 到 Z=115）
+
+### Web 区域（r=130mm 到 r=210mm）
+- 辐板外径 420mm（半径 210mm）
+- 辐板轴向厚度 35mm（Z=42.5 到 Z=77.5）
+
+### Rim 区域（r=210mm 到 r=250mm）
+- 轮缘外径 500mm（半径 250mm）
+- 轮缘轴向宽度 80mm（Z=20 到 Z=100）
+
+## 特征加工
+### 1. 螺栓孔
+- PCD 280mm，12个通孔，孔径14mm
+
+### 2. 轮缘榫槽（叶片安装槽）
+- 60个槽，对称多级轮廓：
+  第1站 depth=12mm half_width=4mm
+  第2站 depth=8mm half_width=5.5mm
+  第3站 depth=4mm half_width=7mm
+
+### 3. 环形密封槽
+- 前侧Hub两道环形槽：内径200/外径210深4mm，内径220/外径230深4mm
+
+### 4. 1.5mm全局倒角
+- trust_level="reference_geometry"，所有safety=True
+
+## 修复版Prompt建议（避免slot深度问题和bore共面问题）
+
+生成一个航空发动机高压涡轮盘（High Pressure Turbine Disk），旋转对称（axisymmetric）零件，使用 revolve_profile。
+
+## 建模要求（重要）
+- 使用 revolve_profile 创建实心圆柱体轮廓，从中心线 r=1.0mm 开始填充，不要预先定义内孔壁
+- 使用 cut_center_bore 创建中心通孔
+- 轮缘榫槽站点必须从浅到深排列（第1站最浅、最后1站最深）
+- 所有 safety 标志设为 True，trust_level="reference_geometry"
+
+## 整体尺寸
+- 最大外径：500mm，中心孔径：120mm，总轴向宽度：120mm，单位：mm
+
+## 截面轮廓 (revolve_profile stations)
+Hub区域 r=130mm（Z=5到115），Web区域 r=210mm（Z=42.5到77.5），Rim区域 r=250mm（Z=20到100）
+
+## 加工特征
+- 螺栓孔：PCD 280mm，12孔φ14mm，Z轴贯通
+- 轮缘榫槽：60槽，stations从浅到深排列 [depth=4/half_width=7, depth=8/half_width=5.5, depth=12/half_width=4]
+- 前侧Hub环形密封槽2道: φ200-210深4mm, φ220-230深4mm
+- 倒角1.5mm（可选）

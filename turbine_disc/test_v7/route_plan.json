@@ -1,0 +1,20 @@
+{
+  "part_intent": {
+    "object_type": "turbine_disk",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "turbomachinery"
+  },
+  "route_decision": "deterministic_primitive",
+  "selected_dialects": [],
+  "selected_primitive": "axisymmetric_turbine_disk",
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [],
+  "safety_notes": [
+    "trust_level=reference_geometry: non-flight, non-certified, not for manufacturing",
+    "榫槽 multi-stage stations (depth 4/8/12, half_width 7/5/4) mapped to rim_slot multi-stage parameters as best-effort approximation",
+    "Web凹陷 cut_annular_groove approximated via mid_web_recess parameters",
+    "前侧密封槽2道 mapped to seal_land parameters",
+    "倒角1.5mm mapped to edge_chamfer_mm",
+    "外轮廓 profile with varying radius per Z is represented in simplified hub-web-rim parameterisation; exact contour fidelity limited by deterministic primitive schema"
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "ok": false,
+  "stage": "geometry_preflight",
+  "issues": [
+    {
+      "code": "a001_z_order",
+      "message": "z_rear_mm (42.0) must be > z_front_mm (42.0) and finite",
+      "severity": "error",
+      "stage": "geometry_preflight",
+      "node_id": "n_revolve",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "a001_z_order",
+      "message": "z_rear_mm (78.0) must be > z_front_mm (78.0) and finite",
+      "severity": "error",
+      "stage": "geometry_preflight",
+      "node_id": "n_revolve",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "root_terminal",
+    "registry",
+    "params",
+    "ownership",
+    "graph",
+    "typecheck",
+    "phase",
+    "composition",
+    "hole_semantics",
+    "safety",
+    "canonicalize",
+    "dialect_semantics",
+    "geometry_preflight"
+  ]
+}

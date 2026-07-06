@@ -49,6 +49,8 @@ UnknownKindType = Literal[
     "component_count", "relative_placement", "axis_direction",
     "face_selection", "contact_relation", "spacing", "symmetry",
     "assembly_vs_fused", "feature_location", "port_direction",
+    "numeric_value",  # e.g. bolt hole diameter, wall thickness, fillet radius
+    "material_specification",  # e.g. carbon steel vs stainless, PN16 vs PN40
 ]
 
 OriginSemanticsType = Literal[
@@ -171,6 +173,15 @@ class SpatialUnknown(BaseModel):
     uncertainty: float = Field(ge=0.0, le=1.0, description="How unclear the prompt is")
     answer_cost: float = Field(ge=0.0, le=1.0, description="How hard for user to answer")
     reason: str = ""
+    # LLM-generated concrete options (2-4 items each)
+    suggested_option_labels: list[str] = Field(
+        default_factory=list,
+        description="Concrete option labels with specific values, e.g. ['DN100 φ114mm（推荐）', 'DN150 φ168mm']"
+    )
+    suggested_option_descriptions: list[str] = Field(
+        default_factory=list,
+        description="Descriptions matching each option, e.g. ['按GB/T 9119，DN250法兰配DN100通孔']"
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

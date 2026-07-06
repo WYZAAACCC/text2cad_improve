@@ -120,6 +120,53 @@ For helix_sweep:
 For shell:
 - thickness_mm must be positive.
 - thickness_mm must be less than 40% of the smallest base dimension.
+
+For axisymmetric revolve_profile:
+- profile_stations describe the OUTER contour only — each Z position has exactly
+  ONE radius (the maximum radius at that Z).
+- z_rear_mm must be STRICTLY GREATER than z_front_mm (zero-width stations are
+  forbidden and will be rejected by validation).
+- Express Hub and Rim as continuous outer contour segments. The web is the
+  transition zone between hub and rim — NOT a cut_annular_groove side recess.
+  Example: r=1 Z=0->5 | r=30 Z=5->35 | r=100 Z=0->40 | r=1 Z=35->40.
+- DO NOT use cut_annular_groove to create web/bore recess — that creates an
+  unrealistic empty cavity in the disk body.
+- DO NOT model an hourglass shape (narrow middle, wide ends).
+
+For cut_rim_slot_pattern fir-tree slots:
+- half_width MUST alternate wide (lobe) / narrow (neck) to create mechanical undercuts.
+  A monotonically decreasing half_width produces a stepped V-shape, NOT a fir-tree.
+  CORRECT: [8, 5, 7, 3] → lobe 8mm → neck 5mm → lobe 7mm(undercut!) → root 3mm.
+  WRONG:   [7, 5, 4] → monotonic taper, no undercut, blade cannot lock.
+- The undercut is created when a deeper station has LARGER half_width than the station
+  above it (e.g., neck hw=5, next lobe hw=7 where 7 > 5).
+- Typical turbine disk: 2-3 lobes alternating wide/narrow, ending with narrow root.
+
+IR CAPABILITY BOUNDARIES (must respect):
+- The IR can only represent what the registered dialects support. Do NOT
+  attempt to model features outside the selected dialects' capability.
+- axisymmetric: ONLY rotationally symmetric solids. Non-axisymmetric
+  features (blades, cooling holes, asymmetrical pockets) are NOT
+  representable — output closest conservative reference geometry and
+  state assumptions.
+- revolve_profile describes ONLY the outer contour. Internal features
+  (bores, grooves, slots) must use their dedicated cut_* operations.
+- cut_rim_slot_pattern produces fir-tree/slot profiles on the OUTER
+  circumference only. Internal cooling channels are NOT supported.
+- If the user requests unsupported features, output the closest
+  representable geometry and add a note in llm_validation_hints.
+
+TRUST LEVEL & SAFETY (mandatory):
+- All generative output is reference_geometry or concept_geometry — NEVER
+  manufacturing-ready, airworthy, or certified.
+- trust_level must be one of: concept_geometry, reference_geometry.
+  Do NOT output higher trust levels (e.g. production, certified).
+- All 7 safety flags must be explicitly true:
+  non_flight_reference_only, not_airworthy, not_certified,
+  not_for_manufacturing, not_for_installation, no_structural_validation,
+  no_life_prediction.
+- The system fills safety/constraints fields — do NOT output them in
+  node params. But understand that your geometry is reference-only.
 """
 
 REPAIR_SYSTEM_PROMPT = """\
@@ -289,3 +336,145 @@ CURRENT DOCUMENT:
 
 Return only the strict repair patch tool arguments.
 """
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Context summarizers — extract essential info from registry/context for prompt
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _build_dialect_summary(dialect_registry) -> str:
+    """Build a compact summary of all registered dialects for the route prompt.
+
+    Extracts dialect id, version, typical geometry, and unsupported cases from
+    each registered dialect's BasePackage manifest.
+    """
+    lines: list[str] = []
+    for did in dialect_registry.list_ids():
+        d = dialect_registry.get(did)
+        if d is None:
+            continue
+        lines.append(f"- {did} (v{d.version}): {getattr(d, 'summary', '')}")
+        typical_geom = getattr(d, 'typical_geometry', None) or []
+        if typical_geom:
+            lines.append(f"  Typical geometry: {', '.join(typical_geom[:5])}")
+    return "\n".join(lines) if lines else "(no dialects registered)"
+
+
+def _build_operation_summary(ctx) -> str:
+    """Build a compact summary of allowed operations per selected dialect.
+
+    Extracts op names, phases, and short descriptions from each dialect's contract.
+    Also includes examples and usage skills for few-shot guidance.
+    """
+    from seekflow_engineering_tools.generative_cad.skills.authoring_context import (
+        pack_authoring_context,
+    )
+
+    parts: list[str] = []
+
+    # ── Operation list per dialect ──
+    for did in ctx.selected_dialects:
+        contract = ctx.dialect_contracts.get(did, {})
+        parts.append(f"## {did} — Allowed Operations")
+        phases = contract.get("phase_order", [])
+        if phases:
+            parts.append(f"Phase order: {' → '.join(phases)}")
+        allowed_ops = contract.get("allowed_ops", {})
+        if allowed_ops:
+            for op_name, op_info in allowed_ops.items():
+                phase = op_info.get("phase", "?")
+                desc = op_info.get("description", "")[:150]
+                parts.append(f"- `{op_name}` [{phase}]: {desc}")
+        parts.append("")
+
+    # ── Usage skills + examples (few-shot) ──
+    if ctx.level2_usage_skills or ctx.base_package_manifests:
+        packed = pack_authoring_context(
+            package_manifests=ctx.base_package_manifests,
+            usage_skills=ctx.level2_usage_skills,
+        )
+        parts.append("## Usage Skills & Manifests")
+        parts.append(packed)
+        parts.append("")
+
+    # ── Examples (few-shot) ──
+    if ctx.base_package_examples:
+        parts.append("## Reference Examples (few-shot)")
+        for did, examples in ctx.base_package_examples.items():
+            for ex in examples:
+                title = ex.get("title", "untitled")
+                user_req = ex.get("user_request", "")
+                raw_doc = ex.get("raw_document", {})
+                parts.append(f"### Example: {title}")
+                parts.append(f"User request: {user_req}")
+                parts.append(f"Raw document:\n{compact_json(raw_doc)}")
+                parts.append("")
+
+    # ── Anti-examples (negative guidance) ──
+    if hasattr(ctx, 'base_package_anti_examples') and ctx.base_package_anti_examples:
+        parts.append("## Anti-Examples (DO NOT replicate these patterns)")
+        for did, anti_list in ctx.base_package_anti_examples.items():
+            if not anti_list:
+                continue
+            parts.append(f"### Dialect: {did}")
+            for ae in anti_list:
+                title = ae.get("title", ae.get("anti_id", "untitled"))
+                explanation = ae.get("explanation", "")
+                parts.append(f"#### {title}")
+                # Include the bad pattern for clarity
+                for k in ("bad_op", "bad_field", "bad_input", "bad_snippet", "bad_profile_stations"):
+                    if k in ae:
+                        parts.append(f"- Bad {k}: {compact_json(ae[k]) if not isinstance(ae[k], str) else ae[k]}")
+                if "correct_approach" in ae:
+                    parts.append(f"- Correct approach: {ae['correct_approach']}")
+                parts.append(f"- Reason: {explanation}")
+                parts.append("")
+
+    return "\n".join(parts) if parts else "(no operations available)"
+
+
+def _build_op_contract(node_plan, dialect_registry) -> str:
+    """Build the operation contract for a single node's params filling.
+
+    Extracts the op's params schema, usage notes, and common mistakes from the
+    dialect's OperationSpec, so the LLM has semantic guidance when filling params.
+    """
+    did = getattr(node_plan, "dialect", "")
+    op = getattr(node_plan, "op", "")
+    op_ver = getattr(node_plan, "op_version", "1.0.0")
+
+    dialect = dialect_registry.get(did) if did else None
+    if dialect is None:
+        return f"(dialect {did!r} not registered)"
+
+    try:
+        spec = dialect.get_op_spec(op, op_ver)
+    except Exception:
+        return f"(op {op!r} not found in dialect {did!r})"
+
+    parts: list[str] = []
+    parts.append(f"## Operation Contract: {did}.{op} (v{op_ver})")
+    parts.append(f"Phase: {getattr(spec, 'phase', '?')}")
+
+    summary = getattr(spec, "summary", "")
+    if summary:
+        parts.append(f"Summary: {summary}")
+
+    usage_notes = getattr(spec, "usage_notes", "")
+    if usage_notes:
+        parts.append(f"Usage notes: {usage_notes}")
+
+    common_mistakes = getattr(spec, "common_mistakes", "")
+    if common_mistakes:
+        parts.append(f"Common mistakes: {common_mistakes}")
+
+    # Params schema
+    params_model = getattr(spec, "params_model", None)
+    if params_model is not None:
+        try:
+            schema = params_model.model_json_schema()
+            parts.append(f"Params schema:\n{compact_json(schema)}")
+        except Exception:
+            parts.append("(params schema unavailable)")
+
+    return "\n".join(parts)

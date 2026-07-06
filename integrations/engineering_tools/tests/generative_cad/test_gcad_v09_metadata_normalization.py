@@ -98,6 +98,7 @@ class TestMetadataNormalization:
                 "geometry_preflight": {"ok": False, "stage": "gp", "issues": []},
                 "runtime_postconditions": {"ok": True, "stage": "rp", "issues": []},
                 "inspection_validation": {"ok": False, "stage": "in", "issues": []},
+                "geometry_postcheck": {"ok": False, "stage": "gpc", "issues": []},
             },
         }
 

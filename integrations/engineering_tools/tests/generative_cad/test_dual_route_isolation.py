@@ -98,6 +98,7 @@ class TestMetadataSchemasDistinct:
                 "core_validation": {"ok": True}, "dialect_semantics": {"ok": True},
                 "geometry_preflight": {"ok": True}, "runtime_postconditions": {"ok": True},
                 "inspection_validation": {"ok": True},
+                "geometry_postcheck": {"ok": True},
             },
         }
         result = validate_generative_metadata_v2(meta)

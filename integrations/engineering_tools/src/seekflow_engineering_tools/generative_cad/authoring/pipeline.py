@@ -20,6 +20,19 @@ from seekflow_engineering_tools.generative_cad.authoring.failure_taxonomy import
 from seekflow_engineering_tools.generative_cad.authoring.metrics import (
     AuthoringRunMetrics,
 )
+from seekflow_engineering_tools.generative_cad.authoring.prompt_builders import (
+    FEATURE_SEQUENCE_SYSTEM_PROMPT,
+    NODE_PARAMS_SYSTEM_PROMPT,
+    REPAIR_SYSTEM_PROMPT,
+    ROUTE_SYSTEM_PROMPT,
+    _build_dialect_summary,
+    _build_op_contract,
+    _build_operation_summary,
+    build_feature_sequence_user_prompt,
+    build_node_params_user_prompt,
+    build_repair_user_prompt,
+    build_route_user_prompt,
+)
 from seekflow_engineering_tools.generative_cad.authoring.raw_assembler import (
     assemble_raw_gcad_document,
 )
@@ -211,8 +224,12 @@ def generate_gcad_from_user_request(
     # ── Stage 1: Route ──
     if route_caller is not None:
         try:
+            dialect_summary = _build_dialect_summary(dialect_registry)
             tc_result = route_caller.call_strict_tool(
-                messages=[{"role": "user", "content": user_request}],
+                messages=[
+                    {"role": "system", "content": ROUTE_SYSTEM_PROMPT},
+                    {"role": "user", "content": build_route_user_prompt(user_request, dialect_summary)},
+                ],
                 tool_name="emit_route_plan",
                 tool_description="Select CAD route and dialects",
                 tool_schema=build_route_plan_tool_schema(
@@ -263,8 +280,14 @@ def generate_gcad_from_user_request(
     # ── Stage 3: Feature sequence ──
     if feature_sequence_caller is not None:
         try:
+            operation_summary = _build_operation_summary(ctx)
             tc_result = feature_sequence_caller.call_strict_tool(
-                messages=[{"role": "user", "content": user_request}],
+                messages=[
+                    {"role": "system", "content": FEATURE_SEQUENCE_SYSTEM_PROMPT},
+                    {"role": "user", "content": build_feature_sequence_user_prompt(
+                        user_request, route_plan, ctx, operation_summary,
+                    )},
+                ],
                 tool_name="emit_feature_sequence",
                 tool_description="Plan operation sequence",
                 tool_schema=build_feature_sequence_tool_schema(ctx),
@@ -292,8 +315,14 @@ def generate_gcad_from_user_request(
         ok_count = 0
         for node_plan in fs.node_sequence:
             try:
+                op_contract = _build_op_contract(node_plan, dialect_registry)
                 tc_result = node_params_caller.call_strict_tool(
-                    messages=[{"role": "user", "content": user_request}],
+                    messages=[
+                        {"role": "system", "content": NODE_PARAMS_SYSTEM_PROMPT},
+                        {"role": "user", "content": build_node_params_user_prompt(
+                            user_request, route_plan, fs, node_plan, op_contract,
+                        )},
+                    ],
                     tool_name="emit_node_params",
                     tool_description=f"Fill params for {node_plan.op}",
                     tool_schema=build_node_params_tool_schema(node_plan, dialect_registry),
@@ -447,8 +476,29 @@ def generate_gcad_from_user_request(
 
             # Get repair patch from LLM
             try:
+                # Convert ValidationIssue objects to dict for prompt
+                issues_dicts: list[dict] = []
+                if report and hasattr(report, "issues"):
+                    for i in report.issues:
+                        if hasattr(i, "model_dump"):
+                            issues_dicts.append(i.model_dump())
+                        elif isinstance(i, dict):
+                            issues_dicts.append(i)
+                        else:
+                            issues_dicts.append({
+                                "code": getattr(i, "code", ""),
+                                "message": getattr(i, "message", ""),
+                                "stage": getattr(i, "stage", ""),
+                                "node_id": getattr(i, "node_id", None),
+                            })
                 tc_result = repair_caller.call_strict_tool(
-                    messages=[{"role": "user", "content": str(current_doc)}],
+                    messages=[
+                        {"role": "system", "content": REPAIR_SYSTEM_PROMPT},
+                        {"role": "user", "content": build_repair_user_prompt(
+                            current_doc=current_doc,
+                            validation_issues=issues_dicts,
+                        )},
+                    ],
                     tool_name="emit_repair_patch",
                     tool_description="Local repair patch",
                     tool_schema=build_repair_patch_tool_schema(),

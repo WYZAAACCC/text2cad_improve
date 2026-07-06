@@ -1,0 +1,314 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "hp_turbine_disk_v1",
+  "part_name": "HP_Turbine_Disk",
+  "units": "mm",
+  "trust_level": "concept_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "turbine_disk",
+      "owner_dialect": "axisymmetric",
+      "kind_hint": "hp_turbine_disk",
+      "root_node": "n_seal_groove_2"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_revolve",
+      "component": "turbine_disk",
+      "dialect": "axisymmetric",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "base_solid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        },
+        {
+          "name": "outer_frame",
+          "type": "frame"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "profile_stations": [
+          {
+            "r_mm": 1,
+            "z_front_mm": 0,
+            "z_rear_mm": 5,
+            "label": null
+          },
+          {
+            "r_mm": 130,
+            "z_front_mm": 5,
+            "z_rear_mm": 20,
+            "label": null
+          },
+          {
+            "r_mm": 250,
+            "z_front_mm": 20,
+            "z_rear_mm": 100,
+            "label": null
+          },
+          {
+            "r_mm": 130,
+            "z_front_mm": 100,
+            "z_rear_mm": 115,
+            "label": null
+          },
+          {
+            "r_mm": 1,
+            "z_front_mm": 115,
+            "z_rear_mm": 120,
+            "label": null
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_center_bore",
+      "component": "turbine_disk",
+      "dialect": "axisymmetric",
+      "op": "cut_center_bore",
+      "op_version": "1.0.0",
+      "phase": "primary_cut",
+      "inputs": [
+        {
+          "node": "n_revolve",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "diameter_mm": 120,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_web_groove",
+      "component": "turbine_disk",
+      "dialect": "axisymmetric",
+      "op": "cut_annular_groove",
+      "op_version": "1.0.0",
+      "phase": "annular_detail",
+      "inputs": [
+        {
+          "node": "n_bolt_holes",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "side": "front",
+        "inner_dia_mm": 420,
+        "outer_dia_mm": 496,
+        "depth_mm": 35,
+        "z_position_mm": 42
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_seal_groove_1",
+      "component": "turbine_disk",
+      "dialect": "axisymmetric",
+      "op": "cut_annular_groove",
+      "op_version": "1.0.0",
+      "phase": "annular_detail",
+      "inputs": [
+        {
+          "node": "n_rim_slots",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "side": "front",
+        "inner_dia_mm": 200,
+        "outer_dia_mm": 210,
+        "depth_mm": 4,
+        "z_position_mm": null
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_seal_groove_2",
+      "component": "turbine_disk",
+      "dialect": "axisymmetric",
+      "op": "cut_annular_groove",
+      "op_version": "1.0.0",
+      "phase": "annular_detail",
+      "inputs": [
+        {
+          "node": "n_seal_groove_1",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "side": "front",
+        "inner_dia_mm": 220,
+        "outer_dia_mm": 230,
+        "depth_mm": 4,
+        "z_position_mm": null
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_bolt_holes",
+      "component": "turbine_disk",
+      "dialect": "axisymmetric",
+      "op": "cut_circular_hole_pattern",
+      "op_version": "1.0.0",
+      "phase": "pattern_cut",
+      "inputs": [
+        {
+          "node": "n_center_bore",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "count": 12,
+        "pcd_mm": 280,
+        "hole_dia_mm": 14,
+        "axis": "Z",
+        "through_all": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_rim_slots",
+      "component": "turbine_disk",
+      "dialect": "axisymmetric",
+      "op": "cut_rim_slot_pattern",
+      "op_version": "1.0.0",
+      "phase": "rim_detail",
+      "inputs": [
+        {
+          "node": "n_web_groove",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "count": 60,
+        "slot_depth_mm": 12,
+        "slot_profile": {
+          "kind": "symmetric_station_profile",
+          "stations": [
+            {
+              "depth_mm": 4,
+              "half_width_mm": 8
+            },
+            {
+              "depth_mm": 7,
+              "half_width_mm": 5
+            },
+            {
+              "depth_mm": 10,
+              "half_width_mm": 7
+            },
+            {
+              "depth_mm": 12,
+              "half_width_mm": 3
+            }
+          ]
+        }
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_chamfer",
+      "component": "turbine_disk",
+      "dialect": "axisymmetric",
+      "op": "apply_safe_chamfer",
+      "op_version": "1.0.0",
+      "phase": "edge_treatment",
+      "inputs": [
+        {
+          "node": "n_seal_groove_2",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "distance_mm": 1,
+        "target": "all_external_edges"
+      },
+      "required": false,
+      "degradation_policy": "may_skip_with_warning"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": null,
+    "bbox_tolerance_mm": 1,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {}
+}

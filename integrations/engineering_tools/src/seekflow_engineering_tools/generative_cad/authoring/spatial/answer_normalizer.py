@@ -32,7 +32,14 @@ def normalize_answers(
     results: list[NormalizedSpatialAnswer] = []
 
     for answer in answers:
-        if answer_normalizer_caller is not None and llm_config is not None:
+        # Single-component parts have no inter-component spatial relations.
+        # The deterministic normalizer correctly records assumptions for
+        # numeric_value/material_specification answers without LLM cost.
+        # Skipping the LLM also eliminates the #1 source of hallucinated
+        # entity names in relations (e.g. 'bolt_circle', 'seal_ring').
+        if len(object_graph.components) <= 1:
+            result = _normalize_deterministic(answer)
+        elif answer_normalizer_caller is not None and llm_config is not None:
             result = _normalize_with_llm(answer, object_graph, answer_normalizer_caller, llm_config)
         else:
             result = _normalize_deterministic(answer)

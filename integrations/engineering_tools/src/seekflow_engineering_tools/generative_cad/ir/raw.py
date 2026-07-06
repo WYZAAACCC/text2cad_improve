@@ -57,6 +57,7 @@ class RawNode(BaseModel):
     params: dict[str, Any] = Field(default_factory=dict)
     required: bool = True
     degradation_policy: DegradationPolicy = "fail"
+    autofix_hints: list[dict[str, Any]] | None = Field(default=None)
 
     @model_validator(mode="after")
     def validate_required_policy(self):

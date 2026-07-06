@@ -79,6 +79,7 @@ class GenerativeMetadataV3(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     degraded_features: list[dict] = Field(default_factory=list)
     operation_metrics: list[dict] = Field(default_factory=list)
+    unsupported_capabilities: list[str] = Field(default_factory=list)
 
     safety: dict
 
@@ -113,6 +114,7 @@ def build_generative_metadata_v3(
     step_path: Path,
     metadata_path: Path,
     repair_summary: dict | None = None,
+    unsupported_capabilities: list[str] | None = None,
 ) -> dict:
     """Build MetadataProofV3 dict with full provenance proof."""
     normalized = normalize_validation_proof(validation)
@@ -160,6 +162,7 @@ def build_generative_metadata_v3(
         warnings=list(ctx.warnings),
         degraded_features=list(ctx.degraded_features),
         operation_metrics=list(ctx.operation_metrics),
+        unsupported_capabilities=list(unsupported_capabilities) if unsupported_capabilities else [],
         safety=canonical.safety.model_dump(),
     )
 

@@ -54,6 +54,24 @@ def handle_revolve_profile(node: CanonicalNode, ctx: RuntimeContext) -> dict[str
         solid = result
     else:
         # ── Multi station: piecewise linear profile ──
+        # 检测"区域描述"风格：多个 station 的 Z 区间重叠
+        # 这是 LLM 把 bore/hub/web/rim 分区域输出的典型模式，会导致 sort-by-Z
+        # 算法 silently 产生错误形状。必须 fail-closed 报错。
+        if len(stations) >= 2:
+            z_ranges = [(s.get("z_front_mm", 0), s.get("z_rear_mm", 0)) for s in stations]
+            overlap_count = 0
+            for i, (zf1, zr1) in enumerate(z_ranges):
+                for j, (zf2, zr2) in enumerate(z_ranges[i+1:], i+1):
+                    if zf1 < zr2 and zf2 < zr1:
+                        overlap_count += 1
+            if overlap_count > 0:
+                raise ValueError(
+                    f"revolve_profile stations have {overlap_count} overlapping Z ranges. "
+                    f"This indicates regional description style (bore/hub/web/rim), "
+                    f"which violates the Z single-valued outer contour constraint. "
+                    f"Cannot produce valid solid — requires LLM repair."
+                )
+
         pts_2d: list[tuple[float, float]] = []
         for s in stations:
             pts_2d.append((float(s["r_mm"]), float(s.get("z_front_mm", 0))))
@@ -180,6 +198,7 @@ def handle_cut_annular_groove(node: CanonicalNode, ctx: RuntimeContext) -> dict[
     outer = float(p.get("outer_dia_mm", 0))
     depth = float(p.get("depth_mm", 0))
     side = p.get("side", "front")
+    z_position = p.get("z_position_mm")
     if inner <= 0 or outer <= 0 or outer <= inner:
         return handle_feature_failure(
             node=node, ctx=ctx, original_body=body,
@@ -188,8 +207,12 @@ def handle_cut_annular_groove(node: CanonicalNode, ctx: RuntimeContext) -> dict[
         )
     try:
         bb = body.val().BoundingBox()
-        z_pos = bb.zmax if side == "front" else bb.zmin
-        extrude_dir = -depth if side == "front" else depth
+        # z_position_mm 优先；缺失时回退到 side 决定的端面
+        if z_position is not None:
+            z_pos = float(z_position)
+        else:
+            z_pos = bb.zmin if side == "front" else bb.zmax
+        extrude_dir = depth if side == "front" else -depth
         ring = (
             cq.Workplane("XY").workplane(offset=z_pos)
             .circle(outer / 2.0).circle(inner / 2.0).extrude(extrude_dir)
@@ -221,22 +244,68 @@ def handle_cut_rim_slot_pattern(node: CanonicalNode, ctx: RuntimeContext) -> dic
     try:
         bb = body.val().BoundingBox()
         outer_r = max(bb.xlen, bb.ylen) / 2.0
-        slot_pts: list[tuple[float, float]] = [(outer_r, 0)]
+        slot_pts: list[tuple[float, float]] = []
+        first_hw = float(stations[0]["half_width_mm"])
+        # +Y profile: rim surface → root (descending)
         for s in stations:
             sd = float(s["depth_mm"])
             hw = float(s["half_width_mm"])
             slot_pts.append((outer_r - sd, hw))
+        # -Y profile: root → rim surface (ascending, mirror-symmetric)
+        for s in reversed(stations):
+            sd = float(s["depth_mm"])
+            hw = float(s["half_width_mm"])
             slot_pts.append((outer_r - sd, -hw))
-        slot_pts.append((outer_r, 0))
+        # Opening at rim surface: span from -first_hw to +first_hw
+        # Prepend +Y rim opening point for moveTo, append -Y for close target
+        slot_pts.insert(0, (outer_r, first_hw))
+        slot_pts.append((outer_r, -first_hw))
         wp = cq.Workplane("XY")
         for i, (r, w) in enumerate(slot_pts):
             wp = wp.moveTo(r, w) if i == 0 else wp.lineTo(r, w)
-        cutter = wp.close().extrude(bb.zlen + 10, both=True)
-        combined = cutter
-        for i in range(1, count):
-            angle = math.degrees(i * 2 * math.pi / count)
-            combined = combined.union(cutter.rotate((0, 0, 0), (0, 0, 1), angle))
-        result = body.cut(combined)
+        base_cutter = wp.close().extrude(bb.zlen + 10, both=True)
+
+        if count <= 6:
+            # 小 count: union-then-cut 策略（性能最优）
+            # 6 个槽的 union 约 48 条边，远低于 OCCT 崩溃阈值
+            combined = base_cutter
+            for i in range(1, count):
+                angle = math.degrees(i * 2 * math.pi / count)
+                combined = combined.union(base_cutter.rotate((0, 0, 0), (0, 0, 1), angle))
+            result = body.cut(combined)
+        else:
+            # 大 count: sequential cut 策略（稳健性最优）
+            # 避免 union 拓扑累积导致 OCP 崩溃（60 槽 union 需处理 ~480 条交线）
+            # 与 handle_cut_circular_hole_pattern (count > 6) 的稳健策略一致
+            result = body
+            success_count = 0
+            for i in range(count):
+                angle = math.degrees(i * 2 * math.pi / count)
+                try:
+                    cutter = base_cutter.rotate((0, 0, 0), (0, 0, 1), angle)
+                    result = result.cut(cutter)
+                    success_count += 1
+                except Exception as slot_e:
+                    ctx.warnings.append(
+                        f"cut_rim_slot_pattern on '{node.id}': slot {i} at "
+                        f"angle {angle:.1f}° failed, skipping. Error: {slot_e}"
+                    )
+
+            if success_count == 0:
+                return handle_feature_failure(
+                    node=node, ctx=ctx, original_body=body,
+                    op_name="cut_rim_slot_pattern",
+                    reason=f"all {count} slots failed to cut",
+                )
+            if success_count < count:
+                ctx.warnings.append(
+                    f"cut_rim_slot_pattern on '{node.id}': {count - success_count} of "
+                    f"{count} slots skipped due to OCCT errors."
+                )
+                ctx.degraded_features.append({
+                    "node_id": node.id, "op": "cut_rim_slot_pattern",
+                    "reason": f"{count - success_count}/{count} slots skipped",
+                })
     except Exception as e:
         return handle_feature_failure(
             node=node, ctx=ctx, original_body=body,
@@ -260,6 +329,23 @@ def handle_apply_safe_chamfer(node: CanonicalNode, ctx: RuntimeContext) -> dict[
             try:
                 body = _chamfer_by_target(body, distance / 2.0, target)
             except Exception:
+                # 降级：required=False 时允许 no-op（保留原 body）
+                if not node.required and node.degradation_policy == "may_skip_with_warning":
+                    ctx.warnings.append(
+                        f"Optional chamfer '{node.id}' skipped: "
+                        f"failed at distance={distance}mm and {distance/2.0}mm"
+                    )
+                    ctx.degraded_features.append({
+                        "node_id": node.id, "op": "apply_safe_chamfer",
+                        "reason": f"chamfer failed at distance={distance}mm",
+                    })
+                    ctx.operation_metrics.append({
+                        "node_id": node.id, "op": "apply_safe_chamfer",
+                        "status": "degraded",
+                        "reason": f"chamfer failed at distance={distance}mm",
+                    })
+                    # 返回原 body（不修改）
+                    return {"body": _store_solid(node, ctx, body)}
                 return handle_feature_failure(
                     node=node, ctx=ctx, original_body=body,
                     op_name="apply_safe_chamfer",

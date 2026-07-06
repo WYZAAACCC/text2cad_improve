@@ -1,0 +1,20 @@
+{
+  "part_intent": {
+    "object_type": "axisymmetric_turbine_disk",
+    "dominant_geometry": "axisymmetric",
+    "engineering_domain": "turbomachinery"
+  },
+  "route_decision": "deterministic_primitive",
+  "selected_dialects": [],
+  "selected_primitive": "axisymmetric_turbine_disk",
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [
+    "multi-stage fir_tree with alternating lobe/neck widths per stage: the primitive rim_slot_stage_* parameters assume uniform stage geometry per stage with single neck/lobe width; alternating 4-stage {depth, hw} pairs where width alternates narrow→wide→narrow→wide across stages is not expressible in the current parameterisation",
+    "front-side dual seal grooves at specific diameter ranges (φ200–210 and φ220–230) with dedicated radial extents — the primitive seal_land parameters are uniform-pitch single-zone and cannot encode two non-identical seal land bands at distinct diameters on one face"
+  ],
+  "safety_notes": [
+    "This primitive produces non-flight reference geometry only; not airworthy, not certified, and not for manufacturing",
+    "All safety flags are true — the system cannot certify structural integrity, fatigue life, or manufacturing readiness",
+    "Generative CAD output would likewise be reference geometry only and could not satisfy airworthiness or certification requirements"
+  ]
+}

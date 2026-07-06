@@ -1,0 +1,68 @@
+{
+  "verdict": "CORRECT - Proper fir-tree geometry with undercuts",
+  "profile_stations": [
+    {
+      "r_mm": 1,
+      "z_front_mm": 0,
+      "z_rear_mm": 5,
+      "label": "bore_start"
+    },
+    {
+      "r_mm": 130,
+      "z_front_mm": 5,
+      "z_rear_mm": 20,
+      "label": "bore_ramp"
+    },
+    {
+      "r_mm": 250,
+      "z_front_mm": 20,
+      "z_rear_mm": 100,
+      "label": "rim"
+    },
+    {
+      "r_mm": 130,
+      "z_front_mm": 100,
+      "z_rear_mm": 115,
+      "label": "bore_ramp_rear"
+    },
+    {
+      "r_mm": 1,
+      "z_front_mm": 115,
+      "z_rear_mm": 120,
+      "label": "bore_end"
+    }
+  ],
+  "slot_profile": {
+    "count": 60,
+    "slot_depth_mm": 12,
+    "stations": [
+      {
+        "depth_mm": 4,
+        "half_width_mm": 8
+      },
+      {
+        "depth_mm": 7,
+        "half_width_mm": 5
+      },
+      {
+        "depth_mm": 10,
+        "half_width_mm": 7
+      },
+      {
+        "depth_mm": 12,
+        "half_width_mm": 3
+      }
+    ],
+    "half_width_sequence": [
+      8,
+      5,
+      7,
+      3
+    ],
+    "pattern": "LOBE(8) -> NECK(5) -> LOBE(7) -> ROOT(3)",
+    "undercut_count": 1,
+    "undercut_details": [
+      "station[1].hw=5 -> station[2].hw=7 (increase=2mm, creates locking surface)"
+    ]
+  }
+}
