@@ -1,0 +1,61 @@
+{
+  "applied": true,
+  "before_hash": "sha256:df7dd4898560bdca47569b2a99c061496cdf73f703f293ddfc355de8a20481fa",
+  "after_hash": "sha256:21f0d2903f466796aa983680b6f2ba3c4d84150aafa00b8fc8e0e63007a7f2ed",
+  "entries": [
+    {
+      "rule_id": "fix_param_values",
+      "path": "/",
+      "old_value": "<hash:sha256:df7dd>",
+      "new_value": "<hash:sha256:ef0aa>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_param_values"
+    },
+    {
+      "rule_id": "fix_unknown_ops",
+      "path": "/",
+      "old_value": "<skipped>",
+      "new_value": "<skipped>",
+      "severity": "destructive",
+      "confidence": 0.85,
+      "message": "Fix 'fix_unknown_ops' skipped: category 'destructive' not in allowed categories ['context_safe', 'schema_default', 'syntactic_alias']"
+    },
+    {
+      "rule_id": "fix_cross_component_refs",
+      "path": "/",
+      "old_value": "<skipped>",
+      "new_value": "<skipped>",
+      "severity": "semantic_guess",
+      "confidence": 0.9,
+      "message": "Fix 'fix_cross_component_refs' skipped: category 'semantic_guess' not in allowed categories ['context_safe', 'schema_default', 'syntactic_alias']"
+    },
+    {
+      "rule_id": "fix_phase_ordering",
+      "path": "/",
+      "old_value": "<hash:sha256:ef0aa>",
+      "new_value": "<hash:sha256:b2cbd>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_phase_ordering"
+    },
+    {
+      "rule_id": "fix_profile_stations",
+      "path": "/",
+      "old_value": "<skipped>",
+      "new_value": "<skipped>",
+      "severity": "semantic_guess",
+      "confidence": 0.85,
+      "message": "Fix 'fix_profile_stations' skipped: category 'semantic_guess' not in allowed categories ['context_safe', 'schema_default', 'syntactic_alias']"
+    },
+    {
+      "rule_id": "remove_extra_params",
+      "path": "/",
+      "old_value": "<hash:sha256:b2cbd>",
+      "new_value": "<hash:sha256:21f0d>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: remove_extra_params"
+    }
+  ]
+}

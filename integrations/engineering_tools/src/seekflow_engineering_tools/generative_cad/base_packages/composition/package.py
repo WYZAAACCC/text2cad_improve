@@ -102,6 +102,24 @@ COMPOSITION_ANTI_EXAMPLES: list[dict] = [
             "from other dialects. Only component outputs may be referenced by composition ops."
         ),
     },
+    {
+        "anti_id": "place_before_circular_pattern_bad",
+        "title": "DO NOT use place_component before circular_pattern_component",
+        "bad_op": "place_component",
+        "explanation": (
+            "circular_pattern_component automatically places each copy at (radius_mm, 0, 0) "
+            "and rotates them around Z. Adding place_component before it causes double-translation: "
+            "the body moves to position_mm, then the pattern handler moves it AGAIN to (radius_mm, 0, 0). "
+            "Example: place_component(250,0,0) + circular_pattern(radius=250) → copies at R≈500mm, "
+            "completely outside the disc. "
+            "Correct: circular_pattern directly references the cutter component's extrude_profile output, "
+            "with NO place_component node between them."
+        ),
+        "correct_approach": (
+            "circular_pattern_component input: {node: \"n_cutter_extrude\", output: \"body\"}. "
+            "No place_component needed — the pattern handler positions via radius_mm internally."
+        ),
+    },
 ]
 
 

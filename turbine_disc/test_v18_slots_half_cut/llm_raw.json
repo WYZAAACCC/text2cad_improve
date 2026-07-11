@@ -1,0 +1,579 @@
+{
+  "schema_version": "g_cad_core_v0.2",
+  "document_id": "aero-turbine-disc-hp-v1",
+  "part_name": "Aero_Engine_HP_Turbine_Disc_Reference",
+  "units": "mm",
+  "trust_level": "reference_geometry",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_profile",
+      "version": "0.2.0"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0"
+    }
+  ],
+  "components": [
+    {
+      "id": "disc_body",
+      "owner_dialect": "sketch_profile",
+      "kind_hint": "revolved_solid",
+      "root_node": "n_disc_revolve"
+    },
+    {
+      "id": "slot_cutter",
+      "owner_dialect": "sketch_profile",
+      "kind_hint": "extruded_cutter",
+      "root_node": "n_cutter_extrude"
+    },
+    {
+      "id": "__assembly__",
+      "owner_dialect": "composition",
+      "kind_hint": "boolean_assembly",
+      "root_node": "n_final_cut"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_sketch_disc",
+      "component": "disc_body",
+      "dialect": "sketch_profile",
+      "op": "create_2d_sketch",
+      "op_version": "1.0.0",
+      "phase": "sketch",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "sketch",
+          "type": "sketch"
+        }
+      ],
+      "params": {
+        "plane": "XZ",
+        "origin_x_mm": 0,
+        "origin_y_mm": 0
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_disc_polyline",
+      "component": "disc_body",
+      "dialect": "sketch_profile",
+      "op": "add_polyline",
+      "op_version": "1.0.0",
+      "phase": "profile",
+      "inputs": [
+        {
+          "node": "n_sketch_disc",
+          "output": "sketch"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "profile",
+          "type": "profile"
+        }
+      ],
+      "params": {
+        "points": [
+          {
+            "x_mm": 60,
+            "y_mm": -38
+          },
+          {
+            "x_mm": 120,
+            "y_mm": -38
+          },
+          {
+            "x_mm": 120,
+            "y_mm": -22
+          },
+          {
+            "x_mm": 215,
+            "y_mm": -15
+          },
+          {
+            "x_mm": 215,
+            "y_mm": -30
+          },
+          {
+            "x_mm": 250,
+            "y_mm": -30
+          },
+          {
+            "x_mm": 250,
+            "y_mm": 30
+          },
+          {
+            "x_mm": 215,
+            "y_mm": 30
+          },
+          {
+            "x_mm": 215,
+            "y_mm": 15
+          },
+          {
+            "x_mm": 120,
+            "y_mm": 22
+          },
+          {
+            "x_mm": 120,
+            "y_mm": 38
+          },
+          {
+            "x_mm": 60,
+            "y_mm": 38
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_disc_close",
+      "component": "disc_body",
+      "dialect": "sketch_profile",
+      "op": "close_profile",
+      "op_version": "1.0.0",
+      "phase": "profile",
+      "inputs": [
+        {
+          "node": "n_disc_polyline",
+          "output": "profile"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "profile",
+          "type": "profile"
+        }
+      ],
+      "params": {
+        "_": "close"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_disc_fillet",
+      "component": "disc_body",
+      "dialect": "sketch_profile",
+      "op": "fillet_sketch",
+      "op_version": "1.0.0",
+      "phase": "profile",
+      "inputs": [
+        {
+          "node": "n_disc_close",
+          "output": "profile"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "profile",
+          "type": "profile"
+        }
+      ],
+      "params": {
+        "radius_mm": 10,
+        "at_vertex_index": [
+          2,
+          3,
+          8,
+          9
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_disc_revolve",
+      "component": "disc_body",
+      "dialect": "sketch_profile",
+      "op": "revolve_profile",
+      "op_version": "1.0.0",
+      "phase": "feature",
+      "inputs": [
+        {
+          "node": "n_disc_fillet",
+          "output": "profile"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "axis": "Z",
+        "angle_deg": 360
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_sketch_cutter",
+      "component": "slot_cutter",
+      "dialect": "sketch_profile",
+      "op": "create_2d_sketch",
+      "op_version": "1.0.0",
+      "phase": "sketch",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "sketch",
+          "type": "sketch"
+        }
+      ],
+      "params": {
+        "plane": "XY",
+        "origin_x_mm": 0,
+        "origin_y_mm": 0
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_cutter_polyline",
+      "component": "slot_cutter",
+      "dialect": "sketch_profile",
+      "op": "add_polyline",
+      "op_version": "1.0.0",
+      "phase": "profile",
+      "inputs": [
+        {
+          "node": "n_sketch_cutter",
+          "output": "sketch"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "profile",
+          "type": "profile"
+        }
+      ],
+      "params": {
+        "points": [
+          {
+            "x_mm": 0,
+            "y_mm": 4
+          },
+          {
+            "x_mm": -4,
+            "y_mm": 4
+          },
+          {
+            "x_mm": -4,
+            "y_mm": 7
+          },
+          {
+            "x_mm": -7,
+            "y_mm": 7
+          },
+          {
+            "x_mm": -7,
+            "y_mm": 4
+          },
+          {
+            "x_mm": -10,
+            "y_mm": 4
+          },
+          {
+            "x_mm": -10,
+            "y_mm": 6
+          },
+          {
+            "x_mm": -13,
+            "y_mm": 6
+          },
+          {
+            "x_mm": -13,
+            "y_mm": 3
+          },
+          {
+            "x_mm": -16,
+            "y_mm": 3
+          },
+          {
+            "x_mm": -16,
+            "y_mm": 4
+          },
+          {
+            "x_mm": -20,
+            "y_mm": 4
+          },
+          {
+            "x_mm": -20,
+            "y_mm": -4
+          },
+          {
+            "x_mm": -16,
+            "y_mm": -4
+          },
+          {
+            "x_mm": -16,
+            "y_mm": -3
+          },
+          {
+            "x_mm": -13,
+            "y_mm": -3
+          },
+          {
+            "x_mm": -13,
+            "y_mm": -6
+          },
+          {
+            "x_mm": -10,
+            "y_mm": -6
+          },
+          {
+            "x_mm": -10,
+            "y_mm": -4
+          },
+          {
+            "x_mm": -7,
+            "y_mm": -4
+          },
+          {
+            "x_mm": -7,
+            "y_mm": -7
+          },
+          {
+            "x_mm": -4,
+            "y_mm": -7
+          },
+          {
+            "x_mm": -4,
+            "y_mm": -4
+          },
+          {
+            "x_mm": 0,
+            "y_mm": -4
+          }
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_cutter_close",
+      "component": "slot_cutter",
+      "dialect": "sketch_profile",
+      "op": "close_profile",
+      "op_version": "1.0.0",
+      "phase": "profile",
+      "inputs": [
+        {
+          "node": "n_cutter_polyline",
+          "output": "profile"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "profile",
+          "type": "profile"
+        }
+      ],
+      "params": {
+        "_": "close"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_cutter_fillet",
+      "component": "slot_cutter",
+      "dialect": "sketch_profile",
+      "op": "fillet_sketch",
+      "op_version": "1.0.0",
+      "phase": "profile",
+      "inputs": [
+        {
+          "node": "n_cutter_close",
+          "output": "profile"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "profile",
+          "type": "profile"
+        }
+      ],
+      "params": {
+        "radius_mm": 1,
+        "at_vertex_index": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23
+        ]
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_cutter_extrude",
+      "component": "slot_cutter",
+      "dialect": "sketch_profile",
+      "op": "extrude_profile",
+      "op_version": "1.0.0",
+      "phase": "feature",
+      "inputs": [
+        {
+          "node": "n_cutter_fillet",
+          "output": "profile"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "depth_mm": 80,
+        "direction": "both",
+        "taper_deg": 0
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_place_cutter",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "place_component",
+      "op_version": "1.0.0",
+      "phase": "transform",
+      "inputs": [
+        {
+          "node": "n_cutter_extrude",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "position_mm": [
+          250,
+          0,
+          0
+        ],
+        "component_id": "slot_cutter"
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_pattern_cutters",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "circular_pattern_component",
+      "op_version": "1.0.0",
+      "phase": "pattern",
+      "inputs": [
+        {
+          "node": "n_place_cutter",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "count": 60,
+        "radius_mm": 250,
+        "axis": "Z",
+        "start_angle_deg": 0,
+        "rotate_copies": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    },
+    {
+      "id": "n_final_cut",
+      "component": "__assembly__",
+      "dialect": "composition",
+      "op": "boolean_cut",
+      "op_version": "1.0.0",
+      "phase": "boolean",
+      "inputs": [
+        {
+          "node": "n_disc_revolve",
+          "output": "body"
+        },
+        {
+          "node": "n_pattern_cutters",
+          "output": "body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "body",
+          "type": "solid"
+        }
+      ],
+      "params": {
+        "clean_after": true
+      },
+      "required": true,
+      "degradation_policy": "fail"
+    }
+  ],
+  "constraints": {
+    "require_step_file": true,
+    "require_metadata_sidecar": true,
+    "require_closed_solid": true,
+    "expected_body_count": 1,
+    "expected_bbox_mm": [
+      -250,
+      -250,
+      -40,
+      250,
+      250,
+      40
+    ],
+    "bbox_tolerance_mm": 5,
+    "max_runtime_seconds": 120
+  },
+  "safety": {
+    "non_flight_reference_only": true,
+    "not_airworthy": true,
+    "not_certified": true,
+    "not_for_manufacturing": true,
+    "not_for_installation": true,
+    "no_structural_validation": true,
+    "no_life_prediction": true
+  },
+  "llm_validation_hints": {
+    "_": "Turbine disc with fir-tree slots: sketch_profile revolved body + sketch_profile extruded cutter + composition circular pattern + boolean cut. Disc profile uses ordered R-Z polygon with hub(60-120mm, 76mm thick), tapered web(120-215mm, 44→30mm thick via single sloped segment), rim(215-250mm, 60mm thick). Fir-tree slot: 3 neck/lobe pairs, mouth half-width 4mm, first lobe half-width 7mm, second lobe half-width 6mm, root half-width 4mm, depth 20mm. All interior vertices filleted at 1mm radius. 60 slots at radius 250mm, rotate_copies=true, extrude both directions for full Z-span cut."
+  }
+}

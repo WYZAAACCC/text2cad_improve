@@ -275,7 +275,9 @@ def auto_fix_with_report(
     _apply_fix("fix_missing_position_mm", lambda d: _fix_missing_position_mm(d))
     _apply_fix("fix_chamfer_zero_distance", lambda d: _fix_chamfer_zero_distance(d))
     _apply_fix("fix_chamfer_fillet_optional", lambda d: _fix_chamfer_fillet_optional(d))
-    _apply_fix("fix_output_names", lambda d: _fix_output_names(d))
+    _apply_fix("strip_passthrough_nodes", lambda d: _strip_passthrough_nodes(d, dialect_registry), severity="safe_alias", confidence=0.95)
+    _apply_fix("remove_place_before_circular_pattern", lambda d: _fix_remove_place_before_circular_pattern(d), severity="safe_alias", confidence=0.95)
+    _apply_fix("fix_output_names", lambda d: _fix_output_names(d, dialect_registry))
     _apply_fix("fix_input_output_names", lambda d: _fix_input_output_names(d))
     _apply_fix("fix_op_versions", lambda d: _fix_op_versions(d, dialect_registry))
     _apply_fix("fix_dialect_names", lambda d: _fix_dialect_names(d, dialect_registry))
@@ -286,11 +288,12 @@ def auto_fix_with_report(
     _apply_fix("fix_unknown_ops", lambda d: _fix_unknown_ops(d, dialect_registry), severity="destructive", confidence=0.85)
     _apply_fix("fix_target_values", lambda d: _fix_target_values(d))
     _apply_fix("fix_cross_component_refs", lambda d: _fix_cross_component_refs(d), severity="semantic_guess", confidence=0.9)
-    _apply_fix("fix_root_node", lambda d: _fix_root_node(d), severity="semantic_guess", confidence=0.95)
+    _apply_fix("fix_root_node", lambda d: _fix_root_node(d), confidence=0.95)
     _apply_fix("fix_phase_names", lambda d: _fix_phase_names(d, dialect_registry))
     _apply_fix("fix_phase_ordering", lambda d: _fix_phase_ordering(d, dialect_registry))
     _apply_fix("fix_profile_stations", lambda d: _fix_profile_stations(d), severity="semantic_guess", confidence=0.85)
     _apply_fix("fix_slot_station_order", lambda d: _fix_slot_station_order(d))
+    _apply_fix("fix_slot_half_profile", lambda d: _fix_slot_half_profile(d))
     _apply_fix("fill_default_params", lambda d: _fill_default_params(d))
     _apply_fix("fix_null_hints", lambda d: _fix_null_hints(d))
     _apply_fix("remove_extra_params", lambda d: _remove_extra_params(d))
@@ -369,10 +372,22 @@ def _fix_op_versions(doc: dict, dialect_registry=None) -> dict:
     return doc
 
 
-def _fix_output_names(doc: dict) -> dict:
+def _fix_output_names(doc: dict, dialect_registry=None) -> dict:
     """output name: solid→body, frame→outer_frame, solid_body→body。
     同时补全缺失的 output (如 revolve_profile 缺少 outer_frame)。"""
-    # 每个 op 的标准 outputs
+    if dialect_registry is None:
+        from seekflow_engineering_tools.generative_cad.dialects.default_registry import default_registry
+        dialect_registry = default_registry()
+
+    # Type → canonical output name (used to build templates from OperationSpec)
+    _TYPE_TO_NAME = {
+        "solid": "body", "frame": "outer_frame", "profile": "profile",
+        "sketch": "sketch", "solid_array": "bodies", "plane": "plane",
+        "point": "point", "curve": "curve", "face_set": "faces",
+        "edge_set": "edges", "component_ref": "component",
+    }
+
+    # 每个 op 的标准 outputs（硬编码兜底）
     OP_OUTPUT_TEMPLATES: dict[str, list[dict]] = {
         "revolve_profile": [{"name": "body", "type": "solid"}, {"name": "outer_frame", "type": "frame"}],
         "create_sweep_path": [{"name": "path", "type": "curve"}],
@@ -429,7 +444,25 @@ def _fix_output_names(doc: dict) -> dict:
             if o.get("type") == "shape":
                 o["type"] = "solid"
         # 根据 template 修正 output (count 或 type 不匹配时完全替换)
+        # 优先从 dialect OperationSpec 获取正确模板，兜底用硬编码 OP_OUTPUT_TEMPLATES
         template = OP_OUTPUT_TEMPLATES.get(op)
+        did = node.get("dialect", "")
+        if dialect_registry and did:
+            dialect = dialect_registry.get(did)
+            if dialect:
+                try:
+                    spec = dialect.get_op_spec(op, node.get("op_version"))
+                    spec_template = [
+                        {"name": _TYPE_TO_NAME.get(t, t), "type": t}
+                        for t in spec.output_types
+                    ]
+                    # 仅当 spec 模板与硬编码模板不同时使用 spec 模板
+                    if not template or len(spec_template) != len(template) or any(
+                        s["type"] != t["type"] for s, t in zip(spec_template, template)
+                    ):
+                        template = spec_template
+                except Exception:
+                    pass  # spec 查找失败 → 兜底用硬编码模板
         if template:
             if len(outputs) != len(template) or any(
                 o.get("type") != t["type"] for o, t in zip(outputs, template)
@@ -546,6 +579,10 @@ def _fix_root_node(doc: dict) -> dict:
     如果当前 root_node 指向 required=False 节点，且有 required=True 的 body 节点，
     则替换为 required=True 的最后一个 body 节点。这避免 optional 节点失败导致整个
     component 输出绑定为空。
+
+    通用规则：root_node 必须输出 body:solid（与 structure 验证规则一致）。
+    如果当前 root_node 是 required=True 但不输出 body:solid（如 LLM 误将
+    close_profile 等 profile-producing op 作为 root_node），则重新选择。
     """
     node_ids = {n["id"] for n in doc.get("nodes", [])}
     node_by_comp: dict[str, list] = {}
@@ -562,7 +599,14 @@ def _fix_root_node(doc: dict) -> dict:
                 None,
             )
             if root_node_obj and root_node_obj.get("required", True):
-                continue  # 当前 root_node 是 required=True，保留
+                # 通用验证：root_node 必须输出 body:solid（与 structure.py 验证规则一致）
+                has_body_solid = any(
+                    o.get("name") == "body" and o.get("type") == "solid"
+                    for o in root_node_obj.get("outputs", [])
+                )
+                if has_body_solid:
+                    continue  # required=True 且输出 body:solid，保留
+                # required=True 但不输出 body:solid → fall through 重新选择
             # fall through 重新选择
         cid = comp.get("id", "")
         comp_nodes = node_by_comp.get(cid, [])
@@ -644,6 +688,172 @@ def _fix_unknown_ops(doc: dict, dialect_registry=None) -> dict:
                     continue  # Remove empty assembly too
             kept_comps.append(comp)
         doc["components"] = kept_comps
+    return doc
+
+
+def _strip_passthrough_nodes(doc: dict, dialect_registry=None) -> dict:
+    """删除 LLM 误用的 passthrough 节点，并重定向下游引用。
+
+    通用检测规则：节点的实际输入类型（来自上游节点 outputs）与 op spec 的
+    input_types 不匹配时，视为 passthrough 误用。
+
+    典型场景：LLM 在 solid-producing op 后追加 close_profile 作为"完成标记"，
+    但 close_profile 的 spec input_types=["profile"]，无法接收 solid 输入。
+
+    删除后，将下游节点（包括 root_node）的引用重定向到 passthrough 节点的输入源。
+    这确保下游节点直接引用正确的 solid-producing 节点。
+
+    必须在 fix_output_names 之前运行，否则 passthrough 节点的 outputs 会被修改，
+    导致下游引用的 output 名不存在。
+    """
+    if dialect_registry is None:
+        from seekflow_engineering_tools.generative_cad.dialects.default_registry import default_registry
+        dialect_registry = default_registry()
+
+    # 构建 (dialect, op, op_version) → spec 映射
+    op_specs: dict[tuple[str, str, str], object] = {}
+    for did in dialect_registry.list_ids():
+        d = dialect_registry.get(did)
+        if d:
+            for (op_name, op_ver), spec in d.op_specs().items():
+                op_specs[(did, op_name, op_ver)] = spec
+
+    # 构建 node_id → node 映射
+    node_by_id = {n.get("id", ""): n for n in doc.get("nodes", [])}
+
+    def get_output_type(node_id: str, output_name: str) -> str | None:
+        """查找上游节点的 output 类型。"""
+        node = node_by_id.get(node_id)
+        if not node:
+            return None
+        for o in node.get("outputs", []):
+            if o.get("name") == output_name:
+                return o.get("type")
+        return None
+
+    # 检测 passthrough 节点
+    passthrough_ids: set[str] = set()
+    for n in doc.get("nodes", []):
+        did = n.get("dialect", "")
+        op = n.get("op", "")
+        op_ver = n.get("op_version", "1.0.0")
+        spec = op_specs.get((did, op, op_ver))
+        if not spec:
+            continue  # 未知 op，由 fix_unknown_ops 处理
+
+        inputs = n.get("inputs", [])
+        if not inputs:
+            continue  # 无输入，不是 passthrough
+
+        # 检查每个输入的类型是否匹配 spec input_types
+        is_passthrough = False
+        for i, inp in enumerate(inputs):
+            if i >= len(spec.input_types):
+                break  # 输入数量超出 spec，由 typecheck 处理
+            expected_type = spec.input_types[i]
+            actual_type = get_output_type(inp.get("node", ""), inp.get("output", ""))
+            if actual_type is not None and actual_type != expected_type:
+                is_passthrough = True
+                break
+
+        if is_passthrough:
+            passthrough_ids.add(n.get("id", ""))
+
+    if not passthrough_ids:
+        return doc  # 无 passthrough 节点，无需处理
+
+    # 构建 passthrough_id → (input_node, input_output) 重定向映射
+    redirect_map: dict[str, tuple[str, str]] = {}
+    for n in doc.get("nodes", []):
+        nid = n.get("id", "")
+        if nid in passthrough_ids and n.get("inputs"):
+            inp = n["inputs"][0]  # passthrough 节点通常只有一个输入
+            redirect_map[nid] = (inp.get("node", ""), inp.get("output", ""))
+
+    # 重定向下游节点的引用
+    for n in doc.get("nodes", []):
+        for inp in n.get("inputs", []):
+            ref_node = inp.get("node", "")
+            if ref_node in redirect_map:
+                src_node, src_output = redirect_map[ref_node]
+                inp["node"] = src_node
+                inp["output"] = src_output
+
+    # 重定向 root_node 引用
+    for comp in doc.get("components", []):
+        rn = comp.get("root_node", "")
+        if rn in redirect_map:
+            src_node, _ = redirect_map[rn]
+            comp["root_node"] = src_node
+
+    # 删除 passthrough 节点
+    doc["nodes"] = [n for n in doc.get("nodes", []) if n.get("id", "") not in passthrough_ids]
+
+    return doc
+
+
+def _fix_remove_place_before_circular_pattern(doc: dict) -> dict:
+    """Remove redundant place_component nodes that precede pattern nodes.
+
+    circular_pattern_component / linear_pattern_component handlers already
+    position bodies at the pattern radius/spacing internally (handlers.py:221).
+    A preceding place_component causes double-translation — the handler's
+    body-center undo guard uses bbox center which produces an offset for
+    asymmetric bodies (e.g. fir-tree cutters whose mouth is at x=0 but
+    center is at x=-10 → after undo the mouth shifts to x=+10 → after
+    pattern translate(radius,0,0) the mouth is at x=radius+10 instead of
+    x=radius, causing the cut to miss the disc outer surface).
+
+    This fix removes the redundant place_component and rewires the pattern
+    node's input directly to the source that fed place_component.
+    """
+    nodes = doc.get("nodes", [])
+    node_by_id = {n.get("id", ""): n for n in nodes}
+
+    # Detect: place_component → circular_pattern_component  (or linear_pattern)
+    redundant_ids: set[str] = set()
+    redirect_map: dict[str, tuple[str, str]] = {}
+
+    for n in nodes:
+        if n.get("op") not in ("circular_pattern_component", "linear_pattern_component"):
+            continue
+        if not n.get("inputs"):
+            continue
+        pattern_input = n["inputs"][0]
+        place_id = pattern_input.get("node", "")
+        if not place_id or place_id not in node_by_id:
+            continue
+        place_node = node_by_id[place_id]
+        if place_node.get("op") != "place_component":
+            continue
+        # place_component must have its own upstream input
+        if not place_node.get("inputs"):
+            continue
+        place_src = place_node["inputs"][0]
+        redundant_ids.add(place_id)
+        redirect_map[place_id] = (place_src.get("node", ""), place_src.get("output", ""))
+
+    if not redundant_ids:
+        return doc
+
+    # Rewire downstream node inputs to skip place_component
+    for n in nodes:
+        for inp in n.get("inputs", []):
+            ref_node = inp.get("node", "")
+            if ref_node in redirect_map:
+                src_node, src_output = redirect_map[ref_node]
+                inp["node"] = src_node
+                inp["output"] = src_output
+
+    # Rewire component root_node refs
+    for comp in doc.get("components", []):
+        rn = comp.get("root_node", "")
+        if rn in redirect_map:
+            comp["root_node"] = redirect_map[rn][0]
+
+    # Remove redundant place_component nodes
+    doc["nodes"] = [n for n in nodes if n.get("id", "") not in redundant_ids]
+
     return doc
 
 
@@ -821,12 +1031,48 @@ def _fix_slot_station_order(doc: dict) -> dict:
     return doc
 
 
+def _fix_slot_half_profile(doc: dict) -> dict:
+    """Mirror half-profiles on slot cutters to create full symmetric fir-tree shapes.
+
+    LLMs frequently generate only the right half of a slot cutter profile
+    (all Y >= 0), expecting close_profile to complete it.  This creates a
+    wedge.  This fix detects single-sided profiles and mirrors them.
+    """
+    for node in doc.get("nodes", []):
+        if node.get("op") != "add_polyline":
+            continue
+        comp = _find_component_name(doc, node.get("component"))
+        if not comp or "cutter" not in comp.lower():
+            continue
+        pts = node.get("params", {}).get("points", [])
+        if not pts:
+            continue
+        ys = [p.get("y_mm", 0) for p in pts]
+        # If all Y >= 0 or all Y <= 0: half-profile detected
+        if min(ys) >= 0:
+            # Right half only — mirror to create left half
+            mirrored = [{"x_mm": p["x_mm"], "y_mm": -p["y_mm"]} for p in reversed(pts[:-1])]
+            node["params"]["points"] = pts + mirrored
+        elif max(ys) <= 0:
+            # Left half only — mirror to create right half
+            mirrored = [{"x_mm": p["x_mm"], "y_mm": -p["y_mm"]} for p in reversed(pts[:-1])]
+            node["params"]["points"] = mirrored + pts
+    return doc
+
+
+def _find_component_name(doc: dict, comp_id: str) -> str | None:
+    for c in doc.get("components", []):
+        if c.get("id") == comp_id:
+            return c.get("kind_hint") or c.get("id")
+    return None
+
+
 def _fix_param_values(doc: dict) -> dict:
     """修正 LLM 常见的参数值偏差 (如 direction='positive' → '+')。"""
     DIRECTION_FIXES = {
         "positive": "+", "pos": "+", "up": "+", "outward": "+",
         "negative": "-", "neg": "-", "down": "-", "inward": "-",
-        "+z": "+", "-z": "-", "z+": "+", "z-": "-", "both": "+",
+        "+z": "+", "-z": "-", "z+": "+", "z-": "-",
         "z": "+", "Z": "+",  # LLM uses axis name as direction
     }
     AXIS_FIXES = {"z+": "Z", "+z": "Z", "z-": "Z", "-z": "Z", "+Z": "Z", "-Z": "Z", "z": "Z", "x": "X", "y": "Y"}
@@ -1053,7 +1299,7 @@ def _fix_chamfer_fillet_optional(doc: dict) -> dict:
     """
     for node in doc.get("nodes", []):
         op = node.get("op", "")
-        if op in ("apply_safe_chamfer", "apply_safe_fillet"):
+        if op in ("apply_safe_chamfer", "apply_safe_fillet", "fillet_sketch"):
             node["required"] = False
             node["degradation_policy"] = "may_skip_with_warning"
     return doc
@@ -1081,6 +1327,7 @@ def _remove_extra_params(doc: dict) -> dict:
         op = node.get("op", "")
         bad = known_bad_params.get(op, set())
         for key in list(node.get("params", {}).keys()):
-            if key in bad:
+            # Strip placeholder keys (LLM uses "_" when params must be non-empty)
+            if key == "_" or key in bad:
                 del node["params"][key]
     return doc
