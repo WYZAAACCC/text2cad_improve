@@ -30,6 +30,9 @@ from seekflow_engineering_tools.generative_cad.dialects.sketch_profile.handlers 
     handle_create_2d_sketch,
     handle_cut_profile,
     handle_extrude_profile,
+    handle_fillet_sketch,
+    handle_mirror_profile,
+    handle_revolve_profile,
 )
 from seekflow_engineering_tools.generative_cad.dialects.sketch_profile.params import (
     AddArcSegmentParams,
@@ -41,8 +44,10 @@ from seekflow_engineering_tools.generative_cad.dialects.sketch_profile.params im
     Create2dSketchParams,
     CutProfileParams,
     ExtrudeProfileParams,
+    FilletSketchParams,
     LinearPatternParams,
     MirrorFeatureParams,
+    RevolveProfileParams,
 )
 
 
@@ -67,7 +72,10 @@ class SketchProfileDialect:
             "add_polyline": "1.0.0",
             "add_slot": "1.0.0",
             "close_profile": "1.0.0",
+            "fillet_sketch": "1.0.0",
+            "mirror_profile": "1.0.0",
             "extrude_profile": "1.0.0",
+            "revolve_profile": "1.0.0",
             "cut_profile": "1.0.0",
         }
 
@@ -136,6 +144,49 @@ class SketchProfileDialect:
                 handler=handle_cut_profile,
                 summary="Cut material from an existing solid using the profile.",
             ),
+            ("fillet_sketch", "1.0.0"): OperationSpec(
+                dialect="sketch_profile", op="fillet_sketch", op_version="1.0.0",
+                phase="profile", input_types=["profile"], output_types=["profile"],
+                params_model=FilletSketchParams, effects=["modifies_solid"],
+                handler=handle_fillet_sketch,
+                summary="Apply fillet radius to 2D sketch profile vertices (e.g. root radii on fir-tree slots).",
+            ),
+            ("mirror_profile", "1.0.0"): OperationSpec(
+                dialect="sketch_profile", op="mirror_profile", op_version="1.0.0",
+                phase="profile", input_types=["profile"], output_types=["profile"],
+                params_model=MirrorFeatureParams, effects=["modifies_solid"],
+                handler=handle_mirror_profile,
+                summary="Mirror the sketch profile and union with original (e.g. half fir-tree slot → full).",
+            ),
+            ("revolve_profile", "1.0.0"): OperationSpec(
+                dialect="sketch_profile", op="revolve_profile", op_version="1.0.0",
+                phase="feature", input_types=["profile"], output_types=["solid"],
+                params_model=RevolveProfileParams, effects=["creates_solid"],
+                handler=handle_revolve_profile,
+                summary="Revolve a closed 2D profile around Z axis — for axisymmetric parts with varying thickness (turbine discs, wheels, pulleys).",
+                usage_notes=[
+                    "Must follow create_2d_sketch(plane=XZ) → add_polyline/line/arc → close_profile.",
+                    "The polyline defines an ordered R-Z polygon on the XZ plane: X=R(radius), Y=Z(axial).",
+                    "Points are NOT Z-sorted — the LLM controls exact polygon vertex order.",
+                    "Unlike axisymmetric.revolve_profile which uses profile_stations sorted by Z, "
+                    "sketch_profile.revolve_profile preserves the original point order for arbitrary "
+                    "cross-sections including hub(厚)→web(薄)→rim(厚) varying-thickness profiles.",
+                    "For complex parts (turbine discs, blisks): use sketch_profile for the disk body, "
+                    "sketch_profile for slot cutter sketch→extrude, then composition dialect for "
+                    "circular_pattern(rotate_copies=True) + boolean_cut.",
+                ],
+                common_mistakes=[
+                    "Using axisymmetric.revolve_profile instead of sketch_profile.revolve_profile "
+                    "for thickness-by-radius profiles — axisymmetric only supports z(r) single-valued profiles.",
+                    "Forgetting to call close_profile before revolve_profile — the profile must be closed.",
+                    "Creating the sketch on XY plane instead of XZ — R-Z profiles must be on XZ plane.",
+                    "Drawing the slot cutter sketch at rim radius instead of origin — "
+                    "composition.circular_pattern handles the radial positioning.",
+                ],
+                llm_param_hints={
+                    "angle_deg": "Always 360.0 for full axisymmetric revolution.",
+                },
+            ),
         }
 
     # ── Protocol methods ──────────────────────────────────────────────────
@@ -190,11 +241,11 @@ class SketchProfileDialect:
                 message="SketchProfile component must have a create_2d_sketch node",
                 severity="error",
             ))
-        has_extrude = any(n.op in ("extrude_profile", "cut_profile") for n in nodes)
+        has_extrude = any(n.op in ("extrude_profile", "cut_profile", "revolve_profile") for n in nodes)
         if not has_extrude:
             issues.append(ValidationIssue(
                 stage="dialect_semantics", code="sp_no_extrude",
-                message="SketchProfile component must have at least one extrude_profile or cut_profile",
+                message="SketchProfile component must have at least one extrude_profile, cut_profile, or revolve_profile",
                 severity="error",
             ))
         return ValidationReport(ok=len(issues) == 0, stage="dialect_semantics", issues=issues)
@@ -230,11 +281,23 @@ class SketchProfileDialect:
     ) -> dict[str, str]:
         from seekflow_engineering_tools.generative_cad.dialects.executor import execute_operation
 
-        # Topological sort
+        # Kahn topological sort (same as axisymmetric — respects input→output edges)
         phase_rank = {p: i for i, p in enumerate(self.phase_order)}
-        sorted_nodes = sorted(
-            nodes, key=lambda n: (phase_rank.get(n.phase, 999), n.id)
-        )
+        node_map = {n.id: n for n in nodes}
+        in_degree = {n.id: sum(1 for i in n.inputs if i.producer_node and i.producer_node in node_map) for n in nodes}
+        sorted_nodes = []; queue = [n for n in nodes if in_degree[n.id] == 0]
+        while queue:
+            queue.sort(key=lambda n: (phase_rank.get(n.phase, 999), n.id))
+            n = queue.pop(0); sorted_nodes.append(n)
+            for other in nodes:
+                for inp in other.inputs:
+                    if inp.producer_node == n.id:
+                        in_degree[other.id] -= 1
+                        if in_degree[other.id] == 0 and other not in sorted_nodes and other not in queue:
+                            queue.append(other)
+        if len(sorted_nodes) != len(nodes):
+            unscheduled = [n.id for n in nodes if n not in sorted_nodes]
+            raise RuntimeError(f"sketch_profile: unscheduled nodes: {unscheduled}")
 
         outputs: dict[str, str] = {}
         for node in sorted_nodes:

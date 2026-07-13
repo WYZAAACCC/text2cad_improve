@@ -78,14 +78,15 @@ def build_level1_routing_prompt(
     if primitive_catalog:
         user_message += "\n\n--- Available Deterministic Primitives ---\n"
         user_message += "The following engineering primitives are available for deterministic, "
-        user_message += "high-precision CAD generation. If the user request exactly matches "
-        user_message += "a primitive's parameters, prefer route_decision='deterministic_primitive'.\n\n"
+        user_message += "high-precision CAD generation. Only choose deterministic_primitive "
+        user_message += "for simple, standardized parts where a template exactly matches.\n\n"
         user_message += json.dumps(primitive_catalog, indent=2, ensure_ascii=False)
     if dialect_catalog:
         user_message += "\n\n--- Available Generative CAD Dialects ---\n"
         user_message += "The following generative dialects are available for reference-geometry "
-        user_message += "CAD generation. Use these when no deterministic primitive matches "
-        user_message += "or the user needs flexible reference geometry.\n\n"
+        user_message += "CAD generation. PREFER generative_cad_ir for complex parts (turbine discs, "
+        user_message += "brackets, housings, impellers, etc.) — it provides general CAD modeling "
+        user_message += "capability via sketch + extrude + revolve + boolean + pattern operations.\n\n"
         user_message += json.dumps(dialect_catalog, indent=2, ensure_ascii=False)
 
     return {
@@ -466,13 +467,16 @@ def build_level2_tool(contracts: dict[str, dict] | None = None) -> dict:
     # Build op variants via compiler (structurally correct, from OperationSpec)
     op_variants = _build_op_variants(valid_dialects, reg, None, defs)
 
-    # ── Inject Chinese descriptions from OP_DESCRIPTIONS ──
+    # ── Inject Chinese descriptions from OP_DESCRIPTIONS (axisymmetric-only) ──
+    # OP_DESCRIPTIONS entries describe axisymmetric-specific params (profile_stations,
+    # r_mm, z_front_mm, etc.) that don't exist in other dialects' equivalent ops.
+    # Only apply to axisymmetric variants; let sketch_profile etc. use the
+    # compiler-generated descriptions from their own OperationSpec.summary.
     for variant in op_variants:
         title = variant.get("title", "")
-        # Extract op_name from title like "axisymmetric.revolve_profile"
         if "." in title:
-            op_name = title.split(".", 1)[1]
-            if op_name in OP_DESCRIPTIONS:
+            dialect_name, op_name = title.split(".", 1)
+            if dialect_name == "axisymmetric" and op_name in OP_DESCRIPTIONS:
                 variant["description"] = OP_DESCRIPTIONS[op_name]
 
     # ── Inject field-level Chinese descriptions for critical params ──

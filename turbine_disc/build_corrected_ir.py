@@ -1,0 +1,72 @@
+import json
+
+ir = {
+    "schema_version": "g_cad_core_v0.2",
+    "document_id": "turbine_disk_corrected",
+    "part_name": "HP_Turbine_Disk_Reference",
+    "units": "mm",
+    "trust_level": "reference_geometry",
+    "selected_dialects": [{"dialect": "sketch_profile", "version": "0.2.0"}, {"dialect": "composition", "version": "0.2.0"}],
+    "components": [
+        {"id": "disc_body", "owner_dialect": "sketch_profile", "kind_hint": "turbine_disk", "root_node": "n_revolve"},
+        {"id": "slot_cutter", "owner_dialect": "sketch_profile", "kind_hint": "fir_tree_cutter", "root_node": "n_cutter_extrude"},
+        {"id": "__assembly__", "owner_dialect": "composition", "kind_hint": "assembly", "root_node": "n_bool_cut"}
+    ],
+    "nodes": [
+        # Disc: sketch XZ, polyline, close, fillet (R=12), revolve
+        {"id": "n_sketch_disc", "component": "disc_body", "dialect": "sketch_profile", "op": "create_2d_sketch", "op_version": "1.0.0", "phase": "sketch", "inputs": [], "outputs": [{"name": "sketch", "type": "sketch"}], "params": {"plane": "XZ", "origin_x_mm": 0, "origin_y_mm": 0}, "required": True, "degradation_policy": "fail"},
+        {"id": "n_poly_disc", "component": "disc_body", "dialect": "sketch_profile", "op": "add_polyline", "op_version": "1.0.0", "phase": "profile", "inputs": [{"node": "n_sketch_disc", "output": "sketch"}], "outputs": [{"name": "profile", "type": "profile"}],
+         "params": {"points": [
+             {"x_mm": 60, "y_mm": -38},
+             {"x_mm": 120, "y_mm": -38},
+             {"x_mm": 120, "y_mm": -22},
+             {"x_mm": 215, "y_mm": -15},
+             {"x_mm": 215, "y_mm": -30},
+             {"x_mm": 250, "y_mm": -30},
+             {"x_mm": 250, "y_mm": 30},
+             {"x_mm": 215, "y_mm": 30},
+             {"x_mm": 215, "y_mm": 15},
+             {"x_mm": 120, "y_mm": 22},
+             {"x_mm": 120, "y_mm": 38},
+             {"x_mm": 60, "y_mm": 38},
+         ]}, "required": True, "degradation_policy": "fail"},
+        {"id": "n_close_disc", "component": "disc_body", "dialect": "sketch_profile", "op": "close_profile", "op_version": "1.0.0", "phase": "profile", "inputs": [{"node": "n_poly_disc", "output": "profile"}], "outputs": [{"name": "profile", "type": "profile"}], "params": {}, "required": True, "degradation_policy": "fail"},
+        {"id": "n_fillet_disc", "component": "disc_body", "dialect": "sketch_profile", "op": "fillet_sketch", "op_version": "1.0.0", "phase": "profile", "inputs": [{"node": "n_close_disc", "output": "profile"}], "outputs": [{"name": "profile", "type": "profile"}], "params": {"radius_mm": 12, "at_vertex_index": None}, "required": True, "degradation_policy": "fail"},
+        {"id": "n_revolve", "component": "disc_body", "dialect": "sketch_profile", "op": "revolve_profile", "op_version": "1.0.0", "phase": "feature", "inputs": [{"node": "n_fillet_disc", "output": "profile"}], "outputs": [{"name": "body", "type": "solid"}], "params": {"axis": "Z", "angle_deg": 360}, "required": True, "degradation_policy": "fail"},
+
+        # Cutter: full fir-tree profile (narrow mouth→wide lobes→narrow root), close, fillet (R=1), extrude (both)
+        {"id": "n_sketch_cutter", "component": "slot_cutter", "dialect": "sketch_profile", "op": "create_2d_sketch", "op_version": "1.0.0", "phase": "sketch", "inputs": [], "outputs": [{"name": "sketch", "type": "sketch"}], "params": {"plane": "XY", "origin_x_mm": 0, "origin_y_mm": 0}, "required": True, "degradation_policy": "fail"},
+        {"id": "n_poly_cutter", "component": "slot_cutter", "dialect": "sketch_profile", "op": "add_polyline", "op_version": "1.0.0", "phase": "profile", "inputs": [{"node": "n_sketch_cutter", "output": "sketch"}], "outputs": [{"name": "profile", "type": "profile"}],
+         "params": {"points": [
+             {"x_mm": 0, "y_mm": 3},
+             {"x_mm": -3, "y_mm": 3}, {"x_mm": -4, "y_mm": 7},
+             {"x_mm": -7, "y_mm": 7}, {"x_mm": -8, "y_mm": 4},
+             {"x_mm": -11, "y_mm": 4}, {"x_mm": -12, "y_mm": 8},
+             {"x_mm": -15, "y_mm": 8}, {"x_mm": -16, "y_mm": 5},
+             {"x_mm": -19, "y_mm": 5}, {"x_mm": -20, "y_mm": 6},
+             {"x_mm": -22, "y_mm": 6}, {"x_mm": -22, "y_mm": 2},
+             {"x_mm": -22, "y_mm": -2},
+             {"x_mm": -22, "y_mm": -6}, {"x_mm": -20, "y_mm": -6},
+             {"x_mm": -19, "y_mm": -5}, {"x_mm": -16, "y_mm": -5},
+             {"x_mm": -15, "y_mm": -8}, {"x_mm": -12, "y_mm": -8},
+             {"x_mm": -11, "y_mm": -4}, {"x_mm": -8, "y_mm": -4},
+             {"x_mm": -7, "y_mm": -7}, {"x_mm": -4, "y_mm": -7},
+             {"x_mm": -3, "y_mm": -3}, {"x_mm": 0, "y_mm": -3},
+         ]}, "required": True, "degradation_policy": "fail"},
+        {"id": "n_close_cutter", "component": "slot_cutter", "dialect": "sketch_profile", "op": "close_profile", "op_version": "1.0.0", "phase": "profile", "inputs": [{"node": "n_poly_cutter", "output": "profile"}], "outputs": [{"name": "profile", "type": "profile"}], "params": {}, "required": True, "degradation_policy": "fail"},
+        {"id": "n_fillet_cutter", "component": "slot_cutter", "dialect": "sketch_profile", "op": "fillet_sketch", "op_version": "1.0.0", "phase": "profile", "inputs": [{"node": "n_close_cutter", "output": "profile"}], "outputs": [{"name": "profile", "type": "profile"}], "params": {"radius_mm": 1, "at_vertex_index": None}, "required": True, "degradation_policy": "fail"},
+        {"id": "n_cutter_extrude", "component": "slot_cutter", "dialect": "sketch_profile", "op": "extrude_profile", "op_version": "1.0.0", "phase": "feature", "inputs": [{"node": "n_fillet_cutter", "output": "profile"}], "outputs": [{"name": "body", "type": "solid"}], "params": {"depth_mm": 80, "direction": "both", "taper_deg": 0}, "required": True, "degradation_policy": "fail"},
+
+        # Assembly
+        {"id": "n_pattern", "component": "__assembly__", "dialect": "composition", "op": "circular_pattern_component", "op_version": "1.0.0", "phase": "pattern", "inputs": [{"node": "n_cutter_extrude", "output": "body"}], "outputs": [{"name": "body", "type": "solid"}], "params": {"count": 60, "radius_mm": 250, "axis": "Z", "start_angle_deg": 0, "rotate_copies": True}, "required": True, "degradation_policy": "fail"},
+        {"id": "n_bool_cut", "component": "__assembly__", "dialect": "composition", "op": "boolean_cut", "op_version": "1.0.0", "phase": "boolean", "inputs": [{"node": "n_revolve", "output": "body"}, {"node": "n_pattern", "output": "body"}], "outputs": [{"name": "body", "type": "solid"}], "params": {}, "required": True, "degradation_policy": "fail"},
+    ],
+    "constraints": {"require_step_file": True, "require_metadata_sidecar": True, "require_closed_solid": True, "expected_body_count": 1, "expected_bbox_mm": None, "bbox_tolerance_mm": 1, "max_runtime_seconds": 300},
+    "safety": {"non_flight_reference_only": True, "not_airworthy": True, "not_certified": True, "not_for_manufacturing": True, "not_for_installation": True, "no_structural_validation": True, "no_life_prediction": True},
+    "llm_validation_hints": None
+}
+
+with open("E:/auto_detection_process/turbine_disc/test_corrected_ir.json", "w", encoding="utf-8") as f:
+    json.dump(ir, f, indent=2, ensure_ascii=False)
+print(f"IR: {len(ir['nodes'])} nodes")
+print(f"extrude: {ir['nodes'][9]['params']['direction']}")

@@ -25,6 +25,11 @@ class CircularPatternComponentParams(BaseModel):
     radius_mm: float = Field(ge=0)
     axis: Literal["Z"] = "Z"
     start_angle_deg: float = 0.0
+    rotate_copies: bool = Field(
+        default=True,
+        description="When True, each copy is rotated around Z axis (radial alignment for slots/teeth). "
+                    "When False, copies are only translated (all face the same direction).",
+    )
 
 
 class LinearPatternComponentParams(BaseModel):

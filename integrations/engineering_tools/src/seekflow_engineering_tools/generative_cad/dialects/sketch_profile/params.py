@@ -52,14 +52,14 @@ class CloseProfileParams(BaseModel):
 class ExtrudeProfileParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
     depth_mm: float = Field(gt=0, description="Extrusion depth in mm")
-    direction: Literal["+", "-"] = "+"
+    direction: Literal["+", "-", "both"] = "+"
     taper_deg: float = Field(default=0.0, ge=-45, le=45, description="Taper angle in degrees")
 
 
 class CutProfileParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
     depth_mm: float = Field(gt=0, description="Cut depth in mm")
-    direction: Literal["+", "-"] = "-"
+    direction: Literal["+", "-", "both"] = "-"
 
 
 class AddSlotParams(BaseModel):
@@ -81,3 +81,20 @@ class MirrorFeatureParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
     axis: Literal["X", "Y"] = "X"
     offset_mm: float = Field(default=0.0)
+
+
+class RevolveProfileParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    axis: Literal["Z"] = "Z"
+    angle_deg: float = Field(default=360.0, gt=0, le=360, description="Revolve angle in degrees")
+
+
+class FilletSketchParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    radius_mm: float = Field(gt=0, description="Fillet radius in mm")
+    at_vertex_index: list[int] | None = Field(
+        default=None,
+        description="REQUIRED: list of vertex indices to fillet (0-based). "
+        "Must be explicitly specified — null/empty = no filleting. "
+        "Example: [2,3,8,9] for hub-web and web-rim transitions on a disk profile.",
+    )

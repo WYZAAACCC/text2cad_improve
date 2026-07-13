@@ -23,9 +23,12 @@ def _get_state(ctx, component_id: str, field: str, default=None):
 
 
 def _set_state(ctx, component_id: str, field: str, value) -> None:
-    ctx.object_store.put(
-        RuntimeHandle(id=_state_key(component_id, field), type="profile"), value
-    )
+    key = _state_key(component_id, field)
+    # Per-component state is updated in-place across multiple ops (e.g. add_polyline
+    # updates 'wp' state set by create_2d_sketch). Use direct dict write to avoid
+    # object_store.put() duplicate-ID rejection.
+    ctx.object_store._objects[key] = value
+    ctx.object_store._handles[key] = RuntimeHandle(id=key, type="profile")
 
 
 # ── Handlers ─────────────────────────────────────────────────────────────────
@@ -40,13 +43,15 @@ def handle_create_2d_sketch(node, ctx) -> dict:
     if ox or oy:
         wp = wp.transformed(offset=(ox, oy, 0))
     cid = node.component
+    _set_state(ctx, cid, "sketch_plane", plane)
     _set_state(ctx, cid, "wp", wp)
     _set_state(ctx, cid, "last_point", None)
     _set_state(ctx, cid, "start_point", None)
     _set_state(ctx, cid, "closed", False)
+    _set_state(ctx, cid, "polyline_points", [])
     # Consistent handle ID: solid:{component}:{node_id}:{output_name}
     handle_id = f"sketch:{cid}:{node.id}:sketch"
-    ctx.object_store.put(RuntimeHandle(id=handle_id, type="profile"), wp)
+    ctx.object_store.put(RuntimeHandle(id=handle_id, type="sketch"), wp)
     return {"sketch": handle_id}
 
 
@@ -93,6 +98,14 @@ def handle_add_polyline(node, ctx) -> dict:
     _set_state(ctx, cid, "last_point", (float(last.get("x_mm", 0)), float(last.get("y_mm", 0))))
     if _get_state(ctx, cid, "start_point") is None:
         _set_state(ctx, cid, "start_point", (float(points[0].get("x_mm", 0)), float(points[0].get("y_mm", 0))))
+    # Accumulate polyline points for downstream operations (e.g. fillet_sketch)
+    acc = _get_state(ctx, cid, "polyline_points", [])
+    acc_points = [(float(p.get("x_mm", 0)), float(p.get("y_mm", 0))) for p in points]
+    if acc:
+        # Bridge gap: insert last point of previous segment as first of new batch
+        acc.append(acc_points[0])
+    acc.extend(acc_points[1:])
+    _set_state(ctx, cid, "polyline_points", acc)
     handle_id = f"profile:{cid}:{node.id}:profile"
     ctx.object_store.put(RuntimeHandle(id=handle_id, type="profile"), wp)
     return {"profile": handle_id}
@@ -146,7 +159,10 @@ def handle_close_profile(node, ctx) -> dict:
     if sp is None:
         ctx.warnings.append(f"close_profile on '{node.id}': no start_point, skipping close")
     else:
-        wp = wp.close()
+        try:
+            wp = wp.close()
+        except (ValueError, AttributeError):
+            pass  # wire already closed (e.g. by mirror_profile or fillet_sketch)
         _set_state(ctx, cid, "wp", wp)
     _set_state(ctx, cid, "closed", True)
     handle_id = f"profile:{cid}:{node.id}:profile"
@@ -160,16 +176,21 @@ def handle_extrude_profile(node, ctx) -> dict:
     wp = resolve_input_object(node, ctx, 0)
     cid = node.component
     closed = _get_state(ctx, cid, "closed", False)
-    if closed:
+    if not closed:
         wp = wp.close()
     depth = float(params.get("depth_mm", 1))
     direction = params.get("direction", "+")
     taper = float(params.get("taper_deg", 0))
-    extrude_depth = depth if direction == "+" else -depth
     try:
-        if abs(taper) > 0.01:
+        if direction == "both":
+            # Symmetric extrude: CadQuery both=True uses depth as HALF-distance.
+            # depth_mm=80 with "both" means total Z height = 80mm (±40mm from plane).
+            solid = wp.extrude(depth / 2.0, both=True)
+        elif abs(taper) > 0.01:
+            extrude_depth = depth if direction == "+" else -depth
             solid = wp.taperedExtrude(extrude_depth, taper)
         else:
+            extrude_depth = depth if direction == "+" else -depth
             solid = wp.extrude(extrude_depth)
     except Exception as e:
         raise RuntimeError(f"extrude_profile failed on '{node.id}': {e}")
@@ -186,7 +207,7 @@ def handle_cut_profile(node, ctx) -> dict:
     wp = resolve_input_object(node, ctx, 1)
     cid = node.component
     closed = _get_state(ctx, cid, "closed", False)
-    if closed:
+    if not closed:
         wp = wp.close()
     depth = float(params.get("depth_mm", 1))
     direction = params.get("direction", "-")
@@ -203,3 +224,255 @@ def handle_cut_profile(node, ctx) -> dict:
     handle = SolidHandle(id=f"solid:{cid}:{node.id}:body", producer_node=node.id, component_id=cid)
     ctx.object_store.put_solid(handle, result)
     return {"body": f"solid:{cid}:{node.id}:body"}
+
+
+def handle_revolve_profile(node, ctx) -> dict:
+    """Revolve a closed 2D profile around the Z axis to create a rotationally symmetric solid.
+
+    This is the key operation for building axisymmetric parts with varying radial thickness
+    (e.g. turbine discs, wheels, pulleys) — the LLM draws an arbitrary R-Z closed polygon
+    on the XZ plane and revolves it 360° to produce the solid.
+    """
+    from seekflow_engineering_tools.generative_cad.runtime.resolve import resolve_input_object
+    params = node.params
+    wp = resolve_input_object(node, ctx, 0)
+    cid = node.component
+    closed = _get_state(ctx, cid, "closed", False)
+    if not closed:
+        wp = wp.close()
+    angle = float(params.get("angle_deg", 360.0))
+    try:
+        solid = wp.revolve(angle)
+    except Exception as e:
+        raise RuntimeError(f"revolve_profile failed on '{node.id}': {e}")
+    handle = SolidHandle(id=f"solid:{cid}:{node.id}:body", producer_node=node.id, component_id=cid)
+    ctx.object_store.put_solid(handle, solid)
+    return {"body": f"solid:{cid}:{node.id}:body"}
+
+
+def _compute_fillet_arc(prev_pt, corner_pt, next_pt, radius, centroid=None, num_segments=3):
+    """Compute arc points that round a polyline corner.
+
+    Returns list of (x,y) points forming the arc [tangent1, arc_1, ..., arc_n, tangent2],
+    replacing the sharp corner at corner_pt.
+
+    If radius is too large for the adjacent segments, returns [corner_pt] (no fillet).
+    If adjacent segments are nearly collinear (angle ~ 180°), returns [corner_pt].
+    Uses num_segments=3 — balances smoothness vs boolean-operation performance.
+
+    The fillet center is chosen as the candidate (of the two chord-normal offsets)
+    closer to `centroid` — i.e. on the polygon-interior side. The previous cross-
+    product sign test picked the wrong side for some corners, making arcs bulge
+    OUTSIDE the original profile bbox (e.g. disc Y ±38 bulged to ±41.57, inflating
+    the revolved bbox Z from 76 to 83.14). Centroid selection keeps every arc
+    inside the original convex hull.
+    """
+    import math
+    dx1, dy1 = prev_pt[0] - corner_pt[0], prev_pt[1] - corner_pt[1]
+    len1 = math.sqrt(dx1**2 + dy1**2)
+    if len1 < 1e-9: return [corner_pt]
+    dx1, dy1 = dx1/len1, dy1/len1
+    dx2, dy2 = next_pt[0] - corner_pt[0], next_pt[1] - corner_pt[1]
+    len2 = math.sqrt(dx2**2 + dy2**2)
+    if len2 < 1e-9: return [corner_pt]
+    dx2, dy2 = dx2/len2, dy2/len2
+    cos_angle = dx1*dx2 + dy1*dy2
+    if cos_angle > 0.95: return [corner_pt]  # nearly collinear, skip fillet
+    half_angle = math.acos(max(-1, min(1, cos_angle))) / 2.0
+    d = radius / math.tan(half_angle)
+    if d >= len1 * 0.8 or d >= len2 * 0.8:
+        return [corner_pt]  # radius too large relative to adjacent segments
+    t1 = (corner_pt[0] + dx1 * d, corner_pt[1] + dy1 * d)
+    t2 = (corner_pt[0] + dx2 * d, corner_pt[1] + dy2 * d)
+    mx, my = (t1[0]+t2[0])/2, (t1[1]+t2[1])/2
+    t2_vec = (t2[0]-t1[0], t2[1]-t1[1])
+    t2_len = math.sqrt(t2_vec[0]**2 + t2_vec[1]**2)
+    if t2_len < 1e-9: return [corner_pt]
+    chord_nx = -t2_vec[1] / t2_len
+    chord_ny = t2_vec[0] / t2_len
+    h = math.sqrt(max(0, radius**2 - (t2_len/2)**2))
+    # Two candidate centers straddle the chord; pick the one on the polygon-
+    # interior side (closer to centroid) so the arc stays inside the profile.
+    c1 = (mx + chord_nx * h, my + chord_ny * h)
+    c2 = (mx - chord_nx * h, my - chord_ny * h)
+    if centroid is not None:
+        d1 = (c1[0] - centroid[0])**2 + (c1[1] - centroid[1])**2
+        d2 = (c2[0] - centroid[0])**2 + (c2[1] - centroid[1])**2
+        cx, cy = c1 if d1 < d2 else c2
+    else:
+        cross = dx1*dy2 - dy1*dx2
+        cx, cy = c1 if cross < 0 else c2
+    angle1 = math.atan2(t1[1]-cy, t1[0]-cx)
+    angle2 = math.atan2(t2[1]-cy, t2[0]-cx)
+    # Take the short arc from angle1 to angle2 (passes through the interior side).
+    da = angle2 - angle1
+    while da > math.pi: da -= 2*math.pi
+    while da < -math.pi: da += 2*math.pi
+    arc_pts = []
+    for i in range(1, num_segments):
+        a = angle1 + da * i / num_segments
+        arc_pts.append((cx + radius * math.cos(a), cy + radius * math.sin(a)))
+    return [t1] + arc_pts + [t2]
+
+
+def _apply_fillets_to_polyline(points, radius, at_vertex_index=None):
+    """Replace sharp corners in a closed polyline with radiused arc segments.
+
+    ONLY the vertices listed in *at_vertex_index* are filleted.
+    If *at_vertex_index* is None / empty / null, no filleting is performed
+    — the LLM MUST explicitly select which vertices need rounding.
+
+    Args:
+        points: list of (x, y) tuples forming a closed loop
+        radius: fillet radius in mm
+        at_vertex_index: int → fillet only that vertex.
+            list[int] → fillet only the listed vertices.
+            None / [] → no filleting (identity pass).
+
+    Returns:
+        new list of (x, y) points with fillet arcs inserted
+    """
+    n = len(points)
+    if n < 3: return list(points)
+
+    # Normalise at_vertex_index to a set for O(1) lookup
+    target_set: set[int] | None = None
+    if isinstance(at_vertex_index, list) and len(at_vertex_index) > 0:
+        target_set = set(at_vertex_index)
+    elif isinstance(at_vertex_index, int):
+        target_set = {at_vertex_index}
+
+    # No explicit targets → no filleting (LLM must opt in)
+    if target_set is None:
+        return list(points)
+
+    centroid = (sum(p[0] for p in points) / n, sum(p[1] for p in points) / n)
+    result = []
+    for i in range(n):
+        prev = points[(i - 1) % n]
+        curr = points[i]
+        nxt = points[(i + 1) % n]
+
+        if i not in target_set:
+            result.append(curr)
+            continue
+
+        arc = _compute_fillet_arc(prev, curr, nxt, radius, centroid)
+        result.extend(arc)
+    return result
+
+
+def handle_fillet_sketch(node, ctx) -> dict:
+    """Apply 2D fillets using OCC native Wire.fillet2D().
+
+    The LLM MUST specify at_vertex_index — a list of vertex indices to fillet.
+    Uses OCC BRepFilletAPI_MakeFillet2d for correct arcs on convex AND reflex corners.
+    """
+    from seekflow_engineering_tools.generative_cad.runtime.resolve import resolve_input_object
+    params = node.params
+    wp = resolve_input_object(node, ctx, 0)
+    cid = node.component
+    radius = float(params.get("radius_mm", 0.5))
+    at_index = params.get("at_vertex_index")
+
+    # ── Parse target vertices ──
+    target_indices: set[int] = set()
+    if isinstance(at_index, list):
+        target_indices = set(at_index)
+    elif isinstance(at_index, int):
+        target_indices = {at_index}
+
+    closed = _get_state(ctx, cid, "closed", False)
+    plane = _get_state(ctx, cid, "sketch_plane", "XY")
+
+    if not target_indices:
+        ctx.warnings.append(
+            f"fillet_sketch on '{node.id}': at_vertex_index empty — "
+            f"no filleting applied (must specify explicit vertex indices)"
+        )
+    else:
+        try:
+            # Ensure wire is closed before filleting
+            if not closed:
+                wp = wp.close()
+                _set_state(ctx, cid, "closed", True)
+                closed = True
+
+            wires = wp.wires().vals()
+            if not wires:
+                raise RuntimeError("no wire found in workplane")
+
+            wire = wires[0]
+            all_verts = wire.Vertices()
+            n_verts = len(all_verts)
+
+            # Select OCC Vertex objects at the requested indices
+            selected = []
+            for idx in sorted(target_indices):
+                if 0 <= idx < n_verts:
+                    selected.append(all_verts[idx])
+                else:
+                    ctx.warnings.append(
+                        f"fillet_sketch on '{node.id}': index {idx} out of "
+                        f"range (wire has {n_verts} vertices), skipping"
+                    )
+
+            if selected:
+                import cadquery as cq
+                # OCC native 2D fillet
+                filleted_wire = wire.fillet2D(radius, selected)
+
+                # Place the filleted wire directly into a new workplane.
+                # This preserves CIRCLE edges as true arcs (no polyline approx).
+                wp = cq.Workplane(plane)
+                wp.ctx.pendingWires = [filleted_wire]
+                _set_state(ctx, cid, "closed", True)
+
+                ctx.operation_metrics.append({
+                    "node_id": node.id, "op": "fillet_sketch",
+                    "radius_mm": radius, "n_vertices": len(selected),
+                    "engine": "OCC_fillet2D",
+                })
+        except Exception as e:
+            ctx.warnings.append(
+                f"fillet_sketch on '{node.id}': OCC fillet2D failed ({e}), "
+                f"keeping original profile"
+            )
+
+    handle_id = f"profile:{cid}:{node.id}:profile"
+    ctx.object_store._objects[handle_id] = wp
+    ctx.object_store._handles[handle_id] = RuntimeHandle(id=handle_id, type="profile")
+    return {"profile": handle_id}
+
+
+def handle_mirror_profile(node, ctx) -> dict:
+    """Mirror the sketch profile and union with the original.
+
+    Useful for symmetric profiles like fir-tree slots: draw one half, mirror to get the full shape.
+    """
+    from seekflow_engineering_tools.generative_cad.runtime.resolve import resolve_input_object
+    params = node.params
+    wp = resolve_input_object(node, ctx, 0)
+    cid = node.component
+    axis = params.get("axis", "X")
+    closed = _get_state(ctx, cid, "closed", False)
+    if not closed:
+        wp = wp.close()
+    try:
+        # CadQuery 2.7 mirror(str) is broken for single-axis strings.
+        # Use mirrorX() / mirrorY() which work correctly.
+        if axis == "X":
+            wp = wp.mirrorX()
+        elif axis == "Y":
+            wp = wp.mirrorY()
+        else:
+            wp = wp.mirror(axis, union=True)
+    except Exception as e:
+        if getattr(node, "required", True):
+            raise RuntimeError(f"mirror_profile failed on '{node.id}': {e}")
+        ctx.warnings.append(f"mirror_profile failed on '{node.id}': {e}")
+    _set_state(ctx, cid, "wp", wp)
+    _set_state(ctx, cid, "closed", True)
+    handle_id = f"profile:{cid}:{node.id}:profile"
+    ctx.object_store.put(RuntimeHandle(id=handle_id, type="profile"), wp)
+    return {"profile": handle_id}
