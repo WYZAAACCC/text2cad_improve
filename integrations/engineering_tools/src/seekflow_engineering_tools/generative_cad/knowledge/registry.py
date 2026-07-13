@@ -79,13 +79,23 @@ class KnowledgeRegistry:
 
     def validate_selections(
         self, selections: list[dict],
+        *,
+        allow_draft: bool = True,
+        selected_dialects: set[str] | None = None,
     ) -> list[str]:
         """Validate a set of knowledge pack selections.
+
+        Args:
+            selections: List of {skill_id, skill_version} dicts.
+            allow_draft: If False, draft packs are rejected.
+            selected_dialects: If provided, each pack's required_dialects
+                must be satisfied by this set.
 
         Returns a list of error messages (empty = all good).
         """
         errors: list[str] = []
         seen_ids: set[str] = set()
+        selected_dialects = selected_dialects or set()
 
         for sel in selections:
             sid = sel.get("skill_id", "")
@@ -103,6 +113,11 @@ class KnowledgeRegistry:
                     f"knowledge pack '{sid}' is deprecated — "
                     f"update your selection or remove it"
                 )
+            elif pack.manifest.status == "draft" and not allow_draft:
+                errors.append(
+                    f"knowledge pack '{sid}' is in draft status — "
+                    f"draft packs are not allowed in this environment"
+                )
 
             if sid in seen_ids:
                 errors.append(f"duplicate selection of '{sid}'")
@@ -115,6 +130,18 @@ class KnowledgeRegistry:
                     errors.append(
                         f"knowledge pack '{sid}' depends on "
                         f"'{dep.skill_id}>={dep.min_version}' which is not available"
+                    )
+
+            # Check required dialects
+            if selected_dialects and pack.manifest.required_dialects:
+                missing = [
+                    d for d in pack.manifest.required_dialects
+                    if d not in selected_dialects
+                ]
+                if missing:
+                    errors.append(
+                        f"knowledge pack '{sid}' requires dialects {missing} "
+                        f"which are not selected. Selected: {sorted(selected_dialects)}"
                     )
 
         # Check for conflicts between selected packs

@@ -91,7 +91,7 @@ CRITICAL_SECTIONS = {
 }
 
 
-def compile_l2_knowledge(resolved: ResolvedKnowledge, token_budget: int = 3000) -> str:
+def compile_l2_knowledge(resolved: ResolvedKnowledge, char_budget: int = 3000) -> str:
     """Compile loaded knowledge packs into an L2 prompt section.
 
     Rules are ordered by severity: hard → strong_preference → heuristic → informational.
@@ -197,11 +197,11 @@ def compile_l2_knowledge(resolved: ResolvedKnowledge, token_budget: int = 3000) 
         # Also detect hard rules from the heading
         is_hard = "hard engineering rules" in heading.lower()
 
-        if is_critical or is_hard or (current_chars + block_chars) <= token_budget:
+        if is_critical or is_hard or (current_chars + block_chars) <= char_budget:
             parts.append(block)
             current_chars += block_chars
         else:
-            parts.append(f"### {heading}\n(content truncated — token budget exceeded)\n")
+            parts.append(f"### {heading}\n(content truncated — char budget exceeded)\n")
             break
 
     return "".join(parts)

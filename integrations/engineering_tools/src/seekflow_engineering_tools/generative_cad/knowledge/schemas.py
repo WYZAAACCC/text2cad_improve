@@ -64,7 +64,7 @@ class KnowledgePackManifest(BaseModel):
 # ── Rules ─────────────────────────────────────────────────────────────
 
 class KnowledgeRule(BaseModel):
-    """A single engineering rule with severity classification."""
+    """A single engineering rule with severity and detectability classification."""
     model_config = ConfigDict(extra="forbid")
 
     rule_id: str = Field(description="Unique rule identifier within this pack")
@@ -73,6 +73,12 @@ class KnowledgeRule(BaseModel):
     rationale: str = Field(default="")
     applies_to: list[str] = Field(default_factory=list, description="Feature or object types")
     source_refs: list[str] = Field(default_factory=list)
+
+    # How this rule can be validated
+    detectable: Literal["auto", "llm_guided", "manual_only"] = Field(
+        default="manual_only",
+        description="auto=code can verify, llm_guided=LLM can check in prompt, manual_only=human review required"
+    )
 
 
 # ── Pack ──────────────────────────────────────────────────────────────

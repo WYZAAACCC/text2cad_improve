@@ -447,7 +447,7 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                     for s in plan.selected_domain_skills
                 ])
                 if resolved.ok:
-                    knowledge_prompt = compile_l2_knowledge(resolved, token_budget=3000)
+                    knowledge_prompt = compile_l2_knowledge(resolved, char_budget=3000)
         except Exception:
             pass  # knowledge packs are optional — don't block generation
 
@@ -605,14 +605,21 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
 
                 try:
                     repair_tool = build_repair_patch_tool_schema()
+                    repair_messages = [
+                        {"role": "system", "content": REPAIR_SYSTEM_PROMPT},
+                    ]
+                    if knowledge_prompt:
+                        repair_messages.append(
+                            {"role": "system", "content": f"DOMAIN KNOWLEDGE (apply these rules):\n{knowledge_prompt}"}
+                        )
+                    repair_messages.append(
+                        {"role": "user", "content": build_repair_user_prompt(
+                            current_doc=current_doc,
+                            validation_issues=issues_dicts,
+                        )}
+                    )
                     tc_repair = caller.call_strict_tool(
-                        messages=[
-                            {"role": "system", "content": REPAIR_SYSTEM_PROMPT},
-                            {"role": "user", "content": build_repair_user_prompt(
-                                current_doc=current_doc,
-                                validation_issues=issues_dicts,
-                            )},
-                        ],
+                        messages=repair_messages,
                         tool_name="emit_repair_patch",
                         tool_description="Local repair patch for validation errors",
                         tool_schema=repair_tool,
@@ -786,24 +793,29 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
 
             try:
                 rt_tool = build_repair_patch_tool_schema()
+                rt_messages = [
+                    {"role": "system", "content": (
+                        "You are a CAD geometry repair agent. The CAD runtime (CadQuery/OCCT) "
+                        "failed to execute the generated document. Fix the GEOMETRIC parameters "
+                        "(coordinates, radii, depths) that caused the failure.\n\n"
+                        "Common causes and fixes:\n"
+                        "- BRep_API: command not done -> polyline has duplicate/zero-length/self-intersecting segments -> adjust points\n"
+                        "- fillet2D failed -> radius too large for edge length -> reduce radius\n"
+                        "- boolean_cut failed -> cutter does not intersect target -> adjust depth/position\n"
+                        "- revolve failed -> profile self-intersects -> fix polygon point order\n\n"
+                        "Only modify params. Do NOT change dialect/op/op_version/schema_version."
+                    )},
+                ]
+                if knowledge_prompt:
+                    rt_messages.append(
+                        {"role": "system", "content": f"DOMAIN KNOWLEDGE:\n{knowledge_prompt}"}
+                    )
+                rt_messages.append(
+                    {"role": "user", "content": build_repair_user_prompt(
+                        current_doc=rt_current_doc, validation_issues=rt_issues)}
+                )
                 rt_tc = caller.call_strict_tool(
-                    messages=[
-                        {"role": "system", "content": (
-                            "You are a CAD geometry repair agent. The CAD runtime (CadQuery/OCCT) "
-                            "failed to execute the generated document. Fix the GEOMETRIC parameters "
-                            "(coordinates, radii, depths) that caused the failure.\n\n"
-                            "Common causes and fixes:\n"
-                            "- BRep_API: command not done → polyline has duplicate/zero-length/self-intersecting segments → adjust points\n"
-                            "- fillet2D failed → radius too large for edge length → reduce radius\n"
-                            "- boolean_cut failed → cutter doesn't intersect target → adjust depth/position\n"
-                            "- revolve failed → profile self-intersects → fix polygon point order\n\n"
-                            "Only modify params. Do NOT change dialect/op/op_version/schema_version."
-                        )},
-                        {"role": "user", "content": build_repair_user_prompt(
-                            current_doc=rt_current_doc,
-                            validation_issues=rt_issues,
-                        )},
-                    ],
+                    messages=rt_messages,
                     tool_name="emit_repair_patch",
                     tool_description="Geometry repair patch for OCC runtime failure",
                     tool_schema=rt_tool,
