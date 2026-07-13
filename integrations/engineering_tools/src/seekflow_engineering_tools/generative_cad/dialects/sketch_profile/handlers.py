@@ -616,50 +616,58 @@ def handle_fillet_sketch_v2(node, ctx) -> dict:
     n_before = len(all_verts)
 
     # ── Resolve semantic corners → OCC vertices ──
+    # Build a reference graph from polyline_points for LLM-intended edge IDs.
+    # OCC wire may reorder vertices; we match by POSITION, not edge ID.
+    ref_graph = None
+    ref_pts = _get_state(ctx, cid, "polyline_points", [])
+    if len(ref_pts) >= 3:
+        try:
+            ref_graph = ProfileGraph.from_polyline(ref_pts, wire_id=wire_id)
+        except Exception:
+            pass
+
     selected: list = []
     for t in targets:
-        try:
-            corner_vid = graph.find_corner_vertex(
-                t["between_segments"][0], t["between_segments"][1], wire_id,
-            )
-        except (ValueError, KeyError) as exc:
+        # Resolve corner position from reference graph (polyline_points, LLM-intended IDs)
+        corner_pos = None
+        for g in (ref_graph, graph):
+            if g is None:
+                continue
+            try:
+                cv = g.find_corner_vertex(
+                    t["between_segments"][0], t["between_segments"][1], wire_id,
+                )
+                v = g.vertices[cv]
+                corner_pos = (v.x_mm, v.y_mm)
+                break
+            except (ValueError, KeyError):
+                continue
+
+        if corner_pos is None:
+            msg = f"corner '{t['corner_id']}' not found (segs {t['between_segments']})"
             if getattr(node, "required", True) or t.get("required", True):
-                raise RuntimeError(
-                    f"fillet_sketch@2 on '{node.id}': "
-                    f"corner '{t['corner_id']}' not found — {exc}"
-                ) from exc
-            ctx.warnings.append(
-                f"fillet_sketch@2 on '{node.id}': skipping corner "
-                f"'{t['corner_id']}' — {exc}"
-            )
+                raise RuntimeError(f"fillet_sketch@2 on '{node.id}': {msg}")
+            ctx.warnings.append(f"fillet_sketch@2 on '{node.id}': skipping {msg}")
             continue
 
-        # Map vertex_id to nearest OCC vertex (same polyline → same topology).
-        # OCC wire reconstruction may shift coordinates slightly (floating-point),
-        # so we always pick the closest vertex without a hard distance cutoff.
-        v = graph.vertices[corner_vid]
+        # Match corner position to nearest OCC vertex
+        cx, cy = corner_pos
         best_idx, best_dist = -1, float("inf")
         for idx, occ_v in enumerate(all_verts):
             p = occ_v.toTuple()
-            d = (p[0] - v.x_mm) ** 2 + (p[1] - v.y_mm) ** 2
+            d = (p[0] - cx) ** 2 + (p[1] - cy) ** 2
             if d < best_dist:
                 best_dist, best_idx = d, idx
         if best_idx >= 0:
             selected.append(all_verts[best_idx])
-            if best_dist > 1e-2:
-                ctx.warnings.append(
-                    f"fillet_sketch@2 on '{node.id}': corner '{t['corner_id']}' "
-                    f"matched at distance {best_dist:.4f} mm² — OCC may have "
-                    f"shifted vertex position slightly"
-                )
         else:
-            msg = (
+            if getattr(node, "required", True) or t.get("required", True):
+                raise RuntimeError(
+                    f"fillet_sketch@2 on '{node.id}': corner '{t['corner_id']}' "
+                    f"— OCC wire has no vertices")
+            ctx.warnings.append(
                 f"fillet_sketch@2 on '{node.id}': corner '{t['corner_id']}' "
-                f"(vertex {corner_vid}) — OCC wire has no vertices"
-            )
-            if getattr(node, "required", True) and (strict or t.get("required", True)):
-                raise RuntimeError(msg)
-            ctx.warnings.append(msg)
+                f"— OCC wire has no vertices")
 
     if not selected:
         return _fail_or_warn("no corners mapped to OCC vertices")
