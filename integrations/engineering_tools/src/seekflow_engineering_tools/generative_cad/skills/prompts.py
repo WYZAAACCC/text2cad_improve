@@ -148,17 +148,30 @@ Hard output rules:
      adjacent edge IDs, NOT by vertex index. Vertex indices are NOT stable
      across OCC wire rebuilds.
 
-     Example — filleting hub↔web and web↔rim transitions on a disc profile:
+     Example — filleting hub↔web and web↔rim transitions on a disc profile.
+     The standard 12-point disc profile has these edges:
+       v0(60,-38)→v1(120,-38)=e0, v1→v2(120,-22)=e1, v2→v3(215,-15)=e2,
+       v3→v4(215,-30)=e3, v4→v5(250,-30)=e4, v5→v6(250,30)=e5,
+       v6→v7(215,30)=e6, v7→v8(215,15)=e7, v8→v9(120,22)=e8,
+       v9→v10(120,38)=e9, v10→v11(60,38)=e10, v11→v0=e11.
+     Corners (adjacent edges that meet):
+       hub_web_lower:  e0+e1 (at R=120,Z=-38)  — hub to web on -Z side
+       hub_web_upper:  e9+e10 (at R=120,Z=+38) — hub to web on +Z side
+       web_rim_lower:  e3+e4 (at R=215,Z=-30)  — web to rim on -Z side
+       web_rim_upper:  e6+e7 (at R=215,Z=+30)  — web to rim on +Z side
+     GCAD:
        fillet_sketch(
          wire_id="disc_profile",
          targets=[
-           {corner_id:"hub_web_lower", between_segments:["e2","e3"], radius_mm:12.0},
-           {corner_id:"hub_web_upper", between_segments:["e8","e9"], radius_mm:12.0},
-           {corner_id:"web_rim_lower",  between_segments:["e4","e5"], radius_mm:10.0},
+           {corner_id:"hub_web_lower", between_segments:["e0","e1"], radius_mm:12.0},
+           {corner_id:"hub_web_upper", between_segments:["e9","e10"], radius_mm:12.0},
+           {corner_id:"web_rim_lower",  between_segments:["e3","e4"], radius_mm:10.0},
            {corner_id:"web_rim_upper",  between_segments:["e6","e7"], radius_mm:10.0}
          ],
          strict=true
        )
+     VERIFY: count your polyline points (N) → edges are e0..e_{N-1}.
+     The edge e_{N-1} always closes back to v0.
 
      Hard rules for fillet_sketch@2.0.0:
      - Each target has its OWN radius_mm — do NOT use the same radius for all.
