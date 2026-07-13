@@ -147,8 +147,13 @@ class KnowledgeRegistry:
         construction_strategy = _read_text(pack_dir / "construction.yaml")
         operation_guidance = _read_text(pack_dir / "operation_guidance.yaml")
 
-        known_conflicts_raw = _read_yaml(pack_dir / "known_conflicts.yaml") or {}
-        known_conflicts = known_conflicts_raw if isinstance(known_conflicts_raw, list) else []
+        known_conflicts_raw = _read_yaml_any(pack_dir / "known_conflicts.yaml")
+        if isinstance(known_conflicts_raw, list):
+            known_conflicts = known_conflicts_raw
+        elif isinstance(known_conflicts_raw, dict):
+            known_conflicts = known_conflicts_raw.get("conflicts", [])
+        else:
+            known_conflicts = []
 
         return KnowledgePack(
             manifest=manifest,
@@ -164,11 +169,17 @@ class KnowledgeRegistry:
 # ── helpers ───────────────────────────────────────────────────────────────
 
 def _read_yaml(path: Path) -> dict | None:
+    """Read a YAML file that MUST be a dict (manifest, rules, etc.)."""
+    data = _read_yaml_any(path)
+    return data if isinstance(data, dict) else None
+
+
+def _read_yaml_any(path: Path):
+    """Read any YAML file — dict, list, or scalar."""
     if not path.exists():
         return None
     with open(path, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-    return data if isinstance(data, dict) else None
+        return yaml.safe_load(f)
 
 
 def _read_rules(path: Path) -> list:

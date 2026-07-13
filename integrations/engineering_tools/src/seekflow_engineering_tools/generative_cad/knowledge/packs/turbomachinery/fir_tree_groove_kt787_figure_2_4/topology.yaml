@@ -28,8 +28,9 @@ rules:
     severity: hard
     statement: >
       M_B1(底部过渡圆弧)、M_B2(下齿齿端圆弧)、M_B3(齿间齿根圆弧)、
-      M_B4(上齿齿端圆弧)是不同工程圆弧类别。除非用户明确给出相等值，
-      不得合并为一个公共半径。
+      M_B4(上齿齿端圆弧)必须是四个独立语义参数。不得因为简化而自动绑定为
+      同一个变量或合并为一个公共半径。但用户显式给出的数值可以相等——
+      验证参数身份(四个独立字段)，而不是禁止数值相等。
     applies_to: [fir_tree_groove]
 
   - rule_id: fir_tree.mirror_not_duplicate

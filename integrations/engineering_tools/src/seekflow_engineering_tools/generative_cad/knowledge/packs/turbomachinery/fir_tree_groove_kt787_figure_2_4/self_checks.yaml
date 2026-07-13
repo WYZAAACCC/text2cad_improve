@@ -1,16 +1,20 @@
 rules:
   - rule_id: fir_tree.check.no_24_point_template
-    severity: hard
+    severity: heuristic
     statement: >
-      自检: GCAD 中不得出现固定24点折线模板。如果 add_polyline 的 points
-      数组恰好包含24个点且其中12个Y≥0、12个Y≤0，必须标记为可疑模板使用。
+      自检: 避免无工程语义地机械套用固定24点折线模板。如果 add_polyline 的
+      points 数组恰好包含24个点且其中12个Y≥0、12个Y≤0，应要求额外验证：
+      是否区分了工作面/非工作面、是否使用了显式圆弧替代尖角、
+      是否有独立的 M_B1~M_B4 半径。
+      24点本身不一定是错误，错误的是缺乏专业语义地机械套用。
     applies_to: [fir_tree_groove]
 
-  - rule_id: fir_tree.check.distinct_arc_radii
+  - rule_id: fir_tree.check.distinct_arc_semantics
     severity: hard
     statement: >
-      自检: R1~R4 圆弧半径不得全部相等。如果所有圆弧使用同一半径值，
-      说明LLM未正确区分四类工程圆弧。
+      自检: M_B1~M_B4 是否作为四个独立语义参数存在(各自有独立的 parameter key)？
+      如果四个圆弧被合并为一个变量或自动绑定，说明LLM未正确区分四类工程圆弧。
+      数值相等本身不违规(用户可显式指定相同值)，但语义合并违规。
     applies_to: [fir_tree_groove]
 
   - rule_id: fir_tree.check.no_uniform_fillet

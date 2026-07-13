@@ -293,7 +293,7 @@ def auto_fix_with_report(
     _apply_fix("fix_phase_ordering", lambda d: _fix_phase_ordering(d, dialect_registry))
     _apply_fix("fix_profile_stations", lambda d: _fix_profile_stations(d), severity="semantic_guess", confidence=0.85)
     _apply_fix("fix_slot_station_order", lambda d: _fix_slot_station_order(d))
-    _apply_fix("fix_slot_half_profile", lambda d: _fix_slot_half_profile(d))
+    _apply_fix("fix_slot_half_profile", lambda d: _fix_slot_half_profile(d), severity="semantic_guess", confidence=0.6)
     _apply_fix("fill_default_params", lambda d: _fill_default_params(d))
     _apply_fix("fix_fillet_zero_radius", lambda d: _fix_fillet_zero_radius(d))
     _apply_fix("fix_null_hints", lambda d: _fix_null_hints(d))

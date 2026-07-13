@@ -3,10 +3,12 @@
 
 ## Coordinate System
 
-- sketch plane: XY (X = radial inward from rim, Y = tangential half-width)
+- sketch plane: XY
+- origin: groove mouth center on rim surface
+- +X: radial inward, from rim toward disc center (slot depth direction)
+- +Y: tangential (half-width direction)
 - groove centerline: Y = 0
-- rim surface: X = 0
-- slot depth direction: negative X (toward disc center)
+- slot depth values: X >= 0 (positive going inward)
 
 ## Construction Sequence
 
@@ -22,15 +24,25 @@
    - Draw lower tooth tip arc (radius M_B2)
    - Draw lower non-working flank
    - Draw bottom transition arc (radius M_B1)
-   - Close to centerline at groove root depth
+   - Close to centerline (Y=0) at groove root depth (X = groove_depth_mm)
 
-3. **Mirror**: `mirror_profile(axis="Y")` to get left half
+3. **Mirror**: `mirror_profile(axis="X")` to get left half (Y <= 0).
+   Mirroring about X axis maps +Y to -Y while preserving X (depth) coordinates.
 
 4. **Close**: `close_profile()`
 
-5. **3D cutting**: `extrude_profile(depth_mm=<rim_thickness>, direction="both")`
+5. **3D cutting**:
+   - If MM_A (broach angle) is non-zero: rotate the cutter or its extrusion
+     direction by MM_A relative to the disc meridian plane.
+     Do NOT use an un-rotated straight slot cutter when MM_A != 0.
+   - Extrude: `extrude_profile(depth_mm=<rim_thickness>, direction="both")`
 
-6. **Pattern**: `circular_pattern_component(count=MM_N, radius_mm=M_R1, rotate_copies=True)`
+6. **Pattern**:
+   - `circular_pattern_component(count=MM_N, rotate_copies=True)`
+   - NOTE: M_R1 is the first-tooth pitch-line reference radius (from disc axis).
+     The pattern radius should be derived from M_R1 and the local origin offset.
+     Do NOT directly use M_R1 as the pattern radius_mm without deriving the
+     relationship between the pitch-line radius and the cutter local origin.
 
 7. **Boolean**: `boolean_cut(target=disc_body, tool=patterned_cutters)`
 
@@ -41,3 +53,5 @@
 - fillet_sketch@2.0.0 should only be used for non-design-profile transition radii
 - Each arc class (M_B1~M_B4) gets its own independent radius
 - Working vs non-working flanks must be distinguishable
+- MM_A controls broach orientation — do not ignore it
+- MM_N controls pattern count — do not hardcode to 60
