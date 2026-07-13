@@ -764,12 +764,44 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                 rt_success = True
                 break
 
-            # Runtime failed — feed error to LLM for repair
+            # Runtime failed — try deterministic auto-fix first
             occ_error = rr.error or "Unknown OCC error"
-            # Extract the failing node name from the error traceback
             import re as _re
             failed_node_match = _re.search(r"node\.id[=:]\s*['\"](\w+)['\"]", occ_error)
             failed_node = failed_node_match.group(1) if failed_node_match else "unknown"
+
+            # Deterministic fix: FILLET_SHARED_EDGE_TOO_SHORT → auto-reduce radius
+            if "suggested_max_radius_mm" in occ_error:
+                try:
+                    suggested_maxes = _re.findall(
+                        r"'suggested_max_radius_mm':\s*([\d.]+)", occ_error
+                    )
+                    corner_ids = _re.findall(r"'corner_id':\s*'(\w+)'", occ_error)
+                    if suggested_maxes and corner_ids:
+                        for node in rt_current_doc.get("nodes", []):
+                            if node.get("op") == "fillet_sketch":
+                                targets = node.get("params", {}).get("targets", [])
+                                for t in targets:
+                                    cid = t.get("corner_id", "")
+                                    for bad_cid, sm in zip(corner_ids, suggested_maxes):
+                                        if bad_cid == cid:
+                                            new_r = round(float(sm) * 0.85, 2)
+                                            old_r = t.get("radius_mm", 0)
+                                            t["radius_mm"] = new_r
+                                            _update_task(task_id, status="processing",
+                                                progress=88,
+                                                result={"stage": f"Auto-reduced {cid} radius {old_r}→{new_r}"})
+                        (out_dir/"raw_fixed.json").write_text(
+                            json.dumps(rt_current_doc, indent=2, ensure_ascii=False), encoding="utf-8")
+                        # Re-validate and continue to next runtime round
+                        try:
+                            canonical, report, bundle = validate_and_canonicalize_with_bundle(rt_current_doc)
+                            if canonical and report.ok:
+                                continue  # go to next runtime round
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
 
             rt_issues = [{
                 "code": "RUNTIME_OCC_FAILURE",
