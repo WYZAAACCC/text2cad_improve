@@ -1,0 +1,22 @@
+# Documented structural conflicts within the KT787 source material
+# These are communicated to the LLM so it can ask for clarification when needed
+
+- conflict_id: kt787.tooth_topology_variant
+  interpretation_a:
+    id: two_pair_large_radius
+    evidence:
+      - "2对榫齿"
+      - "大圆角"
+      - "半圆形榫齿"
+  interpretation_b:
+    id: three_tooth_trapezoidal
+    evidence:
+      - "三齿梯形榫头连接形式"
+  selected_interpretation:
+    id: figure_2_4_topology
+    note: "图2-4和图3-2显示特定的R1~R4拓扑关系"
+  resolution_policy:
+    require_clarification_when:
+      - user_requests_three_tooth
+      - user_requests_trapezoidal
+      - user_supplies_conflicting_parameters

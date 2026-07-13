@@ -1,0 +1,40 @@
+rules:
+  - rule_id: fir_tree.centerline_symmetry
+    severity: hard
+    statement: >
+      榫槽左右轮廓必须关于槽中心线严格对称。应先生成一侧语义轮廓
+      (使用 add_line_segment + add_arc_segment)，再通过 mirror_profile
+      操作得到另一侧。禁止 LLM 同时输出左右两套坐标。
+    rationale: >
+      手工输出镜像坐标必然引入不对称误差，且使模型尺寸加倍增大LLM出错概率。
+    applies_to: [fir_tree_groove]
+
+  - rule_id: fir_tree.lines_and_tangent_arcs
+    severity: hard
+    statement: >
+      榫槽由具有工程语义的工作面、非工作面、齿端圆弧、齿根圆弧和底部
+      过渡圆弧组成，不是任意锯齿折线。设计轮廓中的关键圆弧应优先通过
+      add_arc_segment 显式构造，而非先画尖角折线再对所有顶点调用 fillet。
+    applies_to: [fir_tree_groove]
+
+  - rule_id: fir_tree.no_global_fillet
+    severity: hard
+    statement: >
+      禁止对全部内部顶点统一倒圆。只允许在设计规定的圆弧角色位置
+      (R1~R4)创建圆弧或圆角。每个圆弧位置应有独立半径。
+    applies_to: [fir_tree_groove]
+
+  - rule_id: fir_tree.distinct_arc_classes
+    severity: hard
+    statement: >
+      M_B1(底部过渡圆弧)、M_B2(下齿齿端圆弧)、M_B3(齿间齿根圆弧)、
+      M_B4(上齿齿端圆弧)是不同工程圆弧类别。除非用户明确给出相等值，
+      不得合并为一个公共半径。
+    applies_to: [fir_tree_groove]
+
+  - rule_id: fir_tree.mirror_not_duplicate
+    severity: strong_preference
+    statement: >
+      优先通过 mirror_profile(axis="Y") 建立对称侧，而不是在 add_polyline
+      中手动输出右侧12点+左侧12点共24个坐标。
+    applies_to: [fir_tree_groove]

@@ -1,0 +1,43 @@
+# KT787 Fir-Tree Groove Construction Strategy
+# This is guidance for the LLM, NOT deterministic code.
+
+## Coordinate System
+
+- sketch plane: XY (X = radial inward from rim, Y = tangential half-width)
+- groove centerline: Y = 0
+- rim surface: X = 0
+- slot depth direction: negative X (toward disc center)
+
+## Construction Sequence
+
+1. **Local coordinate system**: origin at rim surface on groove centerline
+
+2. **Build ONE SIDE only** (right half, Y >= 0):
+   - Start at mouth: (0, mouth_half_width)
+   - Draw upper working flank (inclined, pressure angle M_A3)
+   - Draw upper tooth tip arc (radius M_B4)
+   - Draw upper non-working flank (inclined, tooth form angle M_A2)
+   - Draw inter-tooth root arc (radius M_B3)
+   - Draw lower working flank
+   - Draw lower tooth tip arc (radius M_B2)
+   - Draw lower non-working flank
+   - Draw bottom transition arc (radius M_B1)
+   - Close to centerline at groove root depth
+
+3. **Mirror**: `mirror_profile(axis="Y")` to get left half
+
+4. **Close**: `close_profile()`
+
+5. **3D cutting**: `extrude_profile(depth_mm=<rim_thickness>, direction="both")`
+
+6. **Pattern**: `circular_pattern_component(count=MM_N, radius_mm=M_R1, rotate_copies=True)`
+
+7. **Boolean**: `boolean_cut(target=disc_body, tool=patterned_cutters)`
+
+## Key Principles
+
+- Build explicit arcs (add_arc_segment) for R1~R4, NOT post-hoc filleting of sharp corners
+- LLM calculates control points, tangency points, and arc centers based on engineering parameters
+- fillet_sketch@2.0.0 should only be used for non-design-profile transition radii
+- Each arc class (M_B1~M_B4) gets its own independent radius
+- Working vs non-working flanks must be distinguishable

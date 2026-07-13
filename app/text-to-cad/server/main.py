@@ -322,7 +322,26 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                          result={"stage": f"L1: forced to {force_route}"})
         else:
             _update_task(task_id, status="processing", progress=20, result={"stage": "L1 routing"})
-            l1 = build_level1_routing_prompt(text, dialect_catalog=reg.export_catalog())
+
+            # ── Load knowledge pack summaries for L1 ──
+            knowledge_summaries = None
+            try:
+                from seekflow_engineering_tools.generative_cad.knowledge.registry import KnowledgeRegistry
+                from seekflow_engineering_tools.generative_cad.knowledge.resolver import compile_l1_summary
+                kr = KnowledgeRegistry()
+                packs_root = Path(__file__).resolve().parents[3] / "integrations/engineering_tools/src/seekflow_engineering_tools/generative_cad/knowledge/packs"
+                kr.discover(packs_root)
+                if kr.list_manifests():
+                    knowledge_summaries = compile_l1_summary(
+                        [kr.get(m.skill_id) for m in kr.list_manifests() if kr.get(m.skill_id)]
+                    )
+            except Exception:
+                pass
+
+            l1 = build_level1_routing_prompt(
+                text, dialect_catalog=reg.export_catalog(),
+                knowledge_summaries=knowledge_summaries,
+            )
             l1_tool = build_level1_tool()
             LEGACY = {"axisymmetric_base":"axisymmetric","sketch_extrude_base":"sketch_extrude",
                       "loft_sweep_base":"loft_sweep","shell_housing_base":"shell_housing","composition_base":"composition"}
@@ -333,8 +352,13 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                         tool_name=l1_tool["function"]["name"], tool_description=l1_tool["function"]["description"],
                         tool_schema=l1_tool["function"]["parameters"], model_config=config)
                     args = dict(tc.arguments)
-                    for s in args.get("selected_domain_skills",[]):
-                        if not s.get("skill_version"): s["skill_version"]="1.0"
+                    # Validate selected domain skills against registry
+                    if kr is not None and args.get("selected_domain_skills"):
+                        skill_errors = kr.validate_selections(args["selected_domain_skills"])
+                        if skill_errors:
+                            args.setdefault("safety_notes", []).append(
+                                f"Knowledge pack validation: {'; '.join(skill_errors)}"
+                            )
                     plan = DialectSelectionPlan.model_validate(args)
                     for sd in plan.selected_dialects:
                         if sd.dialect in LEGACY: sd.dialect = LEGACY[sd.dialect]
@@ -384,26 +408,36 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
 
         # ---- L2 Author (with context injection) ----
         _update_task(task_id, status="processing", progress=45, result={"stage": "L2 authoring"})
-        try:
-            l2 = build_level2_authoring_prompt(text, plan)
 
-            # 构建增强 user prompt：核心约束 + 使用指导 + 反例 + 用户请求
+        # ── Resolve knowledge packs (if any were selected by L1) ──
+        knowledge_prompt = ""
+        try:
+            from seekflow_engineering_tools.generative_cad.knowledge.registry import KnowledgeRegistry
+            from seekflow_engineering_tools.generative_cad.knowledge.resolver import (
+                KnowledgeResolver, compile_l2_knowledge,
+            )
+            kr = KnowledgeRegistry()
+            packs_root = Path(__file__).resolve().parents[3] / "integrations/engineering_tools/src/seekflow_engineering_tools/generative_cad/knowledge/packs"
+            kr.discover(packs_root)
+            resolver = KnowledgeResolver(kr)
+            if plan.selected_domain_skills:
+                resolved = resolver.resolve([
+                    {"skill_id": s.skill_id, "skill_version": s.skill_version}
+                    for s in plan.selected_domain_skills
+                ])
+                if resolved.ok:
+                    knowledge_prompt = compile_l2_knowledge(resolved, token_budget=3000)
+        except Exception:
+            pass  # knowledge packs are optional — don't block generation
+
+        try:
+            l2 = build_level2_authoring_prompt(text, plan, knowledge_prompt=knowledge_prompt)
+
             user_parts = []
 
-            # 1. 关键约束摘要
-            constraints_block = (
-                "CRITICAL MODELING CONSTRAINTS:\n"
-                "- For axisymmetric disk bodies with varying thickness (hub thick→web thin→rim thick):\n"
-                "  use sketch_profile: create_2d_sketch(plane=XZ) → add_polyline(R-Z polygon points) → close_profile → revolve_profile\n"
-                "  NOT axisymmetric.revolve_profile (Z-sorts stations, cannot express thickness-by-radius profiles)\n"
-                "- For fir-tree slot cutters: sketch_profile → create_2d_sketch(plane=XY) → add_polyline (neck/lobe alternation)\n"
-                "  → close_profile → fillet_sketch → mirror_profile → extrude_profile\n"
-                "- For patterning: composition → circular_pattern_component(rotate_copies=True) → boolean_cut\n"
-                "- Every sketch_profile component MUST include the complete chain: sketch → polyline → close → extrude/revolve\n"
-                "- Every component root_node must be a node that exists and outputs body:solid\n"
-                "- Do NOT use axisymmetric.revolve_profile for thickness-by-radius profiles"
-            )
-            user_parts.append(constraints_block)
+            # 1. Domain knowledge (from versioned Knowledge Packs)
+            if l2.get("knowledge_prompt"):
+                user_parts.append(l2["knowledge_prompt"])
 
             # 2. 使用指导
             usage = l2.get("usage_skills", {})

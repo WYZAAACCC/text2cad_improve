@@ -1,0 +1,35 @@
+rules:
+  - rule_id: fir_tree.check.no_24_point_template
+    severity: hard
+    statement: >
+      自检: GCAD 中不得出现固定24点折线模板。如果 add_polyline 的 points
+      数组恰好包含24个点且其中12个Y≥0、12个Y≤0，必须标记为可疑模板使用。
+    applies_to: [fir_tree_groove]
+
+  - rule_id: fir_tree.check.distinct_arc_radii
+    severity: hard
+    statement: >
+      自检: R1~R4 圆弧半径不得全部相等。如果所有圆弧使用同一半径值，
+      说明LLM未正确区分四类工程圆弧。
+    applies_to: [fir_tree_groove]
+
+  - rule_id: fir_tree.check.no_uniform_fillet
+    severity: hard
+    statement: >
+      自检: 不得出现对全部内部顶点使用同一 radius_mm 的 fillet_sketch 调用。
+    applies_to: [fir_tree_groove]
+
+  - rule_id: fir_tree.check.working_vs_nonworking
+    severity: strong_preference
+    statement: >
+      自检: 是否区分了工作面和被工作面？如果所有齿侧面使用相同角度，
+      说明M_A2(齿形角)和M_A3(压力角)的语义可能被混淆。
+    applies_to: [fir_tree_groove]
+
+  - rule_id: fir_tree.check.no_hardcoded_params
+    severity: hard
+    statement: >
+      自检: 槽数、阵列半径、拉伸深度不得硬编码为固定值。
+      circular_pattern_component 的 count 参数应来自 MM_N，
+      radius_mm 应来自 M_R1。
+    applies_to: [fir_tree_groove]

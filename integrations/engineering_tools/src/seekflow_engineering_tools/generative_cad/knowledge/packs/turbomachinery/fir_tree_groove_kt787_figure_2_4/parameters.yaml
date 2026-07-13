@@ -1,0 +1,41 @@
+rules:
+  - rule_id: fir_tree.parameter_semantics
+    severity: hard
+    statement: >
+      榫槽参数必须使用工程语义名称，不得使用 W_lobe1、W_lobe2 等经验宽度代号。
+      标准参数包括: MM_N(榫槽数量), MM_A(拉削角), M_R1(基准面径向位置),
+      M_R2(槽深), M_W3(颈部宽度), M_W1(齿距), M_W2(节线齿厚),
+      M_H1(齿根高), M_H2(齿顶高), M_A1(楔角), M_A2(齿形角),
+      M_A3(压力角), M_B1~M_B4(四类圆弧半径), LM_WW(非工作面配合间隙)。
+    applies_to: [fir_tree_groove]
+
+  - rule_id: fir_tree.pressure_angle
+    severity: hard
+    statement: >
+      M_A3 控制工作面方向(工作面与节线法向夹角)，不得将其用作整个轮廓旋转角。
+    applies_to: [fir_tree_groove]
+
+  - rule_id: fir_tree.tooth_form_angle
+    severity: hard
+    statement: >
+      M_A2 控制工作面与非工作面之间的齿形角。
+    applies_to: [fir_tree_groove]
+
+  - rule_id: fir_tree.wedge_angle
+    severity: hard
+    statement: >
+      M_A1 控制两条节线夹角(楔角)，不得与 M_A2(齿形角)或 M_A3(压力角)混用。
+    applies_to: [fir_tree_groove]
+
+  - rule_id: fir_tree.nonworking_clearance
+    severity: hard
+    statement: >
+      LM_WW 仅施加于指定的非工作配合面，禁止对整个轮廓进行全局偏置。
+    applies_to: [fir_tree_groove]
+
+  - rule_id: fir_tree.no_hardcoded_dims
+    severity: hard
+    statement: >
+      禁止硬编码以下值: 固定槽数60、固定阵列半径250mm、固定拉伸深度80mm、
+      固定圆角半径1.5mm。这些值必须从用户输入或工程参数推导。
+    applies_to: [fir_tree_groove]

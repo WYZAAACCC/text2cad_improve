@@ -35,12 +35,14 @@ def build_level1_routing_prompt(
     dialect_catalog: dict | None = None,
     domain_skill_ids: list[str] | None = None,
     primitive_catalog: dict | None = None,
+    knowledge_summaries: list[dict] | None = None,
 ) -> dict:
     """Build a Level-1 routing prompt for dialect selection.
 
-    Includes both dialect catalog and primitive catalog so the LLM
-    can make informed routing decisions (deterministic_primitive vs
-    generative_cad_ir vs unsupported).
+    Includes dialect catalog, primitive catalog, and knowledge pack summaries
+    so the LLM can make informed routing decisions.
+    *knowledge_summaries* is produced by compile_l1_summary() from the
+    knowledge registry — it is a compact list of available domain packs.
     """
     if dialect_catalog is None:
         dialect_catalog = export_dialect_catalog()
@@ -66,6 +68,7 @@ def build_level1_routing_prompt(
         except Exception:
             primitive_catalog = {}
 
+    # Load domain skill markdown (legacy flat files — being replaced by knowledge packs)
     domain_skills = {}
     for sid in (domain_skill_ids or list_domain_skills()):
         try:
@@ -83,11 +86,16 @@ def build_level1_routing_prompt(
         user_message += json.dumps(primitive_catalog, indent=2, ensure_ascii=False)
     if dialect_catalog:
         user_message += "\n\n--- Available Generative CAD Dialects ---\n"
-        user_message += "The following generative dialects are available for reference-geometry "
-        user_message += "CAD generation. PREFER generative_cad_ir for complex parts (turbine discs, "
-        user_message += "brackets, housings, impellers, etc.) — it provides general CAD modeling "
-        user_message += "capability via sketch + extrude + revolve + boolean + pattern operations.\n\n"
+        user_message += "The following generative dialects are available. Prefer "
+        user_message += "generative_cad_ir for complex parts — it provides general CAD "
+        user_message += "modeling via sketch + extrude + revolve + boolean + pattern operations.\n\n"
         user_message += json.dumps(dialect_catalog, indent=2, ensure_ascii=False)
+    if knowledge_summaries:
+        user_message += "\n\n--- Available Domain Knowledge Packs ---\n"
+        user_message += "Select knowledge packs via selected_domain_skills if the request "
+        user_message += "matches their trigger terms. Each pack provides versioned engineering "
+        user_message += "rules that will be injected into the L2 authoring prompt.\n\n"
+        user_message += json.dumps(knowledge_summaries, indent=2, ensure_ascii=False)
 
     return {
         "system": LEVEL1_ROUTING_SYSTEM_PROMPT,
@@ -106,12 +114,18 @@ def build_level2_authoring_prompt(
     usage_skills: dict[str, str] | None = None,
     *,
     strict_usage_skill: bool = True,
+    knowledge_prompt: str = "",
 ) -> dict:
     """Build a Level-2 authoring prompt for RawGcadDocument generation.
 
     When *usage_skills* is None (the default), Level-2 usage skills are
     automatically loaded from registered BasePackages. This ensures the
     LLM always has accurate, contract-synchronized operation guidance.
+
+    *knowledge_prompt* is optional domain knowledge compiled by
+    compile_l2_knowledge() from the Knowledge Pack system. It injects
+    versioned engineering rules without hardcoding domain specifics
+    in the system prompt.
 
     Args:
         user_request: The original user request text.
@@ -121,6 +135,7 @@ def build_level2_authoring_prompt(
             from BasePackages if None.
         strict_usage_skill: If True (default), fail when a selected dialect
             has no registered BasePackage. Set False for developer mode.
+        knowledge_prompt: Domain knowledge markdown from Knowledge Pack system.
     """
     if isinstance(selection_plan, dict):
         selection_plan = DialectSelectionPlan.model_validate(selection_plan)
@@ -171,6 +186,7 @@ def build_level2_authoring_prompt(
         "contracts": contracts,
         "usage_skills": usage_skills or {},
         "anti_examples": anti_examples,
+        "knowledge_prompt": knowledge_prompt,
     }
 
 
