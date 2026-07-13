@@ -101,10 +101,13 @@ def handle_add_polyline(node, ctx) -> dict:
     # Accumulate polyline points for downstream operations (e.g. fillet_sketch)
     acc = _get_state(ctx, cid, "polyline_points", [])
     acc_points = [(float(p.get("x_mm", 0)), float(p.get("y_mm", 0))) for p in points]
-    if acc:
-        # Bridge gap: insert last point of previous segment as first of new batch
+    if not acc:
+        # First polyline segment: keep all points including p0
+        acc.extend(acc_points)
+    else:
+        # Bridge gap: insert first point of new segment as continuation
         acc.append(acc_points[0])
-    acc.extend(acc_points[1:])
+        acc.extend(acc_points[1:])
     _set_state(ctx, cid, "polyline_points", acc)
     handle_id = f"profile:{cid}:{node.id}:profile"
     ctx.object_store.put(RuntimeHandle(id=handle_id, type="profile"), wp)
@@ -124,7 +127,14 @@ def handle_add_arc_segment(node, ctx) -> dict:
     lp = _get_state(ctx, cid, "last_point")
     if lp: wp = wp.moveTo(lp[0], lp[1])
     else: wp = wp.moveTo(sx, sy)
-    radius = math.hypot(sx - cx, sy - cy)
+    r_start = math.hypot(sx - cx, sy - cy)
+    r_end = math.hypot(ex - cx, ey - cy)
+    if abs(r_start - r_end) > max(r_start, r_end) * 1e-4 + 1e-6:
+        raise ValueError(
+            f"add_arc_segment on '{node.id}': start→center ({r_start:.4f} mm) "
+            f"≠ end→center ({r_end:.4f} mm) — center is not equidistant"
+        )
+    radius = r_start
     wp = wp.radiusArc((ex, ey), -radius if direction == "cw" else radius)
     _set_state(ctx, cid, "wp", wp)
     _set_state(ctx, cid, "last_point", (ex, ey))
@@ -164,6 +174,24 @@ def handle_close_profile(node, ctx) -> dict:
         except (ValueError, AttributeError):
             pass  # wire already closed (e.g. by mirror_profile or fillet_sketch)
         _set_state(ctx, cid, "wp", wp)
+        # Verify the wire is actually closed — do NOT trust the catch-all pass above
+        try:
+            wires = wp.wires().vals()
+            if len(wires) != 1:
+                ctx.warnings.append(
+                    f"close_profile on '{node.id}': expected 1 wire, got {len(wires)}"
+                )
+            elif not wires[0].IsClosed():
+                if getattr(node, "required", True):
+                    raise RuntimeError(
+                        f"close_profile on '{node.id}': wire is not closed after close()"
+                    )
+                ctx.warnings.append(
+                    f"close_profile on '{node.id}': wire is not closed — "
+                    f"profile may produce invalid geometry"
+                )
+        except Exception:
+            pass  # wire introspection failed, trust CadQuery close() result
     _set_state(ctx, cid, "closed", True)
     handle_id = f"profile:{cid}:{node.id}:profile"
     ctx.object_store.put(RuntimeHandle(id=handle_id, type="profile"), wp)
@@ -386,10 +414,13 @@ def handle_fillet_sketch(node, ctx) -> dict:
     plane = _get_state(ctx, cid, "sketch_plane", "XY")
 
     if not target_indices:
-        ctx.warnings.append(
+        msg = (
             f"fillet_sketch on '{node.id}': at_vertex_index empty — "
             f"no filleting applied (must specify explicit vertex indices)"
         )
+        if getattr(node, "required", True):
+            raise RuntimeError(msg)
+        ctx.warnings.append(msg)
     else:
         try:
             # Ensure wire is closed before filleting
@@ -401,6 +432,11 @@ def handle_fillet_sketch(node, ctx) -> dict:
             wires = wp.wires().vals()
             if not wires:
                 raise RuntimeError("no wire found in workplane")
+            if len(wires) > 1:
+                ctx.warnings.append(
+                    f"fillet_sketch on '{node.id}': {len(wires)} wires found, "
+                    f"using wires[0] — vertex indices may not be reliable"
+                )
 
             wire = wires[0]
             all_verts = wire.Vertices()
@@ -430,10 +466,14 @@ def handle_fillet_sketch(node, ctx) -> dict:
 
                 ctx.operation_metrics.append({
                     "node_id": node.id, "op": "fillet_sketch",
-                    "radius_mm": radius, "n_vertices": len(selected),
+                    "radius_mm": radius, "n_vertices_selected": len(selected),
                     "engine": "OCC_fillet2D",
                 })
         except Exception as e:
+            if getattr(node, "required", True):
+                raise RuntimeError(
+                    f"required fillet_sketch failed on '{node.id}': {e}"
+                ) from e
             ctx.warnings.append(
                 f"fillet_sketch on '{node.id}': OCC fillet2D failed ({e}), "
                 f"keeping original profile"
