@@ -756,7 +756,7 @@ def api_fea_execute(req: FeaExecuteBody):
     from server.fea_pipeline import execute_fea_template
     threading.Thread(target=execute_fea_template, args=(
         req.template_name, req.parameters, req.jobname, _fea_tasks, task_id,
-    ), daemon=True).start()
+    ), kwargs={"lock": _fea_lock}, daemon=True).start()
     return {"task_id": task_id}
 
 @app.get("/api/fea/result/{task_id}")

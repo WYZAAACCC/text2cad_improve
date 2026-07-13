@@ -74,8 +74,15 @@ export default function StressHeatmap({ stressField, discOutline, yieldMpa = 900
     canvas.style.height = height + 'px';
     ctx.scale(dpr, dpr);
 
-    // Compute bounds from data
-    const rMin = 60, rMax = 250, zMin = -40, zMax = 40;
+    // Compute bounds from data (with 5% padding)
+    const rVals = stressField.map(p => p.r_mm);
+    const zVals = stressField.map(p => p.z_mm);
+    const rMinData = Math.min(...rVals), rMaxData = Math.max(...rVals);
+    const zMinData = Math.min(...zVals), zMaxData = Math.max(...zVals);
+    const rPad = (rMaxData - rMinData) * 0.05 || 1;
+    const zPad = (zMaxData - zMinData) * 0.05 || 1;
+    const rMin = rMinData - rPad, rMax = rMaxData + rPad;
+    const zMin = zMinData - zPad, zMax = zMaxData + zPad;
     const gridW = Math.floor(width / 2);
     const gridH = Math.floor(height / 2);
     const grid = interpolateGrid(stressField, rMin, rMax, zMin, zMax, gridW, gridH);
