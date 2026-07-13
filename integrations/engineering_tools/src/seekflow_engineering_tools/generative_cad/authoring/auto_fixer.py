@@ -1312,26 +1312,12 @@ def _fix_chamfer_fillet_optional(doc: dict) -> dict:
             node["required"] = False
             node["degradation_policy"] = "may_skip_with_warning"
         elif op == "fillet_sketch":
-            # V1 (at_vertex_index) → always optional
-            # V2 (targets) → optional for non-fir-tree transitions,
-            #   required for fir-tree arc classes (M_B1~M_B4)
+            # V1 (at_vertex_index) → always optional (unstable vertex indices)
+            # V2 (targets) → KEEP fail-closed (handler has _fail_or_warn for non-required)
+            #   V2 handler handles failures gracefully; don't override its semantics.
             if "targets" not in node.get("params", {}):
                 node["required"] = False
                 node["degradation_policy"] = "may_skip_with_warning"
-            else:
-                # V2: check if any target is a fir-tree arc class.
-                # M_B markers appear in corner_id (e.g. "M_B1_bottom_transition")
-                # and/or engineering_role.
-                targets = node["params"].get("targets", [])
-                has_fir_tree = any(
-                    "M_B" in str(t.get("corner_id", "")) or
-                    "M_B" in str(t.get("engineering_role", "")) or
-                    "fir" in str(t.get("corner_id", "")).lower()
-                    for t in targets
-                )
-                if not has_fir_tree:
-                    node["required"] = False
-                    node["degradation_policy"] = "may_skip_with_warning"
     return doc
 
 
