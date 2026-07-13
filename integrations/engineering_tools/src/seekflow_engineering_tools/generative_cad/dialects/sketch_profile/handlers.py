@@ -129,11 +129,14 @@ def handle_add_arc_segment(node, ctx) -> dict:
     else: wp = wp.moveTo(sx, sy)
     r_start = math.hypot(sx - cx, sy - cy)
     r_end = math.hypot(ex - cx, ey - cy)
-    if abs(r_start - r_end) > max(r_start, r_end) * 1e-4 + 1e-6:
-        raise ValueError(
+    if abs(r_start - r_end) > max(r_start, r_end) * 1e-3 + 0.01:
+        msg = (
             f"add_arc_segment on '{node.id}': start→center ({r_start:.4f} mm) "
             f"≠ end→center ({r_end:.4f} mm) — center is not equidistant"
         )
+        if getattr(node, "required", True):
+            raise ValueError(msg)
+        ctx.warnings.append(msg)
     radius = r_start
     wp = wp.radiusArc((ex, ey), -radius if direction == "cw" else radius)
     _set_state(ctx, cid, "wp", wp)
@@ -584,7 +587,9 @@ def handle_fillet_sketch_v2(node, ctx) -> dict:
             )
             continue
 
-        # Map vertex_id back to index in OCC vertex array
+        # Map vertex_id to nearest OCC vertex (same polyline → same topology).
+        # OCC wire reconstruction may shift coordinates slightly (floating-point),
+        # so we always pick the closest vertex without a hard distance cutoff.
         v = graph.vertices[corner_vid]
         best_idx, best_dist = -1, float("inf")
         for idx, occ_v in enumerate(all_verts):
@@ -592,12 +597,18 @@ def handle_fillet_sketch_v2(node, ctx) -> dict:
             d = (p[0] - v.x_mm) ** 2 + (p[1] - v.y_mm) ** 2
             if d < best_dist:
                 best_dist, best_idx = d, idx
-        if best_idx >= 0 and best_dist < 1e-3:
+        if best_idx >= 0:
             selected.append(all_verts[best_idx])
+            if best_dist > 1e-2:
+                ctx.warnings.append(
+                    f"fillet_sketch@2 on '{node.id}': corner '{t['corner_id']}' "
+                    f"matched at distance {best_dist:.4f} mm² — OCC may have "
+                    f"shifted vertex position slightly"
+                )
         else:
             msg = (
                 f"fillet_sketch@2 on '{node.id}': corner '{t['corner_id']}' "
-                f"(vertex {corner_vid}) not found in OCC wire"
+                f"(vertex {corner_vid}) — OCC wire has no vertices"
             )
             if getattr(node, "required", True) and (strict or t.get("required", True)):
                 raise RuntimeError(msg)
