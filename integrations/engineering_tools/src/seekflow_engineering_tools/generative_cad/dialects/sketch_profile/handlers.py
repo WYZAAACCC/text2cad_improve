@@ -530,13 +530,36 @@ def handle_fillet_sketch_v2(node, ctx) -> dict:
     closed = _get_state(ctx, cid, "closed", False)
     plane = _get_state(ctx, cid, "sketch_plane", "XY")
 
-    # ── Build ProfileGraph from stored polyline points ──
-    points = _get_state(ctx, cid, "polyline_points", [])
-    if len(points) < 3:
-        return _fail_or_warn(
-            f"polyline_points has {len(points)} points (need ≥3 to build ProfileGraph)"
-        )
-    graph = ProfileGraph.from_polyline(points, wire_id=wire_id)
+    # ── Build ProfileGraph from OCC wire vertices ──
+    # The OCC wire is the source of truth — it captures ALL segments
+    # (add_polyline, add_line_segment, add_arc_segment), not just polyline.
+    # polyline_points only tracks add_polyline calls and misses
+    # add_line_segment/add_arc_segment, causing edge ID mismatches.
+    occluded_graph = None
+    try:
+        if not closed:
+            wp = wp.close()
+        occ_wires = wp.wires().vals()
+        if occ_wires:
+            occ_wire = occ_wires[0]
+            occ_verts = occ_wire.Vertices()
+            occ_points = [(v.toTuple()[0], v.toTuple()[1]) for v in occ_verts]
+            if len(occ_points) >= 3:
+                occluded_graph = ProfileGraph.from_polyline(occ_points, wire_id=wire_id)
+    except Exception:
+        pass
+
+    # Fall back to polyline_points if OCC wire extraction fails
+    if occluded_graph is None:
+        points = _get_state(ctx, cid, "polyline_points", [])
+        if len(points) < 3:
+            return _fail_or_warn(
+                f"polyline_points has {len(points)} points and OCC wire unavailable "
+                f"(need ≥3 to build ProfileGraph)"
+            )
+        occluded_graph = ProfileGraph.from_polyline(points, wire_id=wire_id)
+
+    graph = occluded_graph
 
     # ── Feasibility pre-check ──
     feasibility = check_fillet_feasibility(graph, wire_id, targets)
