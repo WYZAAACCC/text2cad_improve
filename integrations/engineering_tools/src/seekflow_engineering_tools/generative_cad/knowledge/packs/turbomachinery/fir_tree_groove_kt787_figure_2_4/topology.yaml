@@ -34,8 +34,16 @@ rules:
     applies_to: [fir_tree_groove]
 
   - rule_id: fir_tree.mirror_not_duplicate
-    severity: strong_preference
+    severity: hard
     statement: >
-      优先通过 mirror_profile(axis="Y") 建立对称侧，而不是在 add_polyline
-      中手动输出右侧12点+左侧12点共24个坐标。
+      必须通过 mirror_profile(axis="X") 建立对称侧，而不是在 add_polyline
+      中手动输出右侧+左侧共两套坐标。单侧轮廓未镜像直接挤出是无效的——槽只有一半宽度。
+    applies_to: [fir_tree_groove]
+
+  - rule_id: fir_tree.local_coordinates
+    severity: hard
+    statement: >
+      榫槽 cutter 草图必须在局部坐标系中绘制：原点在槽口中心的轮缘表面。
+      X=0 在轮缘，X>0 向内。Y 方向为切向半宽，值域 0~8mm，不是盘体绝对坐标。
+      禁止使用盘体级别的 Y 值 (如 ±30mm) 绘制槽型。
     applies_to: [fir_tree_groove]

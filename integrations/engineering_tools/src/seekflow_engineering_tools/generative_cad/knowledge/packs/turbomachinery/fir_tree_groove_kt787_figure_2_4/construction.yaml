@@ -1,18 +1,24 @@
 # KT787 Fir-Tree Groove Construction Strategy
 # This is guidance for the LLM, NOT deterministic code.
 
-## Coordinate System
+## Coordinate System (CRITICAL — read carefully)
 
 - sketch plane: XY
-- origin: groove mouth center on rim surface
-- +X: radial inward, from rim toward disc center (slot depth direction)
-- +Y: tangential (half-width direction)
+- origin: groove mouth center on the rim surface — NOT at the disc global origin
+- +X: radial inward, from rim toward disc center (slot depth = X >= 0)
+- +Y: tangential half-width (small values: 0 to ~8mm)
 - groove centerline: Y = 0
-- slot depth values: X >= 0 (positive going inward)
+- **CRITICAL**: The slot cutter sketch is LOCAL. All coordinates are relative to
+  the groove mouth center on the rim, NOT absolute disc coordinates.
+  - X = 0 at the rim surface, X = 18-24 at the groove root
+  - Y = 0 at centerline, Y = 3-4 at mouth, Y = 7-8 at widest lobe
+  - Do NOT use disc-scale Y values like 30, 250, etc. — those are disc global, not slot local.
+- The pattern (circular_pattern_component) handles radial positioning at the rim.
+  The slot cutter sketch must be drawn at the LOCAL origin, not at disc radius.
 
 ## Construction Sequence
 
-1. **Local coordinate system**: origin at rim surface on groove centerline
+1. **Local coordinate system at rim**: X=0 at mouth, X>0 going inward
 
 2. **Build ONE SIDE only** (right half, Y >= 0):
    - Start at mouth: (0, mouth_half_width)
@@ -26,8 +32,9 @@
    - Draw bottom transition arc (radius M_B1)
    - Close to centerline (Y=0) at groove root depth (X = groove_depth_mm)
 
-3. **Mirror**: `mirror_profile(axis="X")` to get left half (Y <= 0).
+3. **Mirror (REQUIRED — do not skip)**: `mirror_profile(axis="X")` to get left half (Y <= 0).
    Mirroring about X axis maps +Y to -Y while preserving X (depth) coordinates.
+   The cutter MUST be mirrored before extrusion — a half-profile alone is invalid.
 
 4. **Close**: `close_profile()`
 
