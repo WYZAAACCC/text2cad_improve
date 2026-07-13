@@ -485,6 +485,183 @@ def handle_fillet_sketch(node, ctx) -> dict:
     return {"profile": handle_id}
 
 
+def handle_fillet_sketch_v2(node, ctx) -> dict:
+    """Semantic fillet_sketch@2.0.0 — stable corner identification via edge adjacency.
+
+    Uses ProfileGraph (built from polyline_points state) to resolve
+    corner_id + between_segments → vertex, then applies OCC fillet2D
+    with feasibility pre-check and postcondition verification.
+    """
+    from seekflow_engineering_tools.generative_cad.runtime.resolve import resolve_input_object
+    from seekflow_engineering_tools.generative_cad.dialects.sketch_profile.profile_graph import (
+        ProfileGraph,
+    )
+    from seekflow_engineering_tools.generative_cad.dialects.sketch_profile.fillet_solver import (
+        check_fillet_feasibility,
+    )
+    from seekflow_engineering_tools.generative_cad.dialects.sketch_profile.postconditions import (
+        check_closed, check_wire_count, check_fillet_arc_count,
+    )
+
+    params = node.params
+    wp = resolve_input_object(node, ctx, 0)
+    cid = node.component
+    wire_id = params.get("wire_id", "profile")
+    targets = params.get("targets", [])
+    strict = params.get("strict", True)
+
+    if not targets:
+        msg = f"fillet_sketch@2 on '{node.id}': no targets specified"
+        if getattr(node, "required", True):
+            raise RuntimeError(msg)
+        ctx.warnings.append(msg)
+        return _return_profile(ctx, cid, node)
+
+    closed = _get_state(ctx, cid, "closed", False)
+    plane = _get_state(ctx, cid, "sketch_plane", "XY")
+
+    # ── Build ProfileGraph from stored polyline points ──
+    points = _get_state(ctx, cid, "polyline_points", [])
+    if len(points) < 3:
+        raise RuntimeError(
+            f"fillet_sketch@2 on '{node.id}': polyline_points has "
+            f"{len(points)} points (need ≥3 to build ProfileGraph)"
+        )
+    graph = ProfileGraph.from_polyline(points, wire_id=wire_id)
+
+    # ── Feasibility pre-check ──
+    feasibility = check_fillet_feasibility(graph, wire_id, targets)
+    if not feasibility.all_feasible:
+        infeasible_detail = [
+            {"corner_id": t.corner_id, "error_code": t.error_code,
+             "edge_id": t.edge_id, "available_mm": t.edge_length_mm,
+             "required_mm": t.required_length_mm,
+             "suggested_max_radius_mm": t.suggested_max_radius_mm}
+            for t in feasibility.infeasible
+        ]
+        msg = (
+            f"fillet_sketch@2 on '{node.id}': {len(feasibility.infeasible)} "
+            f"target(s) infeasible — {infeasible_detail}"
+        )
+        if strict or getattr(node, "required", True):
+            raise RuntimeError(msg)
+        ctx.warnings.append(msg)
+        if len(feasibility.infeasible) == len(targets):
+            # All targets failed → return original profile
+            return _return_profile(ctx, cid, node)
+
+    # ── Ensure wire is closed ──
+    if not closed:
+        wp = wp.close()
+        _set_state(ctx, cid, "closed", True)
+        closed = True
+
+    wires = wp.wires().vals()
+    wc = check_wire_count(wires, 1)
+    if not wc.passed:
+        raise RuntimeError(f"fillet_sketch@2 on '{node.id}': {wc.message}")
+
+    wire = wires[0]
+    all_verts = wire.Vertices()
+    n_before = len(all_verts)
+
+    # ── Resolve semantic corners → OCC vertices ──
+    selected: list = []
+    for t in targets:
+        try:
+            corner_vid = graph.find_corner_vertex(
+                t["between_segments"][0], t["between_segments"][1], wire_id,
+            )
+        except (ValueError, KeyError) as exc:
+            if getattr(node, "required", True) and (strict or t.get("required", True)):
+                raise RuntimeError(
+                    f"fillet_sketch@2 on '{node.id}': "
+                    f"corner '{t['corner_id']}' not found — {exc}"
+                ) from exc
+            ctx.warnings.append(
+                f"fillet_sketch@2 on '{node.id}': skipping corner "
+                f"'{t['corner_id']}' — {exc}"
+            )
+            continue
+
+        # Map vertex_id back to index in OCC vertex array
+        v = graph.vertices[corner_vid]
+        best_idx, best_dist = -1, float("inf")
+        for idx, occ_v in enumerate(all_verts):
+            p = occ_v.toTuple()
+            d = (p[0] - v.x_mm) ** 2 + (p[1] - v.y_mm) ** 2
+            if d < best_dist:
+                best_dist, best_idx = d, idx
+        if best_idx >= 0 and best_dist < 1e-3:
+            selected.append(all_verts[best_idx])
+        else:
+            msg = (
+                f"fillet_sketch@2 on '{node.id}': corner '{t['corner_id']}' "
+                f"(vertex {corner_vid}) not found in OCC wire"
+            )
+            if getattr(node, "required", True) and (strict or t.get("required", True)):
+                raise RuntimeError(msg)
+            ctx.warnings.append(msg)
+
+    if not selected:
+        msg = f"fillet_sketch@2 on '{node.id}': no corners mapped to OCC vertices"
+        if getattr(node, "required", True):
+            raise RuntimeError(msg)
+        ctx.warnings.append(msg)
+        return _return_profile(ctx, cid, node)
+
+    # ── Apply filleting ──
+    try:
+        import cadquery as cq
+        first_radius = targets[0]["radius_mm"]
+        filleted_wire = wire.fillet2D(first_radius, selected)
+        wp = cq.Workplane(plane)
+        wp.ctx.pendingWires = [filleted_wire]
+        _set_state(ctx, cid, "closed", True)
+
+        # Postcondition: vertex count increased
+        new_verts = filleted_wire.Vertices()
+        arc_check = check_fillet_arc_count(n_before, len(new_verts), len(selected))
+        closed_check = check_closed(filleted_wire)
+        for check in (arc_check, closed_check):
+            if not check.passed:
+                ctx.warnings.append(
+                    f"fillet_sketch@2 on '{node.id}': {check.code} — {check.message}"
+                )
+
+        ctx.operation_metrics.append({
+            "node_id": node.id, "op": "fillet_sketch@2",
+            "runtime_version": "2.0.0",
+            "n_targets": len(targets),
+            "n_selected": len(selected),
+            "n_verts_before": n_before,
+            "n_verts_after": len(new_verts),
+            "feasibility": "ok" if feasibility.all_feasible else "partial",
+            "engine": "OCC_fillet2D+precheck",
+        })
+
+    except Exception as exc:
+        if getattr(node, "required", True):
+            raise RuntimeError(
+                f"required fillet_sketch@2 failed on '{node.id}': {exc}"
+            ) from exc
+        ctx.warnings.append(
+            f"fillet_sketch@2 on '{node.id}': OCC fillet2D failed ({exc}), "
+            f"keeping original profile"
+        )
+        return _return_profile(ctx, cid, node)
+
+    return _return_profile(ctx, cid, node)
+
+
+def _return_profile(ctx, cid: str, node) -> dict:
+    """Return the current profile handle for the component."""
+    handle_id = f"profile:{cid}:{node.id}:profile"
+    ctx.object_store._objects[handle_id] = _get_state(ctx, cid, "wp")
+    ctx.object_store._handles[handle_id] = RuntimeHandle(id=handle_id, type="profile")
+    return {"profile": handle_id}
+
+
 def handle_mirror_profile(node, ctx) -> dict:
     """Mirror the sketch profile and union with the original.
 

@@ -31,6 +31,7 @@ from seekflow_engineering_tools.generative_cad.dialects.sketch_profile.handlers 
     handle_cut_profile,
     handle_extrude_profile,
     handle_fillet_sketch,
+    handle_fillet_sketch_v2,
     handle_mirror_profile,
     handle_revolve_profile,
 )
@@ -45,6 +46,7 @@ from seekflow_engineering_tools.generative_cad.dialects.sketch_profile.params im
     CutProfileParams,
     ExtrudeProfileParams,
     FilletSketchParams,
+    FilletSketchV2Params,
     LinearPatternParams,
     MirrorFeatureParams,
     RevolveProfileParams,
@@ -72,7 +74,8 @@ class SketchProfileDialect:
             "add_polyline": "1.0.0",
             "add_slot": "1.0.0",
             "close_profile": "1.0.0",
-            "fillet_sketch": "1.0.0",
+            "fillet_sketch": "2.0.0",  # default upgraded to semantic V2
+            "fillet_sketch@1": "1.0.0",  # deprecated legacy
             "mirror_profile": "1.0.0",
             "extrude_profile": "1.0.0",
             "revolve_profile": "1.0.0",
@@ -149,7 +152,25 @@ class SketchProfileDialect:
                 phase="profile", input_types=["profile"], output_types=["profile"],
                 params_model=FilletSketchParams, effects=["modifies_solid"],
                 handler=handle_fillet_sketch,
-                summary="Apply fillet radius to 2D sketch profile vertices (e.g. root radii on fir-tree slots).",
+                summary="DEPRECATED. Apply fillet via vertex indices (unstable). Use fillet_sketch@2.0.0 instead.",
+            ),
+            ("fillet_sketch", "2.0.0"): OperationSpec(
+                dialect="sketch_profile", op="fillet_sketch", op_version="2.0.0",
+                phase="edge_treatment", input_types=["profile"], output_types=["profile"],
+                params_model=FilletSketchV2Params, effects=["modifies_solid"],
+                handler=handle_fillet_sketch_v2,
+                summary="Semantic fillet via corner_id + between_segments (stable). Each target has independent radius, feasibility pre-check, and fail-closed enforcement.",
+                usage_notes=[
+                    "Use between_segments (edge IDs from ProfileGraph) to identify corners, NOT at_vertex_index.",
+                    "Each target can have a different radius — do NOT apply a single radius to all corners.",
+                    "Feasibility pre-check validates edge length budget before OCC call.",
+                    "required=True corners that fail will abort the build (fail-closed).",
+                ],
+                common_mistakes=[
+                    "Using at_vertex_index instead of between_segments.",
+                    "Applying same radius to all corners regardless of edge length.",
+                    "Assuming OCC vertex ordering is stable across rebuilds.",
+                ],
             ),
             ("mirror_profile", "1.0.0"): OperationSpec(
                 dialect="sketch_profile", op="mirror_profile", op_version="1.0.0",
