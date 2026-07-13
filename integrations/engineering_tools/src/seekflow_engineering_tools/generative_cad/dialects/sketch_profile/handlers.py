@@ -67,6 +67,15 @@ def handle_add_line_segment(node, ctx) -> dict:
     if lp: wp = wp.moveTo(lp[0], lp[1])
     else: wp = wp.moveTo(sx, sy)
     wp = wp.lineTo(ex, ey)
+    # Accumulate to polyline_points so ProfileGraph has complete data
+    acc_ls = _get_state(ctx, cid, "polyline_points", [])
+    if acc_ls:
+        acc_ls.append((sx, sy))
+    else:
+        acc_ls.append((sx, sy))
+    acc_ls.append((ex, ey))
+    _set_state(ctx, cid, "polyline_points", acc_ls)
+
     _set_state(ctx, cid, "wp", wp)
     _set_state(ctx, cid, "last_point", (ex, ey))
     if _get_state(ctx, cid, "start_point") is None:
@@ -139,6 +148,16 @@ def handle_add_arc_segment(node, ctx) -> dict:
         ctx.warnings.append(msg)
     radius = r_start
     wp = wp.radiusArc((ex, ey), -radius if direction == "cw" else radius)
+
+    # Accumulate arc endpoints to polyline_points
+    acc_arc = _get_state(ctx, cid, "polyline_points", [])
+    if acc_arc:
+        acc_arc.append((sx, sy))
+    else:
+        acc_arc.append((sx, sy))
+    acc_arc.append((ex, ey))
+    _set_state(ctx, cid, "polyline_points", acc_arc)
+
     _set_state(ctx, cid, "wp", wp)
     _set_state(ctx, cid, "last_point", (ex, ey))
     handle_id = f"profile:{cid}:{node.id}:profile"
