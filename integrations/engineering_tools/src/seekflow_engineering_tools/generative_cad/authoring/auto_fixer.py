@@ -1288,20 +1288,23 @@ def _fix_selected_dialects(doc: dict) -> dict:
 
 
 def _fix_chamfer_fillet_optional(doc: dict) -> dict:
-    """Mark chamfer/fillet nodes as optional so complex geometry doesn't
+    """Mark chamfer/fillet@V1 nodes as optional so complex geometry doesn't
     fail the entire pipeline when OCCT can't execute them.
 
-    Chamfer and fillet are decorative finishing operations.  On complex
-    revolved bodies (turbine disks, etc.) OCCT/CadQuery may fail with
-    'ChFi3d_Builder: only 2 faces'.  Marking them required=False with
-    degradation_policy='may_skip_with_warning' allows the pipeline to
-    skip the failed operation and still output the main geometry.
+    fillet_sketch@2.0.0 (with 'targets' param) has its own fail-closed
+    semantics and must NOT be degraded — it validates feasibility before
+    OCC call and raises RuntimeError for required targets.
     """
     for node in doc.get("nodes", []):
         op = node.get("op", "")
-        if op in ("apply_safe_chamfer", "apply_safe_fillet", "fillet_sketch"):
+        if op in ("apply_safe_chamfer", "apply_safe_fillet"):
             node["required"] = False
             node["degradation_policy"] = "may_skip_with_warning"
+        elif op == "fillet_sketch":
+            # V2 (semantic) keeps its own fail-closed semantics
+            if "targets" not in node.get("params", {}):
+                node["required"] = False
+                node["degradation_policy"] = "may_skip_with_warning"
     return doc
 
 

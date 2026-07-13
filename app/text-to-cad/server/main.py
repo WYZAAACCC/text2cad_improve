@@ -304,8 +304,27 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
         plan = None
         if force_route:
             # Skip L1 routing — the caller already knows the desired route.
-            # Build a minimal route plan directly.
-            from seekflow_engineering_tools.generative_cad.skills.schemas import DialectSelectionItem
+            # Build a minimal route plan directly, but still auto-select
+            # matching knowledge packs based on trigger terms in the user text.
+            from seekflow_engineering_tools.generative_cad.skills.schemas import (
+                DialectSelectionItem, DomainSkillSelectionItem,
+            )
+            selected_skills = []
+            try:
+                from seekflow_engineering_tools.generative_cad.knowledge.registry import KnowledgeRegistry
+                kr2 = KnowledgeRegistry()
+                packs_root = Path(__file__).resolve().parents[3] / "integrations/engineering_tools/src/seekflow_engineering_tools/generative_cad/knowledge/packs"
+                kr2.discover(packs_root)
+                for m in kr2.list_manifests():
+                    for term in m.trigger_terms:
+                        if term.lower() in text.lower():
+                            selected_skills.append(DomainSkillSelectionItem(
+                                skill_id=m.skill_id, skill_version=m.version,
+                                reason=f"Trigger term '{term}' matched user request",
+                            ))
+                            break
+            except Exception:
+                pass
             plan = DialectSelectionPlan(
                 part_intent={"object_type": "unknown", "dominant_geometry": "unknown",
                              "engineering_domain": "general"},
@@ -316,6 +335,7 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                     DialectSelectionItem(dialect="composition", version="0.2.0",
                                          reason="Assembly operations"),
                 ],
+                selected_domain_skills=selected_skills,
                 safety_notes=["Forced route — no L1 analysis performed."],
             )
             _update_task(task_id, status="processing", progress=35,
