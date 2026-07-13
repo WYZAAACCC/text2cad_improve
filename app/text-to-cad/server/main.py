@@ -711,7 +711,7 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                     errs = [i for i in report.issues if i.severity=="error"]
                     if canonical is None or errs:
                         err_details = "; ".join(
-                            f"{i.get('code','?')}: {i.get('message','')[:80]}"
+                            f"{getattr(i,'code','?')}: {str(getattr(i,'message',''))[:80]}"
                             for i in (report.issues or [])[:3])
                         _update_task(task_id, status="failed", progress=0,
                                      error=f"L2 retry also failed: {err_details}")
