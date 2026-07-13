@@ -513,6 +513,13 @@ def handle_fillet_sketch_v2(node, ctx) -> dict:
     targets = params.get("targets", [])
     strict = params.get("strict", True)
 
+    def _fail_or_warn(msg: str):
+        """Raise if node is required, else warn and return original profile."""
+        if getattr(node, "required", True):
+            raise RuntimeError(f"fillet_sketch@2 on '{node.id}': {msg}")
+        ctx.warnings.append(f"fillet_sketch@2 on '{node.id}': {msg}")
+        return _return_profile(ctx, cid, node)
+
     if not targets:
         msg = f"fillet_sketch@2 on '{node.id}': no targets specified"
         if getattr(node, "required", True):
@@ -526,9 +533,8 @@ def handle_fillet_sketch_v2(node, ctx) -> dict:
     # ── Build ProfileGraph from stored polyline points ──
     points = _get_state(ctx, cid, "polyline_points", [])
     if len(points) < 3:
-        raise RuntimeError(
-            f"fillet_sketch@2 on '{node.id}': polyline_points has "
-            f"{len(points)} points (need ≥3 to build ProfileGraph)"
+        return _fail_or_warn(
+            f"polyline_points has {len(points)} points (need ≥3 to build ProfileGraph)"
         )
     graph = ProfileGraph.from_polyline(points, wire_id=wire_id)
 
@@ -562,7 +568,7 @@ def handle_fillet_sketch_v2(node, ctx) -> dict:
     wires = wp.wires().vals()
     wc = check_wire_count(wires, 1)
     if not wc.passed:
-        raise RuntimeError(f"fillet_sketch@2 on '{node.id}': {wc.message}")
+        return _fail_or_warn(wc.message)
 
     wire = wires[0]
     all_verts = wire.Vertices()
