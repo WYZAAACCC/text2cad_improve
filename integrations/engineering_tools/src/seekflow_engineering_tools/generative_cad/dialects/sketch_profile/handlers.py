@@ -594,11 +594,10 @@ def handle_fillet_sketch_v2(node, ctx) -> dict:
             f"fillet_sketch@2 on '{node.id}': {len(feasibility.infeasible)} "
             f"target(s) infeasible — {infeasible_detail}"
         )
-        if strict or getattr(node, "required", True):
+        if getattr(node, "required", True):
             raise RuntimeError(msg)
         ctx.warnings.append(msg)
         if len(feasibility.infeasible) == len(targets):
-            # All targets failed → return original profile
             return _return_profile(ctx, cid, node)
 
     # ── Ensure wire is closed ──
@@ -624,7 +623,7 @@ def handle_fillet_sketch_v2(node, ctx) -> dict:
                 t["between_segments"][0], t["between_segments"][1], wire_id,
             )
         except (ValueError, KeyError) as exc:
-            if getattr(node, "required", True) and (strict or t.get("required", True)):
+            if getattr(node, "required", True) or t.get("required", True):
                 raise RuntimeError(
                     f"fillet_sketch@2 on '{node.id}': "
                     f"corner '{t['corner_id']}' not found — {exc}"
@@ -663,11 +662,7 @@ def handle_fillet_sketch_v2(node, ctx) -> dict:
             ctx.warnings.append(msg)
 
     if not selected:
-        msg = f"fillet_sketch@2 on '{node.id}': no corners mapped to OCC vertices"
-        if getattr(node, "required", True):
-            raise RuntimeError(msg)
-        ctx.warnings.append(msg)
-        return _return_profile(ctx, cid, node)
+        return _fail_or_warn("no corners mapped to OCC vertices")
 
     # ── Apply filleting ──
     try:
