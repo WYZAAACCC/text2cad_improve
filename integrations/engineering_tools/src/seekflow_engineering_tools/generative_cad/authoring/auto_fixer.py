@@ -295,6 +295,7 @@ def auto_fix_with_report(
     _apply_fix("fix_slot_station_order", lambda d: _fix_slot_station_order(d))
     _apply_fix("fix_slot_half_profile", lambda d: _fix_slot_half_profile(d))
     _apply_fix("fill_default_params", lambda d: _fill_default_params(d))
+    _apply_fix("fix_fillet_zero_radius", lambda d: _fix_fillet_zero_radius(d))
     _apply_fix("fix_null_hints", lambda d: _fix_null_hints(d))
     _apply_fix("remove_extra_params", lambda d: _remove_extra_params(d))
 
@@ -1311,10 +1312,40 @@ def _fix_chamfer_fillet_optional(doc: dict) -> dict:
             node["required"] = False
             node["degradation_policy"] = "may_skip_with_warning"
         elif op == "fillet_sketch":
-            # V2 (semantic) keeps its own fail-closed semantics
+            # V1 (at_vertex_index) → always optional
+            # V2 (targets) → optional for non-fir-tree transitions,
+            #   required for fir-tree arc classes (M_B1~M_B4)
             if "targets" not in node.get("params", {}):
                 node["required"] = False
                 node["degradation_policy"] = "may_skip_with_warning"
+            else:
+                # V2: check if any target is a fir-tree arc class.
+                # M_B markers appear in corner_id (e.g. "M_B1_bottom_transition")
+                # and/or engineering_role.
+                targets = node["params"].get("targets", [])
+                has_fir_tree = any(
+                    "M_B" in str(t.get("corner_id", "")) or
+                    "M_B" in str(t.get("engineering_role", "")) or
+                    "fir" in str(t.get("corner_id", "")).lower()
+                    for t in targets
+                )
+                if not has_fir_tree:
+                    node["required"] = False
+                    node["degradation_policy"] = "may_skip_with_warning"
+    return doc
+
+
+def _fix_fillet_zero_radius(doc: dict) -> dict:
+    """v9: LLM sometimes generates radius_mm=0 for fillet_sketch@2.0.0 targets.
+    Replace with 1.0mm minimum to pass Pydantic gt=0 validation."""
+    for node in doc.get("nodes", []):
+        if node.get("op") != "fillet_sketch":
+            continue
+        targets = node.get("params", {}).get("targets", [])
+        for t in targets:
+            r = t.get("radius_mm", 0)
+            if isinstance(r, (int, float)) and r <= 0:
+                t["radius_mm"] = 1.0
     return doc
 
 

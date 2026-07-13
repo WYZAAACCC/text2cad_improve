@@ -261,6 +261,7 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
         from seekflow_engineering_tools.generative_cad.validation.pipeline import validate_and_canonicalize_with_bundle
         from seekflow_engineering_tools.generative_cad.authoring.auto_fixer import auto_fix_with_report
         from seekflow_engineering_tools.generative_cad.pipeline.run import run_canonical_gcad
+        from seekflow_engineering_tools.generative_cad.ir.hashing import stable_hash as _stable_hash
 
         out_dir = OUT_ROOT / task_id
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -518,22 +519,328 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
         (out_dir/"validation_report.json").write_text(report.model_dump_json(indent=2), encoding="utf-8")
         errs = [i for i in report.issues if i.severity=="error"]
         if canonical is None or errs:
+            # ── Repair loop: LLM fixes validation errors ──
+            _update_task(task_id, status="processing", progress=70,
+                         result={"stage": f"Repair: {len(errs)} errors"})
+            from seekflow_engineering_tools.generative_cad.repair.governor import (
+                RepairStateV2, STAGE_RANK, can_repair_v2, update_repair_state_v2,
+            )
+            from seekflow_engineering_tools.generative_cad.repair.patch import (
+                RepairPatchV2, apply_repair_patch_v2,
+            )
+            from seekflow_engineering_tools.generative_cad.authoring.prompt_builders import (
+                REPAIR_SYSTEM_PROMPT, build_repair_user_prompt,
+            )
+            from seekflow_engineering_tools.generative_cad.authoring.tool_schemas import (
+                build_repair_patch_tool_schema,
+            )
+            state = RepairStateV2(max_attempts=5)
+            current_doc = fixed if 'fixed' in dir() else raw
+            repair_ok = False
+
+            for _repair_round in range(5):
+                _update_task(task_id, status="processing", progress=70 + _repair_round*2,
+                             result={"stage": f"Repair round {_repair_round+1}/5"})
+
+                # Quick fix: run auto-fixer again for root_node / missing ref issues
+                try:
+                    from seekflow_engineering_tools.generative_cad.authoring.auto_fixer import auto_fix
+                    current_doc = auto_fix(current_doc, reg)
+                    canonical, report, bundle = validate_and_canonicalize_with_bundle(current_doc)
+                    (out_dir/"raw_fixed.json").write_text(
+                        json.dumps(current_doc, indent=2, ensure_ascii=False), encoding="utf-8")
+                    (out_dir/"validation_report.json").write_text(
+                        report.model_dump_json(indent=2), encoding="utf-8")
+                    errs = [i for i in report.issues if i.severity=="error"]
+                    if canonical is not None and not errs:
+                        repair_ok = True
+                        break
+                except Exception:
+                    pass
+
+                # Build repair prompt
+                issues_dicts = []
+                if report and hasattr(report, "issues"):
+                    for i in report.issues:
+                        if hasattr(i, "model_dump"):
+                            issues_dicts.append(i.model_dump())
+                        elif isinstance(i, dict):
+                            issues_dicts.append(i)
+                        else:
+                            issues_dicts.append({
+                                "code": getattr(i, "code", ""),
+                                "message": getattr(i, "message", ""),
+                                "stage": getattr(i, "stage", ""),
+                            })
+
+                # Build repairable paths from the current errors
+                repairable_paths = []
+                for issue in issues_dicts:
+                    code = issue.get("code", "")
+                    if "missing_input" in code or "unknown_op" in code or "invalid_params" in code:
+                        repairable_paths.append(f"/nodes/<id>/params/*")
+                        repairable_paths.append(f"/nodes/<id>/inputs")
+                    if "composition_op" in code:
+                        repairable_paths.append(f"/nodes/<id>/dialect")
+                    if "root_node" in code:
+                        repairable_paths.append(f"/components/<id>/root_node")
+
+                # Compute state hashes
+                raw_hash = _stable_hash(current_doc) if current_doc else ""
+                error_sig = _stable_hash(
+                    [(i.get("code", ""), i.get("stage", "")) for i in issues_dicts]
+                )
+
+                stage_name = report.stage if report and hasattr(report, "stage") else "structure"
+                stage_rank = STAGE_RANK.get(stage_name, 0)
+
+                can, reason = can_repair_v2(
+                    state, raw_graph_hash=raw_hash, error_sig_hash=error_sig,
+                    current_stage_rank=stage_rank,
+                )
+                if not can:
+                    _update_task(task_id, status="processing", progress=72,
+                                 result={"stage": f"Repair stopped: {reason}"})
+                    break
+
+                try:
+                    repair_tool = build_repair_patch_tool_schema()
+                    tc_repair = caller.call_strict_tool(
+                        messages=[
+                            {"role": "system", "content": REPAIR_SYSTEM_PROMPT},
+                            {"role": "user", "content": build_repair_user_prompt(
+                                current_doc=current_doc,
+                                validation_issues=issues_dicts,
+                            )},
+                        ],
+                        tool_name="emit_repair_patch",
+                        tool_description="Local repair patch for validation errors",
+                        tool_schema=repair_tool,
+                        model_config=config,
+                    )
+                    if tc_repair.arguments.get("give_up"):
+                        _update_task(task_id, status="processing", progress=72,
+                                     result={"stage": f"Repair: LLM gave up"})
+                        break
+
+                    patch = RepairPatchV2.model_validate(tc_repair.arguments)
+                    current_doc = apply_repair_patch_v2(current_doc, patch)
+                except ValueError as _vex:
+                    # Patch had invalid target — log and skip this round
+                    _update_task(task_id, status="processing", progress=72,
+                                 result={"stage": f"Repair: patch rejected: {str(_vex)[:100]}"})
+                except Exception as _rex:
+                    _update_task(task_id, status="processing", progress=72,
+                                 result={"stage": f"Repair: LLM call failed: {str(_rex)[:100]}"})
+                    break
+
+                # Re-validate
+                try:
+                    canonical, report, bundle = validate_and_canonicalize_with_bundle(current_doc)
+                    (out_dir/"raw_fixed.json").write_text(
+                        json.dumps(current_doc, indent=2, ensure_ascii=False), encoding="utf-8")
+                    (out_dir/"validation_report.json").write_text(
+                        report.model_dump_json(indent=2), encoding="utf-8")
+                    errs = [i for i in report.issues if i.severity=="error"]
+                    if canonical is not None and not errs:
+                        repair_ok = True
+                        break
+
+                    # Update state for next round
+                    state = update_repair_state_v2(
+                        state, raw_graph_hash=raw_hash, error_sig_hash=error_sig,
+                        stage_rank=stage_rank,
+                    )
+                except Exception:
+                    break
+
+            if not repair_ok:
+                # Repair couldn't fix — retry L2 authoring (LLM has randomness,
+                # re-generation often produces different results)
+                _update_task(task_id, status="processing", progress=75,
+                             result={"stage": "Retry L2 authoring"})
+                try:
+                    l2_retry = build_level2_authoring_prompt(text, plan, knowledge_prompt=knowledge_prompt)
+                    usage2 = l2_retry.get("usage_skills", {})
+                    anti2 = l2_retry.get("anti_examples", {})
+                    user_parts2 = []
+                    if l2_retry.get("knowledge_prompt"):
+                        user_parts2.append(l2_retry["knowledge_prompt"])
+                    if usage2:
+                        up = ["\nDIALECT USAGE SKILLS:"]
+                        for did, st in usage2.items():
+                            up.append(f"\n--- {did} ---\n{st[:2000]}")
+                        user_parts2.append("\n".join(up))
+                    if spatial_context:
+                        user_parts2.append(f"\nSPATIAL CONTRACT:\n{spatial_context}")
+                    user_parts2.append(f"\nUSER REQUEST:\n{l2_retry['user']}")
+                    uc2 = "\n\n".join(user_parts2)
+                    tc_retry = caller.call_strict_tool(
+                        messages=[{"role":"system","content":l2_retry["system"]},
+                                  {"role":"user","content":uc2}],
+                        tool_name=l2_tool["function"]["name"],
+                        tool_description=l2_tool["function"]["description"],
+                        tool_schema=l2_tool["function"]["parameters"],
+                        model_config=config)
+                    current_doc = tc_retry.arguments
+                    if "llm_validation_hints" not in current_doc:
+                        current_doc["llm_validation_hints"] = {}
+                    (out_dir/"llm_raw.json").write_text(
+                        json.dumps(current_doc, indent=2, ensure_ascii=False), encoding="utf-8")
+                    # Retry validation + auto-fix
+                    canonical, report, bundle = validate_and_canonicalize_with_bundle(current_doc)
+                    if not report.ok:
+                        try:
+                            fixed, af = auto_fix_with_report(current_doc, reg)
+                            if af.applied:
+                                current_doc = fixed
+                                (out_dir/"raw_fixed.json").write_text(
+                                    json.dumps(current_doc, indent=2, ensure_ascii=False), encoding="utf-8")
+                                canonical, report, bundle = validate_and_canonicalize_with_bundle(current_doc)
+                        except Exception:
+                            pass
+                    (out_dir/"validation_report.json").write_text(
+                        report.model_dump_json(indent=2), encoding="utf-8")
+                    errs = [i for i in report.issues if i.severity=="error"]
+                    if canonical is None or errs:
+                        err_details = "; ".join(
+                            f"{i.get('code','?')}: {i.get('message','')[:80]}"
+                            for i in (report.issues or [])[:3])
+                        _update_task(task_id, status="failed", progress=0,
+                                     error=f"L2 retry also failed: {err_details}")
+                        return
+                    repair_ok = True
+                except Exception as _l2e:
+                    _update_task(task_id, status="failed", progress=0,
+                                 error=f"L2 retry call failed: {str(_l2e)[:200]}")
+                    return
+
+            if not repair_ok:
+                _update_task(task_id, status="failed", progress=0,
+                             error="Repair and L2 retry both exhausted")
+                return
+
+        if canonical is None:
             _update_task(task_id, status="failed", progress=0,
-                         error=f"Validation: {len(errs)} errors")
+                         error="Validation failed after repair: no canonical document")
             return
 
         _update_task(task_id, status="processing", progress=75, result={"stage": "Validation OK"})
 
-        # ---- Runtime -> STEP ----
+        # ---- Runtime -> STEP (with repair on OCC failure) ----
         _update_task(task_id, status="processing", progress=85, result={"stage": "Runtime"})
         step_path = out_dir / "output.step"
         meta_path = out_dir / "output.metadata.json"
-        rr = run_canonical_gcad(
-            canonical=canonical, out_step=step_path, metadata_path=meta_path,
-            validation_seed=bundle.to_metadata_dict() if bundle else {},
-            require_full_validation_seed=False)
 
-        step_kb = step_path.stat().st_size//1024 if (rr.ok and step_path.exists()) else 0
+        from seekflow_engineering_tools.generative_cad.repair.governor import (
+            RepairStateV2 as RuntimeRepairState, can_repair_v2 as runtime_can_repair,
+            update_repair_state_v2 as runtime_update_state, STAGE_RANK as RT_RANK,
+        )
+        from seekflow_engineering_tools.generative_cad.repair.patch import (
+            RepairPatchV2 as RuntimePatch, apply_repair_patch_v2 as runtime_apply_patch,
+        )
+
+        rt_state = RuntimeRepairState(max_attempts=3)
+        rt_current_doc = current_doc if 'current_doc' in dir() else raw
+        rt_success = False
+
+        for rt_round in range(3):
+            _update_task(task_id, status="processing", progress=85 + rt_round*3,
+                         result={"stage": f"Runtime round {rt_round+1}/3"})
+
+            rr = run_canonical_gcad(
+                canonical=canonical, out_step=step_path, metadata_path=meta_path,
+                validation_seed=bundle.to_metadata_dict() if bundle else {},
+                require_full_validation_seed=False)
+
+            if rr.ok:
+                rt_success = True
+                break
+
+            # Runtime failed — feed error to LLM for repair
+            occ_error = rr.error or "Unknown OCC error"
+            # Extract the failing node name from the error traceback
+            import re as _re
+            failed_node_match = _re.search(r"node\.id[=:]\s*['\"](\w+)['\"]", occ_error)
+            failed_node = failed_node_match.group(1) if failed_node_match else "unknown"
+
+            rt_issues = [{
+                "code": "RUNTIME_OCC_FAILURE",
+                "message": occ_error[:500],
+                "stage": "runtime",
+                "node_id": failed_node,
+                "hint": "Fix polyline points, arc centers, fillet radii, or extrude depth "
+                        "to avoid OCC geometry errors (BRep_API, self-intersection, "
+                        "degenerate edges, zero-length segments)."
+            }]
+
+            rt_hash = _stable_hash(rt_current_doc) if rt_current_doc else ""
+            rt_err_sig = _stable_hash(occ_error[:200])
+
+            rt_can, rt_reason = runtime_can_repair(
+                rt_state, raw_graph_hash=rt_hash, error_sig_hash=rt_err_sig,
+                current_stage_rank=RT_RANK.get("runtime_postconditions", 130),
+            )
+            if not rt_can:
+                break
+
+            try:
+                rt_tool = build_repair_patch_tool_schema()
+                rt_tc = caller.call_strict_tool(
+                    messages=[
+                        {"role": "system", "content": (
+                            "You are a CAD geometry repair agent. The CAD runtime (CadQuery/OCCT) "
+                            "failed to execute the generated document. Fix the GEOMETRIC parameters "
+                            "(coordinates, radii, depths) that caused the failure.\n\n"
+                            "Common causes and fixes:\n"
+                            "- BRep_API: command not done → polyline has duplicate/zero-length/self-intersecting segments → adjust points\n"
+                            "- fillet2D failed → radius too large for edge length → reduce radius\n"
+                            "- boolean_cut failed → cutter doesn't intersect target → adjust depth/position\n"
+                            "- revolve failed → profile self-intersects → fix polygon point order\n\n"
+                            "Only modify params. Do NOT change dialect/op/op_version/schema_version."
+                        )},
+                        {"role": "user", "content": build_repair_user_prompt(
+                            current_doc=rt_current_doc,
+                            validation_issues=rt_issues,
+                        )},
+                    ],
+                    tool_name="emit_repair_patch",
+                    tool_description="Geometry repair patch for OCC runtime failure",
+                    tool_schema=rt_tool,
+                    model_config=config,
+                )
+                if rt_tc.arguments.get("give_up"):
+                    break
+
+                rt_patch = RuntimePatch.model_validate(rt_tc.arguments)
+                rt_current_doc = runtime_apply_patch(rt_current_doc, rt_patch)
+                (out_dir/"raw_fixed.json").write_text(
+                    json.dumps(rt_current_doc, indent=2, ensure_ascii=False), encoding="utf-8")
+            except ValueError:
+                pass  # invalid patch target, try next round
+            except Exception:
+                break
+
+            # Re-validate after patch
+            try:
+                canonical, report, bundle = validate_and_canonicalize_with_bundle(rt_current_doc)
+                errs = [i for i in report.issues if i.severity=="error"]
+                if canonical is None or errs:
+                    break
+            except Exception:
+                break
+
+            rt_state = runtime_update_state(
+                rt_state, raw_graph_hash=rt_hash, error_sig_hash=rt_err_sig,
+                stage_rank=RT_RANK.get("runtime_postconditions", 130),
+            )
+
+        if not rt_success:
+            _update_task(task_id, status="failed", progress=0,
+                         error=f"Runtime repair exhausted after {rt_round+1} rounds: {rr.error[:200] if not rr.ok else 'unknown'}")
+            return
+
+        step_kb = step_path.stat().st_size//1024 if (rt_success and step_path.exists()) else 0
         stl_path = out_dir / "output.stl"
         stl_ok = False
         if step_kb > 0:
