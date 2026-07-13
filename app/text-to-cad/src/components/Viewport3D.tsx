@@ -56,21 +56,16 @@ function STLGeometry({ model, isSelected, onClick }: {
 
   const geometry = useLoader(STLLoader, model.stlUrl || '');
 
-  // Compute centering offset for visual placement WITHOUT modifying geometry data.
-  // Geometry vertices stay in original CAD coordinates so that stress-field
-  // lookups (r = √(x²+y²), z) match the ANSYS axisymmetric coordinate system.
-  // Uses state (not ref) so the mesh re-renders at the correct position.
-  const [centerOffset, setCenterOffset] = useState<[number, number, number]>([0, 0, 0]);
+  // Center the STL geometry
   useEffect(() => {
     if (geometry) {
       geometry.computeBoundingBox();
       const bbox = geometry.boundingBox;
       if (bbox) {
-        setCenterOffset([
-          -(bbox.max.x + bbox.min.x) / 2,
-          -(bbox.max.y + bbox.min.y) / 2,
-          -(bbox.max.z + bbox.min.z) / 2,
-        ]);
+        const cx = -(bbox.max.x + bbox.min.x) / 2;
+        const cy = -(bbox.max.y + bbox.min.y) / 2;
+        const cz = -(bbox.max.z + bbox.min.z) / 2;
+        geometry.translate(cx, cy, cz);
       }
     }
   }, [geometry]);
@@ -121,11 +116,7 @@ function STLGeometry({ model, isSelected, onClick }: {
   return (
     <mesh
       ref={meshRef}
-      position={[
-        model.position[0] + centerOffset[0],
-        model.position[1] + centerOffset[1],
-        model.position[2] + centerOffset[2],
-      ]}
+      position={model.position}
       rotation={model.rotation}
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       castShadow

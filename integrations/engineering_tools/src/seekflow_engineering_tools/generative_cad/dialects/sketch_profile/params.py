@@ -52,14 +52,14 @@ class CloseProfileParams(BaseModel):
 class ExtrudeProfileParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
     depth_mm: float = Field(gt=0, description="Extrusion depth in mm")
-    direction: Literal["+", "-", "both"] = "+"
+    direction: Literal["+", "-"] = "+"
     taper_deg: float = Field(default=0.0, ge=-45, le=45, description="Taper angle in degrees")
 
 
 class CutProfileParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
     depth_mm: float = Field(gt=0, description="Cut depth in mm")
-    direction: Literal["+", "-", "both"] = "-"
+    direction: Literal["+", "-"] = "-"
 
 
 class AddSlotParams(BaseModel):
@@ -90,50 +90,6 @@ class RevolveProfileParams(BaseModel):
 
 
 class FilletSketchParams(BaseModel):
-    """fillet_sketch@1.0.0 — DEPRECATED. Use FilletSketchV2Params instead.
-
-    Vertex-index-based filleting is unreliable because OCC wire topology
-    reordering can change which vertex sits at each index.
-    """
     model_config = ConfigDict(extra="forbid")
     radius_mm: float = Field(gt=0, description="Fillet radius in mm")
-    at_vertex_index: list[int] | None = Field(
-        default=None,
-        description="DEPRECATED: use FilletSketchV2Params with between_segments instead. "
-        "Vertex indices are NOT stable across OCC topology changes.",
-    )
-
-
-class SketchFilletTarget(BaseModel):
-    """Semantic fillet target — identified by adjacent edge IDs, not vertex index."""
-    model_config = ConfigDict(extra="forbid")
-    corner_id: str = Field(description="Stable corner identifier, e.g. 'right_upper_tooth_tip'")
-    between_segments: tuple[str, str] = Field(
-        description="Pair of adjacent edge IDs that meet at this corner"
-    )
-    radius_mm: float = Field(gt=0)
-    expected_convexity: Literal["convex", "concave", "either"] = "either"
-    engineering_role: str | None = None
-    required: bool = True
-
-
-class FilletSketchV2Params(BaseModel):
-    """fillet_sketch@2.0.0 — semantic corner filleting via edge adjacency.
-
-    Uses stable segment IDs (from ProfileGraph) instead of fragile vertex indices.
-    Each target specifies its own radius, convexity expectation, and required flag.
-    """
-    model_config = ConfigDict(extra="forbid")
-    wire_id: str = Field(
-        default="profile",
-        description="Target wire ID from the profile graph"
-    )
-    targets: list[SketchFilletTarget] = Field(
-        min_length=1,
-        description="Ordered list of corners to fillet, each with independent radius",
-    )
-    strict: bool = Field(
-        default=True,
-        description="If True, all targets must be feasible (fail-closed)"
-    )
-    tolerance_mm: float = Field(default=1e-5, gt=0)
+    at_vertex_index: int | None = Field(default=None, description="Vertex index to fillet (None = all interior vertices)")

@@ -189,51 +189,17 @@ def handle_circular_pattern_component(node: CanonicalNode, ctx: RuntimeContext) 
         ctx.warnings.append(msg)
         return {"body": _store_solid(node, ctx, body)}
 
-    # v6.5: Detect and undo pre-positioning (double-translation guard).
-    # The pattern handler translates the body to (radius, 0, 0) internally.
-    # If the incoming body is already positioned via place_component (e.g. at
-    # x=250), the result would be at x=500 — outside the disc.
-    # Only trigger when the body center is FAR from origin (> radius * 0.3),
-    # to avoid false positives on naturally-asymmetric shapes (e.g. fir-tree
-    # cutters whose center is at ~-11 because the mouth is at x=0).
-    try:
-        bb = body.val().BoundingBox() if hasattr(body, "val") else body.BoundingBox()
-        cx = (bb.xmin + bb.xmax) / 2.0
-        cy = (bb.ymin + bb.ymax) / 2.0
-        # Only trigger if body center is significantly offset (e.g. placed at rim radius)
-        if abs(cx) > radius * 0.3 or abs(cy) > radius * 0.3:
-            ctx.warnings.append(
-                f"circular_pattern on '{node.id}': body center at "
-                f"({cx:.1f}, {cy:.1f}) — undoing pre-positioning to avoid "
-                f"double-translation (body would end up at r≈{radius + cx:.0f})"
-            )
-            body = body.translate((-cx, -cy, 0))
-    except Exception:
-        pass
-
     # Use native CadQuery array operations for performance
-    rotate_copies = bool(node.params.get("rotate_copies", True))
     try:
         import cadquery as cq
-        if rotate_copies:
-            # Rotate copies around Z: translate to (radius, 0) then rotate to angle.
-            # This ensures radial alignment — each slot/blade faces outward from center.
-            result = body.translate((radius, 0, 0))
-            if start_angle != 0:
-                result = result.rotate((0, 0, 0), (0, 0, 1), start_angle)
-            for i in range(1, count):
-                angle = start_angle + i * 360.0 / count
-                placed = body.translate((radius, 0, 0)).rotate((0, 0, 0), (0, 0, 1), angle)
-                result = result.union(placed)
-        else:
-            # Translate-only: all copies face the same direction (original behavior)
-            result = body
-            for i in range(1, count):
-                angle = math.radians(start_angle + i * 360.0 / count)
-                x = radius * math.cos(angle)
-                y = radius * math.sin(angle)
-                placed = body.translate((x, y, 0))
-                result = result.union(placed)
+        # Build all positions, translate copies, union
+        result = body
+        for i in range(1, count):  # skip i=0 (original position)
+            angle = math.radians(start_angle + i * 360.0 / count)
+            x = radius * math.cos(angle)
+            y = radius * math.sin(angle)
+            placed = body.translate((x, y, 0))
+            result = result.union(placed)
         return {"body": _store_solid(node, ctx, result)}
     except Exception as e:
         if getattr(node, "required", True):

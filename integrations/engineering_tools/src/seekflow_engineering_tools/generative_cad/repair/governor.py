@@ -20,7 +20,6 @@ class RepairStateV2(BaseModel):
 # Stage rank for progress tracking
 STAGE_RANK = {
     "structure": 10,
-    "root_terminal": 15,
     "registry": 20,
     "params": 30,
     "ownership": 40,
@@ -28,7 +27,6 @@ STAGE_RANK = {
     "typecheck": 60,
     "phase": 70,
     "composition": 80,
-    "hole_semantics": 85,
     "safety": 90,
     "canonicalize": 100,
     "dialect_semantics": 110,

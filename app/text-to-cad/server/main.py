@@ -261,7 +261,6 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
         from seekflow_engineering_tools.generative_cad.validation.pipeline import validate_and_canonicalize_with_bundle
         from seekflow_engineering_tools.generative_cad.authoring.auto_fixer import auto_fix_with_report
         from seekflow_engineering_tools.generative_cad.pipeline.run import run_canonical_gcad
-        from seekflow_engineering_tools.generative_cad.ir.hashing import stable_hash as _stable_hash
 
         out_dir = OUT_ROOT / task_id
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -305,27 +304,8 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
         plan = None
         if force_route:
             # Skip L1 routing — the caller already knows the desired route.
-            # Build a minimal route plan directly, but still auto-select
-            # matching knowledge packs based on trigger terms in the user text.
-            from seekflow_engineering_tools.generative_cad.skills.schemas import (
-                DialectSelectionItem, DomainSkillSelectionItem,
-            )
-            selected_skills = []
-            try:
-                from seekflow_engineering_tools.generative_cad.knowledge.registry import KnowledgeRegistry
-                kr2 = KnowledgeRegistry()
-                packs_root = Path(__file__).resolve().parents[3] / "integrations/engineering_tools/src/seekflow_engineering_tools/generative_cad/knowledge/packs"
-                kr2.discover(packs_root)
-                for m in kr2.list_manifests():
-                    for term in m.trigger_terms:
-                        if term.lower() in text.lower():
-                            selected_skills.append(DomainSkillSelectionItem(
-                                skill_id=m.skill_id, skill_version=m.version,
-                                reason=f"Trigger term '{term}' matched user request",
-                            ))
-                            break
-            except Exception:
-                pass
+            # Build a minimal route plan directly.
+            from seekflow_engineering_tools.generative_cad.skills.schemas import DialectSelectionItem
             plan = DialectSelectionPlan(
                 part_intent={"object_type": "unknown", "dominant_geometry": "unknown",
                              "engineering_domain": "general"},
@@ -336,33 +316,13 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                     DialectSelectionItem(dialect="composition", version="0.2.0",
                                          reason="Assembly operations"),
                 ],
-                selected_domain_skills=selected_skills,
                 safety_notes=["Forced route — no L1 analysis performed."],
             )
             _update_task(task_id, status="processing", progress=35,
                          result={"stage": f"L1: forced to {force_route}"})
         else:
             _update_task(task_id, status="processing", progress=20, result={"stage": "L1 routing"})
-
-            # ── Load knowledge pack summaries for L1 ──
-            knowledge_summaries = None
-            try:
-                from seekflow_engineering_tools.generative_cad.knowledge.registry import KnowledgeRegistry
-                from seekflow_engineering_tools.generative_cad.knowledge.resolver import compile_l1_summary
-                kr = KnowledgeRegistry()
-                packs_root = Path(__file__).resolve().parents[3] / "integrations/engineering_tools/src/seekflow_engineering_tools/generative_cad/knowledge/packs"
-                kr.discover(packs_root)
-                if kr.list_manifests():
-                    knowledge_summaries = compile_l1_summary(
-                        [kr.get(m.skill_id) for m in kr.list_manifests() if kr.get(m.skill_id)]
-                    )
-            except Exception:
-                pass
-
-            l1 = build_level1_routing_prompt(
-                text, dialect_catalog=reg.export_catalog(),
-                knowledge_summaries=knowledge_summaries,
-            )
+            l1 = build_level1_routing_prompt(text, dialect_catalog=reg.export_catalog())
             l1_tool = build_level1_tool()
             LEGACY = {"axisymmetric_base":"axisymmetric","sketch_extrude_base":"sketch_extrude",
                       "loft_sweep_base":"loft_sweep","shell_housing_base":"shell_housing","composition_base":"composition"}
@@ -373,13 +333,8 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                         tool_name=l1_tool["function"]["name"], tool_description=l1_tool["function"]["description"],
                         tool_schema=l1_tool["function"]["parameters"], model_config=config)
                     args = dict(tc.arguments)
-                    # Validate selected domain skills against registry
-                    if kr is not None and args.get("selected_domain_skills"):
-                        skill_errors = kr.validate_selections(args["selected_domain_skills"])
-                        if skill_errors:
-                            args.setdefault("safety_notes", []).append(
-                                f"Knowledge pack validation: {'; '.join(skill_errors)}"
-                            )
+                    for s in args.get("selected_domain_skills",[]):
+                        if not s.get("skill_version"): s["skill_version"]="1.0"
                     plan = DialectSelectionPlan.model_validate(args)
                     for sd in plan.selected_dialects:
                         if sd.dialect in LEGACY: sd.dialect = LEGACY[sd.dialect]
@@ -429,36 +384,26 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
 
         # ---- L2 Author (with context injection) ----
         _update_task(task_id, status="processing", progress=45, result={"stage": "L2 authoring"})
-
-        # ── Resolve knowledge packs (if any were selected by L1) ──
-        knowledge_prompt = ""
         try:
-            from seekflow_engineering_tools.generative_cad.knowledge.registry import KnowledgeRegistry
-            from seekflow_engineering_tools.generative_cad.knowledge.resolver import (
-                KnowledgeResolver, compile_l2_knowledge,
-            )
-            kr = KnowledgeRegistry()
-            packs_root = Path(__file__).resolve().parents[3] / "integrations/engineering_tools/src/seekflow_engineering_tools/generative_cad/knowledge/packs"
-            kr.discover(packs_root)
-            resolver = KnowledgeResolver(kr)
-            if plan.selected_domain_skills:
-                resolved = resolver.resolve([
-                    {"skill_id": s.skill_id, "skill_version": s.skill_version}
-                    for s in plan.selected_domain_skills
-                ])
-                if resolved.ok:
-                    knowledge_prompt = compile_l2_knowledge(resolved, char_budget=3000)
-        except Exception:
-            pass  # knowledge packs are optional — don't block generation
+            l2 = build_level2_authoring_prompt(text, plan)
 
-        try:
-            l2 = build_level2_authoring_prompt(text, plan, knowledge_prompt=knowledge_prompt)
-
+            # 构建增强 user prompt：核心约束 + 使用指导 + 反例 + 用户请求
             user_parts = []
 
-            # 1. Domain knowledge (from versioned Knowledge Packs)
-            if l2.get("knowledge_prompt"):
-                user_parts.append(l2["knowledge_prompt"])
+            # 1. 关键约束摘要
+            constraints_block = (
+                "CRITICAL MODELING CONSTRAINTS:\n"
+                "- For axisymmetric disk bodies with varying thickness (hub thick→web thin→rim thick):\n"
+                "  use sketch_profile: create_2d_sketch(plane=XZ) → add_polyline(R-Z polygon points) → close_profile → revolve_profile\n"
+                "  NOT axisymmetric.revolve_profile (Z-sorts stations, cannot express thickness-by-radius profiles)\n"
+                "- For fir-tree slot cutters: sketch_profile → create_2d_sketch(plane=XY) → add_polyline (neck/lobe alternation)\n"
+                "  → close_profile → fillet_sketch → mirror_profile → extrude_profile\n"
+                "- For patterning: composition → circular_pattern_component(rotate_copies=True) → boolean_cut\n"
+                "- Every sketch_profile component MUST include the complete chain: sketch → polyline → close → extrude/revolve\n"
+                "- Every component root_node must be a node that exists and outputs body:solid\n"
+                "- Do NOT use axisymmetric.revolve_profile for thickness-by-radius profiles"
+            )
+            user_parts.append(constraints_block)
 
             # 2. 使用指导
             usage = l2.get("usage_skills", {})
@@ -519,372 +464,22 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
         (out_dir/"validation_report.json").write_text(report.model_dump_json(indent=2), encoding="utf-8")
         errs = [i for i in report.issues if i.severity=="error"]
         if canonical is None or errs:
-            # ── Repair loop: LLM fixes validation errors ──
-            _update_task(task_id, status="processing", progress=70,
-                         result={"stage": f"Repair: {len(errs)} errors"})
-            from seekflow_engineering_tools.generative_cad.repair.governor import (
-                RepairStateV2, STAGE_RANK, can_repair_v2, update_repair_state_v2,
-            )
-            from seekflow_engineering_tools.generative_cad.repair.patch import (
-                RepairPatchV2, apply_repair_patch_v2,
-            )
-            from seekflow_engineering_tools.generative_cad.authoring.prompt_builders import (
-                REPAIR_SYSTEM_PROMPT, build_repair_user_prompt,
-            )
-            from seekflow_engineering_tools.generative_cad.authoring.tool_schemas import (
-                build_repair_patch_tool_schema,
-            )
-            state = RepairStateV2(max_attempts=5)
-            current_doc = fixed if 'fixed' in dir() else raw
-            repair_ok = False
-
-            for _repair_round in range(5):
-                _update_task(task_id, status="processing", progress=70 + _repair_round*2,
-                             result={"stage": f"Repair round {_repair_round+1}/5"})
-
-                # Quick fix: run auto-fixer again for root_node / missing ref issues
-                try:
-                    from seekflow_engineering_tools.generative_cad.authoring.auto_fixer import auto_fix
-                    current_doc = auto_fix(current_doc, reg)
-                    canonical, report, bundle = validate_and_canonicalize_with_bundle(current_doc)
-                    (out_dir/"raw_fixed.json").write_text(
-                        json.dumps(current_doc, indent=2, ensure_ascii=False), encoding="utf-8")
-                    (out_dir/"validation_report.json").write_text(
-                        report.model_dump_json(indent=2), encoding="utf-8")
-                    errs = [i for i in report.issues if i.severity=="error"]
-                    if canonical is not None and not errs:
-                        repair_ok = True
-                        break
-                except Exception:
-                    pass
-
-                # Build repair prompt
-                issues_dicts = []
-                if report and hasattr(report, "issues"):
-                    for i in report.issues:
-                        if hasattr(i, "model_dump"):
-                            issues_dicts.append(i.model_dump())
-                        elif isinstance(i, dict):
-                            issues_dicts.append(i)
-                        else:
-                            issues_dicts.append({
-                                "code": getattr(i, "code", ""),
-                                "message": getattr(i, "message", ""),
-                                "stage": getattr(i, "stage", ""),
-                            })
-
-                # Build repairable paths from the current errors
-                repairable_paths = []
-                for issue in issues_dicts:
-                    code = issue.get("code", "")
-                    if "missing_input" in code or "unknown_op" in code or "invalid_params" in code:
-                        repairable_paths.append(f"/nodes/<id>/params/*")
-                        repairable_paths.append(f"/nodes/<id>/inputs")
-                    if "composition_op" in code:
-                        repairable_paths.append(f"/nodes/<id>/dialect")
-                    if "root_node" in code:
-                        repairable_paths.append(f"/components/<id>/root_node")
-
-                # Compute state hashes
-                raw_hash = _stable_hash(current_doc) if current_doc else ""
-                error_sig = _stable_hash(
-                    [(i.get("code", ""), i.get("stage", "")) for i in issues_dicts]
-                )
-
-                stage_name = report.stage if report and hasattr(report, "stage") else "structure"
-                stage_rank = STAGE_RANK.get(stage_name, 0)
-
-                can, reason = can_repair_v2(
-                    state, raw_graph_hash=raw_hash, error_sig_hash=error_sig,
-                    current_stage_rank=stage_rank,
-                )
-                if not can:
-                    _update_task(task_id, status="processing", progress=72,
-                                 result={"stage": f"Repair stopped: {reason}"})
-                    break
-
-                try:
-                    repair_tool = build_repair_patch_tool_schema()
-                    repair_messages = [
-                        {"role": "system", "content": REPAIR_SYSTEM_PROMPT},
-                    ]
-                    if knowledge_prompt:
-                        repair_messages.append(
-                            {"role": "system", "content": f"DOMAIN KNOWLEDGE (apply these rules):\n{knowledge_prompt}"}
-                        )
-                    repair_messages.append(
-                        {"role": "user", "content": build_repair_user_prompt(
-                            current_doc=current_doc,
-                            validation_issues=issues_dicts,
-                        )}
-                    )
-                    tc_repair = caller.call_strict_tool(
-                        messages=repair_messages,
-                        tool_name="emit_repair_patch",
-                        tool_description="Local repair patch for validation errors",
-                        tool_schema=repair_tool,
-                        model_config=config,
-                    )
-                    if tc_repair.arguments.get("give_up"):
-                        _update_task(task_id, status="processing", progress=72,
-                                     result={"stage": f"Repair: LLM gave up"})
-                        break
-
-                    patch = RepairPatchV2.model_validate(tc_repair.arguments)
-                    current_doc = apply_repair_patch_v2(current_doc, patch)
-                except ValueError as _vex:
-                    # Patch had invalid target — log and skip this round
-                    _update_task(task_id, status="processing", progress=72,
-                                 result={"stage": f"Repair: patch rejected: {str(_vex)[:100]}"})
-                except Exception as _rex:
-                    _update_task(task_id, status="processing", progress=72,
-                                 result={"stage": f"Repair: LLM call failed: {str(_rex)[:100]}"})
-                    break
-
-                # Re-validate
-                try:
-                    canonical, report, bundle = validate_and_canonicalize_with_bundle(current_doc)
-                    (out_dir/"raw_fixed.json").write_text(
-                        json.dumps(current_doc, indent=2, ensure_ascii=False), encoding="utf-8")
-                    (out_dir/"validation_report.json").write_text(
-                        report.model_dump_json(indent=2), encoding="utf-8")
-                    errs = [i for i in report.issues if i.severity=="error"]
-                    if canonical is not None and not errs:
-                        repair_ok = True
-                        break
-
-                    # Update state for next round
-                    state = update_repair_state_v2(
-                        state, raw_graph_hash=raw_hash, error_sig_hash=error_sig,
-                        stage_rank=stage_rank,
-                    )
-                except Exception:
-                    break
-
-            if not repair_ok:
-                # Repair couldn't fix — retry L2 authoring (LLM has randomness,
-                # re-generation often produces different results)
-                _update_task(task_id, status="processing", progress=75,
-                             result={"stage": "Retry L2 authoring"})
-                try:
-                    l2_retry = build_level2_authoring_prompt(text, plan, knowledge_prompt=knowledge_prompt)
-                    usage2 = l2_retry.get("usage_skills", {})
-                    anti2 = l2_retry.get("anti_examples", {})
-                    user_parts2 = []
-                    if l2_retry.get("knowledge_prompt"):
-                        user_parts2.append(l2_retry["knowledge_prompt"])
-                    if usage2:
-                        up = ["\nDIALECT USAGE SKILLS:"]
-                        for did, st in usage2.items():
-                            up.append(f"\n--- {did} ---\n{st[:2000]}")
-                        user_parts2.append("\n".join(up))
-                    if spatial_context:
-                        user_parts2.append(f"\nSPATIAL CONTRACT:\n{spatial_context}")
-                    user_parts2.append(f"\nUSER REQUEST:\n{l2_retry['user']}")
-                    uc2 = "\n\n".join(user_parts2)
-                    tc_retry = caller.call_strict_tool(
-                        messages=[{"role":"system","content":l2_retry["system"]},
-                                  {"role":"user","content":uc2}],
-                        tool_name=l2_tool["function"]["name"],
-                        tool_description=l2_tool["function"]["description"],
-                        tool_schema=l2_tool["function"]["parameters"],
-                        model_config=config)
-                    current_doc = tc_retry.arguments
-                    if "llm_validation_hints" not in current_doc:
-                        current_doc["llm_validation_hints"] = {}
-                    (out_dir/"llm_raw.json").write_text(
-                        json.dumps(current_doc, indent=2, ensure_ascii=False), encoding="utf-8")
-                    # Retry validation + auto-fix
-                    canonical, report, bundle = validate_and_canonicalize_with_bundle(current_doc)
-                    if not report.ok:
-                        try:
-                            fixed, af = auto_fix_with_report(current_doc, reg)
-                            if af.applied:
-                                current_doc = fixed
-                                (out_dir/"raw_fixed.json").write_text(
-                                    json.dumps(current_doc, indent=2, ensure_ascii=False), encoding="utf-8")
-                                canonical, report, bundle = validate_and_canonicalize_with_bundle(current_doc)
-                        except Exception:
-                            pass
-                    (out_dir/"validation_report.json").write_text(
-                        report.model_dump_json(indent=2), encoding="utf-8")
-                    errs = [i for i in report.issues if i.severity=="error"]
-                    if canonical is None or errs:
-                        err_details = "; ".join(
-                            f"{getattr(i,'code','?')}: {str(getattr(i,'message',''))[:80]}"
-                            for i in (report.issues or [])[:3])
-                        _update_task(task_id, status="failed", progress=0,
-                                     error=f"L2 retry also failed: {err_details}")
-                        return
-                    repair_ok = True
-                except Exception as _l2e:
-                    _update_task(task_id, status="failed", progress=0,
-                                 error=f"L2 retry call failed: {str(_l2e)[:200]}")
-                    return
-
-            if not repair_ok:
-                _update_task(task_id, status="failed", progress=0,
-                             error="Repair and L2 retry both exhausted")
-                return
-
-        if canonical is None:
             _update_task(task_id, status="failed", progress=0,
-                         error="Validation failed after repair: no canonical document")
+                         error=f"Validation: {len(errs)} errors")
             return
 
         _update_task(task_id, status="processing", progress=75, result={"stage": "Validation OK"})
 
-        # ---- Runtime -> STEP (with repair on OCC failure) ----
+        # ---- Runtime -> STEP ----
         _update_task(task_id, status="processing", progress=85, result={"stage": "Runtime"})
         step_path = out_dir / "output.step"
         meta_path = out_dir / "output.metadata.json"
+        rr = run_canonical_gcad(
+            canonical=canonical, out_step=step_path, metadata_path=meta_path,
+            validation_seed=bundle.to_metadata_dict() if bundle else {},
+            require_full_validation_seed=False)
 
-        from seekflow_engineering_tools.generative_cad.repair.governor import (
-            RepairStateV2 as RuntimeRepairState, can_repair_v2 as runtime_can_repair,
-            update_repair_state_v2 as runtime_update_state, STAGE_RANK as RT_RANK,
-        )
-        from seekflow_engineering_tools.generative_cad.repair.patch import (
-            RepairPatchV2 as RuntimePatch, apply_repair_patch_v2 as runtime_apply_patch,
-        )
-
-        rt_state = RuntimeRepairState(max_attempts=3)
-        rt_current_doc = current_doc if 'current_doc' in dir() else raw
-        rt_success = False
-
-        for rt_round in range(3):
-            _update_task(task_id, status="processing", progress=85 + rt_round*3,
-                         result={"stage": f"Runtime round {rt_round+1}/3"})
-
-            rr = run_canonical_gcad(
-                canonical=canonical, out_step=step_path, metadata_path=meta_path,
-                validation_seed=bundle.to_metadata_dict() if bundle else {},
-                require_full_validation_seed=False)
-
-            if rr.ok:
-                rt_success = True
-                break
-
-            # Runtime failed — try deterministic auto-fix first
-            occ_error = rr.error or "Unknown OCC error"
-            import re as _re
-            failed_node_match = _re.search(r"node\.id[=:]\s*['\"](\w+)['\"]", occ_error)
-            failed_node = failed_node_match.group(1) if failed_node_match else "unknown"
-
-            # Deterministic fix: FILLET_SHARED_EDGE_TOO_SHORT → auto-reduce radius
-            if "suggested_max_radius_mm" in occ_error:
-                try:
-                    suggested_maxes = _re.findall(
-                        r"'suggested_max_radius_mm':\s*([\d.]+)", occ_error
-                    )
-                    corner_ids = _re.findall(r"'corner_id':\s*'(\w+)'", occ_error)
-                    if suggested_maxes and corner_ids:
-                        for node in rt_current_doc.get("nodes", []):
-                            if node.get("op") == "fillet_sketch":
-                                targets = node.get("params", {}).get("targets", [])
-                                for t in targets:
-                                    cid = t.get("corner_id", "")
-                                    for bad_cid, sm in zip(corner_ids, suggested_maxes):
-                                        if bad_cid == cid:
-                                            new_r = round(float(sm) * 0.85, 2)
-                                            old_r = t.get("radius_mm", 0)
-                                            t["radius_mm"] = new_r
-                                            _update_task(task_id, status="processing",
-                                                progress=88,
-                                                result={"stage": f"Auto-reduced {cid} radius {old_r}→{new_r}"})
-                        (out_dir/"raw_fixed.json").write_text(
-                            json.dumps(rt_current_doc, indent=2, ensure_ascii=False), encoding="utf-8")
-                        # Re-validate and continue to next runtime round
-                        try:
-                            canonical, report, bundle = validate_and_canonicalize_with_bundle(rt_current_doc)
-                            if canonical and report.ok:
-                                continue  # go to next runtime round
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
-
-            rt_issues = [{
-                "code": "RUNTIME_OCC_FAILURE",
-                "message": occ_error[:500],
-                "stage": "runtime",
-                "node_id": failed_node,
-                "hint": "Fix polyline points, arc centers, fillet radii, or extrude depth "
-                        "to avoid OCC geometry errors (BRep_API, self-intersection, "
-                        "degenerate edges, zero-length segments)."
-            }]
-
-            rt_hash = _stable_hash(rt_current_doc) if rt_current_doc else ""
-            rt_err_sig = _stable_hash(occ_error[:200])
-
-            rt_can, rt_reason = runtime_can_repair(
-                rt_state, raw_graph_hash=rt_hash, error_sig_hash=rt_err_sig,
-                current_stage_rank=RT_RANK.get("runtime_postconditions", 130),
-            )
-            if not rt_can:
-                break
-
-            try:
-                rt_tool = build_repair_patch_tool_schema()
-                rt_messages = [
-                    {"role": "system", "content": (
-                        "You are a CAD geometry repair agent. The CAD runtime (CadQuery/OCCT) "
-                        "failed to execute the generated document. Fix the GEOMETRIC parameters "
-                        "(coordinates, radii, depths) that caused the failure.\n\n"
-                        "Common causes and fixes:\n"
-                        "- BRep_API: command not done -> polyline has duplicate/zero-length/self-intersecting segments -> adjust points\n"
-                        "- fillet2D failed -> radius too large for edge length -> reduce radius\n"
-                        "- boolean_cut failed -> cutter does not intersect target -> adjust depth/position\n"
-                        "- revolve failed -> profile self-intersects -> fix polygon point order\n\n"
-                        "Only modify params. Do NOT change dialect/op/op_version/schema_version."
-                    )},
-                ]
-                if knowledge_prompt:
-                    rt_messages.append(
-                        {"role": "system", "content": f"DOMAIN KNOWLEDGE:\n{knowledge_prompt}"}
-                    )
-                rt_messages.append(
-                    {"role": "user", "content": build_repair_user_prompt(
-                        current_doc=rt_current_doc, validation_issues=rt_issues)}
-                )
-                rt_tc = caller.call_strict_tool(
-                    messages=rt_messages,
-                    tool_name="emit_repair_patch",
-                    tool_description="Geometry repair patch for OCC runtime failure",
-                    tool_schema=rt_tool,
-                    model_config=config,
-                )
-                if rt_tc.arguments.get("give_up"):
-                    break
-
-                rt_patch = RuntimePatch.model_validate(rt_tc.arguments)
-                rt_current_doc = runtime_apply_patch(rt_current_doc, rt_patch)
-                (out_dir/"raw_fixed.json").write_text(
-                    json.dumps(rt_current_doc, indent=2, ensure_ascii=False), encoding="utf-8")
-            except ValueError:
-                pass  # invalid patch target, try next round
-            except Exception:
-                break
-
-            # Re-validate after patch
-            try:
-                canonical, report, bundle = validate_and_canonicalize_with_bundle(rt_current_doc)
-                errs = [i for i in report.issues if i.severity=="error"]
-                if canonical is None or errs:
-                    break
-            except Exception:
-                break
-
-            rt_state = runtime_update_state(
-                rt_state, raw_graph_hash=rt_hash, error_sig_hash=rt_err_sig,
-                stage_rank=RT_RANK.get("runtime_postconditions", 130),
-            )
-
-        if not rt_success:
-            _update_task(task_id, status="failed", progress=0,
-                         error=f"Runtime repair exhausted after {rt_round+1} rounds: {rr.error[:200] if not rr.ok else 'unknown'}")
-            return
-
-        step_kb = step_path.stat().st_size//1024 if (rt_success and step_path.exists()) else 0
+        step_kb = step_path.stat().st_size//1024 if (rr.ok and step_path.exists()) else 0
         stl_path = out_dir / "output.stl"
         stl_ok = False
         if step_kb > 0:
@@ -1161,7 +756,7 @@ def api_fea_execute(req: FeaExecuteBody):
     from server.fea_pipeline import execute_fea_template
     threading.Thread(target=execute_fea_template, args=(
         req.template_name, req.parameters, req.jobname, _fea_tasks, task_id,
-    ), kwargs={"lock": _fea_lock}, daemon=True).start()
+    ), daemon=True).start()
     return {"task_id": task_id}
 
 @app.get("/api/fea/result/{task_id}")

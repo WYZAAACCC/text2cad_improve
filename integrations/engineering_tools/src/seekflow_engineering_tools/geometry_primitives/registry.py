@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 from seekflow_engineering_tools.geometry_primitives.base import PrimitiveDefinition
 
 PRIMITIVE_REGISTRY: dict[str, PrimitiveDefinition] = {}
@@ -42,13 +40,7 @@ def _populate_registry():
     PRIMITIVE_REGISTRY.clear()
     _REGISTRY_LOAD_ERRORS.clear()
 
-    enable_turbomachinery = os.environ.get(
-        "SEEKFLOW_GCAD_ENABLE_TURBOMACHINERY_PRIMITIVES", ""
-    ).strip().lower() in ("1", "true", "yes")
-
     for path in PRIMITIVE_FAMILY_MODULES:
-        if "turbomachinery" in path and not enable_turbomachinery:
-            continue
         try:
             definitions = _load_definitions_from_module(path)
         except ImportError as exc:

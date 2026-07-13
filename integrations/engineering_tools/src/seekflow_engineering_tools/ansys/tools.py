@@ -108,7 +108,7 @@ _ANSYS_TEMPLATE_SCHEMAS = {
         "units": "mm,tonne,N,MPa,C",
         "parameters": {
             "step_file_path": {"type": "str", "default": ""},
-            "rpm": {"type": "float", "default": 15000.0, "min": 100},
+            "rpm": {"type": "float", "default": 15000.0, "min": 1000},
             "temp_rim_c": {"type": "float", "default": 650.0, "min": 20},
             "temp_bore_c": {"type": "float", "default": 500.0, "min": 20},
             "young_rim_mpa": {"type": "float", "default": 150000.0},
@@ -123,7 +123,7 @@ _ANSYS_TEMPLATE_SCHEMAS = {
         },
         "metrics": [
             "max_von_mises_mpa", "max_radial_stress_mpa", "max_hoop_stress_mpa",
-            "min_safety_factor",
+            "min_safety_factor", "t_bore_actual_c", "t_rim_actual_c"
         ],
     },
 }

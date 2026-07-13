@@ -50,11 +50,6 @@ class DialectSelectionPlan(BaseModel):
                 raise ValueError("deterministic_primitive must not select generative dialects")
             if not self.selected_primitive:
                 raise ValueError("deterministic_primitive requires selected_primitive to be set")
-            if self.unsupported_capabilities:
-                raise ValueError(
-                    "Cannot select deterministic_primitive while listing unsupported_capabilities. "
-                    "If the primitive cannot express all required features, use generative_cad_ir or unsupported."
-                )
 
         if self.route_decision == "unsupported":
             if not self.unsupported_capabilities:

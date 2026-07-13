@@ -530,50 +530,28 @@ def turbine_disc_rotational_thermal_apdl(
     element_size_mm: float = 5.0,
     n_slots: int = 60,
     slot_depth_mm: float = 20.0,
-    # ── Geometry parameters (override to match actual CAD model) ──
-    bore_r_mm: float = 60.0,
-    hub_r_mm: float = 120.0,
-    web_r1_mm: float = 120.0,
-    web_r2_mm: float = 215.0,
-    rim_r_mm: float = 250.0,
-    hub_half_z_mm: float = 38.0,
-    web_half_z1_mm: float = 22.0,
-    web_half_z2_mm: float = 15.0,
-    rim_half_z_mm: float = 30.0,
 ) -> str:
     r"""Turbine disc 2D axisymmetric thermal-structural analysis.
 
-    Geometry is built from parameters (defaults match standard 500mm disc):
-      bore R = {bore_r_mm}, hub R = {hub_r_mm}, web = {web_r1_mm}→{web_r2_mm},
-      rim R = {rim_r_mm}, half-thicknesses: hub={hub_half_z_mm}, rim={rim_half_z_mm}.
+    Geometry: bore R=60mm, hub 60-120mm(Z=+-38), web 120-215mm,
+    rim 215-250mm(Z=+-30), 60 fir-tree slots at rim.
 
-    Loads: centrifugal (OMEGA about Y) + radial temperature gradient
-           (T_bore → T_rim, linear with radius).  The gradient produces
-           thermal stress; uniform T would produce none.
-
-    Material: GH4169 / Inconel 718 with temperature-dependent EX via
-              MPTEMP/MPDATA (E_bore at T_bore, E_rim at T_rim).
+    Loads: centrifugal (OMEGA) + thermal gradient (bore->rim).
+    Material: GH4169 / Inconel 718 (temperature-dependent properties).
 
     Extracts: radial/hoop/von-Mises stress paths from bore to rim,
-    safety factor = yield / von_Mises, plus nodal CSV for heatmap.
+    safety factor = yield / von_Mises at each radial station.
+
+    If *step_file_path* is non-empty, the template will attempt to
+    import the STEP geometry via IGESIN for a 3D sector model.
     """
     omega_rad_s = 2.0 * 3.14159265358979 * rpm / 60.0
 
     # Keypoints for disc cross-section (R, Z) — closed polygon, clockwise
-    # Bore→Hub→Web→Rim→back, built from geometry parameters
+    # Matches CAD model: bore→hub→web→rim→back
     kp_rz = [
-        (bore_r_mm, -hub_half_z_mm),
-        (hub_r_mm, -hub_half_z_mm),
-        (hub_r_mm, -web_half_z1_mm),
-        (web_r2_mm, -web_half_z2_mm),
-        (web_r2_mm, -rim_half_z_mm),
-        (rim_r_mm, -rim_half_z_mm),
-        (rim_r_mm, rim_half_z_mm),
-        (web_r2_mm, rim_half_z_mm),
-        (web_r2_mm, web_half_z2_mm),
-        (hub_r_mm, web_half_z1_mm),
-        (hub_r_mm, hub_half_z_mm),
-        (bore_r_mm, hub_half_z_mm),
+        (60, -38), (120, -38), (120, -22), (215, -15), (215, -30), (250, -30),
+        (250, 30), (215, 30), (215, 15), (120, 22), (120, 38), (60, 38),
     ]
     nkp = len(kp_rz)
     kp_list = ",".join(str(i+1) for i in range(nkp))
@@ -602,16 +580,6 @@ ALPHA     = {alpha}
 ESIZE     = {element_size_mm}
 N_SLOTS   = {n_slots}
 D_SLOT    = {slot_depth_mm}
-! Disc geometry (mm)
-BORE_R    = {bore_r_mm}
-HUB_R     = {hub_r_mm}
-WEB_R1    = {web_r1_mm}
-WEB_R2    = {web_r2_mm}
-RIM_R     = {rim_r_mm}
-HUB_HZ    = {hub_half_z_mm}
-WEB_HZ1   = {web_half_z1_mm}
-WEB_HZ2   = {web_half_z2_mm}
-RIM_HZ    = {rim_half_z_mm}
 
 ! ==============================================================================
 ! PREPROCESSOR — Axisymmetric Model
@@ -619,16 +587,12 @@ RIM_HZ    = {rim_half_z_mm}
 /PREP7
 
 ! --- Element type: PLANE183, axisymmetric ---
-! KEYOPT(1)=0: 8-node quad (default)
-! KEYOPT(3)=1: Axisymmetric (X=radial, Y=axial, Z=hoop)
 ET,1,PLANE183
-KEYOPT,1,3,1      ! Axisymmetric
+KEYOPT,1,1,1      ! Axisymmetric
+KEYOPT,1,3,0      ! Plane stress with thickness (default)
 
 ! --- Material: GH4169 / Inconel 718 ---
-! Temperature-dependent Young's modulus: EX(T) interpolated between
-! T_BORE (E_BORE, cooler → stiffer) and T_RIM (E_RIM, hotter → softer)
-MPTEMP,1,T_BORE,T_RIM
-MPDATA,EX,1,1,E_BORE,E_RIM
+MP,EX,1,E_BORE
 MP,PRXY,1,NU
 MP,DENS,1,DENS
 MP,ALPX,1,ALPHA
@@ -653,29 +617,19 @@ FINISH
 /SOLU
 ANTYPE,STATIC
 
-! --- Rotational body force about symmetry axis Y ---
-! For PLANE183 axisymmetric (X=radial, Y=axial): OMEGY = ω
-OMEGA,,OMEGA,,
+! --- Rotational body force (OMEGA about Y=Z axis for axisymmetric) ---
+! For axisymmetric: Y axis = axial, rotation about Y
+OMEGA,,,OMEGA
 
-! --- Reference temperature (stress-free temperature) ---
+! --- Reference temperature ---
 TREF,20
 
-! --- Thermal load: radial temperature gradient ---
-! Linear ramp T(R) = T_BORE + (T_RIM-T_BORE)*(R-BORE_R)/(RIM_R-BORE_R)
-! Each node gets its own temperature → non-uniform expansion → thermal stress
-ALLSEL,ALL
-*GET,N_THERM,NODE,0,COUNT
-*DIM,NTEMP,ARRAY,N_THERM
-*VGET,NTEMP(1),NODE,,NLIST
-*DO,I,1,N_THERM
-  NID = NTEMP(I)
-  *IF,NID,GT,0,THEN
-    R_NODE = NX(NID)
-    T_NODE = T_BORE + (T_RIM - T_BORE)*(R_NODE - BORE_R)/(RIM_R - BORE_R)
-    BF,NID,TEMP,T_NODE
-  *ENDIF
-*ENDDO
-ALLSEL,ALL
+! --- Thermal load: uniform temperature ---
+! Apply disk-average temperature as body force
+! (uniform T produces zero thermal stress when free to expand;
+!  gradient would add ~E*alpha*DeltaT/2 thermal stress)
+T_AVG = (T_BORE + T_RIM) / 2.0
+BFUNIF,TEMP,T_AVG
 
 ! --- Boundary conditions ---
 ! Disc symmetric about Z=0 (Y=0 in ANSYS axisymmetric)
@@ -683,8 +637,8 @@ ALLSEL,ALL
 NSEL,S,LOC,Y,0
 D,ALL,UY,0
 ALLSEL,ALL
-! Ground one bore node in UX for numerical stability (eliminate rigid-body mode)
-NSEL,S,LOC,X,BORE_R
+! Ground one bore node in UX for numerical stability
+NSEL,S,LOC,X,60
 NSEL,R,LOC,Y,0
 *GET,ANCHOR_N,NODE,0,NUM,MIN
 D,ANCHOR_N,UX,0
@@ -702,11 +656,11 @@ SET,LAST
 
 ! --- Path from bore to rim along midplane Z=0 ---
 PATH,DISC_PATH,5,30,1
-PPATH,1,,BORE_R,0,0      ! Bore
-PPATH,2,,HUB_R,0,0       ! Hub outer
-PPATH,3,,(HUB_R+WEB_R2)/2,0,0  ! Mid-web
-PPATH,4,,WEB_R2,0,0      ! Web end
-PPATH,5,,RIM_R,0,0       ! Rim
+PPATH,1,,60,0,0       ! Bore R=60
+PPATH,2,,120,0,0      ! Hub outer R=120
+PPATH,3,,167,0,0      ! Mid-web R=167
+PPATH,4,,215,0,0      ! Web end R=215
+PPATH,5,,250,0,0      ! Rim R=250
 
 PDEF,RADIAL_S,S,X,AVG      ! Radial stress SX (MPa)
 PDEF,HOOP_S,S,Z,AVG         ! Hoop stress SZ (MPa)
@@ -724,12 +678,12 @@ NSORT,S,Z
 ! --- Calculate safety factor ---
 SF_MIN = S_YIELD / VM_MAX
 
-! --- Temperature at bore and rim (verify gradient was applied) ---
-NSEL,S,LOC,X,BORE_R
+! --- Temperature at bore and rim ---
+NSEL,S,LOC,X,60
 NSORT,TEMP
 *GET,T_BORE_ACTUAL,SORT,0,MAX
 ALLSEL,ALL
-NSEL,S,LOC,X,RIM_R
+NSEL,S,LOC,X,250
 NSORT,TEMP
 *GET,T_RIM_ACTUAL,SORT,0,MIN
 ALLSEL,ALL

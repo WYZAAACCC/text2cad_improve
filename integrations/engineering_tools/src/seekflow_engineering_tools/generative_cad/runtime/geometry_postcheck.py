@@ -237,33 +237,11 @@ def _measure_bbox(solid) -> tuple[float, float, float] | None:
 
 
 def _check_closed(solid) -> bool | None:
-    """Check if solid is a closed manifold.
-
-    Primary: TopoDS_Shape.Closed() flag.
-    Fallback: BRepCheck_Analyzer — OCCT's Closed() flag can be unreliable
-              after boolean operations on revolved profiles (known OCCT quirk).
-              When Closed() returns False but BRepCheck_Analyzer says valid,
-              the solid IS closed — the flag is a false negative.
-    """
     try:
         if hasattr(solid, "val"):
             solid = solid.val()
         if hasattr(solid, "Closed"):
-            flag = solid.Closed()
-            if flag:
-                return True
-            # Closed() returned False — cross-validate with BRepCheck_Analyzer
-            try:
-                from OCP.BRepCheck import BRepCheck_Analyzer
-                if hasattr(solid, "wrapped"):
-                    analyzer = BRepCheck_Analyzer(solid.wrapped)
-                else:
-                    analyzer = BRepCheck_Analyzer(solid)
-                if analyzer.IsValid():
-                    return True  # geometry IS valid despite Closed() flag
-            except Exception:
-                pass
-            return False
+            return solid.Closed()
         return None
     except Exception:
         return None

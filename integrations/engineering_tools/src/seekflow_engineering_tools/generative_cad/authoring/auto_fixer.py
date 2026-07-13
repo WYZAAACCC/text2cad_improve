@@ -285,7 +285,7 @@ def auto_fix_with_report(
     _apply_fix("fix_param_names", lambda d: _fix_param_names(d))
     _apply_fix("fix_param_values", lambda d: _fix_param_values(d))
     _apply_fix("fix_path_points", lambda d: _fix_path_points(d))
-    _apply_fix("fix_unknown_ops", lambda d: _fix_unknown_ops(d, dialect_registry), severity="safe_alias", confidence=0.95)
+    _apply_fix("fix_unknown_ops", lambda d: _fix_unknown_ops(d, dialect_registry), severity="destructive", confidence=0.85)
     _apply_fix("fix_target_values", lambda d: _fix_target_values(d))
     _apply_fix("fix_cross_component_refs", lambda d: _fix_cross_component_refs(d), severity="semantic_guess", confidence=0.9)
     _apply_fix("fix_root_node", lambda d: _fix_root_node(d), confidence=0.95)
@@ -293,9 +293,8 @@ def auto_fix_with_report(
     _apply_fix("fix_phase_ordering", lambda d: _fix_phase_ordering(d, dialect_registry))
     _apply_fix("fix_profile_stations", lambda d: _fix_profile_stations(d), severity="semantic_guess", confidence=0.85)
     _apply_fix("fix_slot_station_order", lambda d: _fix_slot_station_order(d))
-    _apply_fix("fix_slot_half_profile", lambda d: _fix_slot_half_profile(d), severity="semantic_guess", confidence=0.6)
+    _apply_fix("fix_slot_half_profile", lambda d: _fix_slot_half_profile(d))
     _apply_fix("fill_default_params", lambda d: _fill_default_params(d))
-    _apply_fix("fix_fillet_zero_radius", lambda d: _fix_fillet_zero_radius(d))
     _apply_fix("fix_null_hints", lambda d: _fix_null_hints(d))
     _apply_fix("remove_extra_params", lambda d: _remove_extra_params(d))
 
@@ -646,21 +645,11 @@ def _fix_unknown_ops(doc: dict, dialect_registry=None) -> dict:
     for node in nodes:
         did = node.get("dialect", "")
         op = node.get("op", "")
-        # Normalize op_version — only force "1.0.0" for clearly-wrong single-digit versions.
-        # Never downgrade a valid registered version (e.g. "2.0.0").
+        # v6.3: Normalize op_version — LLM often outputs "2" instead of "1.0.0"
         ver = node.get("op_version")
-        if ver and ver not in ("1.0.0", "1.0", "0.2.0", "2.0.0"):
-            # Check if this version is actually registered for this op
-            d = dialect_registry.get(did) if did else None
-            is_registered = False
-            if d:
-                try:
-                    d.get_op_spec(op, ver)
-                    is_registered = True
-                except Exception:
-                    pass
-            if not is_registered:
-                node["op_version"] = "1.0.0"
+        if ver and ver not in ("1.0.0", "1.0", "0.2.0"):
+            # Try to normalize: "2" → "1.0.0", "v2" → "1.0.0"
+            node["op_version"] = "1.0.0"
 
         # Allow nodes with known dialects even if op lookup fails
         is_valid = (did, op) in valid_ops
@@ -1299,73 +1288,20 @@ def _fix_selected_dialects(doc: dict) -> dict:
 
 
 def _fix_chamfer_fillet_optional(doc: dict) -> dict:
-    """Mark chamfer/fillet@V1 nodes as optional so complex geometry doesn't
+    """Mark chamfer/fillet nodes as optional so complex geometry doesn't
     fail the entire pipeline when OCCT can't execute them.
 
-    fillet_sketch@2.0.0 (with 'targets' param) has its own fail-closed
-    semantics and must NOT be degraded — it validates feasibility before
-    OCC call and raises RuntimeError for required targets.
+    Chamfer and fillet are decorative finishing operations.  On complex
+    revolved bodies (turbine disks, etc.) OCCT/CadQuery may fail with
+    'ChFi3d_Builder: only 2 faces'.  Marking them required=False with
+    degradation_policy='may_skip_with_warning' allows the pipeline to
+    skip the failed operation and still output the main geometry.
     """
     for node in doc.get("nodes", []):
         op = node.get("op", "")
-        if op in ("apply_safe_chamfer", "apply_safe_fillet"):
+        if op in ("apply_safe_chamfer", "apply_safe_fillet", "fillet_sketch"):
             node["required"] = False
             node["degradation_policy"] = "may_skip_with_warning"
-        elif op == "fillet_sketch":
-            # V1 (at_vertex_index) → always optional (unstable vertex indices)
-            # V2 (targets) → KEEP fail-closed (handler has _fail_or_warn for non-required)
-            #   V2 handler handles failures gracefully; don't override its semantics.
-            if "targets" not in node.get("params", {}):
-                node["required"] = False
-                node["degradation_policy"] = "may_skip_with_warning"
-    return doc
-
-
-def _fix_fillet_zero_radius(doc: dict) -> dict:
-    """v9: LLM sometimes generates radius_mm=0 for fillet_sketch@2.0.0 targets.
-    Replace with 1.0mm minimum to pass Pydantic gt=0 validation."""
-    for node in doc.get("nodes", []):
-        if node.get("op") != "fillet_sketch":
-            continue
-        targets = node.get("params", {}).get("targets", [])
-        for t in targets:
-            r = t.get("radius_mm", 0)
-            if isinstance(r, (int, float)) and r <= 0:
-                t["radius_mm"] = 1.0
-    return doc
-
-
-def _fix_fillet_oversize_radius(doc: dict, polyline_points_by_component: dict | None = None) -> dict:
-    """v10: Reduce fillet radii that would fail FILLET_SHARED_EDGE_TOO_SHORT.
-
-    When a fillet target's radius exceeds the feasible maximum for its
-    adjacent edges, reduce it to 80% of the feasible max (conservative margin).
-    """
-    from seekflow_engineering_tools.generative_cad.dialects.sketch_profile.profile_graph import ProfileGraph
-    from seekflow_engineering_tools.generative_cad.dialects.sketch_profile.fillet_solver import check_fillet_feasibility
-
-    for node in doc.get("nodes", []):
-        if node.get("op") != "fillet_sketch":
-            continue
-        targets = node.get("params", {}).get("targets", [])
-        if not targets:
-            continue
-
-        wire_id = node["params"].get("wire_id", "profile")
-        # Try to check feasibility — if we have polyline points, build a graph
-        # and reduce any infeasible radii.
-        try:
-            # Build a rough check: just count how many points we'd need
-            # The feasibility check needs a ProfileGraph, which needs polyline_points.
-            # Since we don't have polyline_points in auto-fixer context, we do a simple
-            # per-target check: if radius_mm > 20mm (unreasonable for any CAD fillet),
-            # or if we can detect obviously infeasible radii from edge lengths.
-            for t in targets:
-                r = t.get("radius_mm", 0)
-                if isinstance(r, (int, float)) and r > 50.0:
-                    t["radius_mm"] = min(50.0, r * 0.5)
-        except Exception:
-            pass
     return doc
 
 

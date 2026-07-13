@@ -141,53 +141,131 @@ Hard output rules:
      → revolve_profile(360°) produces a watertight solid with radiused hub↔web↔rim transitions.
 
      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     PROFILE FILLETING — SEMANTIC CORNER IDENTIFICATION (fillet_sketch@2.0.0)
+     FIR-TREE SLOT CUTTER — PARAMETERIZED TEMPLATE (KT787-JB-215 based)
      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-     Use fillet_sketch@2.0.0 with between_segments to identify corners by
-     adjacent edge IDs, NOT by vertex index. Vertex indices are NOT stable
-     across OCC wire rebuilds.
+     Use create_2d_sketch(plane=XY), X=radial (0=rim, negative=toward center),
+     Y=tangential half-width, symmetric about Y=0. BOTH halves — no mirror.
 
-     Example — filleting hub↔web and web↔rim transitions on a disc profile.
-     The standard 12-point disc profile has these edges:
-       v0(60,-38)→v1(120,-38)=e0, v1→v2(120,-22)=e1, v2→v3(215,-15)=e2,
-       v3→v4(215,-30)=e3, v4→v5(250,-30)=e4, v5→v6(250,30)=e5,
-       v6→v7(215,30)=e6, v7→v8(215,15)=e7, v8→v9(120,22)=e8,
-       v9→v10(120,38)=e9, v10→v11(60,38)=e10, v11→v0=e11.
-     Corners (adjacent edges that meet):
-       hub_web_lower:  e0+e1 (at R=120,Z=-38)  — hub to web on -Z side
-       hub_web_upper:  e9+e10 (at R=120,Z=+38) — hub to web on +Z side
-       web_rim_lower:  e3+e4 (at R=215,Z=-30)  — web to rim on -Z side
-       web_rim_upper:  e6+e7 (at R=215,Z=+30)  — web to rim on +Z side
-     GCAD:
-       fillet_sketch(
-         wire_id="disc_profile",
-         targets=[
-           {corner_id:"hub_web_lower", between_segments:["e0","e1"], radius_mm:12.0},
-           {corner_id:"hub_web_upper", between_segments:["e9","e10"], radius_mm:12.0},
-           {corner_id:"web_rim_lower",  between_segments:["e3","e4"], radius_mm:10.0},
-           {corner_id:"web_rim_upper",  between_segments:["e6","e7"], radius_mm:10.0}
-         ],
-         strict=true
-       )
-     VERIFY: count your polyline points (N) → edges are e0..e_{N-1}.
-     The edge e_{N-1} always closes back to v0.
+     ╔══════════════════════════════════════════════════════════════════════╗
+     ║  RULE #0 — 外宽内窄: 1st lobe |Y| > 2nd lobe |Y| > btm tooth |Y|  ║
+     ║  7.5 > 6.5 > 3.5.  If violated → INVERTED = WRONG!                ║
+     ╚══════════════════════════════════════════════════════════════════════╝
 
-     Hard rules for fillet_sketch@2.0.0:
-     - Each target has its OWN radius_mm — do NOT use the same radius for all.
-     - The runtime pre-checks edge length feasibility before OCC call.
-     - required=True corners that fail will ABORT the build (fail-closed).
-     - Do NOT fillet every interior vertex. Only fillet corners with an
-       engineering reason (stress relief, manufacturing requirement).
-     - Design-profile arcs should be created via add_arc_segment, not via
-       post-hoc filleting of sharp corners.
+     1. PARAMETERS (adjust values for different specs, keep relationships):
+        W_mouth  = 4.0   mouth half-width (user spec: 3-4mm)
+        W_lobe1  = 7.5   first lobe peak half-width (user spec: 7-8mm)
+        W_lobe2  = 6.5   second lobe peak half-width (user spec: 6-7mm)
+        W_bottom = 3.5   bottom tooth half-width (user spec: 底宽 3-4mm)
+        W_wedge1 = 2.5   first neck wedge half-width
+        W_wedge2 = 2.0   second neck wedge half-width
+        D_total  = 20.0  total radial depth (user spec: 18-24mm)
+        D_wedge  = 3.0   wedge entrance length
+        L_top1   = 3.0   first tooth top flat width
+        L_top2   = 2.0   second tooth top flat width
+        L_neck1  = 3.0   first neck flat length (≥2×R_fillet! room for fillet)
+        L_neck2  = 2.0   second neck flat length
+        R_fillet = 1.5   fillet radius at all interior corners
 
-     For fir-tree or dovetail slot profiles, prefer:
-       add_line_segment → add_arc_segment → add_line_segment
-     over:
-       add_polyline(all sharp) → fillet_sketch(every interior corner).
+     1a. PARAMETERIZED POINT GENERATION (24 points, 12R + 12L):
+
+         X-COORDINATES (cumulative from rim inward):
+         X0 = 0
+         X1 = X0 - W_mouth + 1.0           = -3.0    (wedge entrance)
+         X2 = X1 - 1.0                      = -4.0    (first lobe flare OUT)
+         X3 = X2 - L_top1                   = -7.0    (first lobe top end)
+         X4 = X3 - 2.0                      = -9.0    (first lobe slope IN)
+         X5 = X4 - L_neck1                  = -12.0   (NECK 1 flat end)
+         X6 = X5 - 0.5                      = -12.5   (second lobe flare OUT)
+         X7 = X6 - L_top2                   = -14.5   (second lobe top end)
+         X8 = X7 - 1.5                      = -16.0   (second lobe slope IN)
+         X9 = X8 - L_neck2                  = -18.0   (NECK 2 flat end)
+         X10= X9 - 0.5                      = -18.5   (bottom tooth flare)
+         X11= -D_total                      = -20.0   (ROOT)
+
+         RIGHT HALF (12 points, clockwise mouth→root, Y≥0):
+         [ 0] {x_mm:   0.0, y_mm: W_mouth }    MOUTH TOP
+         [ 1] {x_mm:  -3.0, y_mm: W_wedge1}    wedge entrance (inclined IN)
+         [ 2] {x_mm:  -4.0, y_mm: W_lobe1 }    first lobe flank OUT (inclined)
+         [ 3] {x_mm:  -7.0, y_mm: W_lobe1 }    first lobe top (horizontal flat)
+         [ 4] {x_mm:  -9.0, y_mm: W_wedge1}    slope back IN to wedge (inclined)
+         [ 5] {x_mm: -12.0, y_mm: W_wedge1}    NECK 1 flat (horizontal, 3mm)
+         [ 6] {x_mm: -12.5, y_mm: W_lobe2 }    second lobe flank OUT (inclined)
+         [ 7] {x_mm: -14.5, y_mm: W_lobe2 }    second lobe top (horizontal flat)
+         [ 8] {x_mm: -16.0, y_mm: W_wedge2}    slope back IN to wedge (inclined)
+         [ 9] {x_mm: -18.0, y_mm: W_wedge2}    NECK 2 flat (horizontal, 2mm)
+         [10] {x_mm: -18.5, y_mm: W_bottom}    BOTTOM TOOTH flare (inclined)
+         [11] {x_mm: -20.0, y_mm: W_bottom-0.5} ROOT (rounded bottom tooth tip)
+
+         LEFT HALF (12 points, root→mouth, Y≤0, exact mirror):
+         [12] {x_mm: -20.0, y_mm: -(W_bottom-0.5)}  cross to left
+         [13] {x_mm: -18.5, y_mm: -W_bottom}        bottom tooth left (inclined)
+         [14] {x_mm: -18.0, y_mm: -W_wedge2}        NECK 2 flat left (horizontal)
+         [15] {x_mm: -16.0, y_mm: -W_wedge2}        slope left (inclined)
+         [16] {x_mm: -14.5, y_mm: -W_lobe2 }        second lobe top left (horizontal)
+         [17] {x_mm: -12.5, y_mm: -W_lobe2 }        second lobe IN left (inclined)
+         [18] {x_mm: -12.0, y_mm: -W_wedge1}        NECK 1 flat left (horizontal)
+         [19] {x_mm:  -9.0, y_mm: -W_wedge1}        slope left (inclined)
+         [20] {x_mm:  -7.0, y_mm: -W_lobe1 }        first lobe top left (horizontal)
+         [21] {x_mm:  -4.0, y_mm: -W_lobe1 }        first lobe IN left (inclined)
+         [22] {x_mm:  -3.0, y_mm: -W_wedge1}        wedge entrance left (inclined)
+         [23] {x_mm:   0.0, y_mm: -W_mouth }        MOUTH BOTTOM
+
+     1b. WEDGE VERIFICATION (check |Y| values along wedge):
+         Wedge entry:  |Y| = 2.5mm (points 1,22)
+         NECK 1 flat:  |Y| = 2.5mm (points 5,18) — SAME as entry (flat neck)
+         NECK 2 flat:  |Y| = 2.0mm (points 9,14) — narrower (converged)
+         Root:         |Y| = 2.5mm (points 10,13 flare to W_bottom=3.5)
+         LOBE WIDTHS:  |Y|=7.5 (1st) > |Y|=6.5 (2nd) > |Y|=3.5 (bottom) ← MUST decrease!
+
+     1c. FILLET (圆角 — CRITICAL, READ CAREFULLY):
+         ╔══════════════════════════════════════════════════════════════════╗
+         ║  R_fillet = 1.5mm MAXIMUM.  DO NOT USE 2.0mm OR LARGER!       ║
+         ║  OCC fillet2D FAILS with "BRep_API: command not done"           ║
+         ║  when R > 1.5mm on short edges (neck flats only 2-3mm).        ║
+         ║  R=2.0mm → OCC ERROR → ZERO FILLETS APPLIED!                   ║
+         ║  R=1.5mm → OCC succeeds → fillets applied correctly.           ║
+         ╚══════════════════════════════════════════════════════════════════╝
+         Neck flats (L_neck1=3mm, L_neck2=2mm) are barely long enough for
+         R=1.5mm fillets.  Each fillet needs ~R×2 of straight edge on both
+         sides of the corner.  R=2.0mm would need 4mm edges — neck flats
+         are too short → OCC fails → NO fillets at all.
+
+         EXACT fillet specification:
+           fillet_sketch(radius_mm=1.5, at_vertex_index=[
+               1,2,3,4,5,6,7,8,9,10, 13,14,15,16,17,18,19,20,21,22
+           ])
+         (all interior vertices EXCEPT mouth corners 0,23 and root crossing 11,12)
+         radius_mm MUST be 1.5, NOT 2.0, NOT 1.0.  Exactly 1.5.
+
+     1d. SEGMENT TYPE REFERENCE:
+         INCLINED (I, dx≠0 AND dy≠0): [0-1],[1-2],[4-5?NO 4-5 is H],[6-7?NO],
+           Actually trace: [0→1]I [1→2]I [2→3]H [3→4]I [4→5]H [5→6]I [6→7]H
+           [7→8]I [8→9]H [9→10]I [10→11]I [12→13]I [13→14]H [14→15]I
+           [15→16]H [16→17]I [17→18]H [18→19]I [19→20]H [20→21]I [21→22]I
+           [22→23]I [23→0]V [11→12]V
+         H (horizontal, dy=0): 6 segments (tooth tops + neck flats)
+         V (vertical, dx=0): 2 segments (mouth entry + root crossing)
+         I (inclined): 16 segments (all flanks) ← MOST segments are inclined!
+
+     2. MOUTH WIDTH: Y at X=0 = W_mouth = 3-4mm. NOT 7, NOT 8.
+
+     3. DEPTH: D_total = 18-24mm from X=0 inward. Extrude depth_mm=80 direction="both"
+        handles axial cutting through the rim (Z-direction).
+
+     4. NO place_component before circular_pattern_component.
+        Pattern handler does its own radial positioning via radius_mm.
+        Direct chain: n_cutter_extrude → n_pattern_cutters (NO place in between).
 
      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+     Assembly: close_profile → fillet_sketch(radius_mm=1.5, at_vertex_index=ALL_INTERIOR)
+     → extrude_profile(depth_mm=80, direction="both")  ← both is REQUIRED
+     Then composition: circular_pattern_component(count=60, radius_mm=250, rotate_copies=True)
+     → boolean_cut(target=disc, tool=patterned_cutters).
+     fillet_sketch REQUIRES at_vertex_index. You MUST count your vertices and list
+     every interior index (all except mouth corners and root crossing).
+     If at_vertex_index is null/empty NO filleting happens — you must opt in.
 31. Do not use deprecated fields: selected_bases, base_id, feature_graph, system_validation_contract, ir_version, GenerativeCADSpec.
 32. If the request cannot be expressed with the selected contracts, return to Level-1 routing as unsupported instead of inventing fields.
 33. Do not claim manufacturing readiness, certification, airworthiness, installation readiness, structural validation, life prediction, or production readiness.

@@ -31,8 +31,6 @@ from seekflow_engineering_tools.generative_cad.dialects.sketch_profile.handlers 
     handle_cut_profile,
     handle_extrude_profile,
     handle_fillet_sketch,
-    handle_fillet_sketch_v2,
-    handle_mirror_profile,
     handle_revolve_profile,
 )
 from seekflow_engineering_tools.generative_cad.dialects.sketch_profile.params import (
@@ -46,7 +44,6 @@ from seekflow_engineering_tools.generative_cad.dialects.sketch_profile.params im
     CutProfileParams,
     ExtrudeProfileParams,
     FilletSketchParams,
-    FilletSketchV2Params,
     LinearPatternParams,
     MirrorFeatureParams,
     RevolveProfileParams,
@@ -59,9 +56,9 @@ class SketchProfileDialect:
     phase_order = (
         "sketch",
         "profile",
+        "edge_treatment",
         "feature",
         "pattern",
-        "edge_treatment",
         "cleanup",
     )
 
@@ -74,12 +71,10 @@ class SketchProfileDialect:
             "add_polyline": "1.0.0",
             "add_slot": "1.0.0",
             "close_profile": "1.0.0",
-            "fillet_sketch": "2.0.0",  # default upgraded to semantic V2
-            "fillet_sketch@1": "1.0.0",  # deprecated legacy
-            "mirror_profile": "1.0.0",
             "extrude_profile": "1.0.0",
-            "revolve_profile": "1.0.0",
             "cut_profile": "1.0.0",
+            "revolve_profile": "1.0.0",
+            "fillet_sketch": "1.0.0",
         }
 
         self._specs: dict[tuple[str, str], OperationSpec] = {
@@ -147,66 +142,19 @@ class SketchProfileDialect:
                 handler=handle_cut_profile,
                 summary="Cut material from an existing solid using the profile.",
             ),
-            ("fillet_sketch", "1.0.0"): OperationSpec(
-                dialect="sketch_profile", op="fillet_sketch", op_version="1.0.0",
-                phase="profile", input_types=["profile"], output_types=["profile"],
-                params_model=FilletSketchParams, effects=["modifies_solid"],
-                handler=handle_fillet_sketch,
-                summary="DEPRECATED. Apply fillet via vertex indices (unstable). Use fillet_sketch@2.0.0 instead.",
-            ),
-            ("fillet_sketch", "2.0.0"): OperationSpec(
-                dialect="sketch_profile", op="fillet_sketch", op_version="2.0.0",
-                phase="edge_treatment", input_types=["profile"], output_types=["profile"],
-                params_model=FilletSketchV2Params, effects=["modifies_solid"],
-                handler=handle_fillet_sketch_v2,
-                summary="Semantic fillet via corner_id + between_segments (stable). Each target has independent radius, feasibility pre-check, and fail-closed enforcement.",
-                usage_notes=[
-                    "Use between_segments (edge IDs from ProfileGraph) to identify corners, NOT at_vertex_index.",
-                    "Each target can have a different radius — do NOT apply a single radius to all corners.",
-                    "Feasibility pre-check validates edge length budget before OCC call.",
-                    "required=True corners that fail will abort the build (fail-closed).",
-                ],
-                common_mistakes=[
-                    "Using at_vertex_index instead of between_segments.",
-                    "Applying same radius to all corners regardless of edge length.",
-                    "Assuming OCC vertex ordering is stable across rebuilds.",
-                ],
-            ),
-            ("mirror_profile", "1.0.0"): OperationSpec(
-                dialect="sketch_profile", op="mirror_profile", op_version="1.0.0",
-                phase="profile", input_types=["profile"], output_types=["profile"],
-                params_model=MirrorFeatureParams, effects=["modifies_solid"],
-                handler=handle_mirror_profile,
-                summary="Mirror the sketch profile and union with original (e.g. half fir-tree slot → full).",
-            ),
             ("revolve_profile", "1.0.0"): OperationSpec(
                 dialect="sketch_profile", op="revolve_profile", op_version="1.0.0",
                 phase="feature", input_types=["profile"], output_types=["solid"],
-                params_model=RevolveProfileParams, effects=["creates_solid"],
+                params_model=RevolveProfileParams, effects=["exports_artifact"],
                 handler=handle_revolve_profile,
-                summary="Revolve a closed 2D profile around Z axis — for axisymmetric parts with varying thickness (turbine discs, wheels, pulleys).",
-                usage_notes=[
-                    "Must follow create_2d_sketch(plane=XZ) → add_polyline/line/arc → close_profile.",
-                    "The polyline defines an ordered R-Z polygon on the XZ plane: X=R(radius), Y=Z(axial).",
-                    "Points are NOT Z-sorted — the LLM controls exact polygon vertex order.",
-                    "Unlike axisymmetric.revolve_profile which uses profile_stations sorted by Z, "
-                    "sketch_profile.revolve_profile preserves the original point order for arbitrary "
-                    "cross-sections including hub(厚)→web(薄)→rim(厚) varying-thickness profiles.",
-                    "For complex parts (turbine discs, blisks): use sketch_profile for the disk body, "
-                    "sketch_profile for slot cutter sketch→extrude, then composition dialect for "
-                    "circular_pattern(rotate_copies=True) + boolean_cut.",
-                ],
-                common_mistakes=[
-                    "Using axisymmetric.revolve_profile instead of sketch_profile.revolve_profile "
-                    "for thickness-by-radius profiles — axisymmetric only supports z(r) single-valued profiles.",
-                    "Forgetting to call close_profile before revolve_profile — the profile must be closed.",
-                    "Creating the sketch on XY plane instead of XZ — R-Z profiles must be on XZ plane.",
-                    "Drawing the slot cutter sketch at rim radius instead of origin — "
-                    "composition.circular_pattern handles the radial positioning.",
-                ],
-                llm_param_hints={
-                    "angle_deg": "Always 360.0 for full axisymmetric revolution.",
-                },
+                summary="Revolve closed profile around Z axis to create axisymmetric solid.",
+            ),
+            ("fillet_sketch", "1.0.0"): OperationSpec(
+                dialect="sketch_profile", op="fillet_sketch", op_version="1.0.0",
+                phase="edge_treatment", input_types=["profile"], output_types=["profile"],
+                params_model=FilletSketchParams, effects=["modifies_solid"],
+                handler=handle_fillet_sketch,
+                summary="Apply 2D fillets to profile vertices. Use at_vertex_index to target specific vertices, or omit for all interior vertices.",
             ),
         }
 
@@ -262,10 +210,11 @@ class SketchProfileDialect:
                 message="SketchProfile component must have a create_2d_sketch node",
                 severity="error",
             ))
-        has_extrude = any(n.op in ("extrude_profile", "cut_profile", "revolve_profile") for n in nodes)
-        if not has_extrude:
+        solid_ops = ("extrude_profile", "cut_profile", "revolve_profile")
+        has_solid = any(n.op in solid_ops for n in nodes)
+        if not has_solid:
             issues.append(ValidationIssue(
-                stage="dialect_semantics", code="sp_no_extrude",
+                stage="dialect_semantics", code="sp_no_solid_op",
                 message="SketchProfile component must have at least one extrude_profile, cut_profile, or revolve_profile",
                 severity="error",
             ))
@@ -302,23 +251,39 @@ class SketchProfileDialect:
     ) -> dict[str, str]:
         from seekflow_engineering_tools.generative_cad.dialects.executor import execute_operation
 
-        # Kahn topological sort (same as axisymmetric — respects input→output edges)
+        # Topological sort — phase-guided with in-degree resolution
         phase_rank = {p: i for i, p in enumerate(self.phase_order)}
+
+        # Build dependency map
         node_map = {n.id: n for n in nodes}
-        in_degree = {n.id: sum(1 for i in n.inputs if i.producer_node and i.producer_node in node_map) for n in nodes}
-        sorted_nodes = []; queue = [n for n in nodes if in_degree[n.id] == 0]
-        while queue:
-            queue.sort(key=lambda n: (phase_rank.get(n.phase, 999), n.id))
-            n = queue.pop(0); sorted_nodes.append(n)
+        in_degree: dict[str, int] = {}
+        for n in nodes:
+            deps = sum(1 for inp in n.inputs if inp.producer_node and inp.producer_node in node_map)
+            in_degree[n.id] = deps
+
+        # Topological sort with phase tie-breaking
+        sorted_nodes: list = []
+        ready = [n for n in nodes if in_degree[n.id] == 0]
+
+        while ready:
+            # Pick node with lowest phase_rank first, then id for determinism
+            ready.sort(key=lambda n: (phase_rank.get(n.phase, 999), n.id))
+            node = ready.pop(0)
+            sorted_nodes.append(node)
+
+            # Reduce in-degree for dependent nodes
             for other in nodes:
                 for inp in other.inputs:
-                    if inp.producer_node == n.id:
+                    if inp.producer_node == node.id:
                         in_degree[other.id] -= 1
-                        if in_degree[other.id] == 0 and other not in sorted_nodes and other not in queue:
-                            queue.append(other)
+                        if in_degree[other.id] == 0 and other not in sorted_nodes and other not in ready:
+                            ready.append(other)
+
         if len(sorted_nodes) != len(nodes):
             unscheduled = [n.id for n in nodes if n not in sorted_nodes]
-            raise RuntimeError(f"sketch_profile: unscheduled nodes: {unscheduled}")
+            raise RuntimeError(
+                f"Cyclic dependency in component {component.id!r}: unscheduled nodes: {unscheduled}"
+            )
 
         outputs: dict[str, str] = {}
         for node in sorted_nodes:

@@ -65,11 +65,6 @@ class RoutePlan(BaseModel):
                 raise ValueError(
                     "route_decision=needs_clarification requires clarification_questions non-empty"
                 )
-        if self.route_decision == RouteDecision.PRIMITIVE and self.unsupported_capabilities:
-            raise ValueError(
-                "Cannot select route_decision=primitive while listing unsupported_capabilities. "
-                "If the primitive cannot express all required features, use generative_cad_ir or unsupported."
-            )
         return self
 
 

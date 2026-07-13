@@ -69,10 +69,6 @@ AXISYMMETRIC_MANIFEST = BasePackageManifest(
     composition_notes=[
         "Can be combined with other dialects via composition dialect.",
         "Composition op inputs must reference component outputs, not internal nodes.",
-        "For complex axisymmetric parts (turbine disks, blisks): use sketch_profile "
-        "dialect for ordered R-Z polygon revolve (disk body), sketch_profile for "
-        "arbitrary slot cross-section sketches, then compose with composition dialect "
-        "for circular_pattern(rotate_copies=True) + boolean_cut.",
     ],
 )
 
@@ -171,28 +167,21 @@ WASHER_EXAMPLE = BasePackageExample(
 
 
 # ── Turbine disc reference example ────────────────────────────────────────────
-# Correct modeling approach for a turbine disc:
-#   1. revolve_profile  -> constant-radius cylinder (full thickness at bore)
-#   2. cut_annular_groove (front) -> front-side web recess
-#   3. cut_annular_groove (rear)  -> rear-side web recess (symmetric)
-#   4. cut_center_bore  -> central bore
-#   5. cut_rim_slot_pattern -> fir-tree slots on rim outer cylinder
-# The disc cross-section is bore-thick -> web-thin -> rim-thick (Z vs R),
-# which is achieved by removing material from both faces with annular grooves,
-# NOT by varying the outer radius in profile_stations.
+# Demonstrates continuous Hub+Rim outer contour. The web is the transition zone
+# between hub (r=30) and rim (r=100) — NOT a cut_annular_groove side recess.
 
 TURBINE_DISC_REFERENCE_EXAMPLE = BasePackageExample(
     example_id="axisymmetric_turbine_disc_001",
-    title="Reference turbine disc — OD 200mm, bore 60mm, 60 fir-tree slots, web-recessed",
+    title="Reference turbine disc — OD 200mm, bore 60mm, thickness 40mm, 60 fir-tree slots",
     user_request=(
-        "Create a reference turbine disc with outer diameter 200mm, central bore 60mm. "
-        "Hub thickness 40mm, web thickness 20mm (thinnest), rim thickness 30mm. "
-        "60 fir-tree slots on the outer rim."
+        "Create a reference turbine disc with outer diameter 200mm, central bore 60mm, "
+        "thickness 40mm. Hub radius 30mm extends Z=5→35. Rim radius 100mm extends Z=0→40. "
+        "60 fir-tree slots on the outer circumference."
     ),
     raw_document={
         "schema_version": "g_cad_core_v0.2",
         "document_id": "turbine-disc-001",
-        "part_name": "reference_turbine_disc_200x60",
+        "part_name": "reference_turbine_disc_200x60x40",
         "units": "mm",
         "trust_level": "reference_geometry",
         "selected_dialects": [{"dialect": "axisymmetric", "version": "0.2.0"}],
@@ -215,44 +204,10 @@ TURBINE_DISC_REFERENCE_EXAMPLE = BasePackageExample(
                 "params": {
                     "axis": "Z",
                     "profile_stations": [
-                        {"r_mm": 100.0, "z_front_mm": 0.0, "z_rear_mm": 40.0, "label": "rim_outer"},
+                        {"r_mm": 32.0, "z_front_mm": 0.0,  "z_rear_mm": 5.0,  "label": "hub_front"},
+                        {"r_mm": 100.0,"z_front_mm": 5.0,  "z_rear_mm": 35.0, "label": "rim_outer"},
+                        {"r_mm": 32.0, "z_front_mm": 35.0, "z_rear_mm": 40.0, "label": "hub_rear"},
                     ],
-                },
-                "required": True,
-                "degradation_policy": "fail",
-            },
-            {
-                "id": "n_web_front",
-                "component": "disc_body",
-                "dialect": "axisymmetric",
-                "op": "cut_annular_groove",
-                "op_version": "1.0.0",
-                "phase": "annular_detail",
-                "inputs": [{"node": "n_revolve", "output": "body"}],
-                "outputs": [{"name": "body", "type": "solid"}],
-                "params": {
-                    "side": "front",
-                    "inner_dia_mm": 70.0,
-                    "outer_dia_mm": 170.0,
-                    "depth_mm": 10.0,
-                },
-                "required": True,
-                "degradation_policy": "fail",
-            },
-            {
-                "id": "n_web_rear",
-                "component": "disc_body",
-                "dialect": "axisymmetric",
-                "op": "cut_annular_groove",
-                "op_version": "1.0.0",
-                "phase": "annular_detail",
-                "inputs": [{"node": "n_web_front", "output": "body"}],
-                "outputs": [{"name": "body", "type": "solid"}],
-                "params": {
-                    "side": "rear",
-                    "inner_dia_mm": 70.0,
-                    "outer_dia_mm": 170.0,
-                    "depth_mm": 10.0,
                 },
                 "required": True,
                 "degradation_policy": "fail",
@@ -264,7 +219,7 @@ TURBINE_DISC_REFERENCE_EXAMPLE = BasePackageExample(
                 "op": "cut_center_bore",
                 "op_version": "1.0.0",
                 "phase": "primary_cut",
-                "inputs": [{"node": "n_web_rear", "output": "body"}],
+                "inputs": [{"node": "n_revolve", "output": "body"}],
                 "outputs": [{"name": "body", "type": "solid"}],
                 "params": {"diameter_mm": 60.0, "axis": "Z", "through_all": True},
                 "required": True,
@@ -285,10 +240,10 @@ TURBINE_DISC_REFERENCE_EXAMPLE = BasePackageExample(
                     "slot_profile": {
                         "kind": "symmetric_station_profile",
                         "stations": [
-                            {"depth_mm": 2.0, "half_width_mm": 5.0},
-                            {"depth_mm": 5.0, "half_width_mm": 2.5},
-                            {"depth_mm": 8.0, "half_width_mm": 4.0},
-                            {"depth_mm": 11.0, "half_width_mm": 1.5},
+                            {"depth_mm": 3.0, "half_width_mm": 6.0},
+                            {"depth_mm": 5.0, "half_width_mm": 4.0},
+                            {"depth_mm": 8.0, "half_width_mm": 5.5},
+                            {"depth_mm": 10.0, "half_width_mm": 2.5},
                         ],
                     },
                 },
@@ -320,17 +275,14 @@ TURBINE_DISC_REFERENCE_EXAMPLE = BasePackageExample(
         "canonicalize", "dialect_semantics", "geometry_preflight",
     ],
     notes=[
-        "Turbine disc shape is bore-thick -> web-thin -> rim-thick (thickness varies with radius).",
-        "Base solid is a constant-radius cylinder (r=100mm, full Z=0→40). Web recess is cut from both faces.",
-        "Use cut_annular_groove (front + rear) to create the web recess — this IS the correct approach.",
-        "inner_dia_mm=70 > bore_dia=60: leaves a thick hub ring at full 40mm thickness.",
-        "outer_dia_mm=170 < disc_OD=200: leaves a 15mm wide rim ring at full 40mm thickness (for fir-tree slots).",
-        "Web thickness at r=85mm = 40 - 10 - 10 = 20mm (thinnest point).",
-        "DO NOT use profile_stations radius variation to express web shape — that creates hourglass/spindle shapes.",
-        "profile_stations should have constant outer radius for the full Z range when modeling turbine discs.",
-        "fir-tree slot stations MUST alternate wide (lobe) / narrow (neck) half_width: [5, 2.5, 4, 1.5].",
-        "half_width alternation creates undercuts that lock the blade root in place.",
-        "slot depths are nondecreasing: [2, 5, 8, 11].",
+        "Hub(r=32) + Rim(r=100) continuous outer contour. Web is the transition between them — NOT a separate groove.",
+        "DO NOT use cut_annular_groove to create a web recess — that makes an unrealistic empty cavity.",
+        "DO NOT use profile_stations with zero-width or Z-overlapping stations.",
+        "DO NOT use r_mm < 0.5mm filler stations (e.g. r=1.0 hub_lower_fill) — they produce degenerate needle solids (A009).",
+        "hub_front/hub_rear r=32mm is slightly larger than bore_radius=30mm to avoid A005 coplanar detection.",
+        "fir-tree slot stations MUST alternate wide (lobe) / narrow (neck) half_width to create undercuts: [6,4,5.5,2.5].",
+        "half_width must NOT monotonically decrease — alternating wide/narrow creates the fir-tree locking geometry.",
+        "slot depths are nondecreasing: [3, 5, 8, 10].",
     ],
 )
 
@@ -386,47 +338,26 @@ AXISYMMETRIC_ANTI_EXAMPLES: list[dict] = [
         ),
     },
     {
-        "anti_id": "spindle_profile_bad",
-        "title": "DO NOT use profile_stations radius variation to create a 'spindle' turbine disc shape",
+        "anti_id": "hourglass_profile_bad",
+        "title": "DO NOT use profile_stations radius variation to express web/bore recess",
         "bad_profile_stations": [
-            {"r_mm": 32.0, "z_front_mm": 0.0,  "z_rear_mm": 5.0,  "label": "hub_front"},
-            {"r_mm": 100.0, "z_front_mm": 5.0,  "z_rear_mm": 35.0, "label": "rim_outer"},
-            {"r_mm": 32.0, "z_front_mm": 35.0, "z_rear_mm": 40.0, "label": "hub_rear"},
+            {"r_mm": 100.0, "z_front_mm": 0.0, "z_rear_mm": 5.0},
+            {"r_mm": 80.0, "z_front_mm": 5.0, "z_rear_mm": 35.0, "label": "web"},
+            {"r_mm": 100.0, "z_front_mm": 35.0, "z_rear_mm": 40.0}
         ],
         "explanation": (
-            "This creates a spindle / I-beam shape (thin at the ends, thick in the middle) — "
-            "which is NOT a turbine disc. A real turbine disc has thickness that varies with "
-            "RADIUS: thick at the bore, thinner at the web, thicker again at the rim. "
-            "The outer radius (rim) is constant across the full Z range — it is a cylinder. "
-            "The web thinning is achieved by removing material from BOTH FACES using "
-            "cut_annular_groove, NOT by varying the outer radius in profile_stations."
+            "This creates an hourglass shape (wide ends, narrow middle), NOT a turbine disc. "
+            "A turbine disc has a NARROW hub and WIDE rim — the opposite of hourglass. "
+            "The rim outer radius must cover the FULL Z range. "
+            "DO NOT use cut_annular_groove to create a web recess either — that makes an "
+            "unrealistic empty cavity inside the disk body. "
+            "The web is simply the transition zone between narrow hub and wide rim."
         ),
         "correct_approach": (
-            "1. Use revolve_profile with a CONSTANT outer radius across the full Z range "
-            "(e.g. r=100, Z=0→40). This creates a uniform-thickness disc. "
-            "2. Use cut_annular_groove side=front to recess the front face "
-            "(inner_dia > bore_dia, outer_dia < rim_OD, depth = recess amount). "
-            "3. Use cut_annular_groove side=rear symmetrically. "
-            "This leaves: a thick hub ring (bore area), a thinner web (recessed area), "
-            "and a thick rim ring (for fir-tree slots)."
-        ),
-    },
-    {
-        "anti_id": "primitive_turbine_disk_bad",
-        "title": "DO NOT route turbine disks to deterministic_primitive",
-        "bad_route": "deterministic_primitive with axisymmetric_turbine_disk",
-        "explanation": (
-            "axisymmetric_turbine_disk is a 75-parameter template that hides the "
-            "modeling process. For demonstrating general CAD modeling capability, "
-            "turbine disks must be built with general operations: "
-            "sketch_profile.revolve_profile for the disk body, sketch_profile + "
-            "extrude_profile for slot cutters, and composition dialect for "
-            "circular_pattern(rotate_copies=True) + boolean_cut. "
-            "This cross-dialect workflow uses NO part-specific primitives."
-        ),
-        "correct_approach": (
-            "Use generative_cad_ir with sketch_profile + composition dialects. "
-            "Do NOT select deterministic_primitive or axisymmetric_turbine_disk."
+            "Use revolve_profile with narrow hub stations at both ends and a wide rim station "
+            "in the middle: e.g. r=32 Z=0→5 (hub_front) | r=100 Z=5→35 (rim) | "
+            "r=32 Z=35→40 (hub_rear). The vertical steps at Z=5 and Z=35 ARE the web faces "
+            "— they naturally connect the narrow hub to the wide rim without any groove operation."
         ),
     },
 ]
