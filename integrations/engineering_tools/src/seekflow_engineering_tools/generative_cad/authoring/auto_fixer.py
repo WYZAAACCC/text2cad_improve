@@ -285,7 +285,7 @@ def auto_fix_with_report(
     _apply_fix("fix_param_names", lambda d: _fix_param_names(d))
     _apply_fix("fix_param_values", lambda d: _fix_param_values(d))
     _apply_fix("fix_path_points", lambda d: _fix_path_points(d))
-    _apply_fix("fix_unknown_ops", lambda d: _fix_unknown_ops(d, dialect_registry), severity="destructive", confidence=0.85)
+    _apply_fix("fix_unknown_ops", lambda d: _fix_unknown_ops(d, dialect_registry), severity="safe_alias", confidence=0.95)
     _apply_fix("fix_target_values", lambda d: _fix_target_values(d))
     _apply_fix("fix_cross_component_refs", lambda d: _fix_cross_component_refs(d), severity="semantic_guess", confidence=0.9)
     _apply_fix("fix_root_node", lambda d: _fix_root_node(d), confidence=0.95)
@@ -645,11 +645,21 @@ def _fix_unknown_ops(doc: dict, dialect_registry=None) -> dict:
     for node in nodes:
         did = node.get("dialect", "")
         op = node.get("op", "")
-        # v6.3: Normalize op_version — LLM often outputs "2" instead of "1.0.0"
+        # Normalize op_version — only force "1.0.0" for clearly-wrong single-digit versions.
+        # Never downgrade a valid registered version (e.g. "2.0.0").
         ver = node.get("op_version")
-        if ver and ver not in ("1.0.0", "1.0", "0.2.0"):
-            # Try to normalize: "2" → "1.0.0", "v2" → "1.0.0"
-            node["op_version"] = "1.0.0"
+        if ver and ver not in ("1.0.0", "1.0", "0.2.0", "2.0.0"):
+            # Check if this version is actually registered for this op
+            d = dialect_registry.get(did) if did else None
+            is_registered = False
+            if d:
+                try:
+                    d.get_op_spec(op, ver)
+                    is_registered = True
+                except Exception:
+                    pass
+            if not is_registered:
+                node["op_version"] = "1.0.0"
 
         # Allow nodes with known dialects even if op lookup fails
         is_valid = (did, op) in valid_ops
