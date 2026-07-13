@@ -77,8 +77,25 @@ interface AppState {
   // UI 状态
   leftPanelCollapsed: boolean;
   rightPanelCollapsed: boolean;
-  rightPanelActiveTab: 'properties' | 'dataset';
+  rightPanelActiveTab: 'properties' | 'dataset' | 'fea';
   wireframeMode: boolean;
+
+  // FEA State
+  feaResult: import('./types').FeaResult | null;
+  feaHistory: import('./types').FeaHistoryEntry[];
+  isFeaRunning: boolean;
+  feaProgress: number;
+  highlightedRegionId: string | null;
+  feaRegions: import('./types').FeaRegionDef[];
+  stressColoring: boolean;
+
+  setFeaResult: (r: import('./types').FeaResult | null) => void;
+  addFeaHistory: (entry: import('./types').FeaHistoryEntry) => void;
+  setIsFeaRunning: (v: boolean) => void;
+  setFeaProgress: (p: number) => void;
+  setHighlightedRegion: (id: string | null) => void;
+  setFeaRegions: (regions: import('./types').FeaRegionDef[]) => void;
+  setStressColoring: (v: boolean) => void;
 
   // Actions
   addMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
@@ -408,4 +425,21 @@ export const useStore = create<AppState>((set) => ({
   setRightPanelCollapsed: (value) => set(() => ({ rightPanelCollapsed: value })),
   setRightPanelActiveTab: (tab) => set(() => ({ rightPanelActiveTab: tab })),
   setWireframeMode: (value) => set(() => ({ wireframeMode: value })),
+
+  // FEA initial state
+  feaResult: null,
+  feaHistory: [],
+  isFeaRunning: false,
+  feaProgress: 0,
+  highlightedRegionId: null,
+  feaRegions: [],
+  stressColoring: false,
+
+  setFeaResult: (r) => set(() => ({ feaResult: r })),
+  addFeaHistory: (entry) => set((s) => ({ feaHistory: [...s.feaHistory, entry] })),
+  setIsFeaRunning: (v) => set(() => ({ isFeaRunning: v })),
+  setFeaProgress: (p) => set(() => ({ feaProgress: p })),
+  setHighlightedRegion: (id) => set(() => ({ highlightedRegionId: id })),
+  setFeaRegions: (regions) => set(() => ({ feaRegions: regions })),
+  setStressColoring: (v) => set(() => ({ stressColoring: v })),
 }));

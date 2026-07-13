@@ -280,41 +280,78 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                     from seekflow_engineering_tools.generative_cad.authoring.spatial.integration import build_spatial_context_for_prompt
                     cg = SpatialConstraintGraph.model_validate_json(cg_json)
                     spatial_context = build_spatial_context_for_prompt(cg)
+                    # 空间交互提供了具体几何参数，但 LLM 必须使用通用建模语言。
+                    # 明确指引 LLM 使用 sketch_profile + composition 而非 axisymmetric。
+                    spatial_context += (
+                        "\n\nDIALECT GUIDANCE (spatial context is provided — use general CAD operations):\n"
+                        "- For axisymmetric disk bodies: use sketch_profile dialect with "
+                        "create_2d_sketch(plane=XZ) → add_polyline(R-Z polygon) → close_profile → revolve_profile.\n"
+                        "- Do NOT use axisymmetric.revolve_profile — it Z-sorts stations and cannot express "
+                        "thickness-by-radius profiles (hub thick → web thin → rim thick).\n"
+                        "- For slot features: sketch_profile → create_2d_sketch → add_polyline → "
+                        "close_profile → fillet_sketch → mirror_profile → extrude_profile.\n"
+                        "- For patterning and assembly: composition → circular_pattern_component(rotate_copies=True) "
+                        "→ boolean_cut.\n"
+                        "- The spatial constraints above describe positioning; the dialect guidance above "
+                        "describes HOW to build each component. Use sketch_profile + composition, NOT axisymmetric.\n"
+                    )
                     _update_task(task_id, status="processing", progress=15,
                                  result={"stage": f"Spatial: {len(cg.constraints)} constraints"})
                 except Exception:
                     pass
 
-        # ---- L1 Route ----
-        _update_task(task_id, status="processing", progress=20, result={"stage": "L1 routing"})
-        l1 = build_level1_routing_prompt(text, dialect_catalog=reg.export_catalog())
-        l1_tool = build_level1_tool()
+        # ---- L1 Route (skip if force_route is set) ----
         plan = None
-        LEGACY = {"axisymmetric_base":"axisymmetric","sketch_extrude_base":"sketch_extrude",
-                  "loft_sweep_base":"loft_sweep","shell_housing_base":"shell_housing","composition_base":"composition"}
-        for attempt in range(4):
-            try:
-                tc = caller.call_strict_tool(
-                    messages=[{"role":"system","content":l1["system"]},{"role":"user","content":l1["user"]}],
-                    tool_name=l1_tool["function"]["name"], tool_description=l1_tool["function"]["description"],
-                    tool_schema=l1_tool["function"]["parameters"], model_config=config)
-                args = dict(tc.arguments)
-                for s in args.get("selected_domain_skills",[]):
-                    if not s.get("skill_version"): s["skill_version"]="1.0"
-                plan = DialectSelectionPlan.model_validate(args)
-                for sd in plan.selected_dialects:
-                    if sd.dialect in LEGACY: sd.dialect = LEGACY[sd.dialect]
-                break
-            except Exception:
-                _time.sleep(4)
+        if force_route:
+            # Skip L1 routing — the caller already knows the desired route.
+            # Build a minimal route plan directly.
+            from seekflow_engineering_tools.generative_cad.skills.schemas import DialectSelectionItem
+            plan = DialectSelectionPlan(
+                part_intent={"object_type": "unknown", "dominant_geometry": "unknown",
+                             "engineering_domain": "general"},
+                route_decision=force_route,
+                selected_dialects=[
+                    DialectSelectionItem(dialect="sketch_profile", version="0.2.0",
+                                         reason="Forced route — caller specified"),
+                    DialectSelectionItem(dialect="composition", version="0.2.0",
+                                         reason="Assembly operations"),
+                ],
+                safety_notes=["Forced route — no L1 analysis performed."],
+            )
+            _update_task(task_id, status="processing", progress=35,
+                         result={"stage": f"L1: forced to {force_route}"})
+        else:
+            _update_task(task_id, status="processing", progress=20, result={"stage": "L1 routing"})
+            l1 = build_level1_routing_prompt(text, dialect_catalog=reg.export_catalog())
+            l1_tool = build_level1_tool()
+            LEGACY = {"axisymmetric_base":"axisymmetric","sketch_extrude_base":"sketch_extrude",
+                      "loft_sweep_base":"loft_sweep","shell_housing_base":"shell_housing","composition_base":"composition"}
+            for attempt in range(4):
+                try:
+                    tc = caller.call_strict_tool(
+                        messages=[{"role":"system","content":l1["system"]},{"role":"user","content":l1["user"]}],
+                        tool_name=l1_tool["function"]["name"], tool_description=l1_tool["function"]["description"],
+                        tool_schema=l1_tool["function"]["parameters"], model_config=config)
+                    args = dict(tc.arguments)
+                    for s in args.get("selected_domain_skills",[]):
+                        if not s.get("skill_version"): s["skill_version"]="1.0"
+                    plan = DialectSelectionPlan.model_validate(args)
+                    for sd in plan.selected_dialects:
+                        if sd.dialect in LEGACY: sd.dialect = LEGACY[sd.dialect]
+                    break
+                except Exception:
+                    _time.sleep(4)
 
-        if plan is None:
-            _update_task(task_id, status="failed", progress=0, error="L1 routing failed after 4 attempts")
-            return
+            if plan is None:
+                _update_task(task_id, status="failed", progress=0, error="L1 routing failed after 4 attempts")
+                return
 
+            (out_dir/"route_plan.json").write_text(plan.model_dump_json(indent=2), encoding="utf-8")
+            _update_task(task_id, status="processing", progress=35,
+                         result={"stage": f"L1: {plan.route_decision}"})
+
+        # Write route plan regardless
         (out_dir/"route_plan.json").write_text(plan.model_dump_json(indent=2), encoding="utf-8")
-        _update_task(task_id, status="processing", progress=35,
-                     result={"stage": f"L1: {plan.route_decision}"})
 
         # ── Route override / Primitive path handling ──
         if force_route == "generative_cad_ir" and plan.route_decision != "generative_cad_ir":
@@ -345,11 +382,58 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                          error=f"Route: {plan.route_decision}, not generative_cad_ir")
             return
 
-        # ---- L2 Author (with spatial context) ----
+        # ---- L2 Author (with context injection) ----
         _update_task(task_id, status="processing", progress=45, result={"stage": "L2 authoring"})
         try:
             l2 = build_level2_authoring_prompt(text, plan)
-            user_content = spatial_context + "\n\n---\n\n" + l2["user"] if spatial_context else l2["user"]
+
+            # 构建增强 user prompt：核心约束 + 使用指导 + 反例 + 用户请求
+            user_parts = []
+
+            # 1. 关键约束摘要
+            constraints_block = (
+                "CRITICAL MODELING CONSTRAINTS:\n"
+                "- For axisymmetric disk bodies with varying thickness (hub thick→web thin→rim thick):\n"
+                "  use sketch_profile: create_2d_sketch(plane=XZ) → add_polyline(R-Z polygon points) → close_profile → revolve_profile\n"
+                "  NOT axisymmetric.revolve_profile (Z-sorts stations, cannot express thickness-by-radius profiles)\n"
+                "- For fir-tree slot cutters: sketch_profile → create_2d_sketch(plane=XY) → add_polyline (neck/lobe alternation)\n"
+                "  → close_profile → fillet_sketch → mirror_profile → extrude_profile\n"
+                "- For patterning: composition → circular_pattern_component(rotate_copies=True) → boolean_cut\n"
+                "- Every sketch_profile component MUST include the complete chain: sketch → polyline → close → extrude/revolve\n"
+                "- Every component root_node must be a node that exists and outputs body:solid\n"
+                "- Do NOT use axisymmetric.revolve_profile for thickness-by-radius profiles"
+            )
+            user_parts.append(constraints_block)
+
+            # 2. 使用指导
+            usage = l2.get("usage_skills", {})
+            if usage:
+                usage_parts = ["\nDIALECT USAGE SKILLS:"]
+                for dialect_id, skill_text in usage.items():
+                    usage_parts.append(f"\n--- {dialect_id} ---\n{skill_text[:2000]}")
+                user_parts.append("\n".join(usage_parts))
+
+            # 3. 反例
+            anti = l2.get("anti_examples", {})
+            if anti:
+                anti_parts = ["\nANTI-EXAMPLES (DO NOT replicate):"]
+                for dialect_id, examples in anti.items():
+                    for ex in examples[:3]:
+                        title = ex.get("title", "")
+                        expl = ex.get("explanation", "")
+                        correct = ex.get("correct_approach", "")
+                        anti_parts.append(f"- {title}: {expl}")
+                        if correct:
+                            anti_parts.append(f"  Correct: {correct}")
+                user_parts.append("\n".join(anti_parts))
+
+            # 4. 原始用户请求 + spatial context
+            if spatial_context:
+                user_parts.append(f"\nSPATIAL CONTRACT:\n{spatial_context}")
+            user_parts.append(f"\nUSER REQUEST:\n{l2['user']}")
+
+            user_content = "\n\n".join(user_parts)
+
             l2_tool = build_level2_tool()
             tc2 = caller.call_strict_tool(
                 messages=[{"role":"system","content":l2["system"]},{"role":"user","content":user_content}],
@@ -647,6 +731,59 @@ def api_serve_file(task_id: str, filename: str):
     mt = "application/octet-stream" if filename.endswith((".stl",".step")) else "application/json"
     return FileResponse(str(fp), media_type=mt)
 
+# ============================================================
+# FEA Routes
+# ============================================================
+_fea_tasks: dict[str, dict] = {}
+_fea_sessions: dict[str, dict] = {}
+_fea_lock = threading.Lock()
+
+@app.get("/api/fea/templates")
+def api_fea_templates():
+    from server.fea_pipeline import list_fea_templates
+    return list_fea_templates()
+
+class FeaExecuteBody(BaseModel):
+    template_name: str
+    parameters: dict = {}
+    jobname: str = "fea_job"
+
+@app.post("/api/fea/execute")
+def api_fea_execute(req: FeaExecuteBody):
+    task_id = uuid.uuid4().hex[:16]
+    with _fea_lock:
+        _fea_tasks[task_id] = {"task_id": task_id, "status": "pending", "progress": 0, "result": None, "error": None}
+    from server.fea_pipeline import execute_fea_template
+    threading.Thread(target=execute_fea_template, args=(
+        req.template_name, req.parameters, req.jobname, _fea_tasks, task_id,
+    ), daemon=True).start()
+    return {"task_id": task_id}
+
+@app.get("/api/fea/result/{task_id}")
+def api_fea_result(task_id: str):
+    with _fea_lock:
+        task = _fea_tasks.get(task_id)
+    if task is None:
+        raise HTTPException(404, "FEA task not found")
+    return task
+
+@app.get("/api/fea/regions/{model_id}")
+def api_fea_regions(model_id: str):
+    # Load the metadata for the most recent generation with this model
+    # For now, find the latest output directory with metadata
+    candidates = sorted(OUT_ROOT.glob("*/output.metadata.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    for meta_path in candidates:
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            regions = compute_disc_regions(meta)
+            return {"model_id": model_id, "regions": regions}
+        except Exception:
+            continue
+    # Fallback: return default regions
+    from server.fea_pipeline import compute_disc_regions
+    return {"model_id": model_id, "regions": compute_disc_regions({})}
+
 @app.get("/api/health")
 def api_health():
-    return {"status": "ok", "tasks": len(_tasks), "spatialSessions": len(_spatial_sessions)}
+    return {"status": "ok", "tasks": len(_tasks), "spatialSessions": len(_spatial_sessions),
+            "fea_tasks": len(_fea_tasks)}

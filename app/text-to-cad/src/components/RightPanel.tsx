@@ -18,10 +18,12 @@ import {
   Copy,
   Search,
   History,
+  FlaskConical,
   ChevronDown,
 } from 'lucide-react';
 import * as Tabs from '@radix-ui/react-tabs';
 import * as Dialog from '@radix-ui/react-dialog';
+import FeaTab from './FeaTab';
 import * as Slider from '@radix-ui/react-slider';
 import { useStore } from '../store';
 import { getDatasetList, addDatasetEntryApi, deleteDatasetEntryApi } from '../api';
@@ -808,6 +810,13 @@ export default function RightPanel() {
               <Database className="w-3.5 h-3.5" />
               数据集
             </Tabs.Trigger>
+            <Tabs.Trigger
+              value="fea"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-all data-[state=active]:bg-bg-hover data-[state=active]:text-text-primary text-text-secondary"
+            >
+              <FlaskConical className="w-3.5 h-3.5" />
+              FEA
+            </Tabs.Trigger>
           </Tabs.List>
 
           <button
@@ -825,6 +834,9 @@ export default function RightPanel() {
         </Tabs.Content>
         <Tabs.Content value="dataset" className="flex-1 overflow-hidden data-[state=inactive]:hidden">
           <DatasetTab />
+        </Tabs.Content>
+        <Tabs.Content value="fea" className="flex-1 overflow-hidden data-[state=inactive]:hidden">
+          <FeaTab />
         </Tabs.Content>
       </Tabs.Root>
     </div>

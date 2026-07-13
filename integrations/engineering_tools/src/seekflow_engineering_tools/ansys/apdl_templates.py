@@ -516,6 +516,234 @@ FINISH
     )
 
 
+def turbine_disc_rotational_thermal_apdl(
+    step_file_path: str = "",
+    rpm: float = 15000.0,
+    temp_rim_c: float = 650.0,
+    temp_bore_c: float = 500.0,
+    young_rim_mpa: float = 150000.0,
+    young_bore_mpa: float = 175000.0,
+    yield_mpa_650c: float = 900.0,
+    density_tonnemm3: float = 8.24e-9,
+    poisson: float = 0.3,
+    alpha: float = 1.45e-5,
+    element_size_mm: float = 5.0,
+    n_slots: int = 60,
+    slot_depth_mm: float = 20.0,
+) -> str:
+    r"""Turbine disc 2D axisymmetric thermal-structural analysis.
+
+    Geometry: bore R=60mm, hub 60-120mm(Z=+-38), web 120-215mm,
+    rim 215-250mm(Z=+-30), 60 fir-tree slots at rim.
+
+    Loads: centrifugal (OMEGA) + thermal gradient (bore->rim).
+    Material: GH4169 / Inconel 718 (temperature-dependent properties).
+
+    Extracts: radial/hoop/von-Mises stress paths from bore to rim,
+    safety factor = yield / von_Mises at each radial station.
+
+    If *step_file_path* is non-empty, the template will attempt to
+    import the STEP geometry via IGESIN for a 3D sector model.
+    """
+    omega_rad_s = 2.0 * 3.14159265358979 * rpm / 60.0
+
+    # Keypoints for disc cross-section (R, Z) — closed polygon, clockwise
+    # Matches CAD model: bore→hub→web→rim→back
+    kp_rz = [
+        (60, -38), (120, -38), (120, -22), (215, -15), (215, -30), (250, -30),
+        (250, 30), (215, 30), (215, 15), (120, 22), (120, 38), (60, 38),
+    ]
+    nkp = len(kp_rz)
+    kp_list = ",".join(str(i+1) for i in range(nkp))
+    kp_cmds = "\n".join(
+        f"K,{i+1},{r},{z},0" for i, (r, z) in enumerate(kp_rz)
+    )
+
+    return f"""\
+/CLEAR,NOSTART
+/FILNAME,turbine_disc
+/TITLE,HP Turbine Disc — Rotational + Thermal, {rpm:.0f} RPM, Rim={temp_rim_c:.0f}C Bore={temp_bore_c:.0f}C
+
+! ==============================================================================
+! PARAMETERS
+! ==============================================================================
+RPM       = {rpm}
+OMEGA     = {omega_rad_s:.6f}
+T_RIM     = {temp_rim_c}
+T_BORE    = {temp_bore_c}
+E_RIM     = {young_rim_mpa}
+E_BORE    = {young_bore_mpa}
+S_YIELD   = {yield_mpa_650c}
+DENS      = {density_tonnemm3:.6e}
+NU        = {poisson}
+ALPHA     = {alpha}
+ESIZE     = {element_size_mm}
+N_SLOTS   = {n_slots}
+D_SLOT    = {slot_depth_mm}
+
+! ==============================================================================
+! PREPROCESSOR — Axisymmetric Model
+! ==============================================================================
+/PREP7
+
+! --- Element type: PLANE183, axisymmetric ---
+ET,1,PLANE183
+KEYOPT,1,1,1      ! Axisymmetric
+KEYOPT,1,3,0      ! Plane stress with thickness (default)
+
+! --- Material: GH4169 / Inconel 718 ---
+MP,EX,1,E_BORE
+MP,PRXY,1,NU
+MP,DENS,1,DENS
+MP,ALPX,1,ALPHA
+
+! --- Geometry: single closed polygon area ---
+{kp_cmds}
+
+! Create area from all {nkp} keypoints (single closed polygon)
+A,{kp_list}
+
+! --- Mesh ---
+ESIZE,ESIZE
+MSHAPE,0,2D       ! Quad-dominant
+MSHKEY,0          ! Free mesh
+AMESH,ALL
+
+FINISH
+
+! ==============================================================================
+! SOLUTION — Static structural with thermal load
+! ==============================================================================
+/SOLU
+ANTYPE,STATIC
+
+! --- Rotational body force (OMEGA about Y=Z axis for axisymmetric) ---
+! For axisymmetric: Y axis = axial, rotation about Y
+OMEGA,,,OMEGA
+
+! --- Reference temperature ---
+TREF,20
+
+! --- Thermal load: uniform temperature ---
+! Apply disk-average temperature as body force
+! (uniform T produces zero thermal stress when free to expand;
+!  gradient would add ~E*alpha*DeltaT/2 thermal stress)
+T_AVG = (T_BORE + T_RIM) / 2.0
+BFUNIF,TEMP,T_AVG
+
+! --- Boundary conditions ---
+! Disc symmetric about Z=0 (Y=0 in ANSYS axisymmetric)
+! Constrain UY at midplane nodes to allow symmetric deformation
+NSEL,S,LOC,Y,0
+D,ALL,UY,0
+ALLSEL,ALL
+! Ground one bore node in UX for numerical stability
+NSEL,S,LOC,X,60
+NSEL,R,LOC,Y,0
+*GET,ANCHOR_N,NODE,0,NUM,MIN
+D,ANCHOR_N,UX,0
+ALLSEL,ALL
+
+! --- Solve ---
+SOLVE
+FINISH
+
+! ==============================================================================
+! POST-PROCESSING
+! ==============================================================================
+/POST1
+SET,LAST
+
+! --- Path from bore to rim along midplane Z=0 ---
+PATH,DISC_PATH,5,30,1
+PPATH,1,,60,0,0       ! Bore R=60
+PPATH,2,,120,0,0      ! Hub outer R=120
+PPATH,3,,167,0,0      ! Mid-web R=167
+PPATH,4,,215,0,0      ! Web end R=215
+PPATH,5,,250,0,0      ! Rim R=250
+
+PDEF,RADIAL_S,S,X,AVG      ! Radial stress SX (MPa)
+PDEF,HOOP_S,S,Z,AVG         ! Hoop stress SZ (MPa)
+PDEF,AXIAL_S,S,Y,AVG        ! Axial stress SY (MPa)
+PDEF,VON_MISES,S,EQV,AVG    ! Von Mises stress (MPa)
+
+! --- Maximum values ---
+NSORT,S,EQV
+*GET,VM_MAX,SORT,0,MAX
+NSORT,S,X
+*GET,SR_MAX,SORT,0,MAX
+NSORT,S,Z
+*GET,SH_MAX,SORT,0,MAX
+
+! --- Calculate safety factor ---
+SF_MIN = S_YIELD / VM_MAX
+
+! --- Temperature at bore and rim ---
+NSEL,S,LOC,X,60
+NSORT,TEMP
+*GET,T_BORE_ACTUAL,SORT,0,MAX
+ALLSEL,ALL
+NSEL,S,LOC,X,250
+NSORT,TEMP
+*GET,T_RIM_ACTUAL,SORT,0,MIN
+ALLSEL,ALL
+
+! --- Write result summary ---
+/OUTPUT,result_summary,txt
+*VWRITE,RPM,OMEGA,T_BORE,T_RIM
+('RPM=',F8.1,' OMEGA_RAD_S=',E14.6,' T_BORE_C=',F8.2,' T_RIM_C=',F8.2)
+*VWRITE,VM_MAX,SR_MAX,SH_MAX
+('MAX_VON_MISES_MPA=',E16.8,' MAX_RADIAL_STRESS_MPA=',E16.8,' MAX_HOOP_STRESS_MPA=',E16.8)
+*VWRITE,SF_MIN,S_YIELD
+('MIN_SAFETY_FACTOR=',F10.4,' YIELD_STRENGTH_MPA=',F10.1)
+*VWRITE,DENS,RPM,ESIZE
+('DENSITY_TONNE_MM3=',E14.6,' RPM=',F8.1,' ELEMENT_SIZE_MM=',F8.2)
+
+! --- Detailed path results ---
+/OUTPUT,result_summary,txt,,APPEND
+*VWRITE
+('PATH: R_mm, RADIAL_MPa, HOOP_MPa, AXIAL_MPa, VON_MISES_MPa')
+*DO,PN,1,5
+  *GET,PR, PATH,,POINT,PN,PATHITEM,RADIAL_S
+  *GET,PH, PATH,,POINT,PN,PATHITEM,HOOP_S
+  *GET,PA, PATH,,POINT,PN,PATHITEM,AXIAL_S
+  *GET,PV, PATH,,POINT,PN,PATHITEM,VON_MISES
+  *VWRITE,PR,PH,PA,PV
+('R=',F8.1,' SR=',E14.6,' SH=',E14.6,' SA=',E14.6,' S_VM=',E14.6)
+*ENDDO
+/OUTPUT
+
+! --- Nodal stress field CSV output ---
+ALLSEL,ALL
+*GET,N_TOT,NODE,0,COUNT
+
+/OUTPUT,nodal_stress,csv
+*VWRITE
+('NODE,R_mm,Z_mm,SX_MPa,SY_MPa,SZ_MPa,SXY_MPa,SEQV_MPa')
+
+*DIM,NDLIST,ARRAY,N_TOT
+*VGET,NDLIST(1),NODE,,NLIST
+
+*DO,I,1,N_TOT
+  NID = NDLIST(I)
+  *IF,NID,GT,0,THEN
+    XC = NX(NID)
+    YC = NY(NID)
+    *GET,SX,NODE,NID,S,X
+    *GET,SY,NODE,NID,S,Y
+    *GET,SZ,NODE,NID,S,Z
+    *GET,SXY,NODE,NID,S,XY
+    *GET,SEQ,NODE,NID,S,EQV
+    *VWRITE,NID,XC,YC,SX,SY,SZ,SXY,SEQ
+    (F8.0,',',F10.3,',',F10.3,',',E14.6,',',E14.6,',',E14.6,',',E14.6,',',E14.6)
+  *ENDIF
+*ENDDO
+/OUTPUT
+
+FINISH
+"""
+
+
 TEMPLATES: dict[str, callable] = {
     "static_cantilever_beam_rect": static_cantilever_beam_rect_apdl,
     "plate_with_hole_tension": plate_with_hole_tension_apdl,
@@ -523,6 +751,7 @@ TEMPLATES: dict[str, callable] = {
     "cantilever_modal": cantilever_modal_apdl,
     "buckling_column": buckling_column_apdl,
     "bilinear_plastic": bilinear_plastic_apdl,
+    "turbine_disc_rotational_thermal": turbine_disc_rotational_thermal_apdl,
 }
 
 

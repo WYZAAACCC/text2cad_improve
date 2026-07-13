@@ -1,0 +1,794 @@
+
+ ANSYS Mechanical Enterprise                       
+
+
+ *------------------------------------------------------------------*
+ |                                                                  |
+ |   W E L C O M E   T O   T H E   A N S Y S (R)  P R O G R A M     |
+ |                                                                  |
+ *------------------------------------------------------------------*
+
+
+
+
+ ***************************************************************
+ *            ANSYS Release 18.1     LEGAL NOTICES             *
+ ***************************************************************
+ *                                                             *
+ * Copyright 2017 SAS IP, Inc.  All rights reserved.           *
+ * Unauthorized use, distribution or duplication is            *
+ * prohibited.                                                 *
+ *                                                             *
+ * Ansys is a registered trademark of ANSYS, Inc. or its       *
+ * subsidiaries in the United States or other countries.       *
+ * See the ANSYS, Inc. online documentation or the ANSYS, Inc. *
+ * documentation CD or online help for the complete Legal      *
+ * Notice.                                                     *
+ *                                                             *
+ ***************************************************************
+ *                                                             *
+ * THIS ANSYS SOFTWARE PRODUCT AND PROGRAM DOCUMENTATION       *
+ * INCLUDE TRADE SECRETS AND CONFIDENTIAL AND PROPRIETARY      *
+ * PRODUCTS OF ANSYS, INC., ITS SUBSIDIARIES, OR LICENSORS.    *
+ * The software products and documentation are furnished by    *
+ * ANSYS, Inc. or its subsidiaries under a software license    *
+ * agreement that contains provisions concerning               *
+ * non-disclosure, copying, length and nature of use,          *
+ * compliance with exporting laws, warranties, disclaimers,    *
+ * limitations of liability, and remedies, and other           *
+ * provisions.  The software products and documentation may be *
+ * used, disclosed, transferred, or copied only in accordance  *
+ * with the terms and conditions of that software license      *
+ * agreement.                                                  *
+ *                                                             *
+ * ANSYS, Inc. is a UL registered                              *
+ * ISO 9001:2008 company.                                      *
+ *                                                             *
+ ***************************************************************
+ *                                                             *
+ * This product is subject to U.S. laws governing export and   *
+ * re-export.                                                  *
+ *                                                             *
+ * For U.S. Government users, except as specifically granted   *
+ * by the ANSYS, Inc. software license agreement, the use,     *
+ * duplication, or disclosure by the United States Government  *
+ * is subject to restrictions stated in the ANSYS, Inc.        *
+ * software license agreement and FAR 12.212 (for non-DOD      *
+ * licenses).                                                  *
+ *                                                             *
+ ***************************************************************
+
+ Release 18.1
+     
+ Point Releases and Patches installed:   
+     
+ ANSYS, Inc. Products Release 18.1   
+ ANSYS Mechanical Products Release 18.1  
+ ANSYS Autodyn Release 18.1  
+ ANSYS LS-DYNA Release 18.1  
+ ANSYS AIM Release 18.1  
+ ANSYS CFX (includes ANSYS CFD-Post) Release 18.1
+ ANSYS Fluent (includes ANSYS CFD-Post) Release 18.1 
+ ANSYS TurboGrid Release 18.1
+ ANSYS FENSAP-ICE Release 18.1   
+ ANSYS Polyflow (includes ANSYS CFD-Post) Release 18.1   
+ ANSYS Forte Release 18.1
+ ANSYS Chemkin Release 18.1  
+ ANSYS ICEM CFD Release 18.1 
+ ANSYS Aqwa Release 18.1 
+ ANSYS Icepak (includes ANSYS CFD-Post) Release 18.1 
+ AutoCAD Release 18.1
+ ACIS Release 18.1   
+ Catia, Version 4 Release 18.1   
+ Catia, Version 6 Release 18.1   
+ Creo Elements/Direct Modeling Release 18.1  
+ Inventor Release 18.1   
+ JTOpen Release 18.1 
+ NX Release 18.1 
+ Parasolid Release 18.1  
+ Creo Parametric Release 18.1
+ Solid Edge Release 18.1 
+ SolidWorks Release 18.1 
+ ANSYS, Inc. License Manager Release 18.1
+
+
+          *****  ANSYS COMMAND LINE ARGUMENTS  *****
+  INITIAL JOBNAME              = turbine_disc                                                                                                                                                                                                                                            
+  BATCH MODE REQUESTED (-b)    = LIST
+  INPUT FILE COPY MODE (-c)    = COPY
+  MEMORY REQUESTED (MB)        = 512         
+
+ RELEASE= Release 18.1         BUILD= 18.1      UP20170403   VERSION=WINDOWS x64 
+ CURRENT JOBNAME=turbine_disc  20:46:21  JUL 13, 2026 CP=      0.031
+
+     1  /CLEAR,NOSTART  
+     2  /FILNAME,turbine_disc   
+     3  /TITLE,HP Turbine Disc — Rotational + Thermal, 15000 RPM, Rim=650C Bore=500C  
+     4      
+     5  ! ==============================================================================
+     6  ! PARAMETERS
+     7  ! ==============================================================================
+     8  RPM       = 15000   
+     9  OMEGA     = 1570.796327 
+    10  T_RIM     = 650 
+    11  T_BORE    = 500 
+    12  E_RIM     = 150000.0
+    13  E_BORE    = 175000.0
+    14  S_YIELD   = 900.0   
+    15  DENS      = 8.240000e-09
+    16  NU        = 0.3 
+    17  ALPHA     = 1.45e-05
+    18  ESIZE     = 5.0 
+    19  N_SLOTS   = 60  
+    20  D_SLOT    = 20.0
+    21      
+    22  ! ==============================================================================
+    23  ! PREPROCESSOR — Axisymmetric Model   
+    24  ! ==============================================================================
+    25  /PREP7  
+    26      
+    27  ! --- Element type: PLANE183, axisymmetric ---  
+    28  ET,1,PLANE183   
+    29  KEYOPT,1,1,1      ! Axisymmetric
+    30  KEYOPT,1,3,0      ! Plane stress with thickness (default)   
+    31      
+    32  ! --- Material: GH4169 / Inconel 718 ---
+    33  MP,EX,1,E_BORE  
+    34  MP,PRXY,1,NU
+    35  MP,DENS,1,DENS  
+    36  MP,ALPX,1,ALPHA 
+    37      
+    38  ! --- Geometry: single closed polygon area ---  
+    39  K,1,60,-38,0
+    40  K,2,120,-38,0   
+    41  K,3,120,-22,0   
+    42  K,4,215,-15,0   
+    43  K,5,215,-30,0   
+    44  K,6,250,-30,0   
+    45  K,7,250,30,0
+    46  K,8,215,30,0
+    47  K,9,215,15,0
+    48  K,10,120,22,0   
+    49  K,11,120,38,0   
+    50  K,12,60,38,0
+    51      
+    52  ! Create area from all 12 keypoints (single closed polygon) 
+    53  A,1,2,3,4,5,6,7,8,9,10,11,12
+    54      
+    55  ! --- Mesh ---  
+    56  ESIZE,ESIZE 
+    57  MSHAPE,0,2D       ! Quad-dominant   
+    58  MSHKEY,0          ! Free mesh   
+    59  AMESH,ALL   
+    60      
+    61  FINISH  
+    62      
+    63  ! ==============================================================================
+    64  ! SOLUTION — Static structural with thermal load  
+    65  ! ==============================================================================
+    66  /SOLU   
+    67  ANTYPE,STATIC   
+    68      
+    69  ! --- Rotational body force (OMEGA about Y=Z axis for axisymmetric) --- 
+    70  ! For axisymmetric: Y axis = axial, rotation about Y
+    71  OMEGA,,,OMEGA   
+    72      
+    73  ! --- Thermal load: temperature gradient from bore to rim ---   
+    74  ! Apply as body force temperature BF,TEMP on all nodes  
+    75  ! Linear interpolation: T(R) = T_BORE + (T_RIM - T_BORE) * (R - 60) / (250 - 60)
+    76  NSEL,S,LOC,X,60,250 
+    77  *GET,NCOUNT,NODE,0,COUNT
+    78  *DIM,TNODES,ARRAY,NCOUNT
+    79  *DIM,TVALS,ARRAY,NCOUNT 
+    80  *VGET,TNODES(1),NODE,,NLIST 
+    81  *DO,I,1,NCOUNT  
+    82    NN = TNODES(I)
+    83    XC = NX(NN)   
+    84    TVAL = T_BORE + (T_RIM - T_BORE) * (XC - 60) / 190.0  
+    85    BF,NN,TEMP,TVAL   
+    86  *ENDDO  
+    87  ALLSEL,ALL  
+    88      
+    89  ! --- Boundary conditions ---   
+    90  ! Disc symmetric about Z=0 (Y=0 in ANSYS axisymmetric)  
+    91  ! Constrain UY at midplane nodes to allow symmetric deformation 
+    92  NSEL,S,LOC,Y,0  
+    93  D,ALL,UY,0  
+    94  ALLSEL,ALL  
+    95  ! Ground one bore node in UX for numerical stability
+    96  NSEL,S,LOC,X,60 
+    97  NSEL,R,LOC,Y,0  
+    98  *GET,ANCHOR_N,NODE,0,NUM,MIN
+    99  D,ANCHOR_N,UX,0 
+   100  ALLSEL,ALL  
+   101      
+   102  ! --- Solve --- 
+   103  SOLVE   
+   104  FINISH  
+   105      
+   106  ! ==============================================================================
+   107  ! POST-PROCESSING   
+   108  ! ==============================================================================
+   109  /POST1  
+   110  SET,LAST
+   111      
+   112  ! --- Path from bore to rim along midplane Z=0 ---  
+   113  PATH,DISC_PATH,5,30,1   
+   114  PPATH,1,,60,0,0       ! Bore R=60   
+   115  PPATH,2,,120,0,0      ! Hub outer R=120 
+   116  PPATH,3,,167,0,0      ! Mid-web R=167   
+   117  PPATH,4,,215,0,0      ! Web end R=215   
+   118  PPATH,5,,250,0,0      ! Rim R=250   
+   119      
+   120  PDEF,RADIAL_S,S,X,AVG      ! Radial stress SX (MPa) 
+   121  PDEF,HOOP_S,S,Z,AVG         ! Hoop stress SZ (MPa)  
+   122  PDEF,AXIAL_S,S,Y,AVG        ! Axial stress SY (MPa) 
+   123  PDEF,VON_MISES,S,EQV,AVG    ! Von Mises stress (MPa)
+   124      
+   125  ! --- Maximum values ---
+   126  NSORT,S,EQV 
+   127  *GET,VM_MAX,SORT,0,MAX  
+   128  NSORT,S,X   
+   129  *GET,SR_MAX,SORT,0,MAX  
+   130  NSORT,S,Z   
+   131  *GET,SH_MAX,SORT,0,MAX  
+   132      
+   133  ! --- Calculate safety factor ---   
+   134  SF_MIN = S_YIELD / VM_MAX   
+   135      
+   136  ! --- Temperature at bore and rim ---   
+   137  NSEL,S,LOC,X,60 
+   138  NSORT,TEMP  
+   139  *GET,T_BORE_ACTUAL,SORT,0,MAX   
+   140  ALLSEL,ALL  
+   141  NSEL,S,LOC,X,250
+   142  NSORT,TEMP  
+   143  *GET,T_RIM_ACTUAL,SORT,0,MIN
+   144  ALLSEL,ALL  
+   145      
+   146  ! --- Write result summary ---  
+   147  /OUTPUT,result_summary,txt  
+   148  *VWRITE,RPM,OMEGA,T_BORE,T_RIM  
+   149  ('RPM=',F8.1,' OMEGA_RAD_S=',E14.6,' T_BORE_C=',F8.2,' T_RIM_C=',F8.2)  
+   150  *VWRITE,VM_MAX,SR_MAX,SH_MAX
+   151  ('MAX_VON_MISES_MPA=',E16.8,' MAX_RADIAL_STRESS_MPA=',E16.8,' MAX_HOOP_STRESS_MPA=',E16.8)  
+   152  *VWRITE,SF_MIN,S_YIELD  
+   153  ('MIN_SAFETY_FACTOR=',F10.4,' YIELD_STRENGTH_MPA=',F10.1)   
+   154  *VWRITE,DENS,RPM,ESIZE  
+   155  ('DENSITY_TONNE_MM3=',E14.6,' RPM=',F8.1,' ELEMENT_SIZE_MM=',F8.2)  
+   156      
+   157  ! --- Detailed path results --- 
+   158  /OUTPUT,result_summary,txt,,APPEND  
+   159  *VWRITE 
+   160  ('PATH: R_mm, RADIAL_MPa, HOOP_MPa, AXIAL_MPa, VON_MISES_MPa')  
+   161  *DO,PN,1,5  
+   162    *GET,PR, PATH,,POINT,PN,PATHITEM,RADIAL_S 
+   163    *GET,PH, PATH,,POINT,PN,PATHITEM,HOOP_S   
+   164    *GET,PA, PATH,,POINT,PN,PATHITEM,AXIAL_S  
+   165    *GET,PV, PATH,,POINT,PN,PATHITEM,VON_MISES
+   166    *VWRITE,PR,PH,PA,PV   
+   167  ('R=',F8.1,' SR=',E14.6,' SH=',E14.6,' SA=',E14.6,' S_VM=',E14.6)   
+   168  *ENDDO  
+   169  /OUTPUT 
+   170      
+   171  FINISH  
+
+ RUN SETUP PROCEDURE FROM FILE= D:\ANSYS181\ANSYS Inc\v181\ANSYS\apdl\start.ans
+
+ /INPUT FILE= D:\ANSYS181\ANSYS Inc\v181\ANSYS\apdl\start.ans  LINE=       0
+
+ CLEAR ANSYS DATABASE AND RESTART
+
+ ANSYS Mechanical Enterprise                       
+
+ CURRENT JOBNAME REDEFINED AS turbine_disc
+
+ TITLE= 
+ HP Turbine Disc — Rotational + Thermal, 15000 RPM, Rim=650C Bore=500C       
+
+
+ PARAMETER RPM =     15000.00000    
+
+ PARAMETER OMEGA =     1570.796327    
+
+ PARAMETER T_RIM =     650.0000000    
+
+ PARAMETER T_BORE =     500.0000000    
+
+ PARAMETER E_RIM =     150000.0000    
+
+ PARAMETER E_BORE =     175000.0000    
+
+ PARAMETER S_YIELD =     900.0000000    
+
+ PARAMETER DENS =    0.8240000000E-08
+
+ PARAMETER NU =    0.3000000000    
+
+ PARAMETER ALPHA =    0.1450000000E-04
+
+ PARAMETER ESIZE =     5.000000000    
+
+ PARAMETER N_SLOTS =     60.00000000    
+
+ PARAMETER D_SLOT =     20.00000000    
+
+ *** ANSYS - ENGINEERING ANALYSIS SYSTEM  RELEASE Release 18.1     18.1     ***
+ ANSYS Mechanical Enterprise                       
+ 00000000  VERSION=WINDOWS x64   20:46:21  JUL 13, 2026 CP=      0.047
+
+ HP Turbine Disc — Rotational + Thermal, 15000 RPM, Rim=650C Bore=500C       
+
+
+
+          ***** ANSYS ANALYSIS DEFINITION (PREP7) *****
+
+ ELEMENT TYPE       1 IS PLANE183     2-D 8-NODE PLANE STRS SOLID 
+  KEYOPT( 1- 6)=        0      0      0        0      0      0
+  KEYOPT( 7-12)=        0      0      0        0      0      0
+  KEYOPT(13-18)=        0      0      0        0      0      0
+
+ CURRENT NODAL DOF SET IS  UX    UY  
+  TWO-DIMENSIONAL MODEL
+
+ ELEMENT TYPE       1 IS PLANE183     2-D 6-NODE PLANE STRS SOLID 
+  KEYOPT( 1- 6)=        1      0      0        0      0      0
+  KEYOPT( 7-12)=        0      0      0        0      0      0
+  KEYOPT(13-18)=        0      0      0        0      0      0
+
+ CURRENT NODAL DOF SET IS  UX    UY  
+  TWO-DIMENSIONAL MODEL
+
+ ELEMENT TYPE       1 IS PLANE183     2-D 6-NODE PLANE STRS SOLID 
+  KEYOPT( 1- 6)=        1      0      0        0      0      0
+  KEYOPT( 7-12)=        0      0      0        0      0      0
+  KEYOPT(13-18)=        0      0      0        0      0      0
+
+ CURRENT NODAL DOF SET IS  UX    UY  
+  TWO-DIMENSIONAL MODEL
+
+ MATERIAL         1     EX   =   175000.0      
+
+ MATERIAL         1     PRXY =  0.3000000      
+
+ MATERIAL         1     DENS =  0.8240000E-08  
+
+ MATERIAL         1     ALPX =  0.1450000E-04  
+
+ KEYPOINT      1   X,Y,Z=   60.0000      -38.0000       0.00000      IN CSYS=  0
+
+ KEYPOINT      2   X,Y,Z=   120.000      -38.0000       0.00000      IN CSYS=  0
+
+ KEYPOINT      3   X,Y,Z=   120.000      -22.0000       0.00000      IN CSYS=  0
+
+ KEYPOINT      4   X,Y,Z=   215.000      -15.0000       0.00000      IN CSYS=  0
+
+ KEYPOINT      5   X,Y,Z=   215.000      -30.0000       0.00000      IN CSYS=  0
+
+ KEYPOINT      6   X,Y,Z=   250.000      -30.0000       0.00000      IN CSYS=  0
+
+ KEYPOINT      7   X,Y,Z=   250.000       30.0000       0.00000      IN CSYS=  0
+
+ KEYPOINT      8   X,Y,Z=   215.000       30.0000       0.00000      IN CSYS=  0
+
+ KEYPOINT      9   X,Y,Z=   215.000       15.0000       0.00000      IN CSYS=  0
+
+ KEYPOINT     10   X,Y,Z=   120.000       22.0000       0.00000      IN CSYS=  0
+
+ KEYPOINT     11   X,Y,Z=   120.000       38.0000       0.00000      IN CSYS=  0
+
+ KEYPOINT     12   X,Y,Z=   60.0000       38.0000       0.00000      IN CSYS=  0
+
+ DEFINE AREA BY LIST OF KEYPOINTS
+   KEYPOINT LIST =      1     2     3     4     5     6     7     8     9    10
+   KEYPOINT LIST =     11    12
+
+     AREA NUMBER =      1
+
+ DEFAULT ELEMENT DIVISIONS PER LINE BASED ON ELEMENT SIZE =   5.00    
+ PRODUCE ALL QUADRILATERAL ELEMENTS IN 2D.
+ USE THE FREE MESHER.
+
+ GENERATE NODES AND ELEMENTS   IN  ALL  SELECTED AREAS    
+    ** AREA     1 MESHED WITH        0 QUADRILATERALS,      972 TRIANGLES **
+
+ NUMBER OF AREAS MESHED     =          1
+ MAXIMUM NODE NUMBER        =       2065
+ MAXIMUM ELEMENT NUMBER     =        972
+
+
+ ***** ROUTINE COMPLETED *****  CP =         0.047
+
+
+
+ *****  ANSYS SOLUTION ROUTINE  *****
+
+
+ PERFORM A STATIC ANALYSIS
+  THIS WILL BE A NEW ANALYSIS
+
+ OMEGA=  0.0000      0.0000      1570.8    
+
+ SELECT       FOR ITEM=LOC  COMPONENT=X     BETWEEN  60.000     AND   250.00    
+   KABS=  0.  TOLERANCE= 0.190000E-05
+
+       2065  NODES (OF       2065  DEFINED) SELECTED BY  NSEL  COMMAND.
+
+ *GET  NCOUNT    FROM  NODE  ITEM=COUN       VALUE=  2065.00000     
+
+ SET PARAMETER DIMENSIONS ON  TNODES TYPE=ARRA  DIMENSIONS=  2065     1     1
+
+ SET PARAMETER DIMENSIONS ON  TVALS TYPE=ARRA  DIMENSIONS=  2065     1     1
+
+ VECTOR GET OPERATION  TNODES(1)  VECTOR LENGTH=    2065
+ NAME= NODE         0  NLIS      
+
+ *DO LOOP ON PARAMETER= I FROM  1.0000     TO  2065.0     BY  1.0000    
+
+ PARAMETER NN =     1.000000000    
+
+ PARAMETER XC =     60.00000000    
+
+ *** WARNING ***                         CP =       0.047   TIME= 20:46:21
+ * no longer valid as comment character - please use !                   
+  *SET,TVAL, T_BORE + (T_RIM - T_BORE) * (XC - 60) / 190.0               
+  This warning only issued once.                                         
+
+ PARAMETER TVAL =     650.0000000    
+
+ SPECIFIED BODY FORCE TEMP FOR NODE       1 SET TO   650.000000 
+
+ *ENDDO  INDEX= I                               
+
+ SELECT ALL ENTITIES OF TYPE= ALL  AND BELOW
+
+ SELECT       FOR ITEM=LOC  COMPONENT=Y     BETWEEN  0.0000     AND   0.0000    
+   KABS=  0.  TOLERANCE= 0.100000E-05
+
+          4  NODES (OF       2065  DEFINED) SELECTED BY  NSEL  COMMAND.
+
+ SPECIFIED CONSTRAINT UY   FOR SELECTED NODES            1 TO        2065 BY           1
+ REAL=  0.00000000       IMAG=  0.00000000    
+
+ SELECT ALL ENTITIES OF TYPE= ALL  AND BELOW
+
+ SELECT       FOR ITEM=LOC  COMPONENT=X     BETWEEN  60.000     AND   60.000    
+   KABS=  0.  TOLERANCE= 0.300000    
+
+         33  NODES (OF       2065  DEFINED) SELECTED BY  NSEL  COMMAND.
+
+ RESELECT     FOR ITEM=LOC  COMPONENT=Y     BETWEEN  0.0000     AND   0.0000    
+   KABS=  0.  TOLERANCE= 0.100000E-05
+
+          1  NODES (OF       2065  DEFINED) SELECTED BY  NSEL  COMMAND.
+
+ *GET  ANCHOR_N  FROM  NODE  ITEM=NUM  MIN   VALUE=  225.000000     
+
+ SPECIFIED CONSTRAINT UX   FOR SELECTED NODES          225 TO         225 BY           1
+ REAL=  0.00000000       IMAG=  0.00000000    
+
+ SELECT ALL ENTITIES OF TYPE= ALL  AND BELOW
+
+ *****  ANSYS SOLVE    COMMAND  *****
+
+ *** SELECTION OF ELEMENT TECHNOLOGIES FOR APPLICABLE ELEMENTS ***
+                ---GIVE SUGGESTIONS ONLY---
+
+ ELEMENT TYPE    1 IS PLANE183 WITH PLANE STRESS OPTION. NO SUGGESTION IS
+ AVAILABLE.
+
+
+
+ *** ANSYS - ENGINEERING ANALYSIS SYSTEM  RELEASE Release 18.1     18.1     ***
+ ANSYS Mechanical Enterprise                       
+ 00000000  VERSION=WINDOWS x64   20:46:21  JUL 13, 2026 CP=      0.062
+
+ HP Turbine Disc — Rotational + Thermal, 15000 RPM, Rim=650C Bore=500C       
+
+
+
+                       S O L U T I O N   O P T I O N S
+
+   PROBLEM DIMENSIONALITY. . . . . . . . . . . . .2-D                  
+   DEGREES OF FREEDOM. . . . . . UX   UY  
+   ANALYSIS TYPE . . . . . . . . . . . . . . . . .STATIC (STEADY-STATE)
+   GLOBALLY ASSEMBLED MATRIX . . . . . . . . . . .SYMMETRIC  
+
+ *** NOTE ***                            CP =       0.062   TIME= 20:46:21
+ Present time 0 is less than or equal to the previous time.  Time will   
+ default to 1.                                                           
+
+ *** NOTE ***                            CP =       0.062   TIME= 20:46:21
+ The conditions for direct assembly have been met.  No .emat or .erot    
+ files will be produced.                                                 
+
+                      L O A D   S T E P   O P T I O N S
+
+   LOAD STEP NUMBER. . . . . . . . . . . . . . . .     1
+   TIME AT END OF THE LOAD STEP. . . . . . . . . .  1.0000    
+   NUMBER OF SUBSTEPS. . . . . . . . . . . . . . .     1
+   STEP CHANGE BOUNDARY CONDITIONS . . . . . . . .    NO
+   INERTIA LOADS                        X           Y           Z 
+      OMEGA. . . . . . . . . . . .  0.0000      0.0000      1570.8    
+   PRINT OUTPUT CONTROLS . . . . . . . . . . . . .NO PRINTOUT
+   DATABASE OUTPUT CONTROLS. . . . . . . . . . . .ALL DATA WRITTEN
+                                                  FOR THE LAST SUBSTEP
+
+
+ SOLUTION MONITORING INFO IS WRITTEN TO FILE= turbine_disc.mntr                                                                                                                                                                                                                                                   
+
+
+ *** NOTE ***                            CP =       0.062   TIME= 20:46:21
+ The initial memory allocation (-m) has been exceeded.                   
+  Supplemental memory allocations are being used.                        
+
+
+
+            **** CENTER OF MASS, MASS, AND MASS MOMENTS OF INERTIA ****
+
+  CALCULATIONS ASSUME ELEMENT MASS AT ELEMENT CENTROID
+
+  TOTAL MASS =  0.83842E-04
+
+                           MOM. OF INERTIA         MOM. OF INERTIA
+  CENTER OF MASS            ABOUT ORIGIN        ABOUT CENTER OF MASS
+
+  XC =   145.15          IXX =   0.2661E-01      IXX =   0.2661E-01
+  YC =  0.34476E-14      IYY =    2.058          IYY =   0.2916    
+  ZC =   0.0000          IZZ =    2.085          IZZ =   0.3182    
+                         IXY =   0.1900E-05      IXY =   0.1900E-05
+                         IYZ =    0.000          IYZ =    0.000    
+                         IZX =    0.000          IZX =    0.000    
+
+
+  *** MASS SUMMARY BY ELEMENT TYPE ***
+
+  TYPE      MASS
+     1  0.838420E-04
+
+ Range of element maximum matrix coefficients in global coordinates
+ Maximum = 418856.055 at element 801.                                    
+ Minimum = 299830.14 at element 953.                                     
+
+   *** ELEMENT MATRIX FORMULATION TIMES
+     TYPE    NUMBER   ENAME      TOTAL CP  AVE CP
+
+        1       972  PLANE183      0.031   0.000032
+ Time at end of element matrix formulation CP = 7.8125E-02.              
+
+ SPARSE MATRIX DIRECT SOLVER.
+  Number of equations =        4125,    Maximum wavefront =     34
+  Memory allocated for solver              =     4.390 MB
+  Memory required for in-core solution     =     4.237 MB
+  Memory required for out-of-core solution =     2.399 MB
+
+ *** NOTE ***                            CP =       0.109   TIME= 20:46:21
+ The Sparse Matrix Solver is currently running in the in-core memory     
+ mode.  This memory mode uses the most amount of memory in order to      
+ avoid using the hard drive as much as possible, which most often        
+ results in the fastest solution time.  This mode is recommended if      
+ enough physical memory is present to accommodate all of the solver      
+ data.                                                                   
+ Sparse solver maximum pivot= 709304.501 at node 1225 UX.                
+ Sparse solver minimum pivot= 7853.06199 at node 1490 UY.                
+ Sparse solver minimum pivot in absolute value= 7853.06199 at node 1490  
+ UY.                                                                     
+
+   *** ELEMENT RESULT CALCULATION TIMES
+     TYPE    NUMBER   ENAME      TOTAL CP  AVE CP
+
+        1       972  PLANE183      0.000   0.000000
+
+   *** NODAL LOAD CALCULATION TIMES
+     TYPE    NUMBER   ENAME      TOTAL CP  AVE CP
+
+        1       972  PLANE183      0.000   0.000000
+ *** LOAD STEP     1   SUBSTEP     1  COMPLETED.    CUM ITER =      1
+ *** TIME =   1.00000         TIME INC =   1.00000      NEW TRIANG MATRIX
+
+
+ *** ANSYS BINARY FILE STATISTICS
+  BUFFER SIZE USED= 16384
+        0.812 MB WRITTEN ON ASSEMBLED MATRIX FILE: turbine_disc.full
+        1.312 MB WRITTEN ON RESULTS FILE: turbine_disc.rst
+
+ FINISH SOLUTION PROCESSING
+
+
+ ***** ROUTINE COMPLETED *****  CP =         0.172
+
+
+
+ *** ANSYS - ENGINEERING ANALYSIS SYSTEM  RELEASE Release 18.1     18.1     ***
+ ANSYS Mechanical Enterprise                       
+ 00000000  VERSION=WINDOWS x64   20:46:21  JUL 13, 2026 CP=      0.188
+
+ HP Turbine Disc — Rotational + Thermal, 15000 RPM, Rim=650C Bore=500C       
+
+
+
+          ***** ANSYS RESULTS INTERPRETATION (POST1) *****
+
+ *** NOTE ***                            CP =       0.188   TIME= 20:46:21
+ Reading results into the database (SET command) will update the current 
+ displacement and force boundary conditions in the database with the     
+ values from the results file for that load set.  Note that any          
+ subsequent solutions will use these values unless action is taken to    
+ either SAVE the current values or not overwrite them (/EXIT,NOSAVE).    
+
+
+ USE LAST SUBSTEP ON RESULT FILE  FOR LOAD CASE 0 
+
+ SET COMMAND GOT LOAD STEP=     1  SUBSTEP=     1  CUMULATIVE ITERATION=     1
+   TIME/FREQUENCY=  1.0000    
+ TITLE= HP Turbine Disc — Rotational + Thermal, 15000 RPM, Rim=650C Bore=500C 
+
+ Define Path  Name= DISC_PAT  nPts=    5  nSets=  30  nDiv=   1
+ PPATH  Point=  1  Node=       0  X,Y,Z=  60.00      0.000      0.000     cs=  0
+ PPATH  Point=  2  Node=       0  X,Y,Z=  120.0      0.000      0.000     cs=  0
+ PPATH  Point=  3  Node=       0  X,Y,Z=  167.0      0.000      0.000     cs=  0
+ PPATH  Point=  4  Node=       0  X,Y,Z=  215.0      0.000      0.000     cs=  0
+ PPATH  Point=  5  Node=       0  X,Y,Z=  250.0      0.000      0.000     cs=  0
+
+ DEFINE PATH IN PATH COORDINATE SYSTEM   0
+  DIRECTION       MAX             MIN 
+     X         250.00         60.000    
+     Y         0.0000         0.0000    
+     Z         0.0000         0.0000    
+  TOTAL PATH LENGTH =    190.00    
+
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ Use of predefined PDEF path label S is not permitted.                   
+  The PVEC command is ignored.                                           
+
+ DEFINE PATH VARIABLE HOOP_S   AS THE NODAL DATA ITEM=S    COMP=Z    AVGLAB=AVG 
+  ROTATED INTO COORDINATE SYSTEM  0 AND MOVED TO THE PATH 
+  NUMBER OF PATH VARIABLES DEFINED IS   5
+ SUMMARY OF VARIABLE HOOP_S   MAX =    0.0000     MIN =    0.0000    
+
+
+ DEFINE PATH VARIABLE AXIAL_S  AS THE NODAL DATA ITEM=S    COMP=Y    AVGLAB=AVG 
+  ROTATED INTO COORDINATE SYSTEM  0 AND MOVED TO THE PATH 
+  NUMBER OF PATH VARIABLES DEFINED IS   6
+ SUMMARY OF VARIABLE AXIAL_S  MAX =    5282.7     MIN =   -109.78    
+
+
+ DEFINE PATH VARIABLE VON_MISE AS THE NODAL DATA ITEM=S    COMP=EQV  AVGLAB=AVG 
+  ROTATED INTO COORDINATE SYSTEM  0 AND MOVED TO THE PATH 
+  NUMBER OF PATH VARIABLES DEFINED IS   7
+ SUMMARY OF VARIABLE VON_MISE MAX =    9693.6     MIN =    109.40    
+
+
+ SORT ON ITEM=S     COMPONENT=EQV   ORDER= 0  KABS= 0  NMAX=    2065
+
+ SORT COMPLETED FOR     547 VALUES.
+
+ *GET  VM_MAX    FROM  SORT  ITEM=MAX        VALUE=  9693.55801    
+
+ SORT ON ITEM=S     COMPONENT=X     ORDER= 0  KABS= 0  NMAX=    2065
+
+ SORT COMPLETED FOR     547 VALUES.
+
+ *GET  SR_MAX    FROM  SORT  ITEM=MAX        VALUE=  11187.3945    
+
+ SORT ON ITEM=S     COMPONENT=Z     ORDER= 0  KABS= 0  NMAX=    2065
+
+ SORT COMPLETED FOR     547 VALUES.
+
+ *GET  SH_MAX    FROM  SORT  ITEM=MAX        VALUE=  0.00000000    
+
+ PARAMETER SF_MIN =    0.9284516575E-01
+
+ SELECT       FOR ITEM=LOC  COMPONENT=X     BETWEEN  60.000     AND   60.000    
+   KABS=  0.  TOLERANCE= 0.300000    
+
+         33  NODES (OF       2065  DEFINED) SELECTED BY  NSEL  COMMAND.
+
+ SORT ON ITEM=TEMP  COMPONENT=      ORDER= 0  KABS= 0  NMAX=    2065
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ TEMP is not a valid degree of freedom for this solution.  The DOF       
+ command may be used to add degrees of freedom.                          
+
+ *GET  T_BORE_ACTUAL  FROM  SORT  ITEM=MAX        VALUE=  0.00000000    
+
+ SELECT ALL ENTITIES OF TYPE= ALL  AND BELOW
+
+ SELECT       FOR ITEM=LOC  COMPONENT=X     BETWEEN  250.00     AND   250.00    
+   KABS=  0.  TOLERANCE=  1.25000    
+
+         25  NODES (OF       2065  DEFINED) SELECTED BY  NSEL  COMMAND.
+
+ SORT ON ITEM=TEMP  COMPONENT=      ORDER= 0  KABS= 0  NMAX=    2065
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ TEMP is not a valid degree of freedom for this solution.  The DOF       
+ command may be used to add degrees of freedom.                          
+
+ *GET  T_RIM_ACTUAL  FROM  SORT  ITEM=MIN        VALUE=  0.00000000    
+
+ SELECT ALL ENTITIES OF TYPE= ALL  AND BELOW
+
+ /OUTPUT FILE= result_summary.txt
+
+ EXIT THE ANSYS POST1 DATABASE PROCESSOR
+
+
+ ***** ROUTINE COMPLETED *****  CP =         0.188
+
+
+
+ ***** END OF INPUT ENCOUNTERED *****
+
+ PURGE ALL SOLUTION AND POST DATA
+ SAVE ALL MODEL DATA
+
+ ALL CURRENT ANSYS DATA WRITTEN TO FILE NAME= turbine_disc.db
+  FOR POSSIBLE RESUME FROM THIS POINT
+
+
+ NUMBER OF WARNING MESSAGES ENCOUNTERED=         24
+ NUMBER OF ERROR   MESSAGES ENCOUNTERED=          0
+
++--------------------- A N S Y S   S T A T I S T I C S ------------------------+
+
+Release: Release 18.1       Build: 18.1       Update: UP20170403   Platform: WINDOWS x64 
+Date Run: 07/13/2026   Time: 20:46     Process ID: 38784
+Operating System: Windows 10  (Build: 22631)
+
+Processor Model: Intel(R) Core(TM) i7-14700HX
+
+Compiler: Intel(R) FORTRAN Compiler Version 15.0.7  (Build: 20160518)
+          Intel(R) C/C++ Compiler Version 15.0.7  (Build: 20160518)
+          Intel(R) Math Kernel Library Version 11.3.3 Product Build 20160413
+
+Number of machines requested            :    1
+Total number of cores available         :    0
+Number of physical cores available      :    0
+Number of processes requested           :    1
+Number of threads per process requested :    2
+Total number of cores requested         :    2 (Shared Memory Parallel)                    
+
+GPU Acceleration: Not Requested
+
+Job Name: turbine_disc
+Working Directory: E:\auto_detection_process\turbine_disc\ansys_job_006
+
+Total CPU time for main thread                    :        0.1 seconds
+Total CPU time summed for all threads             :        0.2 seconds
+
+Elapsed time spent pre-processing model (/PREP7)  :        0.0 seconds
+Elapsed time spent solution - preprocessing       :        0.0 seconds
+Elapsed time spent computing solution             :        0.1 seconds
+Elapsed time spent solution - postprocessing      :        0.0 seconds
+Elapsed time spent post-processing model (/POST1) :        0.0 seconds
+ 
+Equation solver used                              :            Sparse (symmetric)
+
+Maximum total memory used                         :       41.0 MB
+Maximum total memory allocated                    :     1126.0 MB
+Total physical memory available                   :         16 GB
+
++------------------ E N D   A N S Y S   S T A T I S T I C S -------------------+
+
+
+ *---------------------------------------------------------------------------*
+ |                                                                           |
+ |                            ANSYS RUN COMPLETED                            |
+ |                                                                           |
+ |---------------------------------------------------------------------------|
+ |                                                                           |
+ | Ansys Release 18.1          Build 18.1         UP20170403     WINDOWS x64 |
+ |                                                                           |
+ |---------------------------------------------------------------------------|
+ |                                                                           |
+ | Database Requested(-db)  1024 MB    Scratch Memory Requested         8 MB |
+ | Maximum Database Used       4 MB    Maximum Scratch Memory Used     37 MB |
+ |                                                                           |
+ |---------------------------------------------------------------------------|
+ |                                                                           |
+ |        CP Time      (sec) =          0.203       Time  =  20:46:21        |
+ |        Elapsed Time (sec) =          6.000       Date  =  07/13/2026      |
+ |                                                                           |
+ *---------------------------------------------------------------------------*

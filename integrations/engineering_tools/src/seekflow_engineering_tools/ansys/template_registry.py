@@ -94,6 +94,29 @@ ANSYS_TEMPLATE_SCHEMAS: dict[str, dict[str, Any]] = {
         },
         "metrics": ["max_plastic_strain", "tip_displacement_mm"],
     },
+    "turbine_disc_rotational_thermal": {
+        "analysis_type": "thermo_structural_axisymmetric",
+        "units": "mm,tonne,N,MPa,C",
+        "parameters": {
+            "step_file_path": {"type": "str", "default": ""},
+            "rpm": {"type": "float", "default": 15000.0, "min": 100},
+            "temp_rim_c": {"type": "float", "default": 650.0, "min": 20},
+            "temp_bore_c": {"type": "float", "default": 500.0, "min": 20},
+            "young_rim_mpa": {"type": "float", "default": 150000.0},
+            "young_bore_mpa": {"type": "float", "default": 175000.0},
+            "yield_mpa_650c": {"type": "float", "default": 900.0},
+            "density_tonnemm3": {"type": "float", "default": 8.24e-9},
+            "poisson": {"type": "float", "default": 0.3},
+            "alpha": {"type": "float", "default": 1.45e-5},
+            "element_size_mm": {"type": "float", "default": 5.0, "min": 0.5},
+            "n_slots": {"type": "int", "default": 60, "min": 1},
+            "slot_depth_mm": {"type": "float", "default": 20.0},
+        },
+        "metrics": [
+            "max_von_mises_mpa", "max_radial_stress_mpa", "max_hoop_stress_mpa",
+            "min_safety_factor",
+        ],
+    },
 }
 
 

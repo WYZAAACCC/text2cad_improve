@@ -118,3 +118,107 @@ export interface GenerationTask {
   };
   error?: string;
 }
+
+/** FEA Analysis Types */
+export interface FeaTemplateParam {
+  type: string;
+  required: boolean;
+  default: unknown;
+  min?: number;
+  max?: number;
+  description: string;
+}
+
+export interface FeaTemplateSchema {
+  name: string;
+  analysis_type: string;
+  units: string;
+  parameters: Record<string, FeaTemplateParam>;
+  metrics: string[];
+}
+
+export interface FeaRegionDef {
+  region_id: string;
+  region_type: 'cylindrical' | 'planar' | 'conical' | 'axis' | 'plane';
+  label_cn: string;
+  label_en: string;
+  r_mm?: number;
+  r_tolerance?: number;
+  z_mm?: number;
+  r_min?: number;
+  r_max?: number;
+  z_min?: number;
+  z_max?: number;
+  origin?: number[];
+  direction?: number[];
+  normal?: number[];
+  color: string;
+  highlight_opacity: number;
+}
+
+export interface FeaResult {
+  task_id: string;
+  ok: boolean;
+  template_name: string;
+  elapsed_s: number;
+  message: string;
+  metrics: Record<string, number>;
+  warnings: string[];
+  files_created: string[];
+  log_path: string | null;
+  error: string | null;
+  stress_field?: StressPoint[];
+}
+
+export interface StressPoint {
+  r_mm: number;
+  z_mm: number;
+  sx_mpa: number;
+  sy_mpa: number;
+  sz_mpa: number;
+  sxy_mpa: number;
+  seqv_mpa: number;
+}
+
+export interface FeaQuestion {
+  question_id: string;
+  category: string;
+  question_text: string;
+  why_it_matters: string;
+  param_key: string;
+  param_type: string;
+  options: FeaQuestionOption[];
+  default_value: unknown;
+  allow_custom: boolean;
+  unit: string;
+}
+
+export interface FeaQuestionOption {
+  option_id: string;
+  label: string;
+  description: string;
+  recommended: boolean;
+}
+
+export interface FeaAnswer {
+  question_id: string;
+  mode: 'option' | 'custom' | 'auto';
+  selected_option_id?: string;
+  custom_value?: unknown;
+}
+
+export interface FeaTask {
+  task_id: string;
+  status: string;
+  progress: number;
+  result: FeaResult | null;
+  error: string | null;
+}
+
+export interface FeaHistoryEntry {
+  id: string;
+  timestamp: number;
+  template_name: string;
+  parameters: Record<string, unknown>;
+  result: FeaResult;
+}

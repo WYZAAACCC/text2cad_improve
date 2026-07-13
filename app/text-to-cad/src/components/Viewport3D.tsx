@@ -21,7 +21,29 @@ import {
 import { useStore } from '../store';
 import type { SceneModel } from '../types';
 
-/** STL 文件加载渲染 */
+/** Jet colormap: value in [vmin,vmax] → RGB */
+function jetColor(t: number): [number, number, number] {
+  t = Math.max(0, Math.min(1, t));
+  if (t < 0.125) return [0, 0, Math.round(128 + 127 * (t / 0.125))];
+  if (t < 0.375) return [0, Math.round(255 * ((t - 0.125) / 0.25)), 255];
+  if (t < 0.625) return [Math.round(255 * ((t - 0.375) / 0.25)), 255, Math.round(255 * (1 - (t - 0.375) / 0.25))];
+  if (t < 0.875) return [255, Math.round(255 * (1 - (t - 0.625) / 0.25)), 0];
+  return [Math.round(128 + 127 * (1 - (t - 0.875) / 0.125)), 0, 0];
+}
+
+/** Find nearest stress value for (r, z) using simple linear scan */
+function lookupStress(r: number, z: number, points: {r_mm:number;z_mm:number;seqv_mpa:number}[]): number {
+  let bestD = Infinity, bestV = 0;
+  for (const p of points) {
+    const dr = r - p.r_mm, dz = z - p.z_mm;
+    const d2 = dr*dr + dz*dz;
+    if (d2 < bestD) { bestD = d2; bestV = p.seqv_mpa; }
+    if (d2 < 0.01) break;
+  }
+  return bestV;
+}
+
+/** STL 文件加载渲染 + 3D 应力场着色 */
 function STLGeometry({ model, isSelected, onClick }: {
   model: SceneModel;
   isSelected: boolean;
@@ -29,6 +51,8 @@ function STLGeometry({ model, isSelected, onClick }: {
 }) {
   const meshRef = useRef<THREE.Mesh>(null);
   const wireframeMode = useStore((s) => s.wireframeMode);
+  const stressField = useStore((s) => s.feaResult?.stress_field);
+  const stressColoring = useStore((s) => s.stressColoring);
 
   const geometry = useLoader(STLLoader, model.stlUrl || '');
 
@@ -45,6 +69,40 @@ function STLGeometry({ model, isSelected, onClick }: {
       }
     }
   }, [geometry]);
+
+  // Apply stress coloring
+  useEffect(() => {
+    if (!geometry || !stressField || stressField.length === 0 || !stressColoring) {
+      // Remove vertex colors if stress coloring is off
+      if (geometry && geometry.attributes.color) {
+        geometry.deleteAttribute('color');
+      }
+      return;
+    }
+    const pos = geometry.attributes.position;
+    if (!pos) return;
+    const n = pos.count;
+    // Find stress range
+    let vmin = Infinity, vmax = -Infinity;
+    for (const p of stressField) {
+      if (p.seqv_mpa < vmin) vmin = p.seqv_mpa;
+      if (p.seqv_mpa > vmax) vmax = p.seqv_mpa;
+    }
+    if (!isFinite(vmin)) { vmin = 0; vmax = 1000; }
+    const colors = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      const r = Math.sqrt(x*x + y*y);
+      const seqv = lookupStress(r, z, stressField);
+      const t = (seqv - vmin) / (vmax - vmin);
+      const [cr, cg, cb] = jetColor(t);
+      colors[i*3] = cr / 255;
+      colors[i*3+1] = cg / 255;
+      colors[i*3+2] = cb / 255;
+    }
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geometry.attributes.color.needsUpdate = true;
+  }, [geometry, stressField, stressColoring]);
 
   useFrame((state) => {
     if (meshRef.current && isSelected) {
@@ -66,10 +124,11 @@ function STLGeometry({ model, isSelected, onClick }: {
     >
       <primitive object={geometry} attach="geometry" />
       <meshStandardMaterial
-        color={model.color}
+        color={stressColoring && stressField?.length ? undefined : model.color}
+        vertexColors={!!(stressColoring && stressField?.length)}
         wireframe={wireframeMode}
-        roughness={0.4}
-        metalness={0.3}
+        roughness={0.5}
+        metalness={0.2}
         flatShading={false}
       />
       {isSelected && !wireframeMode && (
@@ -197,7 +256,8 @@ function ViewportToolbar({ onReset, onScreenshot, stepUrl, stlUrl }: {
   onReset: () => void; onScreenshot: () => void;
   stepUrl?: string | null; stlUrl?: string | null;
 }) {
-  const { wireframeMode, setWireframeMode } = useStore();
+  const { wireframeMode, setWireframeMode, stressColoring, setStressColoring, feaResult } = useStore();
+  const hasStress = !!(feaResult?.stress_field?.length);
   return (
     <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 bg-bg-secondary/90 backdrop-blur-sm border border-border rounded-xl px-2 py-1.5 shadow-lg">
       <button onClick={onReset} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-bg-hover text-text-secondary text-xs transition-colors" title="重置视图">
@@ -208,6 +268,12 @@ function ViewportToolbar({ onReset, onScreenshot, stepUrl, stlUrl }: {
         className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors ${wireframeMode ? 'bg-accent text-white' : 'hover:bg-bg-hover text-text-secondary'}`} title="切换线框模式">
         <Box className="w-3.5 h-3.5" />{wireframeMode ? '线框' : '材质'}
       </button>
+      {hasStress && (
+        <button onClick={() => setStressColoring(!stressColoring)}
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors ${stressColoring ? 'bg-accent text-white' : 'hover:bg-bg-hover text-text-secondary'}`} title="3D应力场着色">
+          🌡️{stressColoring ? '应力开' : '应力关'}
+        </button>
+      )}
       <div className="w-px h-4 bg-border mx-1" />
       <button onClick={onScreenshot} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-bg-hover text-text-secondary text-xs transition-colors" title="导出截图">
         <Camera className="w-3.5 h-3.5" />截图

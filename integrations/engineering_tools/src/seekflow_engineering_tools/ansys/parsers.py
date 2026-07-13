@@ -168,3 +168,37 @@ def scan_out_for_errors(out_path: Path) -> tuple[list[str], list[str]]:
             warnings.append(line.strip())
 
     return errors, warnings
+
+
+def parse_nodal_stress(path: Path) -> list[dict]:
+    """Parse ANSYS nodal_stress.csv into structured stress field data.
+
+    Each row: NODE,R_mm,Z_mm,SX_MPa,SY_MPa,SZ_MPa,SXY_MPa,SEQV_MPa
+    Returns list of dicts suitable for heatmap visualization.
+    """
+    rows: list[dict] = []
+    try:
+        text = path.read_text(errors="ignore")
+    except Exception:
+        return rows
+
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("NODE") or line.startswith("("):
+            continue
+        parts = line.split(",")
+        if len(parts) < 8:
+            continue
+        try:
+            rows.append({
+                "r_mm": float(parts[1]),
+                "z_mm": float(parts[2]),
+                "sx_mpa": float(parts[3]),
+                "sy_mpa": float(parts[4]),
+                "sz_mpa": float(parts[5]),
+                "sxy_mpa": float(parts[6]),
+                "seqv_mpa": float(parts[7]),
+            })
+        except (ValueError, IndexError):
+            continue
+    return rows

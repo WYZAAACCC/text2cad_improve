@@ -155,4 +155,45 @@ export async function continueSpatial(
   return data;
 }
 
+/**
+ * FEA API functions
+ */
+import type { FeaTemplateSchema, FeaRegionDef, FeaTask, FeaQuestion, FeaAnswer } from './types';
+
+export async function getFeaTemplates(): Promise<FeaTemplateSchema[]> {
+  const { data } = await apiClient.get('/fea/templates');
+  return data;
+}
+
+export async function executeFea(
+  templateName: string, parameters: Record<string, unknown>, jobname?: string
+): Promise<string> {
+  const { data } = await apiClient.post('/fea/execute', { template_name: templateName, parameters, jobname: jobname || 'fea_job' });
+  return data.task_id;
+}
+
+export async function pollFeaResult(taskId: string): Promise<FeaTask> {
+  const { data } = await apiClient.get(`/fea/result/${taskId}`);
+  return data;
+}
+
+export async function getFeaRegions(modelId: string): Promise<FeaRegionDef[]> {
+  const { data } = await apiClient.get(`/fea/regions/${modelId}`);
+  return data.regions || [];
+}
+
+export async function startFeaAnalysis(
+  modelId: string, stepUrl: string, analysisType: string
+): Promise<{ needsClarification: boolean; sessionId?: string; questions?: FeaQuestion[] }> {
+  const { data } = await apiClient.post('/fea/start', { model_id: modelId, step_file_url: stepUrl, analysis_type: analysisType });
+  return data;
+}
+
+export async function continueFeaAnalysis(
+  sessionId: string, answers: FeaAnswer[]
+): Promise<{ needsClarification: boolean; questions?: FeaQuestion[]; taskId?: string }> {
+  const { data } = await apiClient.post('/fea/continue', { session_id: sessionId, answers });
+  return data;
+}
+
 export { apiClient };

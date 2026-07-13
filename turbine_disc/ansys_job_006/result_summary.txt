@@ -1,0 +1,96 @@
+RPM= 15000.0 OMEGA_RAD_S=  0.157080E+04 T_BORE_C=  500.00 T_RIM_C=  650.00
+MAX_VON_MISES_MPA=  0.96935580E+04 MAX_RADIAL_STRESS_MPA=  0.11187395E+05 MAX_HOOP_STRESS_MPA=  0.00000000E+00
+MIN_SAFETY_FACTOR=    0.0928 YIELD_STRENGTH_MPA=     900.0
+DENSITY_TONNE_MM3=  0.824000E-08 RPM= 15000.0 ELEMENT_SIZE_MM=    5.00
+
+ /OUTPUT FILE= result_summary.txt
+PATH: R_mm, RADIAL_MPa, HOOP_MPa, AXIAL_MPa, VON_MISES_MPa
+
+ *DO LOOP ON PARAMETER= PN FROM  1.0000     TO  5.0000     BY  1.0000    
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ Unknown label ( PATH ) on *GET,Parm,PATH,POINT,n,Label                  
+  The *Get command is ignored.                                           
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ Unknown label ( PATH ) on *GET,Parm,PATH,POINT,n,Label                  
+  The *Get command is ignored.                                           
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ Unknown label ( PATH ) on *GET,Parm,PATH,POINT,n,Label                  
+  The *Get command is ignored.                                           
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ Unknown label ( PATH ) on *GET,Parm,PATH,POINT,n,Label                  
+  The *Get command is ignored.                                           
+R=     0.0 SR=  0.788861E-30 SH=  0.788861E-30 SA=  0.788861E-30 S_VM=
+
+ *ENDDO  INDEX= PN                              
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ Unknown label ( PATH ) on *GET,Parm,PATH,POINT,n,Label                  
+  The *Get command is ignored.                                           
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ Unknown label ( PATH ) on *GET,Parm,PATH,POINT,n,Label                  
+  The *Get command is ignored.                                           
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ Unknown label ( PATH ) on *GET,Parm,PATH,POINT,n,Label                  
+  The *Get command is ignored.                                           
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ Unknown label ( PATH ) on *GET,Parm,PATH,POINT,n,Label                  
+  The *Get command is ignored.                                           
+R=     0.0 SR=  0.788861E-30 SH=  0.788861E-30 SA=  0.788861E-30 S_VM=
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ Unknown label ( PATH ) on *GET,Parm,PATH,POINT,n,Label                  
+  The *Get command is ignored.                                           
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ Unknown label ( PATH ) on *GET,Parm,PATH,POINT,n,Label                  
+  The *Get command is ignored.                                           
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ Unknown label ( PATH ) on *GET,Parm,PATH,POINT,n,Label                  
+  The *Get command is ignored.                                           
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ Unknown label ( PATH ) on *GET,Parm,PATH,POINT,n,Label                  
+  The *Get command is ignored.                                           
+R=     0.0 SR=  0.788861E-30 SH=  0.788861E-30 SA=  0.788861E-30 S_VM=
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ Unknown label ( PATH ) on *GET,Parm,PATH,POINT,n,Label                  
+  The *Get command is ignored.                                           
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ Unknown label ( PATH ) on *GET,Parm,PATH,POINT,n,Label                  
+  The *Get command is ignored.                                           
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ Unknown label ( PATH ) on *GET,Parm,PATH,POINT,n,Label                  
+  The *Get command is ignored.                                           
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ Unknown label ( PATH ) on *GET,Parm,PATH,POINT,n,Label                  
+  The *Get command is ignored.                                           
+R=     0.0 SR=  0.788861E-30 SH=  0.788861E-30 SA=  0.788861E-30 S_VM=
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ Unknown label ( PATH ) on *GET,Parm,PATH,POINT,n,Label                  
+  The *Get command is ignored.                                           
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ Unknown label ( PATH ) on *GET,Parm,PATH,POINT,n,Label                  
+  The *Get command is ignored.                                           
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ Unknown label ( PATH ) on *GET,Parm,PATH,POINT,n,Label                  
+  The *Get command is ignored.                                           
+
+ *** WARNING ***                         CP =       0.188   TIME= 20:46:21
+ Unknown label ( PATH ) on *GET,Parm,PATH,POINT,n,Label                  
+  The *Get command is ignored.                                           
+R=     0.0 SR=  0.788861E-30 SH=  0.788861E-30 SA=  0.788861E-30 S_VM=
