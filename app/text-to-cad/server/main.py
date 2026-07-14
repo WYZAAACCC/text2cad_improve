@@ -479,7 +479,7 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
             validation_seed=bundle.to_metadata_dict() if bundle else {},
             require_full_validation_seed=False)
 
-        step_kb = step_path.stat().st_size//1024 if (rr.ok and step_path.exists()) else 0
+        step_kb = step_path.stat().st_size//1024 if step_path.exists() else 0
         stl_path = out_dir / "output.stl"
         stl_ok = False
         if step_kb > 0:
@@ -492,7 +492,7 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                 pass
 
         task_result = {
-            "taskId": task_id, "ok": rr.ok, "stepOk": rr.ok and step_kb > 0,
+            "taskId": task_id, "ok": rr.ok, "stepOk": step_kb > 0,
             "stepFileUrl": f"/api/files/{task_id}/output.step" if step_kb > 0 else None,
             "stepFileSize": f"{step_kb} KB" if step_kb else "N/A",
             "stlFileUrl": f"/api/files/{task_id}/output.stl" if stl_ok else None,
