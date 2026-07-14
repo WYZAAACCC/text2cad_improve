@@ -266,13 +266,30 @@ def handle_fillet_sketch(node, ctx) -> dict:
 
         # Determine target vertices
         if isinstance(vertex_idx, list):
-            # List form: apply all vertices in a SINGLE fillet2D call
-            vi_list = [int(v) for v in vertex_idx if 0 <= int(v) < n_verts]
-            if not vi_list:
-                handle_id = f"profile:{cid}:{node.id}:profile"
-                ctx.object_store.put(RuntimeHandle(id=handle_id, type="profile"), wp)
-                return {"profile": handle_id}
-            targets = [vertices[vi] for vi in vi_list]
+            # Multi-radius list form: use position-based lookup for chain safety.
+            # Cache original vertex positions on first call, then match by proximity.
+            orig_key = "__fillet_orig_pos__"
+            orig_pos = _get_state(ctx, cid, orig_key)
+            if orig_pos is None:
+                orig_pos = [(v.Center().x, v.Center().y) for v in vertices]
+                _set_state(ctx, cid, orig_key, orig_pos)
+            # Find target vertices in current wire by matching original positions
+            targets = []
+            for vi in vertex_idx:
+                vi_int = int(vi)
+                if 0 <= vi_int < len(orig_pos):
+                    ox, oy = orig_pos[vi_int]
+                    best_v, best_d = None, float('inf')
+                    for v in vertices:
+                        c = v.Center()
+                        d = (c.x - ox)**2 + (c.y - oy)**2
+                        if d < best_d:
+                            best_d, best_v = d, v
+                    if best_v is not None:
+                        targets.append(best_v)
+            # Apply directly to current wire (not accumulator — each group has different radius)
+            filleted_wire = wire.fillet2D(radius, targets)
+            ref_plane = wp.plane
         elif vertex_idx is not None:
             # Single vertex — use accumulator pattern for chain safety
             acc_key = "__fillet_acc__"
@@ -301,8 +318,7 @@ def handle_fillet_sketch(node, ctx) -> dict:
             return {"profile": handle_id}
 
         if isinstance(vertex_idx, list):
-            # List form: apply directly to current wire
-            filleted_wire = wire.fillet2D(radius, targets)
+            # Already applied at lines 290-291; just update workplane
             ref_plane = wp.plane
         else:
             # Accumulator form: re-apply all fillets to original wire

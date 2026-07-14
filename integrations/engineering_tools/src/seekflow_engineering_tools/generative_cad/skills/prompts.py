@@ -168,7 +168,7 @@ Hard output rules:
      DO NOT fillet v0 or v11 — those are bore edges.
 
      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     FIR-TREE SLOT CUTTER — PARAMETERIZED TEMPLATE (KT787-JB-215 based)
+     FIR-TREE SLOT CUTTER — ENLARGED BOTTOM TOOTH (26-point profile)
      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
      Use create_2d_sketch(plane=XY), X=radial (0=rim, negative=toward center),
@@ -176,108 +176,80 @@ Hard output rules:
 
      ╔══════════════════════════════════════════════════════════════════════╗
      ║  RULE #0 — 外宽内窄: 1st lobe |Y| > 2nd lobe |Y| > btm tooth |Y|  ║
-     ║  7.5 > 6.5 > 3.5.  If violated → INVERTED = WRONG!                ║
+     ║  7.5 > 6.5 > 5.0.  If violated → INVERTED = WRONG!                ║
      ╚══════════════════════════════════════════════════════════════════════╝
 
-     1. PARAMETERS (adjust values for different specs, keep relationships):
-        W_mouth  = 4.0   mouth half-width (user spec: 3-4mm)
-        W_lobe1  = 7.5   first lobe peak half-width (user spec: 7-8mm)
-        W_lobe2  = 6.5   second lobe peak half-width (user spec: 6-7mm)
-        W_bottom = 3.5   bottom tooth half-width (user spec: 底宽 3-4mm)
+     1. PARAMETERS:
+        W_mouth  = 4.0   mouth half-width
+        W_lobe1  = 7.5   first lobe peak half-width
+        W_lobe2  = 6.5   second lobe peak half-width
+        W_bottom = 5.0   bottom tooth half-width (ENLARGED from 3.5)
         W_wedge1 = 2.5   first neck wedge half-width
         W_wedge2 = 2.0   second neck wedge half-width
-        D_total  = 20.0  total radial depth (user spec: 18-24mm)
+        D_total  = 24.0  total radial depth (ENLARGED from 20.0)
         D_wedge  = 3.0   wedge entrance length
         L_top1   = 3.0   first tooth top flat width
         L_top2   = 2.0   second tooth top flat width
-        L_neck1  = 3.0   first neck flat length (≥2×R_fillet! room for fillet)
+        L_neck1  = 3.0   first neck flat length
         L_neck2  = 2.0   second neck flat length
-        R_fillet = 1.5   fillet radius at all interior corners
+        L_bottom = 3.0   bottom tooth flat length (NEW — was 0!)
 
-     1a. PARAMETERIZED POINT GENERATION (24 points, 12R + 12L):
+     1a. 26-POINT PROFILE (13R + 13L, enlarged bottom tooth):
 
-         X-COORDINATES (cumulative from rim inward):
-         X0 = 0
-         X1 = X0 - W_mouth + 1.0           = -3.0    (wedge entrance)
-         X2 = X1 - 1.0                      = -4.0    (first lobe flare OUT)
-         X3 = X2 - L_top1                   = -7.0    (first lobe top end)
-         X4 = X3 - 2.0                      = -9.0    (first lobe slope IN)
-         X5 = X4 - L_neck1                  = -12.0   (NECK 1 flat end)
-         X6 = X5 - 0.5                      = -12.5   (second lobe flare OUT)
-         X7 = X6 - L_top2                   = -14.5   (second lobe top end)
-         X8 = X7 - 1.5                      = -16.0   (second lobe slope IN)
-         X9 = X8 - L_neck2                  = -18.0   (NECK 2 flat end)
-         X10= X9 - 0.5                      = -18.5   (bottom tooth flare)
-         X11= -D_total                      = -20.0   (ROOT)
+         RIGHT HALF (13 points, Y≥0):
+         [ 0] {x_mm:   0.0, y_mm: W_mouth }         MOUTH TOP
+         [ 1] {x_mm:  -3.0, y_mm: W_wedge1}         wedge entrance
+         [ 2] {x_mm:  -4.0, y_mm: W_lobe1 }         lobe1 flank OUT
+         [ 3] {x_mm:  -7.0, y_mm: W_lobe1 }         lobe1 flat top (3mm)
+         [ 4] {x_mm:  -9.0, y_mm: W_wedge1}         lobe1 slope IN
+         [ 5] {x_mm: -12.0, y_mm: W_wedge1}         NECK1 flat (3mm)
+         [ 6] {x_mm: -12.5, y_mm: W_lobe2 }         lobe2 flank OUT (0.5mm)
+         [ 7] {x_mm: -14.5, y_mm: W_lobe2 }         lobe2 flat top (2mm)
+         [ 8] {x_mm: -16.0, y_mm: W_wedge2}         lobe2 slope IN (1.5mm)
+         [ 9] {x_mm: -18.0, y_mm: W_wedge2}         NECK2 flat (2mm)
+         [10] {x_mm: -19.0, y_mm: W_bottom}          bottom flare OUT (1mm)
+         [11] {x_mm: -22.0, y_mm: W_bottom}          bottom flat top (3mm) ← ENLARGED
+         [12] {x_mm: -24.0, y_mm: W_bottom-1.5}      ROOT tip (depth 24mm)
 
-         RIGHT HALF (12 points, clockwise mouth→root, Y≥0):
-         [ 0] {x_mm:   0.0, y_mm: W_mouth }    MOUTH TOP
-         [ 1] {x_mm:  -3.0, y_mm: W_wedge1}    wedge entrance (inclined IN)
-         [ 2] {x_mm:  -4.0, y_mm: W_lobe1 }    first lobe flank OUT (inclined)
-         [ 3] {x_mm:  -7.0, y_mm: W_lobe1 }    first lobe top (horizontal flat)
-         [ 4] {x_mm:  -9.0, y_mm: W_wedge1}    slope back IN to wedge (inclined)
-         [ 5] {x_mm: -12.0, y_mm: W_wedge1}    NECK 1 flat (horizontal, 3mm)
-         [ 6] {x_mm: -12.5, y_mm: W_lobe2 }    second lobe flank OUT (inclined)
-         [ 7] {x_mm: -14.5, y_mm: W_lobe2 }    second lobe top (horizontal flat)
-         [ 8] {x_mm: -16.0, y_mm: W_wedge2}    slope back IN to wedge (inclined)
-         [ 9] {x_mm: -18.0, y_mm: W_wedge2}    NECK 2 flat (horizontal, 2mm)
-         [10] {x_mm: -18.5, y_mm: W_bottom}    BOTTOM TOOTH flare (inclined)
-         [11] {x_mm: -20.0, y_mm: W_bottom-0.5} ROOT (rounded bottom tooth tip)
+         LEFT HALF (13 points, Y≤0, exact mirror):
+         [13] {x_mm: -24.0, y_mm: -(W_bottom-1.5)}   cross to left
+         [14] {x_mm: -22.0, y_mm: -W_bottom}          bottom flat left
+         [15] {x_mm: -19.0, y_mm: -W_bottom}          bottom IN left
+         [16] {x_mm: -18.0, y_mm: -W_wedge2}          NECK2 flat left
+         [17] {x_mm: -16.0, y_mm: -W_wedge2}          slope left
+         [18] {x_mm: -14.5, y_mm: -W_lobe2 }          lobe2 flat left
+         [19] {x_mm: -12.5, y_mm: -W_lobe2 }          lobe2 IN left
+         [20] {x_mm: -12.0, y_mm: -W_wedge1}          NECK1 flat left
+         [21] {x_mm:  -9.0, y_mm: -W_wedge1}          slope left
+         [22] {x_mm:  -7.0, y_mm: -W_lobe1 }          lobe1 flat left
+         [23] {x_mm:  -4.0, y_mm: -W_lobe1 }          lobe1 IN left
+         [24] {x_mm:  -3.0, y_mm: -W_wedge1}          wedge entrance left
+         [25] {x_mm:   0.0, y_mm: -W_mouth }          MOUTH BOTTOM
 
-         LEFT HALF (12 points, root→mouth, Y≤0, exact mirror):
-         [12] {x_mm: -20.0, y_mm: -(W_bottom-0.5)}  cross to left
-         [13] {x_mm: -18.5, y_mm: -W_bottom}        bottom tooth left (inclined)
-         [14] {x_mm: -18.0, y_mm: -W_wedge2}        NECK 2 flat left (horizontal)
-         [15] {x_mm: -16.0, y_mm: -W_wedge2}        slope left (inclined)
-         [16] {x_mm: -14.5, y_mm: -W_lobe2 }        second lobe top left (horizontal)
-         [17] {x_mm: -12.5, y_mm: -W_lobe2 }        second lobe IN left (inclined)
-         [18] {x_mm: -12.0, y_mm: -W_wedge1}        NECK 1 flat left (horizontal)
-         [19] {x_mm:  -9.0, y_mm: -W_wedge1}        slope left (inclined)
-         [20] {x_mm:  -7.0, y_mm: -W_lobe1 }        first lobe top left (horizontal)
-         [21] {x_mm:  -4.0, y_mm: -W_lobe1 }        first lobe IN left (inclined)
-         [22] {x_mm:  -3.0, y_mm: -W_wedge1}        wedge entrance left (inclined)
-         [23] {x_mm:   0.0, y_mm: -W_mouth }        MOUTH BOTTOM
+     1b. MULTI-RADIUS FILLETS (5 tiers, apply as SEPARATE fillet_sketch calls,
+         each with a LIST of vertex indices, from LARGEST to SMALLEST radius):
 
-     1b. WEDGE VERIFICATION (check |Y| values along wedge):
-         Wedge entry:  |Y| = 2.5mm (points 1,22)
-         NECK 1 flat:  |Y| = 2.5mm (points 5,18) — SAME as entry (flat neck)
-         NECK 2 flat:  |Y| = 2.0mm (points 9,14) — narrower (converged)
-         Root:         |Y| = 2.5mm (points 10,13 flare to W_bottom=3.5)
-         LOBE WIDTHS:  |Y|=7.5 (1st) > |Y|=6.5 (2nd) > |Y|=3.5 (bottom) ← MUST decrease!
+         Step A: R=1.5mm (lobe tops + bottom flat — long edges 3-7mm):
+           fillet_sketch(radius_mm=1.5, at_vertex_index=[3, 22, 11, 14])
 
-     1c. FILLET (圆角 — CRITICAL, READ CAREFULLY):
-         ╔══════════════════════════════════════════════════════════════════╗
-         ║  R_fillet = 1.5mm MAXIMUM.  DO NOT USE 2.0mm OR LARGER!       ║
-         ║  OCC fillet2D FAILS with "BRep_API: command not done"           ║
-         ║  when R > 1.5mm on short edges (neck flats only 2-3mm).        ║
-         ║  R=2.0mm → OCC ERROR → ZERO FILLETS APPLIED!                   ║
-         ║  R=1.5mm → OCC succeeds → fillets applied correctly.           ║
-         ╚══════════════════════════════════════════════════════════════════╝
-         Neck flats (L_neck1=3mm, L_neck2=2mm) are barely long enough for
-         R=1.5mm fillets.  Each fillet needs ~R×2 of straight edge on both
-         sides of the corner.  R=2.0mm would need 4mm edges — neck flats
-         are too short → OCC fails → NO fillets at all.
+         Step B: R=1.2mm (flanks + bottom flare — medium edges 3-5mm):
+           fillet_sketch(radius_mm=1.2, at_vertex_index=[2, 23, 4, 21, 10, 15])
 
-         EXACT fillet specification — use a SINGLE call with a LIST of vertex indices:
-           fillet_sketch(
-             radius_mm=1.5,
-             at_vertex_index=[1,2,3,4,5,6,7,8,9,10,13,14,15,16,17,18,19,20,21,22]
-           )
-         This passes all 20 vertices in ONE fillet2D call — OCC resolves them together.
-         DO NOT make 20 separate fillet_sketch calls (one per vertex) — that causes
-         chain-failure (BRep_API: command not done) due to index shift after each fillet.
-         Exclude mouth corners (0,23) and root crossing (11,12).
-         radius_mm MUST be 1.5, NOT 2.0, NOT 1.0.  Exactly 1.5.
+         Step C: R=1.0mm (wedge entrance + neck1 — medium edges 3-4mm):
+           fillet_sketch(radius_mm=1.0, at_vertex_index=[1, 24, 5, 20])
 
-     1d. SEGMENT TYPE REFERENCE:
-         INCLINED (I, dx≠0 AND dy≠0): [0-1],[1-2],[4-5?NO 4-5 is H],[6-7?NO],
-           Actually trace: [0→1]I [1→2]I [2→3]H [3→4]I [4→5]H [5→6]I [6→7]H
-           [7→8]I [8→9]H [9→10]I [10→11]I [12→13]I [13→14]H [14→15]I
-           [15→16]H [16→17]I [17→18]H [18→19]I [19→20]H [20→21]I [21→22]I
-           [22→23]I [23→0]V [11→12]V
-         H (horizontal, dy=0): 6 segments (tooth tops + neck flats)
-         V (vertical, dx=0): 2 segments (mouth entry + root crossing)
-         I (inclined): 16 segments (all flanks) ← MOST segments are inclined!
+         Step D: R=0.8mm (root tip — bottom edge 7mm):
+           fillet_sketch(radius_mm=0.8, at_vertex_index=[12, 13])
+
+         Step E: R=0.6mm (lobe2 corners + neck2 — SHORT edges 2mm):
+           fillet_sketch(radius_mm=0.6, at_vertex_index=[6, 7, 8, 9, 16, 17, 18, 19])
+
+         IMPORTANT: Use AT_VERTEX_INDEX AS A LIST, not a single int.
+         Each call targets a group with the same radius in ONE fillet2D batch.
+         Exclude mouth corners [0, 25] (no fillet at rim surface).
+         Apply from largest to smallest radius to minimize overlap conflicts.
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
      2. MOUTH WIDTH: Y at X=0 = W_mouth = 3-4mm. NOT 7, NOT 8.
 
