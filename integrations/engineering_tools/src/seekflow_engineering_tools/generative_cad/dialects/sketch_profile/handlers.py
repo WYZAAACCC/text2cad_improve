@@ -226,12 +226,15 @@ def handle_revolve_profile(node, ctx) -> dict:
 
 
 def handle_fillet_sketch(node, ctx) -> dict:
-    """Apply 2D fillets to profile wire vertices.
+    """Apply 2D fillets to profile wire vertices using deferred batch strategy.
 
-    V1: vertex-index-based (at_vertex_index). Fixes:
-    - Pass Vertex objects (not int indices) to wire.fillet2D()
-    - Preserve original Workplane plane (not hardcoded XY)
-    - Use toPending() so revolve/extrude can consume the wire
+    The LLM chains multiple fillet_sketch calls per component (one per vertex).
+    Applying them sequentially causes chain-failure because each call modifies
+    the wire and creates arc vertices that conflict with subsequent fillets.
+
+    Fix: cache the original wire on first call. Accumulate target indices.
+    Each call re-applies ALL accumulated targets to the ORIGINAL wire in a
+    single fillet2D() call. This lets OCC resolve all fillets simultaneously.
     """
     import cadquery as cq
     from seekflow_engineering_tools.generative_cad.runtime.resolve import resolve_input_object
@@ -261,22 +264,41 @@ def handle_fillet_sketch(node, ctx) -> dict:
             ctx.object_store.put(RuntimeHandle(id=handle_id, type="profile"), wp)
             return {"profile": handle_id}
 
-        # Select target vertices (real Vertex objects, not int indices)
+        # Accumulate: cache original wire, plane, radius, and accumulate target indices
+        acc_key = "__fillet_acc__"
+        acc = _get_state(ctx, cid, acc_key)
+        if acc is None:
+            acc = {"orig_wire": wire, "plane": wp.plane, "radius": None, "indices": set(), "all": False}
+            _set_state(ctx, cid, acc_key, acc)
+
+        if acc["radius"] is None:
+            acc["radius"] = radius
+
         if vertex_idx is not None:
             vi = int(vertex_idx)
-            if 0 <= vi < n_verts:
-                targets = [vertices[vi]]
-            else:
-                ctx.warnings.append(f"fillet_sketch on '{node.id}': vertex_index={vi} OOB")
-                targets = vertices  # fallback: all
+            if vi < n_verts:
+                acc["indices"].add(vi)
         else:
-            targets = vertices
+            acc["all"] = True
 
-        # Apply fillet using CadQuery's native wire.fillet2D (requires Vertex objects)
-        filleted_wire = wire.fillet2D(radius, targets)
+        # Determine target vertices from the ORIGINAL wire
+        orig_verts = list(acc["orig_wire"].Vertices())
+        orig_n = len(orig_verts)
+        if acc["all"]:
+            targets = orig_verts
+        else:
+            targets = [orig_verts[i] for i in sorted(acc["indices"]) if i < orig_n]
 
-        # Preserve original Workplane plane and restore as pending wire
-        new_wp = cq.Workplane(wp.plane, obj=filleted_wire).toPending()
+        if not targets:
+            handle_id = f"profile:{cid}:{node.id}:profile"
+            ctx.object_store.put(RuntimeHandle(id=handle_id, type="profile"), wp)
+            return {"profile": handle_id}
+
+        # Re-apply all accumulated fillets to ORIGINAL wire in single call
+        filleted_wire = acc["orig_wire"].fillet2D(acc["radius"], targets)
+
+        # Update workplane
+        new_wp = cq.Workplane(acc["plane"], obj=filleted_wire).toPending()
         _set_state(ctx, cid, "wp", new_wp)
         handle_id = f"profile:{cid}:{node.id}:profile"
         ctx.object_store.put(RuntimeHandle(id=handle_id, type="profile"), new_wp)
