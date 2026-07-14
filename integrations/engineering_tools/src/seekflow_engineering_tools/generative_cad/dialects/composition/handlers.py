@@ -189,16 +189,18 @@ def handle_circular_pattern_component(node: CanonicalNode, ctx: RuntimeContext) 
         ctx.warnings.append(msg)
         return {"body": _store_solid(node, ctx, body)}
 
-    # Use native CadQuery array operations for performance
+    rotate = bool(node.params.get("rotate_copies", True))
     try:
         import cadquery as cq
-        # Build all positions, translate copies, union
         result = body
         for i in range(1, count):  # skip i=0 (original position)
-            angle = math.radians(start_angle + i * 360.0 / count)
+            angle_deg = start_angle + i * 360.0 / count
+            angle = math.radians(angle_deg)
             x = radius * math.cos(angle)
             y = radius * math.sin(angle)
             placed = body.translate((x, y, 0))
+            if rotate:
+                placed = placed.rotate((0, 0, 0), (0, 0, 1), angle_deg)
             result = result.union(placed)
         return {"body": _store_solid(node, ctx, result)}
     except Exception as e:
