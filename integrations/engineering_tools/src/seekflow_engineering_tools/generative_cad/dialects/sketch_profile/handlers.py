@@ -264,41 +264,53 @@ def handle_fillet_sketch(node, ctx) -> dict:
             ctx.object_store.put(RuntimeHandle(id=handle_id, type="profile"), wp)
             return {"profile": handle_id}
 
-        # Accumulate: cache original wire, plane, radius, and accumulate target indices
-        acc_key = "__fillet_acc__"
-        acc = _get_state(ctx, cid, acc_key)
-        if acc is None:
-            acc = {"orig_wire": wire, "plane": wp.plane, "radius": None, "indices": set(), "all": False}
-            _set_state(ctx, cid, acc_key, acc)
+        # Determine target vertices
+        if isinstance(vertex_idx, list):
+            # List form: apply all vertices in a SINGLE fillet2D call
+            vi_list = [int(v) for v in vertex_idx if 0 <= int(v) < n_verts]
+            if not vi_list:
+                handle_id = f"profile:{cid}:{node.id}:profile"
+                ctx.object_store.put(RuntimeHandle(id=handle_id, type="profile"), wp)
+                return {"profile": handle_id}
+            targets = [vertices[vi] for vi in vi_list]
+        elif vertex_idx is not None:
+            # Single vertex — use accumulator pattern for chain safety
+            acc_key = "__fillet_acc__"
+            acc = _get_state(ctx, cid, acc_key)
+            if acc is None:
+                acc = {"orig_wire": wire, "plane": wp.plane, "radius": None, "indices": set(), "all": False}
+                _set_state(ctx, cid, acc_key, acc)
 
-        if acc["radius"] is None:
-            acc["radius"] = radius
+            if acc["radius"] is None:
+                acc["radius"] = radius
 
-        if vertex_idx is not None:
             vi = int(vertex_idx)
             if vi < n_verts:
                 acc["indices"].add(vi)
-        else:
-            acc["all"] = True
 
-        # Determine target vertices from the ORIGINAL wire
-        orig_verts = list(acc["orig_wire"].Vertices())
-        orig_n = len(orig_verts)
-        if acc["all"]:
-            targets = orig_verts
-        else:
+            orig_verts = list(acc["orig_wire"].Vertices())
+            orig_n = len(orig_verts)
             targets = [orig_verts[i] for i in sorted(acc["indices"]) if i < orig_n]
+        else:
+            # None = fillet all vertices
+            targets = vertices
 
         if not targets:
             handle_id = f"profile:{cid}:{node.id}:profile"
             ctx.object_store.put(RuntimeHandle(id=handle_id, type="profile"), wp)
             return {"profile": handle_id}
 
-        # Re-apply all accumulated fillets to ORIGINAL wire in single call
-        filleted_wire = acc["orig_wire"].fillet2D(acc["radius"], targets)
+        if isinstance(vertex_idx, list):
+            # List form: apply directly to current wire
+            filleted_wire = wire.fillet2D(radius, targets)
+            ref_plane = wp.plane
+        else:
+            # Accumulator form: re-apply all fillets to original wire
+            filleted_wire = acc["orig_wire"].fillet2D(acc["radius"], targets)
+            ref_plane = acc["plane"]
 
         # Update workplane
-        new_wp = cq.Workplane(acc["plane"], obj=filleted_wire).toPending()
+        new_wp = cq.Workplane(ref_plane, obj=filleted_wire).toPending()
         _set_state(ctx, cid, "wp", new_wp)
         handle_id = f"profile:{cid}:{node.id}:profile"
         ctx.object_store.put(RuntimeHandle(id=handle_id, type="profile"), new_wp)

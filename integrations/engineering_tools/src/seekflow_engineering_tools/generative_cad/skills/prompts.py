@@ -141,6 +141,33 @@ Hard output rules:
      → revolve_profile(360°) produces a watertight solid with radiused hub↔web↔rim transitions.
 
      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     CRITICAL — CORRECT FILLET VERTICES (12-point disc profile)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+     The 12-point profile produces these edges (closed wire):
+       e0: v0(60,-38)→v1(120,-38)  [hub bottom face]
+       e1: v1(120,-38)→v2(120,-22) [hub outer wall, VERTICAL]
+       e2: v2(120,-22)→v3(215,-15) [web slope, →Hub↔Web junction at v2]
+       e3: v3(215,-15)→v4(215,-30) [rim inner wall, VERTICAL, →Web↔Rim junction at v3]
+       e4: v4(215,-30)→v5(250,-30) [rim bottom face]
+       e5: v5(250,-30)→v6(250,30)  [rim outer face]
+       e6: v6(250,30)→v7(215,30)   [rim top face]
+       e7: v7(215,30)→v8(215,15)   [rim inner wall, VERTICAL, →Web↔Rim junction at v8]
+       e8: v8(215,15)→v9(120,22)   [web slope, →Hub↔Web junction at v9]
+       e9: v9(120,22)→v10(120,38)  [hub outer wall]
+       e10:v10(120,38)→v11(60,38)  [hub top face]
+       e11:v11(60,38)→v0(60,-38)   [bore inner face]
+
+     FILLET TARGETS (use V1 at_vertex_index, single fillet_sketch call per corner):
+       Hub↔Web lower:  at_vertex_index=2  (junction e1+e2, r=120)
+       Web↔Rim lower:  at_vertex_index=3  (junction e2+e3, r=215)
+       Web↔Rim upper:  at_vertex_index=8  (junction e7+e8, r=215)
+       Hub↔Web upper:  at_vertex_index=9  (junction e8+e9, r=120)
+
+     DO NOT fillet v1 or v10 — those are hub corners, not transition radii.
+     DO NOT fillet v0 or v11 — those are bore edges.
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      FIR-TREE SLOT CUTTER — PARAMETERIZED TEMPLATE (KT787-JB-215 based)
      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -231,11 +258,15 @@ Hard output rules:
          sides of the corner.  R=2.0mm would need 4mm edges — neck flats
          are too short → OCC fails → NO fillets at all.
 
-         EXACT fillet specification:
-           fillet_sketch(radius_mm=1.5, at_vertex_index=[
-               1,2,3,4,5,6,7,8,9,10, 13,14,15,16,17,18,19,20,21,22
-           ])
-         (all interior vertices EXCEPT mouth corners 0,23 and root crossing 11,12)
+         EXACT fillet specification — use a SINGLE call with a LIST of vertex indices:
+           fillet_sketch(
+             radius_mm=1.5,
+             at_vertex_index=[1,2,3,4,5,6,7,8,9,10,13,14,15,16,17,18,19,20,21,22]
+           )
+         This passes all 20 vertices in ONE fillet2D call — OCC resolves them together.
+         DO NOT make 20 separate fillet_sketch calls (one per vertex) — that causes
+         chain-failure (BRep_API: command not done) due to index shift after each fillet.
+         Exclude mouth corners (0,23) and root crossing (11,12).
          radius_mm MUST be 1.5, NOT 2.0, NOT 1.0.  Exactly 1.5.
 
      1d. SEGMENT TYPE REFERENCE:

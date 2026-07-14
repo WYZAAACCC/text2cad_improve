@@ -92,4 +92,7 @@ class RevolveProfileParams(BaseModel):
 class FilletSketchParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
     radius_mm: float = Field(gt=0, description="Fillet radius in mm")
-    at_vertex_index: int | None = Field(default=None, description="Vertex index to fillet (None = all interior vertices)")
+    at_vertex_index: int | list[int] | None = Field(
+        default=None,
+        description="Vertex index or list of indices to fillet. Use a LIST to fillet multiple vertices in a SINGLE fillet2D call (avoids chain-fail). None = fillet all vertices."
+    )
