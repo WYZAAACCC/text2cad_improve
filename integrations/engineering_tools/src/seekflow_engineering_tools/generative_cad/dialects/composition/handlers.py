@@ -198,9 +198,10 @@ def handle_circular_pattern_component(node: CanonicalNode, ctx: RuntimeContext) 
             angle = math.radians(angle_deg)
             x = radius * math.cos(angle)
             y = radius * math.sin(angle)
-            placed = body.translate((x, y, 0))
+            placed = body
             if rotate:
                 placed = placed.rotate((0, 0, 0), (0, 0, 1), angle_deg)
+            placed = placed.translate((x, y, 0))
             result = result.union(placed)
         return {"body": _store_solid(node, ctx, result)}
     except Exception as e:

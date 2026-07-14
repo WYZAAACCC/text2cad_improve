@@ -1300,7 +1300,7 @@ def _fix_chamfer_fillet_optional(doc: dict) -> dict:
     """
     for node in doc.get("nodes", []):
         op = node.get("op", "")
-        if op in ("apply_safe_chamfer", "apply_safe_fillet", "fillet_sketch"):
+        if op in ("apply_safe_chamfer", "apply_safe_fillet"):
             node["required"] = False
             node["degradation_policy"] = "may_skip_with_warning"
     return doc
