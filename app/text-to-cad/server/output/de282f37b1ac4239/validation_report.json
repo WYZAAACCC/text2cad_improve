@@ -1,0 +1,45 @@
+{
+  "ok": false,
+  "stage": "params",
+  "issues": [
+    {
+      "code": "invalid_params",
+      "message": "node 'n_fillet_cutter_c' params invalid for op 'fillet_sketch': 1 validation error for FilletSketchParams\nradius_mm\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_fillet_cutter_c",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n_fillet_cutter_d' params invalid for op 'fillet_sketch': 1 validation error for FilletSketchParams\nradius_mm\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_fillet_cutter_d",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "invalid_params",
+      "message": "node 'n_fillet_cutter_e' params invalid for op 'fillet_sketch': 1 validation error for FilletSketchParams\nradius_mm\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+      "severity": "error",
+      "stage": "params",
+      "node_id": "n_fillet_cutter_e",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "root_terminal",
+    "registry",
+    "params"
+  ]
+}

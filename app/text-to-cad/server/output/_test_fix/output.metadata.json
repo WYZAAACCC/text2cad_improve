@@ -1,0 +1,533 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "reference_geometry",
+    "document_id": "KT787-JB-210-revA",
+    "part_name": "HPT_Disc_Stage1",
+    "selected_dialects": [
+      {
+        "dialect": "sketch_profile",
+        "version": "0.2.0",
+        "contract_hash": "sha256:503caf566d76cdf30c64725a1051b8ff2780f0e5f8b55b67df7452f7103966d2"
+      },
+      {
+        "dialect": "composition",
+        "version": "0.2.0",
+        "contract_hash": "sha256:1ff66c680d94f60891bf00260f365ffa2a0d213d5571a2366a3f1c27748f5382"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "n_sketch_disc",
+        "dialect": "sketch_profile",
+        "op": "create_2d_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_sketch_cutter",
+        "dialect": "sketch_profile",
+        "op": "create_2d_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_polyline_disc",
+        "dialect": "sketch_profile",
+        "op": "add_polyline",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_close_disc",
+        "dialect": "sketch_profile",
+        "op": "close_profile",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_polyline_cutter",
+        "dialect": "sketch_profile",
+        "op": "add_polyline",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_close_cutter",
+        "dialect": "sketch_profile",
+        "op": "close_profile",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_pattern_cutters",
+        "dialect": "composition",
+        "op": "circular_pattern_component",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_disc",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_disc_2",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_disc_3",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_disc_4",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_1",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_2",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_3",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_4",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_5",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_6",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_7",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_8",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_9",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_10",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_13",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_14",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_15",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_16",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_17",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_18",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_19",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_20",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_21",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_22",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_23",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_24",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_final",
+        "dialect": "composition",
+        "op": "boolean_cut",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_disc_solid",
+        "dialect": "sketch_profile",
+        "op": "revolve_profile",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_cutter_extrude",
+        "dialect": "sketch_profile",
+        "op": "extrude_profile",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:8fab555af557cd7aeb624d4b71c21b628e7349a76694375f3ebdbcc7a3ddd863",
+    "canonical_graph_hash": "sha256:3d99a49a79660f5f3f1c8b5dc1fa48a59c3748dc6d9bc54ebdcec3c7b6bfa486",
+    "paths": {
+      "canonical_ir_path": "<in_memory>",
+      "validation_seed_path": "<in_memory>",
+      "step_path": "app\\text-to-cad\\server\\output\\_test_fix\\output.step",
+      "metadata_path": "app\\text-to-cad\\server\\output\\_test_fix\\output.metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:b8e7f2fad7d92b4831c51728e6a9157511f5f2e621dcc48ad5b01d919461b70c",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [
+      "fillet_sketch failed on 'n_fillet_cutter_7': BRep_API: command not done. Passing through.",
+      "fillet_sketch failed on 'n_fillet_cutter_9': BRep_API: command not done. Passing through.",
+      "fillet_sketch failed on 'n_fillet_cutter_13': BRep_API: command not done. Passing through.",
+      "fillet_sketch failed on 'n_fillet_cutter_15': BRep_API: command not done. Passing through.",
+      "fillet_sketch failed on 'n_fillet_cutter_17': BRep_API: command not done. Passing through.",
+      "fillet_sketch failed on 'n_fillet_cutter_19': BRep_API: command not done. Passing through."
+    ],
+    "degraded_features": [],
+    "operation_metrics": [
+      {
+        "node_id": "n_pattern_cutters",
+        "op": "circular_pattern_component",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_final",
+        "op": "boolean_cut",
+        "status": "ok"
+      }
+    ],
+    "unsupported_capabilities": [],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [
+    "fillet_sketch failed on 'n_fillet_cutter_7': BRep_API: command not done. Passing through.",
+    "fillet_sketch failed on 'n_fillet_cutter_9': BRep_API: command not done. Passing through.",
+    "fillet_sketch failed on 'n_fillet_cutter_13': BRep_API: command not done. Passing through.",
+    "fillet_sketch failed on 'n_fillet_cutter_15': BRep_API: command not done. Passing through.",
+    "fillet_sketch failed on 'n_fillet_cutter_17': BRep_API: command not done. Passing through.",
+    "fillet_sketch failed on 'n_fillet_cutter_19': BRep_API: command not done. Passing through."
+  ],
+  "validation": {
+    "core_validation": {
+      "ok": true,
+      "stages": {
+        "structure": {
+          "ok": true,
+          "stage": "structure",
+          "issues": [],
+          "stages_run": [
+            "structure"
+          ]
+        },
+        "root_terminal": {
+          "ok": true,
+          "stage": "structure",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "root_terminal"
+          ]
+        },
+        "registry": {
+          "ok": true,
+          "stage": "registry",
+          "issues": [],
+          "stages_run": [
+            "registry"
+          ]
+        },
+        "params": {
+          "ok": true,
+          "stage": "params",
+          "issues": [],
+          "stages_run": [
+            "params"
+          ]
+        },
+        "ownership": {
+          "ok": true,
+          "stage": "ownership",
+          "issues": [],
+          "stages_run": [
+            "ownership"
+          ]
+        },
+        "graph": {
+          "ok": true,
+          "stage": "graph",
+          "issues": [],
+          "stages_run": [
+            "graph"
+          ]
+        },
+        "typecheck": {
+          "ok": true,
+          "stage": "typecheck",
+          "issues": [],
+          "stages_run": [
+            "typecheck"
+          ]
+        },
+        "phase": {
+          "ok": true,
+          "stage": "phase",
+          "issues": [],
+          "stages_run": [
+            "phase"
+          ]
+        },
+        "composition": {
+          "ok": true,
+          "stage": "composition",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "root_terminal",
+            "registry",
+            "params",
+            "ownership",
+            "graph",
+            "typecheck",
+            "phase",
+            "composition"
+          ]
+        },
+        "hole_semantics": {
+          "ok": true,
+          "stage": "geometry_preflight",
+          "issues": [],
+          "stages_run": [
+            "structure",
+            "root_terminal",
+            "registry",
+            "params",
+            "ownership",
+            "graph",
+            "typecheck",
+            "phase",
+            "composition",
+            "hole_semantics"
+          ]
+        },
+        "safety": {
+          "ok": true,
+          "stage": "safety",
+          "issues": [],
+          "stages_run": [
+            "safety"
+          ]
+        }
+      },
+      "canonicalize": {
+        "ok": true,
+        "stage": "canonicalize",
+        "issues": [],
+        "stages_run": [
+          "canonicalize"
+        ]
+      },
+      "issues": []
+    },
+    "dialect_semantics": {
+      "ok": true,
+      "stage": "dialect_semantics",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "root_terminal",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "hole_semantics",
+        "safety",
+        "canonicalize",
+        "dialect_semantics"
+      ]
+    },
+    "geometry_preflight": {
+      "ok": true,
+      "stage": "geometry_preflight",
+      "issues": [],
+      "stages_run": [
+        "structure",
+        "root_terminal",
+        "registry",
+        "params",
+        "ownership",
+        "graph",
+        "typecheck",
+        "phase",
+        "composition",
+        "hole_semantics",
+        "safety",
+        "canonicalize",
+        "dialect_semantics",
+        "geometry_preflight"
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "geometry_postcheck": {
+      "ok": true,
+      "volume_mm3": 9181911.413309671,
+      "n_solids": 1,
+      "bbox_mm": [
+        500.0,
+        500.0,
+        76.0
+      ],
+      "closed": true,
+      "is_valid_solid": true,
+      "errors": [],
+      "warnings": []
+    },
+    "compiler_middle_end": {
+      "ok": true,
+      "passes_run": [
+        "fact_propagation",
+        "planning"
+      ],
+      "diagnostics": []
+    },
+    "geometry_health_summary": {
+      "ok": true,
+      "total_ops_checked": 2,
+      "errors": 0,
+      "warnings": 2,
+      "entries": {
+        "n_disc_solid.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 9331540.032580223,
+          "body_count": 1
+        },
+        "n_cutter_extrude.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 13942.836913370455,
+          "body_count": 1
+        }
+      }
+    },
+    "planning_report": {
+      "ok": true,
+      "issues": [],
+      "optimization_opportunities": []
+    }
+  }
+}

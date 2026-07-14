@@ -1,0 +1,70 @@
+{
+  "applied": true,
+  "before_hash": "sha256:161ed73ab08dbce00b0f20c868c6d46235b2a1a74d3974818f6a7a554da26fdd",
+  "after_hash": "sha256:402d2fbc0deebbaebecc526f53a018646af766d3c859648e54bdda40ddffb661",
+  "entries": [
+    {
+      "rule_id": "fix_chamfer_fillet_optional",
+      "path": "/",
+      "old_value": "<hash:sha256:161ed>",
+      "new_value": "<hash:sha256:915ed>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_chamfer_fillet_optional"
+    },
+    {
+      "rule_id": "fix_unknown_ops",
+      "path": "/",
+      "old_value": "<skipped>",
+      "new_value": "<skipped>",
+      "severity": "destructive",
+      "confidence": 0.85,
+      "message": "Fix 'fix_unknown_ops' skipped: category 'destructive' not in allowed categories ['context_safe', 'schema_default', 'syntactic_alias']"
+    },
+    {
+      "rule_id": "fix_cross_component_refs",
+      "path": "/",
+      "old_value": "<skipped>",
+      "new_value": "<skipped>",
+      "severity": "semantic_guess",
+      "confidence": 0.9,
+      "message": "Fix 'fix_cross_component_refs' skipped: category 'semantic_guess' not in allowed categories ['context_safe', 'schema_default', 'syntactic_alias']"
+    },
+    {
+      "rule_id": "fix_phase_ordering",
+      "path": "/",
+      "old_value": "<hash:sha256:915ed>",
+      "new_value": "<hash:sha256:ec282>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_phase_ordering"
+    },
+    {
+      "rule_id": "fix_profile_stations",
+      "path": "/",
+      "old_value": "<skipped>",
+      "new_value": "<skipped>",
+      "severity": "semantic_guess",
+      "confidence": 0.85,
+      "message": "Fix 'fix_profile_stations' skipped: category 'semantic_guess' not in allowed categories ['context_safe', 'schema_default', 'syntactic_alias']"
+    },
+    {
+      "rule_id": "fix_null_hints",
+      "path": "/",
+      "old_value": "<hash:sha256:ec282>",
+      "new_value": "<hash:sha256:7b4b1>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_null_hints"
+    },
+    {
+      "rule_id": "remove_extra_params",
+      "path": "/",
+      "old_value": "<hash:sha256:7b4b1>",
+      "new_value": "<hash:sha256:402d2>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: remove_extra_params"
+    }
+  ]
+}

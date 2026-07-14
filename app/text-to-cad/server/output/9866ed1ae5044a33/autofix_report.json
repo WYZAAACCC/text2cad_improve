@@ -1,0 +1,61 @@
+{
+  "applied": true,
+  "before_hash": "sha256:ae08d59d5dcfa693be8a4042cd00f523a3a970824927585d51656987720e9539",
+  "after_hash": "sha256:759400e65d1051a9a98b17dc7e76c93b4cee6d37e3b3a52b11fa8d7f69c4c4d2",
+  "entries": [
+    {
+      "rule_id": "fix_chamfer_fillet_optional",
+      "path": "/",
+      "old_value": "<hash:sha256:ae08d>",
+      "new_value": "<hash:sha256:bf1aa>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_chamfer_fillet_optional"
+    },
+    {
+      "rule_id": "fix_unknown_ops",
+      "path": "/",
+      "old_value": "<skipped>",
+      "new_value": "<skipped>",
+      "severity": "destructive",
+      "confidence": 0.85,
+      "message": "Fix 'fix_unknown_ops' skipped: category 'destructive' not in allowed categories ['context_safe', 'schema_default', 'syntactic_alias']"
+    },
+    {
+      "rule_id": "fix_cross_component_refs",
+      "path": "/",
+      "old_value": "<skipped>",
+      "new_value": "<skipped>",
+      "severity": "semantic_guess",
+      "confidence": 0.9,
+      "message": "Fix 'fix_cross_component_refs' skipped: category 'semantic_guess' not in allowed categories ['context_safe', 'schema_default', 'syntactic_alias']"
+    },
+    {
+      "rule_id": "fix_phase_ordering",
+      "path": "/",
+      "old_value": "<hash:sha256:bf1aa>",
+      "new_value": "<hash:sha256:1f7cd>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_phase_ordering"
+    },
+    {
+      "rule_id": "fix_profile_stations",
+      "path": "/",
+      "old_value": "<skipped>",
+      "new_value": "<skipped>",
+      "severity": "semantic_guess",
+      "confidence": 0.85,
+      "message": "Fix 'fix_profile_stations' skipped: category 'semantic_guess' not in allowed categories ['context_safe', 'schema_default', 'syntactic_alias']"
+    },
+    {
+      "rule_id": "remove_extra_params",
+      "path": "/",
+      "old_value": "<hash:sha256:1f7cd>",
+      "new_value": "<hash:sha256:75940>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: remove_extra_params"
+    }
+  ]
+}

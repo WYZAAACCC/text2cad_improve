@@ -45,6 +45,8 @@ _archive/
 skills-lock.json
 # Benchmark outputs
 output/
+# ...but keep text-to-cad server outputs tracked
+!app/text-to-cad/server/output/
 # Trace outputs
 trace_output.json
 # Dev scripts

@@ -1,0 +1,31 @@
+{
+  "ok": false,
+  "stage": "structure",
+  "issues": [
+    {
+      "code": "missing_required_field",
+      "message": "RawGcadDocument.schema_version is required and must be explicit.",
+      "severity": "error",
+      "stage": "structure",
+      "node_id": null,
+      "component_id": null,
+      "path": "/schema_version",
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "missing_required_field",
+      "message": "RawGcadDocument.units is required and must be explicit.",
+      "severity": "error",
+      "stage": "structure",
+      "node_id": null,
+      "component_id": null,
+      "path": "/units",
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure"
+  ]
+}

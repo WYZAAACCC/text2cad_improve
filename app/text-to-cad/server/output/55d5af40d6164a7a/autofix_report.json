@@ -1,0 +1,79 @@
+{
+  "applied": true,
+  "before_hash": "sha256:c64f10d1e5ca49f7b3bfdb48d4d0d9a8021abfcd01cf038a0cea4634a0c3c111",
+  "after_hash": "sha256:32e6dcf405e47f2baf7706f1b97a2831bd07c59f72f736a0ad230f9addfc6560",
+  "entries": [
+    {
+      "rule_id": "fix_constraints",
+      "path": "/",
+      "old_value": "<hash:sha256:c64f1>",
+      "new_value": "<hash:sha256:74276>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_constraints"
+    },
+    {
+      "rule_id": "fix_chamfer_fillet_optional",
+      "path": "/",
+      "old_value": "<hash:sha256:74276>",
+      "new_value": "<hash:sha256:58fd0>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_chamfer_fillet_optional"
+    },
+    {
+      "rule_id": "fix_unknown_ops",
+      "path": "/",
+      "old_value": "<skipped>",
+      "new_value": "<skipped>",
+      "severity": "destructive",
+      "confidence": 0.85,
+      "message": "Fix 'fix_unknown_ops' skipped: category 'destructive' not in allowed categories ['context_safe', 'schema_default', 'syntactic_alias']"
+    },
+    {
+      "rule_id": "fix_cross_component_refs",
+      "path": "/",
+      "old_value": "<skipped>",
+      "new_value": "<skipped>",
+      "severity": "semantic_guess",
+      "confidence": 0.9,
+      "message": "Fix 'fix_cross_component_refs' skipped: category 'semantic_guess' not in allowed categories ['context_safe', 'schema_default', 'syntactic_alias']"
+    },
+    {
+      "rule_id": "fix_phase_ordering",
+      "path": "/",
+      "old_value": "<hash:sha256:58fd0>",
+      "new_value": "<hash:sha256:a6833>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_phase_ordering"
+    },
+    {
+      "rule_id": "fix_profile_stations",
+      "path": "/",
+      "old_value": "<skipped>",
+      "new_value": "<skipped>",
+      "severity": "semantic_guess",
+      "confidence": 0.85,
+      "message": "Fix 'fix_profile_stations' skipped: category 'semantic_guess' not in allowed categories ['context_safe', 'schema_default', 'syntactic_alias']"
+    },
+    {
+      "rule_id": "fix_null_hints",
+      "path": "/",
+      "old_value": "<hash:sha256:a6833>",
+      "new_value": "<hash:sha256:c8fad>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_null_hints"
+    },
+    {
+      "rule_id": "remove_extra_params",
+      "path": "/",
+      "old_value": "<hash:sha256:c8fad>",
+      "new_value": "<hash:sha256:32e6d>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: remove_extra_params"
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "applied": true,
+  "before_hash": "sha256:ee69aa0f9e633fe23b3191d17408cb8874fac7c85ff7d5578169dce7d86f85f4",
+  "after_hash": "sha256:3a9ecfd3a12ee1cfa4fcb877a7f2072664e83782f20a5d6212952cb577a15649",
+  "entries": [
+    {
+      "rule_id": "fix_chamfer_fillet_optional",
+      "path": "/",
+      "old_value": "<hash:sha256:ee69a>",
+      "new_value": "<hash:sha256:2919f>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_chamfer_fillet_optional"
+    },
+    {
+      "rule_id": "fix_unknown_ops",
+      "path": "/",
+      "old_value": "<skipped>",
+      "new_value": "<skipped>",
+      "severity": "destructive",
+      "confidence": 0.85,
+      "message": "Fix 'fix_unknown_ops' skipped: category 'destructive' not in allowed categories ['context_safe', 'schema_default', 'syntactic_alias']"
+    },
+    {
+      "rule_id": "fix_cross_component_refs",
+      "path": "/",
+      "old_value": "<skipped>",
+      "new_value": "<skipped>",
+      "severity": "semantic_guess",
+      "confidence": 0.9,
+      "message": "Fix 'fix_cross_component_refs' skipped: category 'semantic_guess' not in allowed categories ['context_safe', 'schema_default', 'syntactic_alias']"
+    },
+    {
+      "rule_id": "fix_phase_ordering",
+      "path": "/",
+      "old_value": "<hash:sha256:2919f>",
+      "new_value": "<hash:sha256:af6b4>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_phase_ordering"
+    },
+    {
+      "rule_id": "fix_profile_stations",
+      "path": "/",
+      "old_value": "<skipped>",
+      "new_value": "<skipped>",
+      "severity": "semantic_guess",
+      "confidence": 0.85,
+      "message": "Fix 'fix_profile_stations' skipped: category 'semantic_guess' not in allowed categories ['context_safe', 'schema_default', 'syntactic_alias']"
+    },
+    {
+      "rule_id": "fix_fillet_zero_radius",
+      "path": "/",
+      "old_value": "<hash:sha256:af6b4>",
+      "new_value": "<hash:sha256:62aab>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_fillet_zero_radius"
+    },
+    {
+      "rule_id": "fix_null_hints",
+      "path": "/",
+      "old_value": "<hash:sha256:62aab>",
+      "new_value": "<hash:sha256:60a7f>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_null_hints"
+    },
+    {
+      "rule_id": "remove_extra_params",
+      "path": "/",
+      "old_value": "<hash:sha256:60a7f>",
+      "new_value": "<hash:sha256:3a9ec>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: remove_extra_params"
+    }
+  ]
+}

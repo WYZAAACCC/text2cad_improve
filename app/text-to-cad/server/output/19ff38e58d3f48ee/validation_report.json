@@ -1,0 +1,33 @@
+{
+  "ok": false,
+  "stage": "registry",
+  "issues": [
+    {
+      "code": "unknown_op",
+      "message": "node 'n_disc_revolve': unknown op 'revolve_profile' in 'sketch_profile': 'Unknown op/version: revolve_profile v1.0.0'",
+      "severity": "error",
+      "stage": "registry",
+      "node_id": "n_disc_revolve",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "unknown_op",
+      "message": "node 'n_disc_body': unknown op 'apply_safe_fillet' in 'sketch_profile': 'Unknown op/version: apply_safe_fillet v1.0.0'",
+      "severity": "error",
+      "stage": "registry",
+      "node_id": "n_disc_body",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "root_terminal",
+    "registry"
+  ]
+}

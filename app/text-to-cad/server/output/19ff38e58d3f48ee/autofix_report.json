@@ -1,0 +1,79 @@
+{
+  "applied": true,
+  "before_hash": "sha256:77b7473d1fa6e091a63d73d00ae2dca68af5aef7ff8fe6cabd0af15a1db70294",
+  "after_hash": "sha256:165ae2877aa285f64d13e0a9be96fb3cbd5c935f071aaf439bb2d47a30cc527f",
+  "entries": [
+    {
+      "rule_id": "fix_constraints",
+      "path": "/",
+      "old_value": "<hash:sha256:77b74>",
+      "new_value": "<hash:sha256:91d8c>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_constraints"
+    },
+    {
+      "rule_id": "fix_chamfer_fillet_optional",
+      "path": "/",
+      "old_value": "<hash:sha256:91d8c>",
+      "new_value": "<hash:sha256:4ff46>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_chamfer_fillet_optional"
+    },
+    {
+      "rule_id": "fix_unknown_ops",
+      "path": "/",
+      "old_value": "<skipped>",
+      "new_value": "<skipped>",
+      "severity": "destructive",
+      "confidence": 0.85,
+      "message": "Fix 'fix_unknown_ops' skipped: category 'destructive' not in allowed categories ['context_safe', 'schema_default', 'syntactic_alias']"
+    },
+    {
+      "rule_id": "fix_cross_component_refs",
+      "path": "/",
+      "old_value": "<skipped>",
+      "new_value": "<skipped>",
+      "severity": "semantic_guess",
+      "confidence": 0.9,
+      "message": "Fix 'fix_cross_component_refs' skipped: category 'semantic_guess' not in allowed categories ['context_safe', 'schema_default', 'syntactic_alias']"
+    },
+    {
+      "rule_id": "fix_root_node",
+      "path": "/",
+      "old_value": "<hash:sha256:4ff46>",
+      "new_value": "<hash:sha256:b4ff4>",
+      "severity": "safe_alias",
+      "confidence": 0.95,
+      "message": "Applied fix: fix_root_node"
+    },
+    {
+      "rule_id": "fix_phase_ordering",
+      "path": "/",
+      "old_value": "<hash:sha256:b4ff4>",
+      "new_value": "<hash:sha256:f434f>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: fix_phase_ordering"
+    },
+    {
+      "rule_id": "fix_profile_stations",
+      "path": "/",
+      "old_value": "<skipped>",
+      "new_value": "<skipped>",
+      "severity": "semantic_guess",
+      "confidence": 0.85,
+      "message": "Fix 'fix_profile_stations' skipped: category 'semantic_guess' not in allowed categories ['context_safe', 'schema_default', 'syntactic_alias']"
+    },
+    {
+      "rule_id": "remove_extra_params",
+      "path": "/",
+      "old_value": "<hash:sha256:f434f>",
+      "new_value": "<hash:sha256:165ae>",
+      "severity": "safe_alias",
+      "confidence": 1.0,
+      "message": "Applied fix: remove_extra_params"
+    }
+  ]
+}

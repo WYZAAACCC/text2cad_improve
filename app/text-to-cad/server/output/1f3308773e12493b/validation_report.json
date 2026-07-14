@@ -1,0 +1,32 @@
+{
+  "ok": false,
+  "stage": "dialect_semantics",
+  "issues": [
+    {
+      "code": "sp_no_extrude",
+      "message": "SketchProfile component must have at least one extrude_profile or cut_profile",
+      "severity": "error",
+      "stage": "dialect_semantics",
+      "node_id": null,
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "root_terminal",
+    "registry",
+    "params",
+    "ownership",
+    "graph",
+    "typecheck",
+    "phase",
+    "composition",
+    "hole_semantics",
+    "safety",
+    "canonicalize",
+    "dialect_semantics"
+  ]
+}

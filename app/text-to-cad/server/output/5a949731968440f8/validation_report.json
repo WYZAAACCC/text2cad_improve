@@ -1,0 +1,44 @@
+{
+  "ok": false,
+  "stage": "registry",
+  "issues": [
+    {
+      "code": "unknown_op",
+      "message": "node 'n_disc_fillet': unknown op 'fillet_sketch' in 'sketch_profile': 'Unknown op/version: fillet_sketch v1.0.0'",
+      "severity": "error",
+      "stage": "registry",
+      "node_id": "n_disc_fillet",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "unknown_op",
+      "message": "node 'n_cutter_fillet': unknown op 'fillet_sketch' in 'sketch_profile': 'Unknown op/version: fillet_sketch v1.0.0'",
+      "severity": "error",
+      "stage": "registry",
+      "node_id": "n_cutter_fillet",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "unknown_op",
+      "message": "node 'n_disc_revolve': unknown op 'revolve_profile' in 'sketch_profile': 'Unknown op/version: revolve_profile v1.0.0'",
+      "severity": "error",
+      "stage": "registry",
+      "node_id": "n_disc_revolve",
+      "component_id": null,
+      "path": null,
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "root_terminal",
+    "registry"
+  ]
+}
