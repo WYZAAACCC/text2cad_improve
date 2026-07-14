@@ -145,7 +145,7 @@ class SketchProfileDialect:
             ("revolve_profile", "1.0.0"): OperationSpec(
                 dialect="sketch_profile", op="revolve_profile", op_version="1.0.0",
                 phase="feature", input_types=["profile"], output_types=["solid"],
-                params_model=RevolveProfileParams, effects=["exports_artifact"],
+                params_model=RevolveProfileParams, effects=["creates_solid"],
                 handler=handle_revolve_profile,
                 summary="Revolve closed profile around Z axis to create axisymmetric solid.",
             ),

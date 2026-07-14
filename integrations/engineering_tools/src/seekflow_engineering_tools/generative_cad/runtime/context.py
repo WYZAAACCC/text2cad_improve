@@ -47,6 +47,9 @@ class RuntimeContext:
     # v6.3 Phase 2: Per-operation geometry health records
     # Key: "{node_id}.{output_name}", Value: GeometryHealth.model_dump()
     geometry_health_log: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # Per-component mutable state (workplane, last_point, etc.)
+    # Key: component_id → {field_name: value}
+    component_state: dict[str, dict[str, object]] = field(default_factory=dict)
 
     @property
     def geometry_runtime_name(self) -> str:
@@ -73,3 +76,9 @@ class RuntimeContext:
             return self.component_outputs[component_id][output_name]
         except KeyError as exc:
             raise KeyError(f"missing component output {component_id}.{output_name}") from exc
+
+    def set_component_state(self, component_id: str, key: str, value: object) -> None:
+        self.component_state.setdefault(component_id, {})[key] = value
+
+    def get_component_state(self, component_id: str, key: str, default: object = None) -> object:
+        return self.component_state.get(component_id, {}).get(key, default)

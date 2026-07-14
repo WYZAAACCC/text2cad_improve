@@ -16,21 +16,11 @@ def _state_key(component_id: str, field: str) -> str:
 
 
 def _get_state(ctx, component_id: str, field: str, default=None):
-    try:
-        return ctx.object_store.get(_state_key(component_id, field))
-    except KeyError:
-        return default
+    return ctx.get_component_state(component_id, field, default)
 
 
 def _set_state(ctx, component_id: str, field: str, value) -> None:
-    key = _state_key(component_id, field)
-    try:
-        ctx.object_store.put(
-            RuntimeHandle(id=key, type="profile"), value
-        )
-    except ValueError:
-        # Handle already exists — update value in-place
-        ctx.object_store._objects[key] = value
+    ctx.set_component_state(component_id, field, value)
 
 
 # ── Handlers ─────────────────────────────────────────────────────────────────
@@ -149,10 +139,18 @@ def handle_close_profile(node, ctx) -> dict:
     cid = node.component
     sp = _get_state(ctx, cid, "start_point")
     if sp is None:
+        if getattr(node, "required", True):
+            raise RuntimeError(f"close_profile on '{node.id}': no start_point")
         ctx.warnings.append(f"close_profile on '{node.id}': no start_point, skipping close")
-    else:
-        wp = wp.close()
-        _set_state(ctx, cid, "wp", wp)
+        handle_id = f"profile:{cid}:{node.id}:profile"
+        ctx.object_store.put(RuntimeHandle(id=handle_id, type="profile"), wp)
+        return {"profile": handle_id}
+    wp = wp.close()
+    # Verify closure produced exactly one wire
+    wires = wp.wires().vals()
+    if len(wires) != 1:
+        raise RuntimeError(f"close_profile on '{node.id}': expected 1 wire, got {len(wires)}")
+    _set_state(ctx, cid, "wp", wp)
     _set_state(ctx, cid, "closed", True)
     handle_id = f"profile:{cid}:{node.id}:profile"
     ctx.object_store.put(RuntimeHandle(id=handle_id, type="profile"), wp)
@@ -164,9 +162,6 @@ def handle_extrude_profile(node, ctx) -> dict:
     params = node.params
     wp = resolve_input_object(node, ctx, 0)
     cid = node.component
-    closed = _get_state(ctx, cid, "closed", False)
-    if closed:
-        wp = wp.close()
     depth = float(params.get("depth_mm", 1))
     direction = params.get("direction", "+")
     taper = float(params.get("taper_deg", 0))
@@ -184,12 +179,18 @@ def handle_extrude_profile(node, ctx) -> dict:
 
 
 def handle_revolve_profile(node, ctx) -> dict:
-    """Revolve a closed 2D profile around Z axis to create an axisymmetric solid."""
+    """Revolve a closed 2D profile around Z axis using OCCT BRepPrimAPI_MakeRevol.
+
+    CadQuery native revolve has a known limitation with XZ-plane profiles
+    (produces flat/degenerate geometry). OCCT BRepPrimAPI_MakeRevol reliably
+    handles axisymmetric profiles in any plane.
+    """
     import cadquery as cq
     import math
     from OCP.BRepPrimAPI import BRepPrimAPI_MakeRevol
     from OCP.gp import gp_Ax1, gp_Pnt, gp_Dir
     from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeFace
+    from OCP.ShapeFix import ShapeFix_Shape
     from seekflow_engineering_tools.generative_cad.runtime.resolve import resolve_input_object
     from seekflow_engineering_tools.generative_cad.runtime.handles import SolidHandle
 
@@ -198,20 +199,11 @@ def handle_revolve_profile(node, ctx) -> dict:
     cid = node.component
     angle = float(params.get("angle_deg", 360))
 
-    # Close the profile
-    try:
-        wp = wp.close()
-    except Exception:
-        pass
-
-    # Extract wire as OCCT TopoDS_Wire
+    # Extract wire and build face
     wire = wp.wire().val()
-    occt_wire = wire.wrapped
+    face = BRepBuilderAPI_MakeFace(wire.wrapped, False).Face()
 
-    # Build face from wire using the (TopoDS_Wire, OnlyPlane) constructor
-    face = BRepBuilderAPI_MakeFace(occt_wire, False).Face()
-
-    # Revolve around Z axis using OCCT
+    # Revolve around Z axis
     z_axis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1))
     rev_angle = angle * math.pi / 180.0
     revol = BRepPrimAPI_MakeRevol(face, z_axis, rev_angle)
@@ -220,19 +212,28 @@ def handle_revolve_profile(node, ctx) -> dict:
         raise RuntimeError("BRepPrimAPI_MakeRevol failed")
 
     shape = revol.Shape()
-    solid = cq.Shape.cast(shape)
+    # Fix minor BRep issues that OCCT MakeRevol sometimes produces
+    fixer = ShapeFix_Shape(shape)
+    fixer.Perform()
+    shape = fixer.Shape()
+    cad_solid = cq.Shape.cast(shape)
+    # Wrap as Workplane (standard CadQuery convention for solid handles)
+    solid_wp = cq.Workplane("XY").newObject([cad_solid])
 
     handle = SolidHandle(id=f"solid:{cid}:{node.id}:body", producer_node=node.id, component_id=cid)
-    ctx.object_store.put_solid(handle, solid)
+    ctx.object_store.put_solid(handle, solid_wp)
     return {"body": f"solid:{cid}:{node.id}:body"}
 
 
 def handle_fillet_sketch(node, ctx) -> dict:
-    """Apply 2D fillets to profile vertices using CadQuery's native fillet2D.
+    """Apply 2D fillets to profile wire vertices.
 
-    V1: vertex-index-based (at_vertex_index). Uses wire.fillet2D() which is
-    the simplest reliable approach in CadQuery 2.7.
+    V1: vertex-index-based (at_vertex_index). Fixes:
+    - Pass Vertex objects (not int indices) to wire.fillet2D()
+    - Preserve original Workplane plane (not hardcoded XY)
+    - Use toPending() so revolve/extrude can consume the wire
     """
+    import cadquery as cq
     from seekflow_engineering_tools.generative_cad.runtime.resolve import resolve_input_object
     from seekflow_engineering_tools.generative_cad.runtime.handles import RuntimeHandle
 
@@ -251,7 +252,7 @@ def handle_fillet_sketch(node, ctx) -> dict:
             return {"profile": handle_id}
 
         wire = wires[0]
-        vertices = wire.Vertices()
+        vertices = list(wire.Vertices())
         n_verts = len(vertices)
 
         if n_verts < 3:
@@ -260,25 +261,22 @@ def handle_fillet_sketch(node, ctx) -> dict:
             ctx.object_store.put(RuntimeHandle(id=handle_id, type="profile"), wp)
             return {"profile": handle_id}
 
-        # Build vertex index list
-        indices = []
+        # Select target vertices (real Vertex objects, not int indices)
         if vertex_idx is not None:
             vi = int(vertex_idx)
             if 0 <= vi < n_verts:
-                indices = [vi]
+                targets = [vertices[vi]]
             else:
                 ctx.warnings.append(f"fillet_sketch on '{node.id}': vertex_index={vi} OOB")
-                indices = []
+                targets = vertices  # fallback: all
         else:
-            # Fillet all interior vertices
-            indices = list(range(n_verts))
+            targets = vertices
 
-        # Apply fillet using CadQuery's native wire.fillet2D
-        wire = wire.fillet2D(radius, indices)
+        # Apply fillet using CadQuery's native wire.fillet2D (requires Vertex objects)
+        filleted_wire = wire.fillet2D(radius, targets)
 
-        # Update workplane with filleted wire
-        import cadquery as cq
-        new_wp = cq.Workplane("XY").newObject([wire])
+        # Preserve original Workplane plane and restore as pending wire
+        new_wp = cq.Workplane(wp.plane, obj=filleted_wire).toPending()
         _set_state(ctx, cid, "wp", new_wp)
         handle_id = f"profile:{cid}:{node.id}:profile"
         ctx.object_store.put(RuntimeHandle(id=handle_id, type="profile"), new_wp)
@@ -300,9 +298,6 @@ def handle_cut_profile(node, ctx) -> dict:
     target = resolve_input_object(node, ctx, 0)
     wp = resolve_input_object(node, ctx, 1)
     cid = node.component
-    closed = _get_state(ctx, cid, "closed", False)
-    if closed:
-        wp = wp.close()
     depth = float(params.get("depth_mm", 1))
     direction = params.get("direction", "-")
     cut_depth = depth if direction == "+" else -depth
