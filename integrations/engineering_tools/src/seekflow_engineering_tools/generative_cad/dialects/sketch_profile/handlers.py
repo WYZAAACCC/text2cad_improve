@@ -165,18 +165,19 @@ def handle_extrude_profile(node, ctx) -> dict:
     depth = float(params.get("depth_mm", 1))
     direction = params.get("direction", "+")
     taper = float(params.get("taper_deg", 0))
-    if direction == "both":
-        half = depth / 2.0
-        if abs(taper) > 0.01:
-            solid = wp.taperedExtrude(half, taper, both=True)
+    try:
+        if direction == "both":
+            half = depth / 2.0
+            if abs(taper) > 0.01:
+                solid = wp.taperedExtrude(half, taper, both=True)
+            else:
+                solid = wp.extrude(half, both=True)
         else:
-            solid = wp.extrude(half, both=True)
-    else:
-        extrude_depth = depth if direction == "+" else -depth
-        if abs(taper) > 0.01:
-            solid = wp.taperedExtrude(extrude_depth, taper)
-        else:
-            solid = wp.extrude(extrude_depth)
+            extrude_depth = depth if direction == "+" else -depth
+            if abs(taper) > 0.01:
+                solid = wp.taperedExtrude(extrude_depth, taper)
+            else:
+                solid = wp.extrude(extrude_depth)
     except Exception as e:
         raise RuntimeError(f"extrude_profile failed on '{node.id}': {e}")
     handle = SolidHandle(id=f"solid:{cid}:{node.id}:body", producer_node=node.id, component_id=cid)
