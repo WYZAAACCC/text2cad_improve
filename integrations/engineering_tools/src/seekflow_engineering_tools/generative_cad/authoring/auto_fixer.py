@@ -295,6 +295,7 @@ def auto_fix_with_report(
     _apply_fix("fix_slot_station_order", lambda d: _fix_slot_station_order(d))
     _apply_fix("fix_slot_half_profile", lambda d: _fix_slot_half_profile(d))
     _apply_fix("fill_default_params", lambda d: _fill_default_params(d))
+    _apply_fix("fix_fillet_zero_radius", lambda d: _fix_fillet_zero_radius(d))
     _apply_fix("fix_null_hints", lambda d: _fix_null_hints(d))
     _apply_fix("remove_extra_params", lambda d: _remove_extra_params(d))
 
@@ -1302,6 +1303,16 @@ def _fix_chamfer_fillet_optional(doc: dict) -> dict:
         if op in ("apply_safe_chamfer", "apply_safe_fillet", "fillet_sketch"):
             node["required"] = False
             node["degradation_policy"] = "may_skip_with_warning"
+    return doc
+
+
+def _fix_fillet_zero_radius(doc: dict) -> dict:
+    """LLM sometimes generates radius_mm=0 for fillets; fix to 1.0mm minimum."""
+    for n in doc.get("nodes", []):
+        if n.get("op") == "fillet_sketch":
+            r = n.get("params", {}).get("radius_mm", 1)
+            if isinstance(r, (int, float)) and r <= 0:
+                n.setdefault("params", {})["radius_mm"] = 1.0
     return doc
 
 
