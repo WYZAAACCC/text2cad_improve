@@ -52,7 +52,7 @@ class CloseProfileParams(BaseModel):
 class ExtrudeProfileParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
     depth_mm: float = Field(gt=0, description="Extrusion depth in mm")
-    direction: Literal["+", "-"] = "+"
+    direction: Literal["+", "-", "both"] = "+"
     taper_deg: float = Field(default=0.0, ge=-45, le=45, description="Taper angle in degrees")
 
 

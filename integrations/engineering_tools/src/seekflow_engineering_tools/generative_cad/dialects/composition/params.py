@@ -25,6 +25,7 @@ class CircularPatternComponentParams(BaseModel):
     radius_mm: float = Field(ge=0)
     axis: Literal["Z"] = "Z"
     start_angle_deg: float = 0.0
+    rotate_copies: bool = Field(default=True, description="Whether each copy rotates to face radially outward")
 
 
 class LinearPatternComponentParams(BaseModel):
