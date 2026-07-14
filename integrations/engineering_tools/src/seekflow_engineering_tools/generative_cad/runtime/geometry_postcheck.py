@@ -237,15 +237,13 @@ def _measure_bbox(solid) -> tuple[float, float, float] | None:
 
 
 def _check_closed(solid) -> bool | None:
-    """Check if solid is closed using OCCT BRepCheck (CadQuery Closed() is broken in 2.7)."""
+    """Check if solid is closed using OCCT BRepCheck_Analyzer.IsValid()."""
     try:
         if hasattr(solid, "val"):
             solid = solid.val()
         if hasattr(solid, "wrapped"):
             from OCP.BRepCheck import BRepCheck_Analyzer
             analyzer = BRepCheck_Analyzer(solid.wrapped)
-            if hasattr(analyzer, "Perform"):
-                analyzer.Perform()
             return analyzer.IsValid()
         if hasattr(solid, "Closed"):
             return solid.Closed()
