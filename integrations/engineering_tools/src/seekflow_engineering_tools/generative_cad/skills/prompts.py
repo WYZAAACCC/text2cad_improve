@@ -254,24 +254,16 @@ Hard output rules:
      2. MOUTH WIDTH: Y at X=0 = W_mouth = 3-4mm. NOT 7, NOT 8.
 
      ╔══════════════════════════════════════════════════════════════════════╗
-     ║  CRITICAL — CUTTER EXTRUDE + PATTERN (MUST BE EXACT)               ║
+     ║  PARAM VALUES BELOW ARE MANDATORY — DO NOT CHANGE OR OMIT          ║
      ║                                                                    ║
-     ║  1. extrude_profile MUST use direction="both":                     ║
-     ║     extrude_profile(depth_mm=80, direction="both")                 ║
-     ║     "both" extrudes half-depth above + half-depth below the        ║
-     ║     sketch plane.  "both" is the STRING VALUE, not True/false.     ║
-     ║     direction="+" → only +Z side cut → WRONG, half the rim        ║
-     ║     stays solid!  The disc is symmetric about Z=0.                 ║
+     ║  extrude_profile(depth_mm=80, direction="both")                    ║
+     ║    direction="both" ← MUST BE "both".  "+" = BROKEN.               ║
      ║                                                                    ║
-     ║  2. circular_pattern_component MUST set rotate_copies=True:         ║
-     ║     circular_pattern_component(count=60, radius_mm=250,            ║
-     ║       axis="Z", rotate_copies=True)                                ║
-     ║     Without rotate_copies, all 60 copies stay in same              ║
-     ║     orientation → only 1 slot aligns with rim surface.             ║
-     ║     With rotate_copies=True, each copy rotates to face radial.     ║
+     ║  circular_pattern_component(count=60, radius_mm=250,               ║
+     ║    axis="Z", rotate_copies=True)                                   ║
+     ║    rotate_copies=True ← MUST BE True.  False/omitted = BROKEN.     ║
      ║                                                                    ║
-     ║  3. NO place_component between extrude and pattern.                ║
-     ║     Direct: cutter_extrude → circular_pattern → boolean_cut        ║
+     ║  NO place_component before circular_pattern_component.             ║
      ╚══════════════════════════════════════════════════════════════════════╝
 
      3. DEPTH: D_total = 18-24mm from X=0 inward. Extrude depth_mm=80 direction="both"
@@ -301,6 +293,14 @@ Hard output rules:
 35. close_profile may ONLY follow profile-producing ops (add_polyline, add_line_segment,
     add_arc_segment, add_circle, add_slot). close_profile MUST NOT follow extrude_profile,
     revolve_profile, or any solid-producing op — close_profile input_types=["profile"] only.
+
+35a. CRITICAL FOR TURBINE DISC MODELS — TWO PARAMS YOU MUST GET RIGHT:
+    (a) The slot cutter extrude_profile MUST use direction="both".
+        Not "+", not "-".  "both" is the string value.
+        "+" or "-" → only half the disc gets slots → BROKEN MODEL.
+    (b) circular_pattern_component MUST have rotate_copies=True.
+        Without it all 60 cutters face the same way → only 1 valid slot.
+        rotate_copies is JSON true (boolean, not the string "true").
 
 CRITICAL — Exact field names (schema is extra=forbid, wrong field names cause failure):
 
