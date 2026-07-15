@@ -1,0 +1,625 @@
+{
+  "nodes": 26479,
+  "elements": 14682,
+  "element_type": "tet10/SOLID187",
+  "boundary_faces": [
+    {
+      "tag": 1,
+      "class": null,
+      "area_mm2": 238.76,
+      "centroid": [
+        59.644,
+        6.269,
+        19.0
+      ]
+    },
+    {
+      "tag": 2,
+      "class": null,
+      "area_mm2": 565.49,
+      "centroid": [
+        92.78,
+        9.752,
+        38.0
+      ]
+    },
+    {
+      "tag": 3,
+      "class": "high",
+      "area_mm2": 5087.5,
+      "centroid": [
+        143.361,
+        22.706,
+        14.844
+      ]
+    },
+    {
+      "tag": 4,
+      "class": "sym",
+      "area_mm2": 2883.41,
+      "centroid": [
+        168.949,
+        17.757,
+        0.0
+      ]
+    },
+    {
+      "tag": 5,
+      "class": "low",
+      "area_mm2": 5087.5,
+      "centroid": [
+        144.949,
+        7.596,
+        14.844
+      ]
+    },
+    {
+      "tag": 6,
+      "class": null,
+      "area_mm2": 201.06,
+      "centroid": [
+        119.288,
+        12.538,
+        30.0
+      ]
+    },
+    {
+      "tag": 7,
+      "class": null,
+      "area_mm2": 1670.87,
+      "centroid": [
+        170.97,
+        17.97,
+        18.169
+      ]
+    },
+    {
+      "tag": 8,
+      "class": null,
+      "area_mm2": 337.72,
+      "centroid": [
+        213.725,
+        22.463,
+        22.5
+      ]
+    },
+    {
+      "tag": 9,
+      "class": null,
+      "area_mm2": 651.57,
+      "centroid": [
+        229.889,
+        24.162,
+        30.0
+      ]
+    },
+    {
+      "tag": 10,
+      "class": null,
+      "area_mm2": 273.33,
+      "centroid": [
+        247.58,
+        34.601,
+        15.0
+      ]
+    },
+    {
+      "tag": 11,
+      "class": null,
+      "area_mm2": 62.23,
+      "centroid": [
+        247.385,
+        29.424,
+        15.0
+      ]
+    },
+    {
+      "tag": 12,
+      "class": null,
+      "area_mm2": 58.84,
+      "centroid": [
+        245.708,
+        28.718,
+        15.0
+      ]
+    },
+    {
+      "tag": 13,
+      "class": null,
+      "area_mm2": 83.58,
+      "centroid": [
+        244.579,
+        30.563,
+        15.0
+      ]
+    },
+    {
+      "tag": 14,
+      "class": null,
+      "area_mm2": 41.2,
+      "centroid": [
+        243.717,
+        32.367,
+        15.0
+      ]
+    },
+    {
+      "tag": 15,
+      "class": null,
+      "area_mm2": 45.09,
+      "centroid": [
+        242.358,
+        32.511,
+        15.0
+      ]
+    },
+    {
+      "tag": 16,
+      "class": null,
+      "area_mm2": 35.71,
+      "centroid": [
+        241.108,
+        32.159,
+        15.0
+      ]
+    },
+    {
+      "tag": 17,
+      "class": null,
+      "area_mm2": 120.93,
+      "centroid": [
+        240.204,
+        29.771,
+        15.0
+      ]
+    },
+    {
+      "tag": 18,
+      "class": null,
+      "area_mm2": 35.71,
+      "centroid": [
+        239.3,
+        27.384,
+        15.0
+      ]
+    },
+    {
+      "tag": 19,
+      "class": null,
+      "area_mm2": 39.69,
+      "centroid": [
+        238.14,
+        27.04,
+        15.0
+      ]
+    },
+    {
+      "tag": 20,
+      "class": null,
+      "area_mm2": 47.12,
+      "centroid": [
+        236.811,
+        27.266,
+        15.0
+      ]
+    },
+    {
+      "tag": 21,
+      "class": null,
+      "area_mm2": 60.0,
+      "centroid": [
+        236.278,
+        28.856,
+        15.0
+      ]
+    },
+    {
+      "tag": 22,
+      "class": null,
+      "area_mm2": 47.12,
+      "centroid": [
+        235.746,
+        30.446,
+        15.0
+      ]
+    },
+    {
+      "tag": 23,
+      "class": null,
+      "area_mm2": 11.46,
+      "centroid": [
+        234.885,
+        30.72,
+        15.0
+      ]
+    },
+    {
+      "tag": 24,
+      "class": null,
+      "area_mm2": 33.21,
+      "centroid": [
+        234.218,
+        30.457,
+        15.0
+      ]
+    },
+    {
+      "tag": 25,
+      "class": null,
+      "area_mm2": 97.08,
+      "centroid": [
+        233.295,
+        28.542,
+        15.0
+      ]
+    },
+    {
+      "tag": 26,
+      "class": null,
+      "area_mm2": 33.21,
+      "centroid": [
+        232.371,
+        26.627,
+        15.0
+      ]
+    },
+    {
+      "tag": 27,
+      "class": null,
+      "area_mm2": 19.84,
+      "centroid": [
+        231.566,
+        26.35,
+        15.0
+      ]
+    },
+    {
+      "tag": 28,
+      "class": null,
+      "area_mm2": 37.47,
+      "centroid": [
+        230.667,
+        26.497,
+        15.0
+      ]
+    },
+    {
+      "tag": 29,
+      "class": null,
+      "area_mm2": 51.62,
+      "centroid": [
+        229.866,
+        27.679,
+        15.0
+      ]
+    },
+    {
+      "tag": 30,
+      "class": null,
+      "area_mm2": 37.47,
+      "centroid": [
+        229.065,
+        28.861,
+        15.0
+      ]
+    },
+    {
+      "tag": 31,
+      "class": null,
+      "area_mm2": 55.95,
+      "centroid": [
+        227.568,
+        28.946,
+        15.0
+      ]
+    },
+    {
+      "tag": 32,
+      "class": null,
+      "area_mm2": 23.56,
+      "centroid": [
+        226.28,
+        28.71,
+        15.0
+      ]
+    },
+    {
+      "tag": 33,
+      "class": null,
+      "area_mm2": 60.0,
+      "centroid": [
+        225.338,
+        27.706,
+        15.0
+      ]
+    },
+    {
+      "tag": 34,
+      "class": null,
+      "area_mm2": 23.56,
+      "centroid": [
+        224.552,
+        26.576,
+        15.0
+      ]
+    },
+    {
+      "tag": 35,
+      "class": null,
+      "area_mm2": 155.15,
+      "centroid": [
+        224.762,
+        23.623,
+        15.0
+      ]
+    },
+    {
+      "tag": 36,
+      "class": null,
+      "area_mm2": 23.56,
+      "centroid": [
+        225.17,
+        20.691,
+        15.0
+      ]
+    },
+    {
+      "tag": 37,
+      "class": null,
+      "area_mm2": 60.0,
+      "centroid": [
+        226.175,
+        19.75,
+        15.0
+      ]
+    },
+    {
+      "tag": 38,
+      "class": null,
+      "area_mm2": 23.56,
+      "centroid": [
+        227.304,
+        18.963,
+        15.0
+      ]
+    },
+    {
+      "tag": 39,
+      "class": null,
+      "area_mm2": 55.95,
+      "centroid": [
+        228.613,
+        19.001,
+        15.0
+      ]
+    },
+    {
+      "tag": 40,
+      "class": null,
+      "area_mm2": 37.47,
+      "centroid": [
+        230.06,
+        19.395,
+        15.0
+      ]
+    },
+    {
+      "tag": 41,
+      "class": null,
+      "area_mm2": 51.62,
+      "centroid": [
+        230.598,
+        20.718,
+        15.0
+      ]
+    },
+    {
+      "tag": 42,
+      "class": null,
+      "area_mm2": 37.47,
+      "centroid": [
+        231.136,
+        22.041,
+        15.0
+      ]
+    },
+    {
+      "tag": 43,
+      "class": null,
+      "area_mm2": 19.84,
+      "centroid": [
+        231.984,
+        22.371,
+        15.0
+      ]
+    },
+    {
+      "tag": 44,
+      "class": null,
+      "area_mm2": 33.21,
+      "centroid": [
+        232.829,
+        22.267,
+        15.0
+      ]
+    },
+    {
+      "tag": 45,
+      "class": null,
+      "area_mm2": 97.08,
+      "centroid": [
+        234.131,
+        20.586,
+        15.0
+      ]
+    },
+    {
+      "tag": 46,
+      "class": null,
+      "area_mm2": 33.21,
+      "centroid": [
+        235.432,
+        18.905,
+        15.0
+      ]
+    },
+    {
+      "tag": 47,
+      "class": null,
+      "area_mm2": 11.46,
+      "centroid": [
+        236.139,
+        18.786,
+        15.0
+      ]
+    },
+    {
+      "tag": 48,
+      "class": null,
+      "area_mm2": 47.12,
+      "centroid": [
+        236.924,
+        19.234,
+        15.0
+      ]
+    },
+    {
+      "tag": 49,
+      "class": null,
+      "area_mm2": 60.0,
+      "centroid": [
+        237.114,
+        20.9,
+        15.0
+      ]
+    },
+    {
+      "tag": 50,
+      "class": null,
+      "area_mm2": 47.12,
+      "centroid": [
+        237.305,
+        22.565,
+        15.0
+      ]
+    },
+    {
+      "tag": 51,
+      "class": null,
+      "area_mm2": 39.69,
+      "centroid": [
+        238.558,
+        23.062,
+        15.0
+      ]
+    },
+    {
+      "tag": 52,
+      "class": null,
+      "area_mm2": 35.71,
+      "centroid": [
+        239.764,
+        22.968,
+        15.0
+      ]
+    },
+    {
+      "tag": 53,
+      "class": null,
+      "area_mm2": 120.93,
+      "centroid": [
+        241.145,
+        20.821,
+        15.0
+      ]
+    },
+    {
+      "tag": 54,
+      "class": null,
+      "area_mm2": 35.71,
+      "centroid": [
+        242.526,
+        18.673,
+        15.0
+      ]
+    },
+    {
+      "tag": 55,
+      "class": null,
+      "area_mm2": 45.09,
+      "centroid": [
+        243.821,
+        18.588,
+        15.0
+      ]
+    },
+    {
+      "tag": 56,
+      "class": null,
+      "area_mm2": 41.2,
+      "centroid": [
+        245.121,
+        19.012,
+        15.0
+      ]
+    },
+    {
+      "tag": 57,
+      "class": null,
+      "area_mm2": 83.58,
+      "centroid": [
+        245.589,
+        20.956,
+        15.0
+      ]
+    },
+    {
+      "tag": 58,
+      "class": null,
+      "area_mm2": 58.84,
+      "centroid": [
+        246.309,
+        22.995,
+        15.0
+      ]
+    },
+    {
+      "tag": 59,
+      "class": null,
+      "area_mm2": 62.23,
+      "centroid": [
+        248.097,
+        22.654,
+        15.0
+      ]
+    },
+    {
+      "tag": 60,
+      "class": null,
+      "area_mm2": 273.33,
+      "centroid": [
+        249.364,
+        17.63,
+        15.0
+      ]
+    }
+  ],
+  "periodic_pairs": [
+    {
+      "low": 5,
+      "high": 3,
+      "pair_dist_mm": 0.0
+    }
+  ],
+  "node_counts": {
+    "low_plane": 499,
+    "high_plane": 499,
+    "sym_plane_z0": 1024,
+    "bore_r60": 53
+  },
+  "asserts": {
+    "low_eq_high_nodes": true,
+    "has_sym_nodes": true,
+    "has_bore_nodes": true
+  }
+}

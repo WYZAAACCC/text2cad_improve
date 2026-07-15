@@ -66,3 +66,5 @@ demo_output/
 *.result.json
 .env.seekflow
 seekflow_workspace/
+# ANSYS solver scratch files (large binaries, regenerable)
+app/text-to-cad/server/output/fea3d_jobs/*/turbine3d.*

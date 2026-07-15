@@ -4,6 +4,7 @@
  */
 import { useRef, useEffect } from 'react';
 import type { StressPoint } from '../types';
+import { jetColor } from '../colormap';
 
 interface Props {
   stressField: StressPoint[];
@@ -14,17 +15,11 @@ interface Props {
   height?: number;
 }
 
-/** Map stress value to RGB color (jet-like: blue→cyan→green→yellow→red) */
+/** Map stress value to RGB color (delegates to shared colormap.ts) */
 function stressColor(seqv: number, vmin: number, vmax: number): [number, number, number] {
   if (vmax <= vmin) return [128, 128, 128];
-  let t = (seqv - vmin) / (vmax - vmin);
-  t = Math.max(0, Math.min(1, t));
-  // Jet colormap approximation
-  if (t < 0.125) return [0, 0, Math.round(128 + 127 * (t / 0.125))];
-  if (t < 0.375) return [0, Math.round(255 * ((t - 0.125) / 0.25)), 255];
-  if (t < 0.625) return [Math.round(255 * ((t - 0.375) / 0.25)), 255, Math.round(255 * (1 - (t - 0.375) / 0.25))];
-  if (t < 0.875) return [255, Math.round(255 * (1 - (t - 0.625) / 0.25)), 0];
-  return [Math.round(128 + 127 * (1 - (t - 0.875) / 0.125)), 0, 0];
+  const t = Math.max(0, Math.min(1, (seqv - vmin) / (vmax - vmin)));
+  return jetColor(t);
 }
 
 /** Simple IDW interpolation for unstructured node data → regular grid */

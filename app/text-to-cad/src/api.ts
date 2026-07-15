@@ -196,4 +196,19 @@ export async function continueFeaAnalysis(
   return data;
 }
 
+// ---- FEA3D API ----
+import type { Fea3dJobSummary } from './types';
+
+export async function listFea3dJobs(): Promise<Fea3dJobSummary[]> {
+  const { data } = await apiClient.get('/fea3d/jobs');
+  return data;
+}
+
+export async function getFea3dStressBin(job: string): Promise<ArrayBuffer> {
+  const { data } = await apiClient.get(`/fea3d/files/${job}/stress_field_3d.bin`, {
+    responseType: 'arraybuffer',
+  });
+  return data;
+}
+
 export { apiClient };

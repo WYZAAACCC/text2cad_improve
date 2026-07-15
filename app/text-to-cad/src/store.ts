@@ -9,6 +9,8 @@ import type {
   DatasetEntry,
   GeometryType,
   ModelParameters,
+  Fea3dField,
+  Fea3dColorCache,
 } from './types';
 
 /** 生成唯一 ID */
@@ -96,6 +98,19 @@ interface AppState {
   setHighlightedRegion: (id: string | null) => void;
   setFeaRegions: (regions: import('./types').FeaRegionDef[]) => void;
   setStressColoring: (v: boolean) => void;
+
+  // FEA3D State
+  fea3dJob: string | null;
+  fea3dField: Fea3dField;
+  fea3dViewMode: 'full' | 'sector';
+  fea3dRange: { vmin: number; vmax: number } | null;
+  fea3dColorCache: Fea3dColorCache | null;
+
+  setFea3dJob: (job: string | null) => void;
+  setFea3dField: (field: Fea3dField) => void;
+  setFea3dViewMode: (mode: 'full' | 'sector') => void;
+  setFea3dRange: (range: { vmin: number; vmax: number } | null) => void;
+  setFea3dColorCache: (job: string, field: Fea3dField, colors: Float32Array) => void;
 
   // Actions
   addMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
@@ -442,4 +457,27 @@ export const useStore = create<AppState>((set) => ({
   setHighlightedRegion: (id) => set(() => ({ highlightedRegionId: id })),
   setFeaRegions: (regions) => set(() => ({ feaRegions: regions })),
   setStressColoring: (v) => set(() => ({ stressColoring: v })),
+
+  // FEA3D initial state
+  fea3dJob: null,
+  fea3dField: 's_vm',
+  fea3dViewMode: 'full',
+  fea3dRange: null,
+  fea3dColorCache: null,
+
+  setFea3dJob: (job) => set((s) => ({
+    fea3dJob: job, fea3dColorCache: job !== s.fea3dJob ? null : s.fea3dColorCache,
+  })),
+  setFea3dField: (field) => set(() => ({ fea3dField: field })),
+  setFea3dViewMode: (mode) => set(() => ({ fea3dViewMode: mode })),
+  setFea3dRange: (range) => set(() => ({ fea3dRange: range })),
+  setFea3dColorCache: (job, field, colors) => set((s) => {
+    if (s.fea3dColorCache && s.fea3dColorCache.job === job) {
+      s.fea3dColorCache.colors.set(field, colors);
+      return { fea3dColorCache: { job, colors: new Map(s.fea3dColorCache.colors) } };
+    }
+    const m = new Map<Fea3dField, Float32Array>();
+    m.set(field, colors);
+    return { fea3dColorCache: { job, colors: m } };
+  }),
 }));

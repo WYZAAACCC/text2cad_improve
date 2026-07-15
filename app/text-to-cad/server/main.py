@@ -783,6 +783,47 @@ def api_fea_regions(model_id: str):
     from server.fea_pipeline import compute_disc_regions
     return {"model_id": model_id, "regions": compute_disc_regions({})}
 
+# ============================================================
+# FEA3D Routes (三维应力场文件服务)
+# ============================================================
+import re as _re
+_FEA3D_ROOT = OUT_ROOT / "fea3d_jobs"
+_SAFE_RE = _re.compile(r"^[A-Za-z0-9_\-\.]+$")
+
+@app.get("/api/fea3d/jobs")
+def api_fea3d_jobs():
+    """列出含 metrics.json 的 fea3d 作业."""
+    jobs = []
+    if _FEA3D_ROOT.exists():
+        for d in sorted(_FEA3D_ROOT.iterdir(), reverse=True):
+            mp = d / "metrics.json"
+            if d.is_dir() and mp.exists():
+                try:
+                    info = json.loads(mp.read_text(encoding="utf-8"))
+                    jobs.append({
+                        "job": d.name,
+                        "global": info.get("global"),
+                        "zones": info.get("zones"),
+                    })
+                except Exception:
+                    pass
+    return jobs
+
+@app.get("/api/fea3d/files/{job}/{filename}")
+def api_fea3d_serve_file(job: str, filename: str):
+    """白名单文件服务 (防路径遍历)."""
+    if not _SAFE_RE.fullmatch(job) or not _SAFE_RE.fullmatch(filename):
+        raise HTTPException(400, "Invalid job or filename")
+    fp = _FEA3D_ROOT / job / filename
+    if not fp.exists():
+        raise HTTPException(404, f"File not found: {filename}")
+    mt = "application/json"
+    if filename.endswith(".bin"):
+        mt = "application/octet-stream"
+    elif filename.endswith(".csv") or filename.endswith(".txt"):
+        mt = "text/plain; charset=utf-8"
+    return FileResponse(str(fp), media_type=mt)
+
 @app.get("/api/health")
 def api_health():
     return {"status": "ok", "tasks": len(_tasks), "spatialSessions": len(_spatial_sessions),

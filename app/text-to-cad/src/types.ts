@@ -222,3 +222,27 @@ export interface FeaHistoryEntry {
   parameters: Record<string, unknown>;
   result: FeaResult;
 }
+
+/** FEA3D — 三维应力场类型 */
+export type Fea3dField = 's_vm' | 's_r' | 's_hoop' | 's_axial' | 'sf';
+
+export interface Fea3dJobSummary {
+  job: string;
+  global: {
+    max_von_mises_mpa: number;
+    max_vm_location_r_mm?: number;
+    max_vm_location_z_mm?: number;
+    max_radial_mpa: number;
+    max_hoop_mpa: number;
+    min_safety_factor: number;
+    max_vm_zone: string;
+  };
+  zones?: Record<string, {
+    node_count: number; max_vm_mpa: number; min_sf: number;
+  }>;
+}
+
+export interface Fea3dColorCache {
+  job: string;
+  colors: Map<Fea3dField, Float32Array>;
+}

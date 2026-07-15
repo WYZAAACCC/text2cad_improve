@@ -2,8 +2,9 @@
  * 中央 3D 视图区组件
  * 支持程序化几何体(box/sphere/...)和 STL 文件加载(step 类型)
  * Three.js: 轨道控制、网格辅助、光照、线框切换
+ * 3D 应力场着色: Web Worker 空间哈希映射 + 扇区表面网格剖视图
  */
-import { useRef, useCallback, useState, useEffect, Suspense } from 'react';
+import { useRef, useCallback, useState, useEffect, Suspense, useMemo } from 'react';
 import { Canvas, useFrame, useLoader } from '@react-three/fiber';
 import {
   OrbitControls,
@@ -17,33 +18,14 @@ import {
   Box,
   Camera,
   Download,
+  Columns,
 } from 'lucide-react';
+import { jetColorRgb } from '../colormap';
+import ColorbarOverlay from './ColorbarOverlay';
 import { useStore } from '../store';
 import type { SceneModel } from '../types';
 
-/** Jet colormap: value in [vmin,vmax] → RGB */
-function jetColor(t: number): [number, number, number] {
-  t = Math.max(0, Math.min(1, t));
-  if (t < 0.125) return [0, 0, Math.round(128 + 127 * (t / 0.125))];
-  if (t < 0.375) return [0, Math.round(255 * ((t - 0.125) / 0.25)), 255];
-  if (t < 0.625) return [Math.round(255 * ((t - 0.375) / 0.25)), 255, Math.round(255 * (1 - (t - 0.375) / 0.25))];
-  if (t < 0.875) return [255, Math.round(255 * (1 - (t - 0.625) / 0.25)), 0];
-  return [Math.round(128 + 127 * (1 - (t - 0.875) / 0.125)), 0, 0];
-}
-
-/** Find nearest stress value for (r, z) using simple linear scan */
-function lookupStress(r: number, z: number, points: {r_mm:number;z_mm:number;seqv_mpa:number}[]): number {
-  let bestD = Infinity, bestV = 0;
-  for (const p of points) {
-    const dr = r - p.r_mm, dz = z - p.z_mm;
-    const d2 = dr*dr + dz*dz;
-    if (d2 < bestD) { bestD = d2; bestV = p.seqv_mpa; }
-    if (d2 < 0.01) break;
-  }
-  return bestV;
-}
-
-/** STL 文件加载渲染 + 3D 应力场着色 */
+/** STL 文件加载渲染 + Worker 驱动的 3D 应力场着色 */
 function STLGeometry({ model, isSelected, onClick }: {
   model: SceneModel;
   isSelected: boolean;
@@ -51,12 +33,15 @@ function STLGeometry({ model, isSelected, onClick }: {
 }) {
   const meshRef = useRef<THREE.Mesh>(null);
   const wireframeMode = useStore((s) => s.wireframeMode);
-  const stressField = useStore((s) => s.feaResult?.stress_field);
   const stressColoring = useStore((s) => s.stressColoring);
-
+  const fea3dJob = useStore((s) => s.fea3dJob);
+  const fea3dField = useStore((s) => s.fea3dField);
+  const colorCache = useStore((s) => s.fea3dColorCache);
+  const setFea3dRange = useStore((s) => s.setFea3dRange);
   const geometry = useLoader(STLLoader, model.stlUrl || '');
 
-  // Center the STL geometry
+  // Center the STL geometry (record offset for stress mapping)
+  const centerOffset = useRef<[number, number, number]>([0, 0, 0]);
   useEffect(() => {
     if (geometry) {
       geometry.computeBoundingBox();
@@ -66,43 +51,82 @@ function STLGeometry({ model, isSelected, onClick }: {
         const cy = -(bbox.max.y + bbox.min.y) / 2;
         const cz = -(bbox.max.z + bbox.min.z) / 2;
         geometry.translate(cx, cy, cz);
+        centerOffset.current = [-cx, -cy, -cz];  // undo offset for stress mapping
       }
     }
   }, [geometry]);
 
-  // Apply stress coloring
+  // Worker 实例 (懒初始化)
+  const workerRef = useRef<Worker | null>(null);
   useEffect(() => {
-    if (!geometry || !stressField || stressField.length === 0 || !stressColoring) {
-      // Remove vertex colors if stress coloring is off
-      if (geometry && geometry.attributes.color) {
-        geometry.deleteAttribute('color');
-      }
+    return () => { workerRef.current?.terminate(); };
+  }, []);
+
+  // 3D 应力着色 (Worker)
+  useEffect(() => {
+    if (!geometry || !fea3dJob || !stressColoring) {
+      if (geometry?.attributes.color) { geometry.deleteAttribute('color'); }
       return;
     }
     const pos = geometry.attributes.position;
-    if (!pos) return;
-    const n = pos.count;
-    // Find stress range
-    let vmin = Infinity, vmax = -Infinity;
-    for (const p of stressField) {
-      if (p.seqv_mpa < vmin) vmin = p.seqv_mpa;
-      if (p.seqv_mpa > vmax) vmax = p.seqv_mpa;
+    if (!pos || pos.count === 0) return;
+
+    // 缓存命中 → 直接应用
+    if (colorCache?.job === fea3dJob) {
+      const cached = colorCache.colors.get(fea3dField);
+      if (cached) {
+        geometry.setAttribute('color', new THREE.BufferAttribute(cached, 3));
+        geometry.attributes.color.needsUpdate = true;
+        return;
+      }
     }
-    if (!isFinite(vmin)) { vmin = 0; vmax = 1000; }
-    const colors = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) {
-      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-      const r = Math.sqrt(x*x + y*y);
-      const seqv = lookupStress(r, z, stressField);
-      const t = (seqv - vmin) / (vmax - vmin);
-      const [cr, cg, cb] = jetColor(t);
-      colors[i*3] = cr / 255;
-      colors[i*3+1] = cg / 255;
-      colors[i*3+2] = cb / 255;
-    }
-    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    geometry.attributes.color.needsUpdate = true;
-  }, [geometry, stressField, stressColoring]);
+
+    // Worker 未就绪 → 新建并 init
+    const w = new Worker(new URL('../workers/stressWorker.ts', import.meta.url), { type: 'module' });
+    workerRef.current = w;
+
+    const vminInit = 0;
+    const vmaxInit = 1200;
+
+    w.onmessage = (e: MessageEvent) => {
+      const msg = e.data;
+      if (msg.type === 'ready') {
+        // 发送顶点数据
+        const n = pos.count;
+        const arr = new Float32Array(n * 3);
+        const ox = centerOffset.current[0];
+        const oy = centerOffset.current[1];
+        const oz = centerOffset.current[2];
+        for (let i = 0; i < n; i++) {
+          arr[i * 3] = pos.getX(i) + ox;  // 还原居中前的物理坐标
+          arr[i * 3 + 1] = pos.getY(i) + oy;
+          arr[i * 3 + 2] = pos.getZ(i) + oz;
+        }
+        w.postMessage({ type: 'colorize', field: fea3dField, positions: arr }, { transfer: [arr.buffer] });
+      } else if (msg.type === 'colors') {
+        const colors = msg.colors as Float32Array;
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        geometry.attributes.color.needsUpdate = true;
+        // 更新缓存
+        const store = useStore.getState();
+        store.setFea3dColorCache(fea3dJob, fea3dField, colors);
+        setFea3dRange({ vmin: vminInit, vmax: vmaxInit });
+        w.terminate();
+      } else if (msg.type === 'error') {
+        console.error('[STLGeometry] Worker error:', msg.message);
+        w.terminate();
+        w.terminate();
+      }
+    };
+
+    // 先 fetch bin → init worker
+    fetch(`/api/fea3d/files/${fea3dJob}/stress_field_surface.bin`)
+      .then(r => r.arrayBuffer())
+      .then(buf => { w.postMessage({ type: 'init', data: buf, vmin: 0, vmax: 1200 }, { transfer: [buf] }); })
+      .catch(err => {
+        console.error('[STLGeometry] fetch bin failed:', err);
+      });
+  }, [geometry, fea3dJob, fea3dField, stressColoring, colorCache, setFea3dRange]);
 
   useFrame((state) => {
     if (meshRef.current && isSelected) {
@@ -124,8 +148,8 @@ function STLGeometry({ model, isSelected, onClick }: {
     >
       <primitive object={geometry} attach="geometry" />
       <meshStandardMaterial
-        color={stressColoring && stressField?.length ? undefined : model.color}
-        vertexColors={!!(stressColoring && stressField?.length)}
+        color={stressColoring && fea3dJob ? undefined : model.color}
+        vertexColors={!!(stressColoring && fea3dJob)}
         wireframe={wireframeMode}
         roughness={0.5}
         metalness={0.2}
@@ -137,6 +161,81 @@ function STLGeometry({ model, isSelected, onClick }: {
           <meshBasicMaterial color="#ffffff" wireframe transparent opacity={0.3} />
         </mesh>
       )}
+    </mesh>
+  );
+}
+
+/** 扇区表面网格剖视图 — 视图B, 暴露内部三维应力场 */
+function SectorStressMesh() {
+  const fea3dJob = useStore((s) => s.fea3dJob);
+  const fea3dField = useStore((s) => s.fea3dField);
+  const fea3dViewMode = useStore((s) => s.fea3dViewMode);
+  const stressColoring = useStore((s) => s.stressColoring);
+  const [surface, setSurface] = useState<{
+    positions: Float32Array; indices: Uint32Array; fields: Record<string, Float32Array>;
+  } | null>(null);
+
+  // 加载 sector_surface.json
+  useEffect(() => {
+    if (!fea3dJob) { setSurface(null); return; }
+    fetch(`/api/fea3d/files/${fea3dJob}/sector_surface.json`)
+      .then(r => r.json())
+      .then(d => {
+        setSurface({
+          positions: new Float32Array(d.positions),
+          indices: new Uint32Array(d.indices),
+          fields: Object.fromEntries(
+            Object.entries(d.fields as Record<string, number[]>).map(([k, v]) => [k, new Float32Array(v)])
+          ),
+        });
+      })
+      .catch(() => setSurface(null));
+  }, [fea3dJob]);
+
+  // 每顶点颜色 (主线程重算 — 表面节点仅 ~3k, <5ms)
+  const colors = useMemo(() => {
+    if (!surface || !stressColoring) return null;
+    const arr = surface.fields[fea3dField];
+    if (!arr) return null;
+    const ranges = { s_vm: 1200, s_r: 1000, s_hoop: 1200, s_axial: 500, sf: 3 };
+    const vmax = ranges[fea3dField] || 1000;
+    const n = arr.length;
+    const c = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const t = arr[i] / vmax;
+      const [r, g, b] = jetColorRgb(t);
+      c[i * 3] = r; c[i * 3 + 1] = g; c[i * 3 + 2] = b;
+    }
+    return c;
+  }, [surface, fea3dField, stressColoring]);
+
+  // Geometry — hook 必须在条件 return 之前无条件调用
+  const geo = useMemo(() => {
+    if (!surface) return null;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(surface.positions, 3));
+    g.setIndex(new THREE.BufferAttribute(surface.indices, 1));
+    return g;
+  }, [surface]);
+  const colorAttr = useMemo(() => {
+    if (!colors) return null;
+    return new THREE.BufferAttribute(colors, 3);
+  }, [colors]);
+
+  if (fea3dViewMode !== 'sector' || !geo || !stressColoring) return null;
+
+  return (
+    <mesh scale={1.1} rotation={[0, 0, 0]}>
+      <primitive object={geo} attach="geometry" />
+      {colorAttr && (
+        <primitive object={colorAttr} attach="attributes-color" />
+      )}
+      <meshStandardMaterial
+        vertexColors={!!colors}
+        side={THREE.DoubleSide}
+        roughness={0.6}
+        metalness={0.1}
+      />
     </mesh>
   );
 }
@@ -240,6 +339,7 @@ function SceneContent() {
           isSelected={model.id === selectedModelId}
           onClick={() => setSelectedModel(model.id)} />
       ))}
+      <SectorStressMesh />
 
       <mesh onClick={() => setSelectedModel(null)} visible={false}>
         <planeGeometry args={[100, 100]} />
@@ -252,12 +352,26 @@ function SceneContent() {
   );
 }
 
+const FEA3D_FIELDS: { key: string; label: string }[] = [
+  { key: 's_vm', label: 'Von Mises' },
+  { key: 's_hoop', label: '环向' },
+  { key: 's_r', label: '径向' },
+  { key: 's_axial', label: '轴向' },
+  { key: 'sf', label: '安全系数' },
+];
+
 function ViewportToolbar({ onReset, onScreenshot, stepUrl, stlUrl }: {
   onReset: () => void; onScreenshot: () => void;
   stepUrl?: string | null; stlUrl?: string | null;
 }) {
-  const { wireframeMode, setWireframeMode, stressColoring, setStressColoring, feaResult } = useStore();
-  const hasStress = !!(feaResult?.stress_field?.length);
+  const {
+    wireframeMode, setWireframeMode,
+    stressColoring, setStressColoring,
+    fea3dJob, setFea3dField, fea3dField,
+    fea3dViewMode, setFea3dViewMode,
+  } = useStore();
+  const [showFieldMenu, setShowFieldMenu] = useState(false);
+
   return (
     <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 bg-bg-secondary/90 backdrop-blur-sm border border-border rounded-xl px-2 py-1.5 shadow-lg">
       <button onClick={onReset} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-bg-hover text-text-secondary text-xs transition-colors" title="重置视图">
@@ -268,11 +382,41 @@ function ViewportToolbar({ onReset, onScreenshot, stepUrl, stlUrl }: {
         className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors ${wireframeMode ? 'bg-accent text-white' : 'hover:bg-bg-hover text-text-secondary'}`} title="切换线框模式">
         <Box className="w-3.5 h-3.5" />{wireframeMode ? '线框' : '材质'}
       </button>
-      {hasStress && (
-        <button onClick={() => setStressColoring(!stressColoring)}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors ${stressColoring ? 'bg-accent text-white' : 'hover:bg-bg-hover text-text-secondary'}`} title="3D应力场着色">
-          🌡️{stressColoring ? '应力开' : '应力关'}
-        </button>
+      {fea3dJob && (
+        <>
+          <button onClick={() => setStressColoring(!stressColoring)}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors ${stressColoring ? 'bg-accent text-white' : 'hover:bg-bg-hover text-text-secondary'}`}>
+              🌡️{stressColoring ? '应力开' : '应力关'}
+          </button>
+          {stressColoring && (
+            <>
+              {/* 分量选择 */}
+              <div className="relative">
+                <button onClick={() => setShowFieldMenu(!showFieldMenu)}
+                  className="px-2.5 py-1.5 rounded-lg hover:bg-bg-hover text-text-secondary text-xs transition-colors">
+                  {FEA3D_FIELDS.find(f => f.key === fea3dField)?.label || 'Von Mises'} ▾
+                </button>
+                {showFieldMenu && (
+                  <div className="absolute top-full mt-1 left-0 bg-bg-secondary border border-border rounded-lg shadow-xl z-20 min-w-[100px]"
+                       onMouseLeave={() => setShowFieldMenu(false)}>
+                    {FEA3D_FIELDS.map(f => (
+                      <button key={f.key} onClick={() => { setFea3dField(f.key as any); setShowFieldMenu(false); }}
+                        className={`block w-full text-left px-3 py-1.5 text-xs hover:bg-bg-hover transition-colors ${f.key === fea3dField ? 'text-accent' : 'text-text-secondary'}`}>
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* 视图切换 */}
+              <button onClick={() => setFea3dViewMode(fea3dViewMode === 'full' ? 'sector' : 'full')}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors ${fea3dViewMode === 'sector' ? 'bg-accent/80 text-white' : 'hover:bg-bg-hover text-text-secondary'}`}
+                title={fea3dViewMode === 'full' ? '切换剖视图' : '切换全盘视图'}>
+                <Columns className="w-3.5 h-3.5" />{fea3dViewMode === 'sector' ? '剖视' : '全盘'}
+              </button>
+            </>
+          )}
+        </>
       )}
       <div className="w-px h-4 bg-border mx-1" />
       <button onClick={onScreenshot} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-bg-hover text-text-secondary text-xs transition-colors" title="导出截图">
@@ -298,6 +442,8 @@ export default function Viewport3D() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [cameraKey, setCameraKey] = useState(0);
   const lastResult = useStore((s) => s.lastGenerationResult);
+  const stressColoring = useStore((s) => s.stressColoring);
+  const fea3dRange = useStore((s) => s.fea3dRange);
 
   const handleReset = useCallback(() => setCameraKey((prev) => prev + 1), []);
 
@@ -317,6 +463,13 @@ export default function Viewport3D() {
         onScreenshot={handleScreenshot}
         stepUrl={lastResult?.stepFileUrl}
         stlUrl={lastResult?.stlFileUrl}
+      />
+      <ColorbarOverlay
+        vmin={fea3dRange?.vmin ?? 0}
+        vmax={fea3dRange?.vmax ?? 1000}
+        unit="MPa"
+        yieldVal={950}
+        visible={stressColoring}
       />
       <Canvas key={cameraKey} ref={canvasRef} shadows
         camera={{ position: [5, 5, 5], fov: 50 }}

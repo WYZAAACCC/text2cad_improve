@@ -1,0 +1,127 @@
+/BATCH
+/FILNAME,turbine3d
+/TITLE,HP Turbine Disc 3D cyclic sector - centrifugal + radial thermal
+/PREP7
+ET,1,187                          ! SOLID187 二阶四面体
+
+! ============ GH4169 温度相关材料 ([人工确认]表) ============
+MPTEMP                            ! 清空温度表
+MPTEMP,1,20,300,500,650
+MPDATA,EX,1,1,205000,190000,178000,165000
+MPDATA,ALPX,1,1,1.18e-05,1.35e-05,1.44e-05,1.54e-05
+MP,PRXY,1,0.3
+MP,DENS,1,8.24e-09                  ! tonne/mm3 !
+TREF,20
+
+/INPUT,mesh,inp                   ! 读入 gmsh 导出的节点/单元
+
+! ============ 参数 ============
+PI=ACOS(-1)
+OMG=15000*2*PI/60                 ! rad/s
+RB=60 $ RO=249.97
+TB=500 $ TR=650 $ TEXP=1
+THL=3 $ THH=9 $ SECT=6
+
+! ============ 节点旋入柱坐标系 (此后 UX=径向 UY=切向 UZ=轴向) ============
+CSYS,1
+NROTAT,ALL
+
+! ============ 循环对称耦合: 仅选两切割面节点, CPCYC 自动配对 ============
+! CSYS,1 下 NSEL LOC,Y 的单位是"度"
+NSEL,S,LOC,Y,THL-0.01,THL+0.01
+NSEL,A,LOC,Y,THH-0.01,THH+0.01
+CPCYC,ALL,0.05,1,,SECT,,0         ! TOLER=0.05mm(网格严格周期匹配), KCN=1, DY=6$
+ALLSEL
+
+! ============ z=0 对称面 (镜像对称 → UZ=0, 同时消除轴向刚体平动) ============
+NSEL,S,LOC,Z,-1E-3,1E-3
+D,ALL,UZ,0
+ALLSEL
+
+! ============ 消除绕轴刚体转动: 孔壁近 z=0 的 1 个节点 切向UY=0 ============
+CSYS,1
+NSEL,S,LOC,X,RB-0.5,RB+0.5
+NSEL,R,LOC,Z,0,2.0
+*GET,NANCH,NODE,0,NUM,MIN
+ALLSEL
+D,NANCH,UY,0
+
+! ============ 径向分带温度场 T(r) = TB+(TR-TB)*((r-RB)/(RO-RB))**TEXP ============
+NBAND=80
+*DO,I,1,NBAND
+  R1=RB+(I-1)*(RO-RB)/NBAND
+  R2=RB+I*(RO-RB)/NBAND
+  RM=(R1+R2)/2
+  TT=TB+(TR-TB)*((RM-RB)/(RO-RB))**TEXP
+  RS1=R1 $ RS2=R2
+  *IF,I,EQ,1,THEN
+    RS1=R1-2
+  *ENDIF
+  *IF,I,EQ,NBAND,THEN
+    RS2=R2+2
+  *ENDIF
+  NSEL,S,LOC,X,RS1,RS2
+  BF,ALL,TEMP,TT
+*ENDDO
+ALLSEL
+
+! ============ 离心载荷 (绕全局Z轴, 与 CSYS 无关) ============
+OMEGA,,,OMG
+FINISH
+
+/SOLU
+ANTYPE,STATIC
+EQSLV,SPARSE
+SOLVE
+FINISH
+
+! ============ 后处理: 全三维节点应力场导出 ============
+/POST1
+SET,LAST
+RSYS,1                            ! 应力转柱坐标: SX=径向 SY=环向 SZ=轴向
+
+*GET,NMAX,NODE,0,NUM,MAX
+*DIM,NID,ARRAY,NMAX
+*VFILL,NID(1),RAMP,1,1
+*DIM,MSK,ARRAY,NMAX
+*DIM,XX,ARRAY,NMAX
+*DIM,YY,ARRAY,NMAX
+*DIM,ZZ,ARRAY,NMAX
+*DIM,SR,ARRAY,NMAX
+*DIM,SH,ARRAY,NMAX
+*DIM,SA,ARRAY,NMAX
+*DIM,SV,ARRAY,NMAX
+*DIM,SP1,ARRAY,NMAX
+*DIM,SP3,ARRAY,NMAX
+*VGET,MSK(1),NODE,1,NSEL          ! 1=选中 0=不存在 -1=未选 (Python 侧过滤)
+CSYS,0                            ! 坐标导出用笛卡尔
+*VGET,XX(1),NODE,1,LOC,X
+*VGET,YY(1),NODE,1,LOC,Y
+*VGET,ZZ(1),NODE,1,LOC,Z
+*VGET,SR(1),NODE,1,S,X            ! 径向 (RSYS,1)
+*VGET,SH(1),NODE,1,S,Y            ! 环向
+*VGET,SA(1),NODE,1,S,Z            ! 轴向
+*VGET,SV(1),NODE,1,S,EQV          ! Von Mises
+*VGET,SP1(1),NODE,1,S,1
+*VGET,SP3(1),NODE,1,S,3
+*CFOPEN,nodal_stress_3d,csv
+*VWRITE
+('nid,x,y,z,s_radial,s_hoop,s_axial,s_eqv,s1,s3,sel')
+*VWRITE,NID(1),XX(1),YY(1),ZZ(1),SR(1),SH(1),SA(1),SV(1),SP1(1),SP3(1),MSK(1)
+(F9.0,',',F12.5,',',F12.5,',',F12.5,',',F11.3,',',F11.3,',',F11.3,',',F11.3,',',F11.3,',',F11.3,',',F4.0)
+*CFCLOS
+
+! ============ 交叉核对指标 (权威指标由 Python 从 CSV 计算) ============
+NSORT,S,EQV
+*GET,VMMAX,SORT,,MAX
+NSEL,S,LOC,Z,-1E-3,1E-3
+FSUM
+*GET,FZSUM,FSUM,0,ITEM,FZ         ! 对称面轴向反力合力应≈0
+ALLSEL
+*CFOPEN,result_summary,txt
+*VWRITE,VMMAX
+('MAX_VON_MISES = ',F12.3,' MPa')
+*VWRITE,FZSUM
+('SYM_PLANE_FZ_SUM = ',E14.5,' N')
+*CFCLOS
+FINISH

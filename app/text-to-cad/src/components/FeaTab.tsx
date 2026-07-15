@@ -1,17 +1,19 @@
 /**
  * FEA Tab — RightPanel third tab for finite element analysis
  */
-import { useState } from 'react';
-import { Play, FlaskConical, Clock, RotateCw } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Play, FlaskConical, Clock, RotateCw, Box } from 'lucide-react';
 import { useStore } from '../store';
-import { executeFea, pollFeaResult } from '../api';
+import { executeFea, pollFeaResult, listFea3dJobs } from '../api';
 import StressHeatmap from './StressHeatmap';
+import type { Fea3dJobSummary } from '../types';
 
 export default function FeaTab() {
   const {
     sceneModels, selectedModelId,
     isFeaRunning, feaResult, feaHistory, feaProgress,
     stressColoring, setStressColoring,
+    fea3dJob, setFea3dJob,
     setIsFeaRunning, setFeaResult, addFeaHistory, setFeaProgress,
   } = useStore();
 
@@ -19,6 +21,10 @@ export default function FeaTab() {
   const [rpm, setRpm] = useState(5000);
   const [tempRim, setTempRim] = useState(650);
   const [tempBore, setTempBore] = useState(500);
+
+  // ---- 3D 分析作业列表 ----
+  const [fea3dJobs, setFea3dJobs] = useState<Fea3dJobSummary[]>([]);
+  useEffect(() => { listFea3dJobs().then(s => setFea3dJobs(s)).catch(() => {}); }, []);
 
   const stepModels = sceneModels.filter(m => m.type === 'step');
 
@@ -169,6 +175,46 @@ export default function FeaTab() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ---- 3D 应力分析结果 (fea3d) ---- */}
+      {fea3dJobs.length > 0 && (
+        <div className="space-y-3 bg-bg-tertiary rounded-xl p-3 border border-accent/30">
+          <div className="flex items-center gap-2">
+            <Box className="w-4 h-4 text-accent" />
+            <span className="text-xs font-medium text-accent uppercase tracking-wide">3D 应力分析结果</span>
+          </div>
+          <select
+            value={fea3dJob || ''}
+            onChange={e => { setFea3dJob(e.target.value || null); if (e.target.value) setStressColoring(true); }}
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
+          >
+            <option value="">-- 选择 3D 作业 --</option>
+            {fea3dJobs.map(j => (
+              <option key={j.job} value={j.job}>
+                {j.job}: VMmax={j.global?.max_von_mises_mpa?.toFixed(0)}MPa SF={j.global?.min_safety_factor?.toFixed(3)}
+              </option>
+            ))}
+          </select>
+          {fea3dJob && (() => {
+            const job = fea3dJobs.find(j => j.job === fea3dJob);
+            if (!job) return null;
+            return (
+              <div className="space-y-1 text-xs text-text-primary">
+                <div className="flex justify-between"><span>最大 Von Mises</span><span className="font-mono text-red-400">{job.global?.max_von_mises_mpa?.toFixed(1)} MPa</span></div>
+                <div className="flex justify-between"><span>位置</span><span>{job.global?.max_vm_zone} r={job.global?.max_vm_location_r_mm}mm</span></div>
+                <div className="flex justify-between"><span>最大环向</span><span className="font-mono">{job.global?.max_hoop_mpa?.toFixed(1)} MPa</span></div>
+                <div className="flex justify-between"><span>最小安全系数</span><span className="font-mono text-yellow-400">{job.global?.min_safety_factor?.toFixed(4)}</span></div>
+                {job.zones && Object.entries(job.zones).map(([z, zi]) => zi.node_count > 0 && (
+                  <div key={z} className="flex justify-between text-text-muted">
+                    <span>{z}</span>
+                    <span className="font-mono">VMmax={zi.max_vm_mpa?.toFixed(0)} SFmin={zi.min_sf?.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>

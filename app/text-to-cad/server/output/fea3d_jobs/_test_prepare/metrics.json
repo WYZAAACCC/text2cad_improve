@@ -1,0 +1,47 @@
+{
+  "model": "turbine_disc_3d_cyclic",
+  "sector": "6.0° x z∈[0,38.0]mm (1/120 full disc)",
+  "global": {
+    "max_von_mises_mpa": 1048.6,
+    "max_vm_node": 4,
+    "max_vm_location_r_mm": 60.0,
+    "max_vm_location_z_mm": 0.0,
+    "max_vm_zone": "bore",
+    "max_radial_mpa": 603.3,
+    "max_hoop_mpa": 1011.0,
+    "min_safety_factor": 0.9536,
+    "min_sf_node": 4,
+    "min_sf_location_r_mm": 60.0,
+    "min_sf_zone": "bore"
+  },
+  "zones": {
+    "bore": {
+      "node_count": 109,
+      "max_vm_mpa": 1048.6,
+      "min_sf": 0.9536,
+      "max_hoop_mpa": 1011.0,
+      "max_radial_mpa": 58.7
+    },
+    "hub": {
+      "node_count": 695,
+      "max_vm_mpa": 905.2,
+      "min_sf": 1.1031,
+      "max_hoop_mpa": 912.1,
+      "max_radial_mpa": 514.3
+    },
+    "web": {
+      "node_count": 863,
+      "max_vm_mpa": 569.2,
+      "min_sf": 1.7274,
+      "max_hoop_mpa": 598.5,
+      "max_radial_mpa": 603.3
+    },
+    "rim": {
+      "node_count": 24812,
+      "max_vm_mpa": 416.4,
+      "min_sf": 2.2951,
+      "max_hoop_mpa": 322.6,
+      "max_radial_mpa": 382.9
+    }
+  }
+}

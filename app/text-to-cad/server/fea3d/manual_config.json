@@ -1,0 +1,39 @@
+{
+  "step_file": "app/text-to-cad/server/output/b5a9a6f4a24d4778/output.step",
+  "geometry": {
+    "axis": "Z",
+    "n_slots": 60,
+    "sector_deg": 6.0,
+    "theta_low_deg": 3.0,
+    "r_bore_mm": 60.0,
+    "r_outer_mm": 249.97,
+    "z_half_mm": 38.0
+  },
+  "load": {
+    "rpm": 15000,
+    "t_bore_c": 500.0,
+    "t_rim_c": 650.0,
+    "t_exponent": 1.0,
+    "t_ref_c": 20.0
+  },
+  "material": {
+    "name": "GH4169 / Inconel 718 (手册典型值, 人工可改)",
+    "temps_c":  [20, 300, 500, 650],
+    "ex_mpa":   [205000, 190000, 178000, 165000],
+    "alpx_1_c": [11.8e-6, 13.5e-6, 14.4e-6, 15.4e-6],
+    "prxy": 0.30,
+    "dens_t_mm3": 8.24e-9,
+    "yield_mpa_vs_t": {"20": 1100, "300": 1050, "500": 1000, "650": 950}
+  },
+  "mesh": {
+    "size_max_mm": 8.0,
+    "size_min_mm": 1.2,
+    "curvature_pts": 12
+  },
+  "solver": {
+    "ansys_exe": "D:/ANSYS181/ANSYS Inc/v181/ansys/bin/winx64/ANSYS181.exe",
+    "np": 4,
+    "memory_mb": 3000,
+    "timeout_s": 1800
+  }
+}
