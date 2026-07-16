@@ -40,10 +40,15 @@ class TestRepairEngineOnGolden:
         assert res.outcome.final_ok
         assert res.run.report.ok
         assert res.document is not raw                # 候选是新对象
-        rec = res.outcome.records[0]
-        assert rec.accepted and rec.error is None
+        accepted = [r for r in res.outcome.records if r.accepted]
+        assert accepted, "必须有被接受的修复记录"
+        rec = accepted[0]
+        assert rec.error is None
         assert rec.triggered_by_issue_codes            # 由具体 Issue 触发
         assert rec.applied_rule_ids
+        # 未接受的前置尝试 (如 Sanitize no-op) 也必须留有记录, 不静默
+        for r in res.outcome.records:
+            assert r.accepted or r.reject_reason or r.error
 
     def test_atomic_reject_keeps_original_document(self):
         # 19ff38: 修复后 revalidate 仍失败 → 只有质量严格改善才接受

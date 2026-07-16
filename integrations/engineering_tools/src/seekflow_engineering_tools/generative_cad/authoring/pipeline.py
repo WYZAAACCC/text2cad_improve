@@ -514,9 +514,9 @@ def generate_gcad_from_user_request(
                 ))
                 break
 
-            # Apply patch
+            # Apply patch (副本上应用 — apply_repair_patch_v2 内部 deepcopy)
             try:
-                current_doc = apply_repair_patch_v2(current_doc, patch)
+                candidate_doc = apply_repair_patch_v2(current_doc, patch)
             except Exception as exc:
                 result.failures.append(AuthoringFailure(
                     code=AuthoringFailureCode.LOCAL_SCHEMA_ERROR,
@@ -524,14 +524,37 @@ def generate_gcad_from_user_request(
                 ))
                 break
 
-            # Revalidate
-            canonical, report, bundle = validate_and_canonicalize_with_bundle(current_doc)
-            if canonical and report.ok:
+            # Revalidate + 质量验收 (标准 6: LLM 补丁与确定性修复同一验收合同 —
+            # 质量向量严格改善才提交, 否则丢弃候选保留原文档, 防止补丁越修越坏)
+            from seekflow_engineering_tools.generative_cad.repair_kernel.models import (
+                QualityVector, is_strict_improvement,
+            )
+            q_before = QualityVector.from_report(report) if report else None
+            baseline_codes = {getattr(i, "code", "") for i in (report.issues if report else [])
+                              if getattr(i, "severity", "") == "error"}
+            canonical_c, report_c, bundle_c = validate_and_canonicalize_with_bundle(candidate_doc)
+            q_after = QualityVector.from_report(report_c, baseline_error_codes=baseline_codes)
+
+            if canonical_c and report_c.ok:
+                current_doc = candidate_doc
+                canonical, report, bundle = canonical_c, report_c, bundle_c
                 metrics.validation_success = True
                 metrics.canonicalize_success = True
                 result.canonical_document = canonical
                 result.validation_bundle = bundle
                 break
+            if q_before is None or is_strict_improvement(q_before, q_after):
+                # 未达 ok 但严格改善 → 提交候选, 继续下一轮
+                current_doc = candidate_doc
+                canonical, report, bundle = canonical_c, report_c, bundle_c
+            else:
+                result.failures.append(AuthoringFailure(
+                    code=AuthoringFailureCode.LOCAL_SCHEMA_ERROR,
+                    stage="repair:rejected",
+                    message=(f"patch rejected: quality not strictly improved "
+                             f"(before={q_before.key()} after={q_after.key()})"),
+                ))
+                # 候选丢弃 (原子回滚): current_doc/report 保持不变
 
             state = update_repair_state_v2(
                 state,

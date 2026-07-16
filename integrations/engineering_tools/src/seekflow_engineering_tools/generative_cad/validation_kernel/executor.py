@@ -199,7 +199,7 @@ def run_validation(
         canonical, _barrier_groups(CANONICAL_BARRIER_GROUPS), all_issues, stages_run, records,
     )
 
-    # ── Repair hints (原样移动, 含原 try/except 的 advisory 语义) ──
+    # ── Repair hints (advisory: 失败不阻断验证, 但异常记录可见 — 标准 13) ──
     repair_hints_text = ""
     error_issues = [i for i in all_issues if getattr(i, 'severity', '') == 'error']
     if error_issues:
@@ -212,8 +212,13 @@ def run_validation(
                 issues=list(all_issues), stages_run=list(stages_run),
             )
             repair_hints_text = build_repair_hints_from_validation(temp_report)
-        except Exception:
-            pass  # Non-critical — hints are advisory only
+        except Exception as exc:
+            records.append(RuleExecutionRecord(
+                rule_id="core.legacy.repair_hints",
+                stage="complete",
+                status="provider_error",
+                skip_reason=f"advisory hints generation failed: {exc}",
+            ))
 
     if not ok:
         report = ValidationReport(ok=False, stage=failed_stage, issues=all_issues, stages_run=list(stages_run))

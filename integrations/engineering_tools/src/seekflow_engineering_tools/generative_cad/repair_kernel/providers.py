@@ -12,6 +12,38 @@ from seekflow_engineering_tools.generative_cad.repair_kernel.models import (
 )
 
 
+class SanitizeRepairProvider:
+    """输入规范化修复 — 剥离控制字符/零宽字符/未配对代理对 (§9.1 normalization).
+
+    订阅 pydantic_validation_failed (LLM 输出解析失败的最常见前置原因)。
+    复用 auto_fixer._sanitize_llm_json 确定性实现 (单一来源)。
+    """
+
+    manifest = RepairProviderManifest(
+        provider_id="repair.normalization.sanitize",
+        version="1.0.0",
+        handles_issue_codes={"pydantic_validation_failed"},
+        risk="normalization",
+        deterministic=True,
+    )
+
+    def __init__(self, dialect_registry=None) -> None:
+        self.last_report = None
+
+    def propose(self, raw_doc: dict, issues: list) -> tuple[dict, list[str]]:
+        import copy
+        from seekflow_engineering_tools.generative_cad.authoring.auto_fixer import (
+            _sanitize_llm_json,
+        )
+        from seekflow_engineering_tools.generative_cad.ir.hashing import stable_hash
+
+        before = stable_hash(raw_doc)
+        candidate = _sanitize_llm_json(copy.deepcopy(raw_doc))
+        if stable_hash(candidate) == before:
+            return raw_doc, []
+        return candidate, ["sanitize_llm_json"]
+
+
 class OpVersionRepairProvider:
     """op_version 合同派生修复 — 订阅 registry 阶段的具体 issue code.
 
@@ -95,8 +127,9 @@ def provider_matches(provider, issue_codes: set[str]) -> bool:
 
 
 def default_providers(dialect_registry=None) -> list:
-    """默认 Provider 链: 细粒度优先, legacy 兜底."""
+    """默认 Provider 链: 细粒度优先 (normalization → contract), legacy 兜底."""
     return [
+        SanitizeRepairProvider(dialect_registry),
         OpVersionRepairProvider(dialect_registry),
         LegacyAutoFixProvider(dialect_registry),
     ]
