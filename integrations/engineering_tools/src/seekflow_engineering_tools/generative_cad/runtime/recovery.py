@@ -53,6 +53,8 @@ def handle_feature_failure(
         RuntimeError: If the feature is required or degradation is not allowed.
     """
     from seekflow_engineering_tools.generative_cad.runtime.handles import SolidHandle
+    from seekflow_engineering_tools.generative_cad.runtime.diagnostics import RuntimeIssue
+    from seekflow_engineering_tools.generative_cad.runtime.errors import GcadRuntimeError
 
     error_detail = str(exc) if exc else reason
     if not error_detail:
@@ -60,13 +62,26 @@ def handle_feature_failure(
 
     # ── Required feature → HARD FAIL ──
     if getattr(node, "required", True):
-        raise RuntimeError(
-            f"Required operation '{op_name}' failed on node '{node.id}': "
-            f"{error_detail}. "
-            f"This feature is structurally necessary and cannot be skipped. "
-            f"Fix the parameters or mark the node as required=False with "
-            f"degradation_policy='may_skip_with_warning' if this feature is decorative."
-        )
+        raise GcadRuntimeError(RuntimeIssue(
+            stage="operation_execution",
+            code="REQUIRED_FEATURE_FAILED",
+            message=(
+                f"Required operation '{op_name}' failed on node '{node.id}': "
+                f"{error_detail}. "
+                f"This feature is structurally necessary and cannot be skipped. "
+                f"Fix the parameters or mark the node as required=False with "
+                f"degradation_policy='may_skip_with_warning' if this feature is decorative."
+            ),
+            node_id=node.id,
+            component_id=getattr(node, "component", None),
+            dialect=getattr(node, "dialect", None),
+            operation=node.op,
+            operation_version=getattr(node, "op_version", None),
+            exception_type=type(exc).__name__ if exc else None,
+            repairability="repairable",   # §6.1: 参数因果明确
+            suggested_paths=[f"/nodes/{node.id}/params"],
+            evidence={"error_detail": error_detail, "op_name": op_name},
+        ))
 
     # ── Optional feature with skip policy → degrade gracefully ──
     if getattr(node, "degradation_policy", "fail") == "may_skip_with_warning":
@@ -101,10 +116,22 @@ def handle_feature_failure(
         return {"body": sid}
 
     # ── Fail-closed default ──
-    raise RuntimeError(
-        f"Operation '{op_name}' failed on node '{node.id}': "
-        f"{error_detail}. "
-        f"Node is marked required=False but degradation_policy is "
-        f"'{getattr(node, 'degradation_policy', 'fail')}' "
-        f"— only 'may_skip_with_warning' is allowed for graceful degradation."
-    )
+    raise GcadRuntimeError(RuntimeIssue(
+        stage="operation_execution",
+        code="DEGRADATION_POLICY_INVALID",
+        message=(
+            f"Operation '{op_name}' failed on node '{node.id}': "
+            f"{error_detail}. "
+            f"Node is marked required=False but degradation_policy is "
+            f"'{getattr(node, 'degradation_policy', 'fail')}' "
+            f"— only 'may_skip_with_warning' is allowed for graceful degradation."
+        ),
+        node_id=node.id,
+        component_id=getattr(node, "component", None),
+        dialect=getattr(node, "dialect", None),
+        operation=node.op,
+        operation_version=getattr(node, "op_version", None),
+        exception_type=type(exc).__name__ if exc else None,
+        repairability="conditionally_repairable",
+        evidence={"error_detail": error_detail, "op_name": op_name},
+    ))

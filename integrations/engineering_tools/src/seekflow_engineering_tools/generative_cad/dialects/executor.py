@@ -16,6 +16,29 @@ from seekflow_engineering_tools.generative_cad.dialects.results import (
 )
 from seekflow_engineering_tools.generative_cad.ir.canonical import CanonicalNode
 from seekflow_engineering_tools.generative_cad.runtime.context import RuntimeContext
+from seekflow_engineering_tools.generative_cad.runtime.diagnostics import RuntimeIssue
+from seekflow_engineering_tools.generative_cad.runtime.errors import GcadRuntimeError
+
+
+def _node_issue(node, *, code: str, message: str, repairability: str,
+                suggested_paths: list[str] | None = None,
+                evidence: dict | None = None,
+                exception_type: str | None = None) -> RuntimeIssue:
+    """从 CanonicalNode 构造带完整归属的 RuntimeIssue (Stage B)."""
+    return RuntimeIssue(
+        stage="operation_execution",
+        code=code,
+        message=message,
+        node_id=node.id,
+        component_id=getattr(node, "component", None),
+        dialect=node.dialect,
+        operation=node.op,
+        operation_version=node.op_version,
+        exception_type=exception_type,
+        repairability=repairability,  # type: ignore[arg-type]
+        suggested_paths=suggested_paths or [],
+        evidence=evidence or {},
+    )
 
 
 @dataclass(frozen=True)
@@ -60,11 +83,16 @@ def execute_operation(
     elif isinstance(raw_result, dict) and op_spec.handler_kind == "v1_dict":
         result = adapt_legacy_handler_result(raw_result, node)
     else:
-        raise RuntimeError(
-            f"Handler for {node.dialect}.{node.op}@{node.op_version} returned "
-            f"unsupported result type {type(raw_result).__name__} "
-            f"(handler_kind={op_spec.handler_kind})"
-        )
+        raise GcadRuntimeError(_node_issue(
+            node,
+            code="OPERATION_UNSUPPORTED_RESULT_TYPE",
+            message=(
+                f"Handler for {node.dialect}.{node.op}@{node.op_version} returned "
+                f"unsupported result type {type(raw_result).__name__} "
+                f"(handler_kind={op_spec.handler_kind})"
+            ),
+            repairability="non_repairable",   # handler 实现缺陷 (§6.3)
+        ))
 
     # Validate
     _validate_operation_result(node=node, op_spec=op_spec, result=result, ctx=ctx)
@@ -102,7 +130,12 @@ def _validate_operation_result(
 ) -> None:
     """Validate OperationResult against CanonicalNode declarations and stored handles."""
     if result.ok is not True:
-        raise RuntimeError(f"Operation {node.id} ({node.op}) returned ok=False")
+        raise GcadRuntimeError(_node_issue(
+            node,
+            code="OPERATION_RETURNED_NOT_OK",
+            message=f"Operation {node.id} ({node.op}) returned ok=False",
+            repairability="unknown",
+        ))
 
     declared_by_name = {o.name: o.type for o in node.outputs}
     result_by_name = {o.name: o for o in result.outputs}
@@ -111,30 +144,46 @@ def _validate_operation_result(
     extra = sorted(set(result_by_name) - set(declared_by_name))
 
     if missing:
-        raise RuntimeError(
-            f"Operation {node.id} ({node.op}) missing declared output(s): {missing}"
-        )
+        raise GcadRuntimeError(_node_issue(
+            node,
+            code="OPERATION_OUTPUT_CONTRACT_MISMATCH",
+            message=f"Operation {node.id} ({node.op}) missing declared output(s): {missing}",
+            repairability="non_repairable",   # registry/handler 不一致 (§6.3)
+        ))
     if extra:
-        raise RuntimeError(
-            f"Operation {node.id} ({node.op}) returned undeclared output(s): {extra}"
-        )
+        raise GcadRuntimeError(_node_issue(
+            node,
+            code="OPERATION_OUTPUT_CONTRACT_MISMATCH",
+            message=f"Operation {node.id} ({node.op}) returned undeclared output(s): {extra}",
+            repairability="non_repairable",
+        ))
 
     # Verify output types match declared types
     for output_decl in node.outputs:
         result_output = result_by_name[output_decl.name]
         if result_output.value_type != output_decl.type:
-            raise RuntimeError(
-                f"Operation {node.id}.{output_decl.name} returned type "
-                f"{result_output.value_type!r}, expected {output_decl.type!r}"
-            )
+            raise GcadRuntimeError(_node_issue(
+                node,
+                code="OPERATION_OUTPUT_CONTRACT_MISMATCH",
+                message=(
+                    f"Operation {node.id}.{output_decl.name} returned type "
+                    f"{result_output.value_type!r}, expected {output_decl.type!r}"
+                ),
+                repairability="non_repairable",
+            ))
 
         # Verify handle exists and value_type matches
         stored = ctx.object_store.get_typed(result_output.handle_id)
         if stored.value_type != output_decl.type:
-            raise RuntimeError(
-                f"Handle {result_output.handle_id!r} has type {stored.value_type!r}, "
-                f"expected {output_decl.type!r}"
-            )
+            raise GcadRuntimeError(_node_issue(
+                node,
+                code="OPERATION_OUTPUT_CONTRACT_MISMATCH",
+                message=(
+                    f"Handle {result_output.handle_id!r} has type {stored.value_type!r}, "
+                    f"expected {output_decl.type!r}"
+                ),
+                repairability="non_repairable",
+            ))
 
 
 def _validate_geometry(*, node, result, ctx) -> None:
@@ -185,19 +234,34 @@ def _validate_geometry(*, node, result, ctx) -> None:
             # ── v6.3 Phase 2: required feature health enforcement ──
             if health.status == "error":
                 if getattr(node, "required", True):
-                    raise RuntimeError(
-                        f"Required operation '{node.op}' on node '{node.id}' "
-                        f"produced unhealthy geometry (status={health.status}): "
-                        f"closed={health.closed}, volume={health.volume_mm3}, "
-                        f"bodies={health.body_count}. "
-                        f"Issues: {[i.get('code') for i in health.issues]}. "
-                        f"Mark the node as required=False with "
-                        f"degradation_policy='may_skip_with_warning' if this "
-                        f"defect is acceptable."
+                    raise GcadRuntimeError(
+                        _node_issue(
+                            node,
+                            code="REQUIRED_GEOMETRY_UNHEALTHY",
+                            message=(
+                                f"Required operation '{node.op}' on node '{node.id}' "
+                                f"produced unhealthy geometry (status={health.status}): "
+                                f"closed={health.closed}, volume={health.volume_mm3}, "
+                                f"bodies={health.body_count}. "
+                                f"Issues: {[i.get('code') for i in health.issues]}. "
+                                f"Mark the node as required=False with "
+                                f"degradation_policy='may_skip_with_warning' if this "
+                                f"defect is acceptable."
+                            ),
+                            repairability="repairable",   # 参数因果可证 (§6.1)
+                            suggested_paths=[f"/nodes/{node.id}/params"],
+                            evidence={
+                                "closed": health.closed,
+                                "volume_mm3": health.volume_mm3,
+                                "body_count": health.body_count,
+                                "issue_codes": [i.get("code") for i in health.issues],
+                            },
+                        ),
+                        geometry_health=health.model_dump(),
                     )
     except ImportError:
         pass  # OCCT bindings not available — skip geometry validation
     except RuntimeError:
-        raise  # Re-raise required enforcement errors
+        raise  # Re-raise required enforcement errors (GcadRuntimeError 亦是 RuntimeError)
     except Exception as e:
         ctx.warnings.append(f"Geometry validation skipped on '{node.id}': {e}")

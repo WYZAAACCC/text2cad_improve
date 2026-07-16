@@ -121,7 +121,7 @@ def _node_params_args(bore_dia_mm: float, n1_op_version: str = "1.0.0") -> list[
     return [n1.model_dump(), n2.model_dump()]
 
 
-def _run_pipeline(*, bore_dia_mm: float, repair_caller=None):
+def _run_pipeline(*, bore_dia_mm: float, repair_caller=None, allow_autofix: bool = True):
     from seekflow_engineering_tools.generative_cad.authoring.pipeline import (
         generate_gcad_from_user_request,
     )
@@ -134,6 +134,7 @@ def _run_pipeline(*, bore_dia_mm: float, repair_caller=None):
         feature_sequence_caller=SequenceToolCaller([_feature_sequence_args()]),
         node_params_caller=SequenceToolCaller(_node_params_args(bore_dia_mm)),
         repair_caller=repair_caller,
+        allow_autofix=allow_autofix,
     )
 
 
@@ -214,3 +215,83 @@ class TestAutofixSnapshotConsistency:
         codes = {i.code for i in report2.issues}
         assert "dialect_version_mismatch" not in codes
         assert any(c.startswith("a002") for c in codes)
+
+
+class TestAutofixSwitch:
+    """repair_loop.md §4.1: allow_autofix=False 两层一致生效."""
+
+    def test_allow_autofix_false_never_invokes_auto_fix(self, monkeypatch):
+        import seekflow_engineering_tools.generative_cad.authoring.auto_fixer as af
+
+        def _boom(*a, **k):
+            raise AssertionError("auto_fix must not be called when allow_autofix=False")
+
+        monkeypatch.setattr(af, "auto_fix", _boom)
+        result = _run_pipeline(bore_dia_mm=200.0, allow_autofix=False)
+        # 验证失败但未触发 autofix (若触发会 AssertionError 冒泡为 failure)
+        assert not result.metrics.validation_success
+        assert all("must not be called" not in f.message for f in result.failures)
+
+
+class TestRepeatedPatchStop:
+    """repair_loop.md §12: 同一 Patch hash 重复即停."""
+
+    def test_repeated_patch_hash_stops_loop(self):
+        from seekflow_engineering_tools.generative_cad.authoring.pipeline import (
+            generate_gcad_from_user_request,
+        )
+        from seekflow_engineering_tools.generative_cad.authoring.schemas import (
+            ComponentDraft,
+            FeatureSequenceDraft,
+            NodeParamsDraft,
+            NodePlanDraft,
+        )
+        # 3 节点: bore 超径 (a002) + 孔阵越界 (hole_pattern_outside_profile) —
+        # 同 stage 双错。round-1 补丁修 pcd (2 错→更少, 接受, 文档 hash 变化);
+        # round-2 返回**同一补丁** → patch hash 重复必须立即停机
+        fs = FeatureSequenceDraft(
+            components=[ComponentDraft(component_id="flange",
+                                       owner_dialect="axisymmetric")],
+            node_sequence=[
+                NodePlanDraft(node_id="n1", component_id="flange",
+                              dialect="axisymmetric", op="revolve_profile",
+                              op_version="1.0.0", phase="base_solid"),
+                NodePlanDraft(node_id="n2", component_id="flange",
+                              dialect="axisymmetric", op="cut_center_bore",
+                              op_version="1.0.0", phase="primary_cut"),
+                NodePlanDraft(node_id="n3", component_id="flange",
+                              dialect="axisymmetric", op="cut_circular_hole_pattern",
+                              op_version="1.0.0", phase="pattern_cut"),
+            ],
+        ).model_dump()
+        n3 = NodeParamsDraft(
+            node_id="n3", dialect="axisymmetric", op="cut_circular_hole_pattern",
+            op_version="1.0.0",
+            params={"count": 6, "pcd_mm": 95.0, "hole_dia_mm": 6.0},
+        ).model_dump()
+        same_patch = {
+            "target_node": "n3",
+            "target_component": None,
+            "changes": [{
+                "path": "/nodes/n3/params/pcd_mm",
+                "old_value": 95.0,
+                "new_value": 70.0,
+                "reason": "pull pattern inside profile",
+            }],
+            "reason": "same patch every round",
+            "give_up": False,
+        }
+        result = generate_gcad_from_user_request(
+            user_request="test flange bore + hole pattern",
+            llm_config=_make_llm_config(),
+            dialect_registry=_get_registry(),
+            base_package_registry=_get_base_pkg_registry(),
+            route_caller=SequenceToolCaller([_route_plan_args()]),
+            feature_sequence_caller=SequenceToolCaller([fs]),
+            node_params_caller=SequenceToolCaller(
+                _node_params_args(200.0) + [n3]),
+            repair_caller=SequenceToolCaller([same_patch, same_patch, same_patch]),
+        )
+        assert not result.metrics.validation_success
+        msgs = [f.message for f in result.failures]
+        assert any("patch hash repeated" in m.lower() for m in msgs), msgs

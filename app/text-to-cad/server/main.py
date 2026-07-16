@@ -257,7 +257,6 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
             build_level1_tool, build_level2_tool,
         )
         from seekflow_engineering_tools.generative_cad.skills.schemas import DialectSelectionPlan
-        from seekflow_engineering_tools.generative_cad.pipeline.run import run_canonical_gcad
         from seekflow_engineering_tools.generative_cad.prompt_system import PromptCompiler
 
         out_dir = OUT_ROOT / task_id
@@ -401,28 +400,42 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
         n_nodes = len(raw.get("nodes",[]))
         _update_task(task_id, status="processing", progress=55, result={"stage": f"L2: {n_nodes} nodes"})
 
-        # ---- Validate + Issue-driven Repair (validation_kernel + repair_kernel) ----
+        # ---- Validate + Repair Loop (repair_kernel orchestrator, repair_loop.md) ----
         _update_task(task_id, status="processing", progress=65, result={"stage": "Validation"})
-        from seekflow_engineering_tools.generative_cad.validation_kernel import run_validation
-        from seekflow_engineering_tools.generative_cad.repair_kernel import repair_documents
+        from seekflow_engineering_tools.generative_cad.repair_kernel import (
+            RepairLoopConfig,
+            run_generation_loop,
+        )
 
-        vrun = run_validation(raw)
-        repair_accepted = False
-        if not vrun.report.ok:
-            # Issue-driven repair: 由具体 Issue 触发, 原子应用, 质量向量严格改善才接受;
-            # 修复框架异常记录于 repair_execution.json, 不静默 (指导书 §8.6)。
-            rres = repair_documents(raw, vrun, dialect_registry=reg)
+        step_path = out_dir / "output.step"
+        meta_path = out_dir / "output.metadata.json"
+        loop_cfg = RepairLoopConfig()
+        if os.environ.get("GCAD_REPAIR_LOOP_DISABLED") == "1":
+            loop_cfg.enabled = False   # ops 杀开关: 只保留确定性修复
+        # 阶段接线 (两步提交): 当前双 caller=None — 与原内联块行为一致
+        # (validation_kernel + repair_kernel 确定性修复 + runtime, LLM repair
+        # 标记 repair_unavailable)。第二步把 caller 接为现有 DeepSeek caller。
+        loop = run_generation_loop(
+            raw, out_step=step_path, metadata_path=meta_path,
+            dialect_registry=reg, config=loop_cfg,
+            validation_repair_caller=None, runtime_repair_caller=None,
+            llm_model_config=config, audit_dir=out_dir,
+            on_stage=lambda stage, pct: _update_task(
+                task_id, status="processing", progress=pct, result={"stage": stage}),
+            user_request=text,
+        )
+        vrun = loop.vrun
+        repair_accepted = loop.outcome.autofix_accepted or bool(loop.outcome.accepted_patches)
+        if loop.repair_outcome is not None:
             (out_dir/"repair_execution.json").write_text(
-                rres.outcome.model_dump_json(indent=2), encoding="utf-8")
-            provider = getattr(rres, "provider", None)
-            if provider is not None and getattr(provider, "last_report", None) is not None:
-                (out_dir/"autofix_report.json").write_text(
-                    provider.last_report.model_dump_json(indent=2), encoding="utf-8")
-            if rres.outcome.accepted:
-                repair_accepted = True
-                (out_dir/"raw_fixed.json").write_text(
-                    json.dumps(rres.document, indent=2, ensure_ascii=False), encoding="utf-8")
-            vrun = rres.run
+                loop.repair_outcome.model_dump_json(indent=2), encoding="utf-8")
+        provider = loop.autofix_provider
+        if provider is not None and getattr(provider, "last_report", None) is not None:
+            (out_dir/"autofix_report.json").write_text(
+                provider.last_report.model_dump_json(indent=2), encoding="utf-8")
+        if repair_accepted:
+            (out_dir/"raw_fixed.json").write_text(
+                json.dumps(loop.document, indent=2, ensure_ascii=False), encoding="utf-8")
 
         canonical, report, bundle = vrun.canonical, vrun.report, vrun.bundle
         # 可观测性: 规则执行记录 + 激活的扩展 (指导书 §15.2/§17 Phase 6)
@@ -437,16 +450,8 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                          error=f"Validation: {len(errs)} errors")
             return
 
-        _update_task(task_id, status="processing", progress=75, result={"stage": "Validation OK"})
-
-        # ---- Runtime -> STEP ----
-        _update_task(task_id, status="processing", progress=85, result={"stage": "Runtime"})
-        step_path = out_dir / "output.step"
-        meta_path = out_dir / "output.metadata.json"
-        rr = run_canonical_gcad(
-            canonical=canonical, out_step=step_path, metadata_path=meta_path,
-            validation_seed=bundle.to_metadata_dict() if bundle else {},
-            require_full_validation_seed=False)
+        # ---- Runtime 已在 orchestrator 内执行 (含失败分类/审计) ----
+        rr = loop.run_result
 
         step_kb = step_path.stat().st_size//1024 if step_path.exists() else 0
         stl_path = out_dir / "output.stl"
@@ -467,6 +472,11 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
             "stlFileUrl": f"/api/files/{task_id}/output.stl" if stl_ok else None,
             "metadataUrl": f"/api/files/{task_id}/output.metadata.json",
             "autofixApplied": repair_accepted,
+            "repair": {
+                "stop_code": loop.outcome.stop_code,
+                "validation_llm_attempts": loop.outcome.validation_llm_attempts,
+                "runtime_llm_attempts": loop.outcome.runtime_llm_attempts,
+            },
             "geometryType": "step", "parameters": {"stepKb": step_kb, "stlOk": stl_ok}}
         if not rr.ok: task_result["error_detail"] = rr.error or "Runtime failed"
         _update_task(task_id, status="completed", progress=100, result=task_result)

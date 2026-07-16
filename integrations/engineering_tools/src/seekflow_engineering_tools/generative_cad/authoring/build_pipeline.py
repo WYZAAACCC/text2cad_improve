@@ -207,6 +207,7 @@ def generate_validate_build_step(
             node_params_caller=node_params_caller,
             repair_caller=repair_caller,
             max_repair_attempts=max_repair_attempts,
+            allow_autofix=allow_autofix,
         )
 
         # Save staged outputs

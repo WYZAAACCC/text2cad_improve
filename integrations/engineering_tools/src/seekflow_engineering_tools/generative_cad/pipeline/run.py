@@ -18,8 +18,69 @@ from seekflow_engineering_tools.generative_cad.ir.canonical import CanonicalGcad
 from seekflow_engineering_tools.generative_cad.pipeline.artifact import build_canonical_step_artifact
 from seekflow_engineering_tools.generative_cad.pipeline.metadata_v3 import build_generative_metadata_v3
 from seekflow_engineering_tools.generative_cad.runtime.context import RuntimeContext
+from seekflow_engineering_tools.generative_cad.runtime.diagnostics import (
+    RuntimeIssue,
+    RuntimeReport,
+)
 from seekflow_engineering_tools.generative_cad.runtime.results import GcadRunResult
 from seekflow_engineering_tools.generative_cad.validation.pipeline import validate_and_canonicalize_with_bundle
+
+
+def _build_runtime_report(
+    ctx: RuntimeContext,
+    *,
+    ok: bool,
+    failed_stage: str | None = None,
+    issues: list[RuntimeIssue] | None = None,
+    runtime_postconditions: dict | None = None,
+    geometry_postcheck: dict | None = None,
+    sanitized_traceback: list[str] | None = None,
+) -> RuntimeReport:
+    """从 ctx 收集结构化证据 (Stage B) — 失败时不再丢弃 geometry health 等."""
+    issues = issues or []
+    primary = next((i for i in issues if i.severity in ("error", "fatal")),
+                   issues[0] if issues else None)
+    return RuntimeReport(
+        ok=ok,
+        failed_stage=failed_stage,
+        issues=issues,
+        failing_node_id=primary.node_id if primary else None,
+        failing_component_id=primary.component_id if primary else None,
+        failing_operation=primary.operation if primary else None,
+        geometry_health=dict(getattr(ctx, "geometry_health_log", {}) or {}),
+        operation_metrics=list(ctx.operation_metrics),
+        degraded_features=list(ctx.degraded_features),
+        runtime_postconditions=runtime_postconditions,
+        geometry_postcheck=geometry_postcheck,
+        sanitized_traceback=sanitized_traceback or [],
+    )
+
+
+def _fail_result(
+    ctx: RuntimeContext,
+    *,
+    stage: str,
+    error: str,
+    issues: list[RuntimeIssue],
+    runtime_postconditions: dict | None = None,
+    geometry_postcheck: dict | None = None,
+    sanitized_traceback: list[str] | None = None,
+    extra_warnings: list[str] | None = None,
+) -> GcadRunResult:
+    """失败出口统一构造: error 字符串与旧行为逐字节一致 + RuntimeReport."""
+    return GcadRunResult(
+        ok=False,
+        error=error,
+        warnings=ctx.warnings + (extra_warnings or []),
+        degraded_features=ctx.degraded_features,
+        operation_metrics=ctx.operation_metrics,
+        runtime_report=_build_runtime_report(
+            ctx, ok=False, failed_stage=stage, issues=issues,
+            runtime_postconditions=runtime_postconditions,
+            geometry_postcheck=geometry_postcheck,
+            sanitized_traceback=sanitized_traceback,
+        ),
+    )
 
 
 # ── Raw entrypoints (validate + canonicalize) ──
@@ -137,19 +198,22 @@ def run_canonical_gcad(
 
         if middle_end_enabled() and not compiler_module.ok:
             if FAIL_ON_MIDDLE_END_ERROR:
-                return GcadRunResult(
-                    ok=False,
+                me_errors = [i for i in compiler_module.diagnostics
+                             if i.get("severity") == "error"]
+                return _fail_result(
+                    ctx,
+                    stage="compiler_middle_end",
                     error=(
                         "compiler middle-end failed: "
-                        + "; ".join(
-                            i["message"]
-                            for i in compiler_module.diagnostics
-                            if i.get("severity") == "error"
-                        )
+                        + "; ".join(i["message"] for i in me_errors)
                     ),
-                    warnings=ctx.warnings,
-                    degraded_features=ctx.degraded_features,
-                    operation_metrics=ctx.operation_metrics,
+                    issues=[RuntimeIssue(
+                        stage="compiler_middle_end",
+                        code=str(i.get("code") or "compiler_middle_end_error"),
+                        message=str(i.get("message", "")),
+                        node_id=i.get("node_id"),
+                        repairability="non_repairable",   # 编译器侧缺陷, 禁进 LLM (§6.3)
+                    ) for i in me_errors],
                 )
             ctx.warnings.append(
                 "compiler middle-end errors suppressed (FAIL_ON_MIDDLE_END_ERROR=False)"
@@ -250,25 +314,39 @@ def run_canonical_gcad(
             if not audit.ok:
                 errors = [i for i in audit.issues if i.severity == "error"]
                 if errors:
-                    return GcadRunResult(
-                        ok=False,
+                    return _fail_result(
+                        ctx,
+                        stage="spatial_audit",
                         error="spatial audit failed: " + "; ".join(i.message for i in errors),
-                        warnings=ctx.warnings,
-                        degraded_features=ctx.degraded_features,
-                        operation_metrics=ctx.operation_metrics,
+                        issues=[RuntimeIssue(
+                            stage="spatial_audit",
+                            code=str(getattr(i, "code", "") or "spatial_audit_failed"),
+                            message=i.message,
+                            repairability="conditionally_repairable",
+                        ) for i in errors],
                     )
         # ════════════════════════════════════════════════════════════
 
         from seekflow_engineering_tools.generative_cad.runtime.postconditions import validate_runtime_postconditions
         runtime_pc = validate_runtime_postconditions(canonical, ctx, final_handle_id)
         if not runtime_pc["ok"]:
-            return GcadRunResult(
-                ok=False,
+            return _fail_result(
+                ctx,
+                stage="runtime_postconditions",
                 error="runtime postconditions failed: "
                 + "; ".join(i["message"] for i in runtime_pc["issues"]),
-                warnings=ctx.warnings,
-                degraded_features=ctx.degraded_features,
-                operation_metrics=ctx.operation_metrics,
+                issues=[RuntimeIssue(
+                    stage=str(i.get("stage") or "runtime_postconditions"),
+                    code=str(i.get("code") or "runtime_postcondition_failed"),
+                    severity=i.get("severity", "error"),
+                    message=str(i.get("message", "")),
+                    node_id=i.get("node_id"),
+                    component_id=i.get("component_id"),
+                    expected=i.get("expected"),
+                    actual=i.get("actual"),
+                    repairability="conditionally_repairable",
+                ) for i in runtime_pc["issues"]],
+                runtime_postconditions=runtime_pc,
             )
 
         _export_final_solid(final_handle_id, ctx)
@@ -287,20 +365,38 @@ def run_canonical_gcad(
         step_postcheck = validate_step_post_export(out_step, min_size_bytes=200)
 
         if not geo_postcheck.ok:
-            return GcadRunResult(
-                ok=False,
+            gp_dict = {
+                "ok": geo_postcheck.ok,
+                "volume_mm3": geo_postcheck.volume_mm3,
+                "n_solids": geo_postcheck.n_solids,
+                "closed": geo_postcheck.closed,
+                "errors": geo_postcheck.errors,
+            }
+            return _fail_result(
+                ctx,
+                stage="geometry_postcheck",
                 error="geometry postcheck failed: " + "; ".join(geo_postcheck.errors),
-                warnings=ctx.warnings + geo_postcheck.warnings,
-                degraded_features=ctx.degraded_features,
-                operation_metrics=ctx.operation_metrics,
+                issues=[RuntimeIssue(
+                    stage="geometry_postcheck",
+                    code="final_geometry_postcheck_failed",
+                    message=msg,
+                    repairability="conditionally_repairable",
+                    evidence=gp_dict,
+                ) for msg in geo_postcheck.errors],
+                geometry_postcheck=gp_dict,
+                extra_warnings=geo_postcheck.warnings,
             )
         if not step_postcheck.ok:
-            return GcadRunResult(
-                ok=False,
+            return _fail_result(
+                ctx,
+                stage="step_postcheck",
                 error="STEP postcheck failed: " + "; ".join(step_postcheck.errors),
-                warnings=ctx.warnings,
-                degraded_features=ctx.degraded_features,
-                operation_metrics=ctx.operation_metrics,
+                issues=[RuntimeIssue(
+                    stage="step_postcheck",
+                    code="step_post_export_failed",
+                    message=msg,
+                    repairability="non_repairable",   # 导出器/文件级, 非 IR 参数 (§6.3)
+                ) for msg in step_postcheck.errors],
             )
         # ════════════════════════════════════════════════════════════
 
@@ -381,12 +477,16 @@ def run_canonical_gcad(
 
         # v0.9: artifact/metadata consistency check for direct runner path
         if artifact.get("validation") != metadata.get("validation"):
-            return GcadRunResult(
-                ok=False,
+            return _fail_result(
+                ctx,
+                stage="artifact_consistency",
                 error="runner artifact/metadata validation mismatch",
-                warnings=ctx.warnings,
-                degraded_features=ctx.degraded_features,
-                operation_metrics=ctx.operation_metrics,
+                issues=[RuntimeIssue(
+                    stage="artifact_consistency",
+                    code="artifact_metadata_validation_mismatch",
+                    message="runner artifact/metadata validation mismatch",
+                    repairability="non_repairable",   # 元数据构建器缺陷 (§6.3)
+                )],
             )
 
         return GcadRunResult(
@@ -398,18 +498,32 @@ def run_canonical_gcad(
             warnings=ctx.warnings,
             degraded_features=ctx.degraded_features,
             operation_metrics=ctx.operation_metrics,
+            runtime_report=_build_runtime_report(ctx, ok=True),
         )
 
     except Exception as exc:
         import traceback
         tb = traceback.format_exc()
         ctx.warnings.append(f"runner exception traceback:\n{tb}")
-        return GcadRunResult(
-            ok=False,
+        from seekflow_engineering_tools.generative_cad.runtime.errors import (
+            GcadRuntimeError,
+        )
+        if isinstance(exc, GcadRuntimeError):
+            issues = [exc.issue]
+        else:
+            issues = [RuntimeIssue(
+                stage="internal_exception",
+                code="unhandled_runtime_exception",
+                message=str(exc)[:500],
+                exception_type=type(exc).__name__,
+                repairability="unknown",   # 未分类 → 分类器 fail-closed
+            )]
+        return _fail_result(
+            ctx,
+            stage="component_execution",
             error=f"{exc}\n{tb[-2000:]}",
-            warnings=ctx.warnings,
-            degraded_features=ctx.degraded_features,
-            operation_metrics=ctx.operation_metrics,
+            issues=issues,
+            sanitized_traceback=tb.splitlines()[-30:],
         )
 
 

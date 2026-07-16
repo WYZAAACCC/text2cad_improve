@@ -153,6 +153,7 @@ def generate_gcad_from_user_request(
     repair_caller: LlmToolCaller | None = None,
     primitive_catalog_summary: dict | None = None,
     max_repair_attempts: int = 3,
+    allow_autofix: bool = True,
     # v6: Spatial frontend
     enable_spatial_frontend: bool = False,
     spatial_mode: str = "guided",
@@ -415,7 +416,9 @@ def generate_gcad_from_user_request(
             result.failures.append(failure)
 
     # ── Stage 7a: Deterministic autofix (before LLM repair) ──
-    if not metrics.validation_success:
+    # allow_autofix: 统一开关 (repair_loop.md §4.1) — build_pipeline 透传,
+    # False 时两层一致不做确定性修复
+    if not metrics.validation_success and allow_autofix:
         from seekflow_engineering_tools.generative_cad.authoring.auto_fixer import auto_fix
         from seekflow_engineering_tools.generative_cad.repair_kernel.models import (
             QualityVector,
@@ -527,6 +530,19 @@ def generate_gcad_from_user_request(
                 ))
                 break
 
+            # 重复补丁停机 (repair_loop.md §12): 同一 Patch hash 再次出现即停
+            from seekflow_engineering_tools.generative_cad.repair.hashes import (
+                repair_patch_hash,
+            )
+            patch_hash = repair_patch_hash(patch)
+            if patch_hash in state.repair_patch_hashes:
+                result.failures.append(AuthoringFailure(
+                    code=AuthoringFailureCode.LOCAL_SCHEMA_ERROR,
+                    stage="repair",
+                    message="Repair stopped: Repair patch hash repeated — looping",
+                ))
+                break
+
             # Apply patch (副本上应用 — apply_repair_patch_v2 内部 deepcopy)
             try:
                 candidate_doc = apply_repair_patch_v2(current_doc, patch)
@@ -580,6 +596,7 @@ def generate_gcad_from_user_request(
                 state,
                 raw_graph_hash=raw_hash,
                 error_sig_hash=error_sig,
+                patch_hash=patch_hash,
                 stage_rank=stage_rank,
             )
 

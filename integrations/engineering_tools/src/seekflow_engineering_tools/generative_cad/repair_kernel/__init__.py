@@ -25,6 +25,19 @@ from seekflow_engineering_tools.generative_cad.repair_kernel.engine import (
     RepairResult,
     repair_documents,
 )
+from seekflow_engineering_tools.generative_cad.repair_kernel.config import (
+    RepairLoopConfig,
+)
+from seekflow_engineering_tools.generative_cad.repair_kernel.classifier import (
+    RuntimeFailureClass,
+    classify_runtime_failure,
+)
+from seekflow_engineering_tools.generative_cad.repair_kernel.orchestrator import (
+    RepairLoopOutcome,
+    RepairLoopResult,
+    check_runtime_patch,
+    run_generation_loop,
+)
 
 __all__ = [
     "QualityVector", "RepairAttemptRecord", "RepairOutcome",
@@ -34,4 +47,7 @@ __all__ = [
     "DialectAliasRepairProvider",
     "default_providers", "provider_matches",
     "RepairResult", "repair_documents",
+    "RepairLoopConfig", "RuntimeFailureClass", "classify_runtime_failure",
+    "RepairLoopOutcome", "RepairLoopResult", "check_runtime_patch",
+    "run_generation_loop",
 ]

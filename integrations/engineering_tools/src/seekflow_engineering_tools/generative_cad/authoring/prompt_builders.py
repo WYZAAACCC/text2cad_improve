@@ -478,3 +478,89 @@ def _build_op_contract(node_plan, dialect_registry) -> str:
             parts.append("(params schema unavailable)")
 
     return "\n".join(parts)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Runtime repair prompts (repair_loop.md §13.2/§14, Stage D)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+RUNTIME_REPAIR_SYSTEM_PROMPT = """\
+You are a constrained G-CAD IR RUNTIME repair agent.
+
+A validated document failed during geometry execution (B-Rep construction).
+You may only output a minimal repair patch against the RAW IR.
+You must NOT regenerate the document or redesign the part.
+
+Hard rules:
+- Only modify paths listed in ALLOWED PATHS (node params of the failing node).
+- Every change must provide the exact old_value from the current document.
+- Do not change schema_version, safety, dialect, op, op_version,
+  required, degradation_policy, inputs, outputs or selected_dialects.
+- Do not modify nodes unrelated to the runtime failure.
+- Numeric changes must stay small (<= 25% relative), keep the sign,
+  and directly address the reported failure.
+- Do not weaken required features or postconditions to make the run pass.
+
+Each change must:
+1. target an ALLOWED path;
+2. use the exact current old_value;
+3. state the direct causal link to the runtime failure;
+4. describe the expected effect.
+
+Return give_up=true when:
+- the failure is not caused by an IR parameter;
+- the information is insufficient to prove causality;
+- a safe fix would require changing design intent or graph structure.
+"""
+
+
+def build_runtime_repair_user_prompt(
+    current_doc: dict,
+    runtime_issues: list[dict],
+    failing_node: dict | None,
+    op_contract: str,
+    geometry_health: dict | None = None,
+    allowed_paths: list[str] | None = None,
+    forbidden_paths: list[str] | None = None,
+    prior_attempts: list[dict] | None = None,
+    user_request: str = "",
+) -> str:
+    """Build the user prompt for the RUNTIME repair stage (§14.2 subset).
+
+    完整局部契约 + 有界全局背景 (§7.3): primary issue 全字段、失败节点
+    全 JSON、该 op 的参数 schema、geometry health、允许/禁止路径、
+    历史尝试与拒绝原因、完整 Raw IR。
+    """
+    return f"""RUNTIME FAILURE ISSUES:
+{compact_json(runtime_issues)}
+
+FAILING NODE:
+{compact_json(failing_node) if failing_node else "(node not located)"}
+
+OPERATION CONTRACT:
+{op_contract}
+
+GEOMETRY HEALTH:
+{compact_json(geometry_health or {})}
+
+ALLOWED PATHS (you may ONLY modify these):
+{compact_json(allowed_paths or [])}
+
+FORBIDDEN PATHS:
+{compact_json(forbidden_paths or [
+    "/schema_version", "/selected_dialects", "/safety",
+    "/constraints/require_step_file", "/constraints/require_metadata_sidecar",
+    "/constraints/require_closed_solid",
+])}
+
+PRIOR REPAIR ATTEMPTS (with rejection reasons):
+{compact_json(prior_attempts or [])}
+
+ORIGINAL USER REQUEST:
+{user_request}
+
+CURRENT DOCUMENT:
+{compact_json(current_doc)}
+
+Return only the strict repair patch tool arguments.
+"""
