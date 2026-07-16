@@ -1,6 +1,8 @@
 """Geometry preflight validation — lightweight geometric sanity checks before runtime.
 
 v0.3: runs at canonical level, calls dialect.preflight_component on each component.
+v0.8: 阈值迁移至 validation_kernel/policy.py (统一 Policy, 指导书 §16);
+      本模块的 DEFAULT_GEOMETRY_POLICY 保留为兼容视图, 值由 policy 生成。
 """
 
 from __future__ import annotations
@@ -8,18 +10,12 @@ from __future__ import annotations
 from seekflow_engineering_tools.generative_cad.dialects.registry import require_dialect
 from seekflow_engineering_tools.generative_cad.ir.canonical import CanonicalGcadDocument
 from seekflow_engineering_tools.generative_cad.validation.reports import ValidationIssue, ValidationReport
+from seekflow_engineering_tools.generative_cad.validation_kernel.policy import (
+    default_validation_policy,
+)
 
-DEFAULT_GEOMETRY_POLICY = {
-    "max_nodes": 64,
-    "max_boolean_ops": 256,
-    "max_profile_points": 128,
-    "min_edge_length_mm": 0.25,
-    "min_wall_thickness_mm": 1.0,
-    "min_boolean_clearance_mm": 0.2,
-    "min_hole_to_boundary_margin_mm": 1.0,
-    "max_pattern_instances": 360,
-    "max_fillet_ratio_to_local_thickness": 0.25,
-}
+# 兼容视图 — 权威定义: validation_kernel.policy.GeometryPolicy (默认值与迁移前一致)
+DEFAULT_GEOMETRY_POLICY = default_validation_policy().geometry.model_dump()
 
 
 def validate_geometry_preflight(canonical: CanonicalGcadDocument) -> ValidationReport:

@@ -1,16 +1,49 @@
 """Repair Providers — Issue-driven 修复提供者.
 
-Phase 3: LegacyAutoFixProvider 把现有 auto_fix 链包装进新框架 (指导书 §17
-Phase 3: "保留 auto_fixer.py 作为兼容入口, 但内部必须调用新 Repair Engine"
-的对偶实现 — engine 调用 legacy 链)。
-风险如实标注 mixed_legacy (旧链混杂 alias/schema/语义级修复, §1.5);
-细粒度 Provider (订阅具体 issue code) 属 Phase 4+ 按扩展逐个抽取。
+Phase 3: LegacyAutoFixProvider 把现有 auto_fix 链包装进新框架。
+Phase 5 试点: OpVersionRepairProvider — 首个细粒度 Provider, 订阅具体
+issue code, 只做合同派生级修复 (contract_derived, 指导书 §9.1)。
+细粒度 Provider 全量就位后 legacy 链退役。
 """
 from __future__ import annotations
 
 from seekflow_engineering_tools.generative_cad.repair_kernel.models import (
     RepairProviderManifest,
 )
+
+
+class OpVersionRepairProvider:
+    """op_version 合同派生修复 — 订阅 registry 阶段的具体 issue code.
+
+    只处理 "LLM 把 dialect 版本当 op 版本 / 漏填 / 带 v 前缀" 这一类
+    可从 OperationSpec 唯一确定的修复 (§9.1 合同派生), 不触碰其它字段。
+    复用 auto_fixer._fix_op_versions 的确定性实现 (单一来源)。
+    """
+
+    manifest = RepairProviderManifest(
+        provider_id="repair.contract.op_version",
+        version="1.0.0",
+        handles_issue_codes={"unknown_op", "dialect_version_mismatch"},
+        risk="contract_derived",
+        deterministic=True,
+    )
+
+    def __init__(self, dialect_registry=None) -> None:
+        self._dialect_registry = dialect_registry
+        self.last_report = None  # 与 Legacy provider 接口对齐 (无整链报告)
+
+    def propose(self, raw_doc: dict, issues: list) -> tuple[dict, list[str]]:
+        import copy
+        from seekflow_engineering_tools.generative_cad.authoring.auto_fixer import (
+            _fix_op_versions,
+        )
+        from seekflow_engineering_tools.generative_cad.ir.hashing import stable_hash
+
+        before = stable_hash(raw_doc)
+        candidate = _fix_op_versions(copy.deepcopy(raw_doc), self._dialect_registry)
+        if stable_hash(candidate) == before:
+            return raw_doc, []          # 无可修复项
+        return candidate, ["fix_op_versions"]
 
 
 class LegacyAutoFixProvider:
@@ -32,6 +65,7 @@ class LegacyAutoFixProvider:
 
     def __init__(self, dialect_registry=None) -> None:
         self._dialect_registry = dialect_registry
+        self.last_report = None
 
     def propose(self, raw_doc: dict, issues: list) -> tuple[dict, list[str]]:
         """返回 (fixed_doc, applied_rule_ids)。fixed_doc 是新对象。"""
@@ -42,3 +76,17 @@ class LegacyAutoFixProvider:
         rule_ids = [e.rule_id for e in af_report.entries]
         self.last_report = af_report  # main.py 落盘 autofix_report.json 用
         return fixed, rule_ids
+
+
+def provider_matches(provider, issue_codes: set[str]) -> bool:
+    """Provider 订阅匹配: 通配 '*' 或与当前 error issue codes 有交集."""
+    handles = provider.manifest.handles_issue_codes
+    return "*" in handles or bool(handles & issue_codes)
+
+
+def default_providers(dialect_registry=None) -> list:
+    """默认 Provider 链: 细粒度优先, legacy 兜底."""
+    return [
+        OpVersionRepairProvider(dialect_registry),
+        LegacyAutoFixProvider(dialect_registry),
+    ]

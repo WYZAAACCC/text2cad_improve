@@ -14,6 +14,9 @@ from seekflow_engineering_tools.generative_cad.repair_kernel.models import (
 )
 from seekflow_engineering_tools.generative_cad.repair_kernel.providers import (
     LegacyAutoFixProvider,
+    OpVersionRepairProvider,
+    default_providers,
+    provider_matches,
 )
 from seekflow_engineering_tools.generative_cad.repair_kernel.engine import (
     RepairResult,
@@ -23,5 +26,7 @@ from seekflow_engineering_tools.generative_cad.repair_kernel.engine import (
 __all__ = [
     "QualityVector", "RepairAttemptRecord", "RepairOutcome",
     "RepairProviderManifest", "RepairRisk", "is_strict_improvement",
-    "LegacyAutoFixProvider", "RepairResult", "repair_documents",
+    "LegacyAutoFixProvider", "OpVersionRepairProvider",
+    "default_providers", "provider_matches",
+    "RepairResult", "repair_documents",
 ]
