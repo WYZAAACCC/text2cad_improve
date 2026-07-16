@@ -129,14 +129,16 @@ class SchemaDefaultRepairProvider:
 class DialectAliasRepairProvider:
     """方言/op 名别名规范化 (axisymmetric_base→axisymmetric, dialect.op→op).
 
-    订阅 registry 阶段的 unknown_dialect/unknown_node_dialect/unknown_op。
+    订阅 registry 阶段的 unknown_dialect/unknown_node_dialect/unknown_op/
+    dialect_version_mismatch (_fix_dialect_names 同时修 selected_dialects[].version)。
     §9.1 normalization: 声明式别名替换, 不猜测未知值。
     """
 
     manifest = RepairProviderManifest(
         provider_id="repair.normalization.dialect_alias",
         version="1.0.0",
-        handles_issue_codes={"unknown_dialect", "unknown_node_dialect", "unknown_op"},
+        handles_issue_codes={"unknown_dialect", "unknown_node_dialect", "unknown_op",
+                             "dialect_version_mismatch"},
         risk="normalization",
         deterministic=True,
     )

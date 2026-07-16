@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from seekflow_engineering_tools.generative_cad.repair_kernel import (
+    DialectAliasRepairProvider,
     OpVersionRepairProvider,
     provider_matches,
     repair_documents,
@@ -76,6 +77,30 @@ class TestOpVersionProvider:
         data = json.loads((FIXTURES_GC / "axisymmetric_minimal.json").read_text(encoding="utf-8"))
         fixed, rule_ids = p.propose(data, [])
         assert rule_ids == []
+
+
+class TestDialectAliasProvider:
+    def test_subscribes_dialect_version_mismatch(self):
+        """_fix_dialect_names 同时修 selected_dialects[].version —
+        订阅 dialect_version_mismatch, 不再落到 legacy 兜底."""
+        p = DialectAliasRepairProvider()
+        assert provider_matches(p, {"dialect_version_mismatch"})
+        assert provider_matches(p, {"unknown_dialect"})
+        assert not provider_matches(p, {"pydantic_validation_failed"})
+
+    def test_repairs_dialect_version_mismatch(self):
+        """dialect 版本填错 → DialectAlias Provider (非 legacy) 修复."""
+        data = json.loads((FIXTURES_GC / "axisymmetric_minimal.json").read_text(encoding="utf-8"))
+        data = copy.deepcopy(data)
+        data["selected_dialects"][0]["version"] = "9.9.9"
+        vrun = run_validation(data)
+        assert not vrun.report.ok
+        assert "dialect_version_mismatch" in {i.code for i in vrun.report.issues}
+
+        res = repair_documents(data, vrun)
+        assert res.outcome.final_ok
+        accepted = [r for r in res.outcome.records if r.accepted]
+        assert accepted[0].provider_id == "repair.normalization.dialect_alias"
 
 
 class TestPolicyGating:

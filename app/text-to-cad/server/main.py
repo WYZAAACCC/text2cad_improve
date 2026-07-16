@@ -725,7 +725,7 @@ def api_fea_execute(req: FeaExecuteBody):
     from server.fea_pipeline import execute_fea_template
     threading.Thread(target=execute_fea_template, args=(
         req.template_name, req.parameters, req.jobname, _fea_tasks, task_id,
-    ), daemon=True).start()
+    ), kwargs={"lock": _fea_lock}, daemon=True).start()
     return {"task_id": task_id}
 
 @app.get("/api/fea/result/{task_id}")
@@ -738,6 +738,7 @@ def api_fea_result(task_id: str):
 
 @app.get("/api/fea/regions/{model_id}")
 def api_fea_regions(model_id: str):
+    from server.fea_pipeline import compute_disc_regions
     # Load the metadata for the most recent generation with this model
     # For now, find the latest output directory with metadata
     candidates = sorted(OUT_ROOT.glob("*/output.metadata.json"), key=lambda p: p.stat().st_mtime, reverse=True)
@@ -749,7 +750,6 @@ def api_fea_regions(model_id: str):
         except Exception:
             continue
     # Fallback: return default regions
-    from server.fea_pipeline import compute_disc_regions
     return {"model_id": model_id, "regions": compute_disc_regions({})}
 
 # ============================================================

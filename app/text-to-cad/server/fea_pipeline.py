@@ -42,6 +42,7 @@ def execute_fea_template(
     jobname: str,
     task_store: dict,
     task_id: str,
+    lock: threading.Lock | None = None,
     ansys_exe: Path | None = None,
     workspace_root: Path | None = None,
     default_timeout_s: int = 600,
@@ -49,11 +50,17 @@ def execute_fea_template(
     """Run an ANSYS APDL template in a background thread.
 
     Updates *task_store[task_id]* as the job progresses.
+    When *lock* is provided, all writes to *task_store* are guarded.
     """
-    task_store[task_id] = {
-        "task_id": task_id, "status": "processing", "progress": 10,
-        "result": None, "error": None,
-    }
+    def _update(updates: dict) -> None:
+        if lock:
+            with lock:
+                task_store[task_id].update(updates)
+        else:
+            task_store[task_id].update(updates)
+
+    _update({"task_id": task_id, "status": "processing", "progress": 10,
+             "result": None, "error": None})
 
     try:
         from seekflow_engineering_tools.ansys.template_registry import (
@@ -68,7 +75,7 @@ def execute_fea_template(
         # ── Validate parameters ──
         schema = ANSYS_TEMPLATE_SCHEMAS.get(template_name)
         if schema is None:
-            task_store[task_id].update({
+            _update({
                 "status": "failed", "progress": 0,
                 "error": f"Unknown template: {template_name}. Available: {list(ANSYS_TEMPLATE_SCHEMAS.keys())}",
             })
@@ -77,19 +84,28 @@ def execute_fea_template(
         try:
             validated = validate_template_parameters(template_name, parameters)
         except (ValueError, KeyError, TypeError) as exc:
-            task_store[task_id].update({
+            _update({
                 "status": "failed", "progress": 0,
                 "error": f"Parameter validation failed: {exc}",
             })
             return
 
-        task_store[task_id].update({"progress": 30})
+        _update({"progress": 30})
+
+        # ── Enrich with geometry estimated from latest CAD metadata ──
+        if template_name == "turbine_disc_rotational_thermal":
+            geo_params = _estimate_disc_geometry_from_metadata()
+            if geo_params:
+                # Only fill in geometry params that the user didn't explicitly set
+                for k, v in geo_params.items():
+                    if k not in parameters:
+                        validated[k] = v
 
         # ── Generate APDL ──
         try:
             apdl_text = render_template(template_name, **validated)
         except Exception as exc:
-            task_store[task_id].update({
+            _update({
                 "status": "failed", "progress": 0,
                 "error": f"APDL generation failed: {exc}",
             })
@@ -105,7 +121,7 @@ def execute_fea_template(
         inp_path = job_dir / f"{safe_jobname}.inp"
         inp_path.write_text(apdl_text, encoding="utf-8")
 
-        task_store[task_id].update({"progress": 50})
+        _update({"progress": 50})
 
         # ── Resolve ANSYS executable ──
         if ansys_exe is None:
@@ -125,14 +141,14 @@ def execute_fea_template(
                         break
 
         if ansys_exe is None or not ansys_exe.exists():
-            task_store[task_id].update({
+            _update({
                 "status": "failed", "progress": 0,
                 "error": "ANSYS executable not found. Set ANSYS181_EXE env var.",
             })
             return
 
         # ── Run ANSYS ──
-        task_store[task_id].update({"progress": 60})
+        _update({"progress": 60})
         runner = AnsysAPDLRunner(
             ansys_exe=ansys_exe,
             workspace_root=workspace_root,
@@ -145,7 +161,7 @@ def execute_fea_template(
             timeout_s=default_timeout_s,
         )
 
-        task_store[task_id].update({"progress": 85})
+        _update({"progress": 85})
 
         # ── Parse results ──
         warnings_list: list[str] = []
@@ -186,7 +202,7 @@ def execute_fea_template(
                         error_msg = f"ANSYS error: {line.strip()}"
                         break
 
-            task_store[task_id].update({
+            _update({
                 "status": "completed", "progress": 100,
                 "result": {
                     "task_id": task_id,
@@ -203,7 +219,7 @@ def execute_fea_template(
             })
             return
 
-        task_store[task_id].update({
+        _update({
             "status": "completed", "progress": 100,
             "result": {
                 "task_id": task_id,
@@ -223,10 +239,57 @@ def execute_fea_template(
 
     except Exception as exc:
         tb = traceback.format_exc()
-        task_store[task_id].update({
+        _update({
             "status": "failed", "progress": 0,
             "error": f"{exc}\n{tb[-2000:]}",
         })
+
+
+# ── Geometry estimation from CAD metadata ──────────────────────────────────
+
+def _estimate_disc_geometry_from_metadata(out_root: Path | None = None) -> dict:
+    """Estimate turbine disc geometry parameters from latest CAD metadata.
+
+    Reads bbox from the newest output.metadata.json and derives
+    approximate bore/hub/web/rim dimensions using standard ratios.
+    Returns an empty dict when no metadata is available (template
+    defaults apply).
+    """
+    import json as _json
+
+    if out_root is None:
+        out_root = Path(__file__).resolve().parent / "output"
+
+    if not out_root.exists():
+        return {}
+
+    candidates = sorted(
+        out_root.glob("*/output.metadata.json"),
+        key=lambda p: p.stat().st_mtime, reverse=True,
+    )
+    for meta_path in candidates:
+        try:
+            meta = _json.loads(meta_path.read_text(encoding="utf-8"))
+            gp = meta.get("validation", {}).get("geometry_postcheck", {})
+            bbox = gp.get("bbox_mm")
+            if bbox and len(bbox) >= 3 and all(d > 0 for d in bbox):
+                rim_r = bbox[0] / 2.0
+                thickness = bbox[2]
+                half_z = thickness / 2.0
+                return {
+                    "bore_r_mm": round(rim_r * 0.24, 1),
+                    "hub_r_mm": round(rim_r * 0.48, 1),
+                    "web_r1_mm": round(rim_r * 0.48, 1),
+                    "web_r2_mm": round(rim_r * 0.86, 1),
+                    "rim_r_mm": round(rim_r, 1),
+                    "hub_half_z_mm": round(half_z, 1),
+                    "web_half_z1_mm": round(half_z * 0.58, 1),
+                    "web_half_z2_mm": round(half_z * 0.39, 1),
+                    "rim_half_z_mm": round(half_z * 0.79, 1),
+                }
+        except Exception:
+            continue
+    return {}
 
 
 # ── Region definitions ──────────────────────────────────────────────────────

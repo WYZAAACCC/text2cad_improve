@@ -27,38 +27,58 @@ class RepairProviderManifest(BaseModel):
     deterministic: bool = True
 
 
+#: ok 报告的 blocked_stage_rank 哨兵 — 恒大于任何真实 stage rank
+OK_STAGE_SENTINEL = 10**6
+
+
 class QualityVector(BaseModel):
-    """验证质量向量 (§8.5) — 字典序比较, 不再用 stage rank 判进步.
+    """验证质量向量 (§8.5) — 字典序比较.
 
     new_issue_count: 相对基线**新引入**的 error issue code 数 — 防止
     "修好 2 个旧错、引入 1 个新错" 因计数下降被接受 (审查 M4)。
+    blocked_stage_rank: 首个失败 stage 的 governor rank
+    (report.stage, barrier 分组下即最早失败点; 单一 rank 来源
+    validation_kernel.stages.governor_stage_rank)。ok 时取大哨兵值。
     """
     error_count: int = 0
     warning_count: int = 0
     new_issue_count: int = 0
+    blocked_stage_rank: int = 0
     ok: bool = False
 
     @classmethod
     def from_report(cls, report, baseline_error_codes: set[str] | None = None) -> "QualityVector":
+        from seekflow_engineering_tools.generative_cad.validation_kernel.stages import (
+            governor_stage_rank,
+        )
+
         errors = [i for i in report.issues if getattr(i, "severity", "") == "error"]
         warnings = sum(1 for i in report.issues if getattr(i, "severity", "") == "warning")
         new_count = 0
         if baseline_error_codes is not None:
             new_count = sum(1 for i in errors
                             if getattr(i, "code", "") not in baseline_error_codes)
+        if report.ok:
+            blocked = OK_STAGE_SENTINEL
+        else:
+            blocked = governor_stage_rank(getattr(report, "stage", "") or "")
         return cls(error_count=len(errors), warning_count=warnings,
-                   new_issue_count=new_count, ok=report.ok)
+                   new_issue_count=new_count,
+                   blocked_stage_rank=blocked, ok=report.ok)
 
     def key(self) -> tuple:
-        # 字典序: ok > error 净数 > 新引入错误数 > warning。
-        # 取舍 (显式记录): error_count 优先于 new_issue_count = "净进步"策略 —
-        # 修好 2 个旧错、引入 1 个新错 (3→2) 会被接受, 弱于指导书 §8.5 的
-        # "不新增任何 Core Error" 严格条件; 换来的是可接受渐进修复,
-        # 新错由级联/下一轮继续处理, 最终仍受 main 链 "有 error 即失败" 把关。
-        # 已知局限: error 数持平的"推进型"修复 (parse 层修好 → 暴露同数深层错)
-        # 因 new_issue_count 会被单步拒绝, 当前靠 legacy 兜底链覆盖;
-        # legacy 退役前需引入 unresolved/stage 感知维度。
-        return (0 if self.ok else 1, self.error_count,
+        # 字典序: ok > 失败点深度 > error 净数 > 新引入错误数 > warning。
+        # -blocked_stage_rank 置于 error_count 之前 (指导书 §11.2 优先级 2):
+        # "推进型修复" (parse 层修好 → 暴露更深 stage 的错误, 即使数量增加)
+        # 视为严格改善 — 深层暴露的错误属预期, 由级联/下一轮继续处理,
+        # 最终仍受 main 链 "有 error 即失败" 把关。
+        # 同 stage 内沿用原语义: error_count 优先于 new_issue_count =
+        # "净进步"策略 — 修好 2 个旧错、引入 1 个新错 (3→2) 会被接受,
+        # 弱于指导书 §8.5 的 "不新增任何 Core Error" 严格条件;
+        # 换来的是可接受渐进修复 (取舍显式记录)。
+        # 未知 stage → rank 0 = 最少进步, fail-closed。
+        return (0 if self.ok else 1,
+                -self.blocked_stage_rank, self.error_count,
                 self.new_issue_count, self.warning_count)
 
 

@@ -8,6 +8,9 @@ from seekflow_engineering_tools.generative_cad.repair_kernel import (
     is_strict_improvement,
     repair_documents,
 )
+from seekflow_engineering_tools.generative_cad.repair_kernel.models import (
+    OK_STAGE_SENTINEL,
+)
 from seekflow_engineering_tools.generative_cad.validation_kernel import run_validation
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -24,6 +27,27 @@ class TestQualityVector:
         assert is_strict_improvement(e1w, e1)
         assert not is_strict_improvement(e1, e1)      # 无变化 ≠ 改善
         assert not is_strict_improvement(e1, e2)      # 恶化
+
+    def test_stage_progression_accepted(self):
+        # 推进型修复 (§11.2 优先级 2): 失败点推进到更深 stage,
+        # 即使 error 数增加也视为严格改善 (深层新暴露错误属预期)
+        parse_blocked = QualityVector(ok=False, error_count=1, blocked_stage_rank=10)
+        deeper = QualityVector(ok=False, error_count=3, new_issue_count=3,
+                               blocked_stage_rank=90)
+        assert is_strict_improvement(parse_blocked, deeper)
+        assert not is_strict_improvement(deeper, parse_blocked)  # stage 回退 = 恶化
+
+    def test_same_stage_keeps_net_progress_semantics(self):
+        # 同 stage 内沿用原"净进步"语义: error 净数 > 新引入 > warning
+        a = QualityVector(ok=False, error_count=2, blocked_stage_rank=30)
+        b = QualityVector(ok=False, error_count=1, blocked_stage_rank=30,
+                          new_issue_count=1)
+        assert is_strict_improvement(a, b)
+
+    def test_ok_dominates_any_stage(self):
+        deep = QualityVector(ok=False, error_count=1, blocked_stage_rank=130)
+        done = QualityVector(ok=True, blocked_stage_rank=OK_STAGE_SENTINEL)
+        assert is_strict_improvement(deep, done)
 
 
 class TestRepairEngineOnGolden:
@@ -51,18 +75,23 @@ class TestRepairEngineOnGolden:
             assert r.accepted or r.reject_reason or r.error
 
     def test_atomic_reject_keeps_original_document(self):
-        # 19ff38: 修复后 revalidate 仍失败 → 只有质量严格改善才接受
+        # 19ff38: 修复后 revalidate 仍失败 → 接受的每一步都必须质量严格改善;
+        # 无任何接受时文档与验证结果保持原始 (原子回滚)。
+        # (stage 感知维度后, schema_defaults 的"推进型修复" structure→registry
+        # 会被接受 — error 数 1→2 但失败点推进, 属预期语义。)
         raw, vrun, res = self._run("19ff38e58d3f48ee")
         assert not res.outcome.final_ok
-        rec = res.outcome.records[0]
-        if not rec.accepted:
-            # 拒绝 → 原子回滚: 文档与验证结果保持原始
+        accepted = [r for r in res.outcome.records if r.accepted]
+        if not accepted:
+            # 全部拒绝 → 原子回滚: 文档与验证结果保持原始
             assert res.document is raw
             assert res.run is vrun
-            assert rec.reject_reason
+            assert all(r.reject_reason or r.error for r in res.outcome.records)
         else:
-            # 接受 → 质量必须严格改善
-            assert rec.quality_after.key() < rec.quality_before.key()
+            for rec in accepted:
+                # 接受 → 质量必须严格改善 (含 stage 推进语义)
+                assert rec.quality_after.key() < rec.quality_before.key()
+            assert res.document is not raw
 
     def test_no_repair_when_validation_ok(self):
         raw = json.loads((FIXTURES / "79d7fc889a7e4d27" / "llm_raw.json").read_text(encoding="utf-8"))

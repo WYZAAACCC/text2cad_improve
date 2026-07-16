@@ -417,16 +417,29 @@ def generate_gcad_from_user_request(
     # ── Stage 7a: Deterministic autofix (before LLM repair) ──
     if not metrics.validation_success:
         from seekflow_engineering_tools.generative_cad.authoring.auto_fixer import auto_fix
+        from seekflow_engineering_tools.generative_cad.repair_kernel.models import (
+            QualityVector,
+            is_strict_improvement,
+        )
         try:
             fixed_doc = auto_fix(assembly.raw_document, dialect_registry)
-            canonical, report, bundle = validate_and_canonicalize_with_bundle(fixed_doc)
-            if canonical and report.ok:
-                metrics.validation_success = True
-                metrics.canonicalize_success = True
-                result.canonical_document = canonical
-                result.validation_bundle = bundle
-                # Update assembly raw_document to the fixed version
+            canonical_f, report_f, bundle_f = validate_and_canonicalize_with_bundle(fixed_doc)
+            # 状态一致性 (repair_loop.md §1.1): 文档与诊断必须同快照提交/丢弃。
+            # ok 或质量严格改善 → 同时提交 fixed_doc + 其诊断; 否则两者一起丢弃,
+            # 保留原始 document/report 配对, 避免 LLM repair 看到错位诊断。
+            q_orig = QualityVector.from_report(report) if report else None
+            q_fixed = QualityVector.from_report(report_f) if report_f else None
+            fixed_ok = bool(canonical_f and report_f and report_f.ok)
+            improved = (q_orig is not None and q_fixed is not None
+                        and is_strict_improvement(q_orig, q_fixed))
+            if fixed_ok or improved:
+                canonical, report, bundle = canonical_f, report_f, bundle_f
                 assembly.raw_document = fixed_doc
+                if fixed_ok:
+                    metrics.validation_success = True
+                    metrics.canonicalize_success = True
+                    result.canonical_document = canonical
+                    result.validation_bundle = bundle
         except Exception:
             pass  # autofix failed, fall through to LLM repair
     # ── Stage 7b: LLM Repair loop ──
@@ -537,22 +550,29 @@ def generate_gcad_from_user_request(
 
             if canonical_c and report_c.ok:
                 current_doc = candidate_doc
+                # 状态回写 (repair_loop.md §1.2): 修复后的 Raw 文档必须成为唯一
+                # current_raw_document — 否则 build_pipeline 等上层从
+                # raw_assembly.raw_document 取回的仍是修复前文档, 修复被静默丢弃。
+                assembly.raw_document = current_doc
                 canonical, report, bundle = canonical_c, report_c, bundle_c
                 metrics.validation_success = True
                 metrics.canonicalize_success = True
                 result.canonical_document = canonical
                 result.validation_bundle = bundle
                 break
-            if q_before is None or is_strict_improvement(q_before, q_after):
+            if q_before is not None and is_strict_improvement(q_before, q_after):
                 # 未达 ok 但严格改善 → 提交候选, 继续下一轮
                 current_doc = candidate_doc
+                assembly.raw_document = current_doc
                 canonical, report, bundle = canonical_c, report_c, bundle_c
             else:
+                # q_before 缺失时同样拒绝 (fail-closed): 无基线无法证明改善
+                before_key = q_before.key() if q_before is not None else "<no baseline>"
                 result.failures.append(AuthoringFailure(
                     code=AuthoringFailureCode.LOCAL_SCHEMA_ERROR,
                     stage="repair:rejected",
                     message=(f"patch rejected: quality not strictly improved "
-                             f"(before={q_before.key()} after={q_after.key()})"),
+                             f"(before={before_key} after={q_after.key()})"),
                 ))
                 # 候选丢弃 (原子回滚): current_doc/report 保持不变
 
