@@ -412,13 +412,13 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
         loop_cfg = RepairLoopConfig()
         if os.environ.get("GCAD_REPAIR_LOOP_DISABLED") == "1":
             loop_cfg.enabled = False   # ops 杀开关: 只保留确定性修复
-        # 阶段接线 (两步提交): 当前双 caller=None — 与原内联块行为一致
-        # (validation_kernel + repair_kernel 确定性修复 + runtime, LLM repair
-        # 标记 repair_unavailable)。第二步把 caller 接为现有 DeepSeek caller。
+        # 双 Repair Loop 接通 (repair_loop.md §13): validation/runtime repair
+        # 共用现有 DeepSeek strict caller; RepairPatchV2 服务端策略把关
+        # (params-only + 数值预算 + old_value 锚定), fail-closed。
         loop = run_generation_loop(
             raw, out_step=step_path, metadata_path=meta_path,
             dialect_registry=reg, config=loop_cfg,
-            validation_repair_caller=None, runtime_repair_caller=None,
+            validation_repair_caller=caller, runtime_repair_caller=caller,
             llm_model_config=config, audit_dir=out_dir,
             on_stage=lambda stage, pct: _update_task(
                 task_id, status="processing", progress=pct, result={"stage": stage}),
