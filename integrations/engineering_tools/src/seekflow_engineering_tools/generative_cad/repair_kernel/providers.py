@@ -80,6 +80,83 @@ class OpVersionRepairProvider:
         return candidate, ["fix_op_versions"]
 
 
+def _chain_provider_propose(raw_doc: dict, fixes: list) -> tuple[dict, list[str]]:
+    """在深拷贝上按序应用一组独立 fix 函数, 返回 (候选, 实际生效的 fix 名)."""
+    import copy
+    from seekflow_engineering_tools.generative_cad.ir.hashing import stable_hash
+
+    doc = copy.deepcopy(raw_doc)
+    applied: list[str] = []
+    for name, fn in fixes:
+        before = stable_hash(doc)
+        doc = fn(doc)
+        if stable_hash(doc) != before:
+            applied.append(name)
+    if not applied:
+        return raw_doc, []
+    return doc, applied
+
+
+class SchemaDefaultRepairProvider:
+    """Schema 默认值修复 — constraints/safety 旗标与 null hints 的合同派生填充.
+
+    订阅 pydantic_validation_failed (缺失 constraints/safety 是 parse 失败主因)。
+    §9.1 合同派生: 值由 schema 唯一确定, 不含设计语义。
+    """
+
+    manifest = RepairProviderManifest(
+        provider_id="repair.contract.schema_defaults",
+        version="1.0.0",
+        handles_issue_codes={"pydantic_validation_failed"},
+        risk="contract_derived",
+        deterministic=True,
+    )
+
+    def __init__(self, dialect_registry=None) -> None:
+        self.last_report = None
+
+    def propose(self, raw_doc: dict, issues: list) -> tuple[dict, list[str]]:
+        from seekflow_engineering_tools.generative_cad.authoring.auto_fixer import (
+            _fix_constraints,
+            _fix_null_hints,
+        )
+        return _chain_provider_propose(raw_doc, [
+            ("fix_constraints", _fix_constraints),
+            ("fix_null_hints", _fix_null_hints),
+        ])
+
+
+class DialectAliasRepairProvider:
+    """方言/op 名别名规范化 (axisymmetric_base→axisymmetric, dialect.op→op).
+
+    订阅 registry 阶段的 unknown_dialect/unknown_node_dialect/unknown_op。
+    §9.1 normalization: 声明式别名替换, 不猜测未知值。
+    """
+
+    manifest = RepairProviderManifest(
+        provider_id="repair.normalization.dialect_alias",
+        version="1.0.0",
+        handles_issue_codes={"unknown_dialect", "unknown_node_dialect", "unknown_op"},
+        risk="normalization",
+        deterministic=True,
+    )
+
+    def __init__(self, dialect_registry=None) -> None:
+        self._dialect_registry = dialect_registry
+        self.last_report = None
+
+    def propose(self, raw_doc: dict, issues: list) -> tuple[dict, list[str]]:
+        from seekflow_engineering_tools.generative_cad.authoring.auto_fixer import (
+            _fix_dialect_names,
+            _fix_qualified_op_names,
+        )
+        reg = self._dialect_registry
+        return _chain_provider_propose(raw_doc, [
+            ("fix_dialect_names", lambda d: _fix_dialect_names(d, reg)),
+            ("fix_qualified_op_names", _fix_qualified_op_names),
+        ])
+
+
 class LegacyAutoFixProvider:
     """包装 authoring.auto_fixer.auto_fix_with_report 全链.
 
@@ -130,6 +207,8 @@ def default_providers(dialect_registry=None) -> list:
     """默认 Provider 链: 细粒度优先 (normalization → contract), legacy 兜底."""
     return [
         SanitizeRepairProvider(dialect_registry),
+        SchemaDefaultRepairProvider(dialect_registry),
+        DialectAliasRepairProvider(dialect_registry),
         OpVersionRepairProvider(dialect_registry),
         LegacyAutoFixProvider(dialect_registry),
     ]

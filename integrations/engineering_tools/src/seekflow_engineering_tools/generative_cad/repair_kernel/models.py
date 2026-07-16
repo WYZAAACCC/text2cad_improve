@@ -50,9 +50,16 @@ class QualityVector(BaseModel):
                    new_issue_count=new_count, ok=report.ok)
 
     def key(self) -> tuple:
-        # ok 优先; 其次不引入新错误; 再次 error 少; 最后 warning 少
-        return (0 if self.ok else 1, self.new_issue_count,
-                self.error_count, self.warning_count)
+        # 字典序: ok > error 净数 > 新引入错误数 > warning。
+        # 取舍 (显式记录): error_count 优先于 new_issue_count = "净进步"策略 —
+        # 修好 2 个旧错、引入 1 个新错 (3→2) 会被接受, 弱于指导书 §8.5 的
+        # "不新增任何 Core Error" 严格条件; 换来的是可接受渐进修复,
+        # 新错由级联/下一轮继续处理, 最终仍受 main 链 "有 error 即失败" 把关。
+        # 已知局限: error 数持平的"推进型"修复 (parse 层修好 → 暴露同数深层错)
+        # 因 new_issue_count 会被单步拒绝, 当前靠 legacy 兜底链覆盖;
+        # legacy 退役前需引入 unresolved/stage 感知维度。
+        return (0 if self.ok else 1, self.error_count,
+                self.new_issue_count, self.warning_count)
 
 
 def is_strict_improvement(before: QualityVector, after: QualityVector) -> bool:

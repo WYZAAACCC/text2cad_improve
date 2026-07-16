@@ -72,12 +72,16 @@ def repair_documents(
         if run.report.ok:
             break
 
-        q_before = QualityVector.from_report(run.report)
-        issue_codes = {getattr(i, "code", "") for i in run.report.issues
-                       if getattr(i, "severity", "") == "error"}
         accepted_this_round = False
 
         for provider in providers:
+            if run.report.ok:
+                break
+            # 级联: 每个 provider 基于**当前**文档/错误集提案 —
+            # 同轮内接受后继续尝试后续 provider (细粒度化不降低单轮修复能力)
+            q_before = QualityVector.from_report(run.report)
+            issue_codes = {getattr(i, "code", "") for i in run.report.issues
+                           if getattr(i, "severity", "") == "error"}
             if not provider_matches(provider, issue_codes):
                 continue
             if not _policy_allows(provider, policy):
@@ -134,14 +138,14 @@ def repair_documents(
                 run = candidate_run
                 accepted_this_round = True
                 outcome.records.append(record)
-                break   # 本轮接受一个提案, 重入下一轮
+                continue   # 级联: 在更新后的文档上继续尝试后续 provider
             # 质量未严格改善 → 丢弃候选 (原子回滚), 试下一个 Provider
             record.reject_reason = (
                 f"quality not strictly improved: before={q_before.key()} after={q_after.key()}")
             outcome.records.append(record)
 
-        if not accepted_this_round:
-            break   # 无 Provider 能改善 → 停止
+        if run.report.ok or not accepted_this_round:
+            break   # 完成 / 本轮无任何改善 → 停止 (有改善则下一轮重头处理新暴露错误)
 
     outcome.final_ok = run.report.ok
     result.document = document

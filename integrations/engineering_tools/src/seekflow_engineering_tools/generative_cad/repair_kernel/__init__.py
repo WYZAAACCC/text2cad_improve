@@ -13,8 +13,11 @@ from seekflow_engineering_tools.generative_cad.repair_kernel.models import (
     is_strict_improvement,
 )
 from seekflow_engineering_tools.generative_cad.repair_kernel.providers import (
+    DialectAliasRepairProvider,
     LegacyAutoFixProvider,
     OpVersionRepairProvider,
+    SanitizeRepairProvider,
+    SchemaDefaultRepairProvider,
     default_providers,
     provider_matches,
 )
@@ -27,6 +30,8 @@ __all__ = [
     "QualityVector", "RepairAttemptRecord", "RepairOutcome",
     "RepairProviderManifest", "RepairRisk", "is_strict_improvement",
     "LegacyAutoFixProvider", "OpVersionRepairProvider",
+    "SanitizeRepairProvider", "SchemaDefaultRepairProvider",
+    "DialectAliasRepairProvider",
     "default_providers", "provider_matches",
     "RepairResult", "repair_documents",
 ]
