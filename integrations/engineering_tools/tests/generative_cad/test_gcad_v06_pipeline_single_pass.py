@@ -7,9 +7,16 @@ FIXTURES = Path(__file__).parent.parent / "fixtures" / "generative_cad"
 
 
 class TestPipelineSinglePass:
-    def test_pipeline_runs_each_validator_once(self, monkeypatch):
-        from seekflow_engineering_tools.generative_cad.validation import pipeline
+    def test_pipeline_runs_each_validator_once(self):
+        """v0.7: 通过独立 RuleRegistry 注入计数 validator (原 monkeypatch RAW_STAGES 方式
+        已随 pipeline 迁移至 validation_kernel 而更新, 测试意图不变: 每个 validator 恰好跑一次)."""
         from seekflow_engineering_tools.generative_cad.validation.reports import ValidationReport
+        from seekflow_engineering_tools.generative_cad.validation_kernel import (
+            RuleManifest, RuleRegistry, ValidationStage, run_validation,
+        )
+        from seekflow_engineering_tools.generative_cad.validation_kernel.legacy_adapter import (
+            register_legacy_core_rules,
+        )
 
         data = json.loads((FIXTURES / "axisymmetric_minimal.json").read_text(encoding="utf-8"))
         calls = {"structure": 0}
@@ -18,13 +25,13 @@ class TestPipelineSinglePass:
             calls["structure"] += 1
             return ValidationReport.ok_report("structure")
 
-        monkeypatch.setattr(pipeline, "validate_structure", fake_structure)
-        monkeypatch.setattr(
-            pipeline, "RAW_STAGES",
-            [("structure", fake_structure)] + pipeline.RAW_STAGES[1:],
-        )
+        reg = RuleRegistry()
+        register_legacy_core_rules(reg)
+        # 用计数 validator 替换 structure 规则 (注册在独立 registry, 不污染默认单例)
+        reg._rules["core.legacy.structure"].evaluate = fake_structure  # test-only override
+        reg.freeze()
 
-        pipeline.validate_and_canonicalize_with_bundle(data)
+        run_validation(data, registry=reg)
         assert calls["structure"] == 1, f"structure validator ran {calls['structure']} times, expected 1"
 
 

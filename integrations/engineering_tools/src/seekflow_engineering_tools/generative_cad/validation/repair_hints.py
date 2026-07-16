@@ -1,5 +1,10 @@
 """Preflight-Guided Repair Hints — actionable parameter adjustments for LLM retry.
 
+.. deprecated:: v0.8 (指导书 Phase 5)
+   中心化 hint 生成属 deprecated compatibility path — 目标形态是各
+   RepairProvider 自行从 Issue.expected 生成候选方案 (§14 迁移映射)。
+   在孔/槽等规则抽入 extensions/ 前保留本模块。
+
 When preflight detects geometric contradictions, it computes feasible parameter
 ranges and stores them in ValidationIssue.expected dict. This module extracts
 those ranges and formats them as LLM-repairable hints.

@@ -14,13 +14,24 @@ def _load_minimal_axisymmetric():
 
 class TestPipelineHardening:
     def test_canonical_validators_are_not_lazy_optional(self):
-        """Canonical validators must be directly imported, no lazy fallback."""
-        from seekflow_engineering_tools.generative_cad.validation import pipeline
-        src = inspect.getsource(pipeline)
+        """Canonical validators must be registered without lazy fallback.
+
+        v0.7: validator 登记迁移至 validation_kernel/legacy_adapter.py,
+        源检查对象随之更新; 防护意图不变 — 缺失即硬错, 禁止 ImportError 静默降级。
+        """
+        from seekflow_engineering_tools.generative_cad.validation_kernel import legacy_adapter
+        src = inspect.getsource(legacy_adapter)
         assert "_get_canonical_stages" not in src
         assert "except ImportError" not in src
         assert "validate_dialect_semantics" in src
         assert "validate_geometry_preflight" in src
+        # 运行时保证: 默认注册表必含这两条 canonical 规则
+        from seekflow_engineering_tools.generative_cad.validation_kernel import (
+            default_rule_registry,
+        )
+        ids = default_rule_registry().list_rule_ids()
+        assert "core.legacy.dialect_semantics" in ids
+        assert "core.legacy.geometry_preflight" in ids
 
     def test_success_report_stage_is_complete(self):
         from seekflow_engineering_tools.generative_cad.validation.pipeline import (

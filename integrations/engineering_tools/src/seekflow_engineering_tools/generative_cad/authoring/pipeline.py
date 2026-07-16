@@ -433,8 +433,8 @@ def generate_gcad_from_user_request(
     if not metrics.validation_success and repair_caller is not None:
         from seekflow_engineering_tools.generative_cad.repair.governor import (
             RepairStateV2,
-            STAGE_RANK,
             can_repair_v2,
+            stage_rank_for,
             update_repair_state_v2,
         )
         from seekflow_engineering_tools.generative_cad.repair.patch import (
@@ -456,9 +456,9 @@ def generate_gcad_from_user_request(
                  for i in (report.issues if report else [])]
             )
 
-            # Determine stage rank
+            # Determine stage rank (单一来源: validation_kernel/stages.py)
             stage_name = report.stage if report and hasattr(report, 'stage') else "structure"
-            stage_rank = STAGE_RANK.get(stage_name, 0)
+            stage_rank = stage_rank_for(stage_name)
 
             # Check if repair is still allowed
             can, reason = can_repair_v2(

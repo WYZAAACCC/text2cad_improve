@@ -1,0 +1,57 @@
+{
+  "validate": {
+    "ok": false,
+    "stage": "structure",
+    "stages_run": [
+      "structure"
+    ],
+    "issues": [
+      {
+        "stage": "structure",
+        "code": "pydantic_validation_failed",
+        "severity": "error",
+        "path": "/"
+      }
+    ]
+  },
+  "canonical_graph_hash": null,
+  "autofix": {
+    "applied": true,
+    "rule_ids": [
+      "fix_constraints",
+      "fix_output_names",
+      "fix_unknown_ops",
+      "fix_cross_component_refs",
+      "fix_phase_ordering",
+      "fix_profile_stations",
+      "remove_extra_params"
+    ],
+    "before_hash": "sha256:77b7473d1fa6e091a63d73d00ae2dca68af5aef7ff8fe6cabd0af15a1db70294",
+    "after_hash": "sha256:a7fe71f30b3c6661ff1bdcae98c694f9f814c409fba25a600937bbce784132cc"
+  },
+  "revalidate_after_fix": {
+    "ok": false,
+    "stage": "registry",
+    "stages_run": [
+      "structure",
+      "root_terminal",
+      "registry",
+      "params",
+      "ownership",
+      "graph",
+      "typecheck",
+      "phase",
+      "composition",
+      "safety"
+    ],
+    "issues": [
+      {
+        "stage": "registry",
+        "code": "unknown_op",
+        "severity": "error",
+        "path": null
+      }
+    ]
+  },
+  "canonical_graph_hash_after_fix": null
+}

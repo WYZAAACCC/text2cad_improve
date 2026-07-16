@@ -1,5 +1,11 @@
 """AutoFixer — programmatic fix for common LLM hallucination patterns.
 
+.. deprecated:: v0.8 (指导书 Phase 5)
+   直接调用本模块属 deprecated compatibility path — 生产路径应通过
+   repair_kernel.repair_documents (Issue-driven, 原子验收) 触发本链。
+   本链的固定顺序修复与混杂风险 (§1.4/§1.5) 将随细粒度 RepairProvider
+   逐步抽入 extensions/, 届时本模块删除。
+
 Each fix is idempotent, safe, and does not alter design intent.
 Fix strategies derived from statistical analysis of DeepSeek output patterns.
 

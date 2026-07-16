@@ -1,0 +1,53 @@
+{
+  "validate": {
+    "ok": false,
+    "stage": "structure",
+    "stages_run": [
+      "structure"
+    ],
+    "issues": [
+      {
+        "stage": "structure",
+        "code": "pydantic_validation_failed",
+        "severity": "error",
+        "path": "/"
+      }
+    ]
+  },
+  "canonical_graph_hash": null,
+  "autofix": {
+    "applied": true,
+    "rule_ids": [
+      "fix_constraints",
+      "fix_chamfer_fillet_optional",
+      "fix_unknown_ops",
+      "fix_cross_component_refs",
+      "fix_phase_ordering",
+      "fix_profile_stations",
+      "remove_extra_params"
+    ],
+    "before_hash": "sha256:4b92082f97dec6a23ed8922550cf736bf1252180705f0820b1a4a53fbcfe0f93",
+    "after_hash": "sha256:1a70f250d78469350c3a82e5f1f2d94ea0f193a3eee58d2706435078d04f0279"
+  },
+  "revalidate_after_fix": {
+    "ok": true,
+    "stage": "complete",
+    "stages_run": [
+      "structure",
+      "root_terminal",
+      "registry",
+      "params",
+      "ownership",
+      "graph",
+      "typecheck",
+      "phase",
+      "composition",
+      "safety",
+      "canonicalize",
+      "dialect_semantics",
+      "geometry_preflight"
+    ],
+    "issues": []
+  },
+  "canonical_graph_hash_after_fix": "sha256:4030c87bd733014f4a5f091a955ce1c7ab8948eb619f8a0e8aa8b440703b2456"
+}

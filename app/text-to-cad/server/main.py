@@ -257,8 +257,6 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
             build_level1_tool, build_level2_tool,
         )
         from seekflow_engineering_tools.generative_cad.skills.schemas import DialectSelectionPlan
-        from seekflow_engineering_tools.generative_cad.validation.pipeline import validate_and_canonicalize_with_bundle
-        from seekflow_engineering_tools.generative_cad.authoring.auto_fixer import auto_fix_with_report
         from seekflow_engineering_tools.generative_cad.pipeline.run import run_canonical_gcad
         from seekflow_engineering_tools.generative_cad.prompt_system import PromptCompiler
 
@@ -403,18 +401,33 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
         n_nodes = len(raw.get("nodes",[]))
         _update_task(task_id, status="processing", progress=55, result={"stage": f"L2: {n_nodes} nodes"})
 
-        # ---- Validate + AutoFix ----
+        # ---- Validate + Issue-driven Repair (validation_kernel + repair_kernel) ----
         _update_task(task_id, status="processing", progress=65, result={"stage": "Validation"})
-        canonical, report, bundle = validate_and_canonicalize_with_bundle(raw)
-        if not report.ok:
-            try:
-                fixed, af = auto_fix_with_report(raw, reg)
-                (out_dir/"autofix_report.json").write_text(af.model_dump_json(indent=2), encoding="utf-8")
-                if af.applied:
-                    (out_dir/"raw_fixed.json").write_text(json.dumps(fixed, indent=2, ensure_ascii=False), encoding="utf-8")
-                    canonical, report, bundle = validate_and_canonicalize_with_bundle(fixed)
-            except Exception:
-                pass
+        from seekflow_engineering_tools.generative_cad.validation_kernel import run_validation
+        from seekflow_engineering_tools.generative_cad.repair_kernel import repair_documents
+
+        vrun = run_validation(raw)
+        if not vrun.report.ok:
+            # Issue-driven repair: 由具体 Issue 触发, 原子应用, 质量向量严格改善才接受;
+            # 修复框架异常记录于 repair_execution.json, 不静默 (指导书 §8.6)。
+            rres = repair_documents(raw, vrun, dialect_registry=reg)
+            (out_dir/"repair_execution.json").write_text(
+                rres.outcome.model_dump_json(indent=2), encoding="utf-8")
+            provider = getattr(rres, "provider", None)
+            if provider is not None and getattr(provider, "last_report", None) is not None:
+                (out_dir/"autofix_report.json").write_text(
+                    provider.last_report.model_dump_json(indent=2), encoding="utf-8")
+            if rres.outcome.accepted:
+                (out_dir/"raw_fixed.json").write_text(
+                    json.dumps(rres.document, indent=2, ensure_ascii=False), encoding="utf-8")
+            vrun = rres.run
+
+        canonical, report, bundle = vrun.canonical, vrun.report, vrun.bundle
+        # 可观测性: 规则执行记录 + 激活的扩展 (指导书 §15.2/§17 Phase 6)
+        (out_dir/"validation_execution.json").write_text(json.dumps({
+            "activation": vrun.activation.model_dump(mode="json"),
+            "records": [r.model_dump(mode="json") for r in vrun.execution_records],
+        }, ensure_ascii=False, indent=2), encoding="utf-8")
         (out_dir/"validation_report.json").write_text(report.model_dump_json(indent=2), encoding="utf-8")
         errs = [i for i in report.issues if i.severity=="error"]
         if canonical is None or errs:

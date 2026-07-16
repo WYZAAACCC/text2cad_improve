@@ -1,0 +1,59 @@
+{
+  "validate": {
+    "ok": false,
+    "stage": "structure",
+    "stages_run": [
+      "structure"
+    ],
+    "issues": [
+      {
+        "stage": "structure",
+        "code": "missing_required_field",
+        "severity": "error",
+        "path": "/schema_version"
+      },
+      {
+        "stage": "structure",
+        "code": "missing_required_field",
+        "severity": "error",
+        "path": "/units"
+      }
+    ]
+  },
+  "canonical_graph_hash": null,
+  "autofix": {
+    "applied": true,
+    "rule_ids": [
+      "fix_chamfer_fillet_optional",
+      "fix_unknown_ops",
+      "fix_cross_component_refs",
+      "fix_phase_ordering",
+      "fix_profile_stations",
+      "remove_extra_params"
+    ],
+    "before_hash": "sha256:601cad20406f96e12cc09e346714da2431395b8fbf726ae58c5e467fabcf2fe2",
+    "after_hash": "sha256:52241798ff7dfd45369eadab3b372be7b297b29f2c30e70afed3c6ead8118dd6"
+  },
+  "revalidate_after_fix": {
+    "ok": false,
+    "stage": "structure",
+    "stages_run": [
+      "structure"
+    ],
+    "issues": [
+      {
+        "stage": "structure",
+        "code": "missing_required_field",
+        "severity": "error",
+        "path": "/schema_version"
+      },
+      {
+        "stage": "structure",
+        "code": "missing_required_field",
+        "severity": "error",
+        "path": "/units"
+      }
+    ]
+  },
+  "canonical_graph_hash_after_fix": null
+}

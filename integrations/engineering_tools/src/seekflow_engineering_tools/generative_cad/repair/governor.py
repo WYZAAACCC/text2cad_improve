@@ -1,8 +1,17 @@
-"""Repair governor v0.3 — track state, enforce stop conditions."""
+"""Repair governor v0.4 — track state, enforce stop conditions.
+
+Stage 进度排序自 v0.4 起单一来源于 validation_kernel/stages.py (RANK_ORDER),
+本模块曾自维护的 STAGE_RANK 字典已删除 (与 pipeline 双向漂移: 含不存在的
+stage、缺 root_terminal/hole_semantics)。
+"""
 
 from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from seekflow_engineering_tools.generative_cad.validation_kernel.stages import (
+    governor_stage_rank,
+)
 
 
 class RepairStateV2(BaseModel):
@@ -17,23 +26,9 @@ class RepairStateV2(BaseModel):
     last_stage_rank: int = 0
 
 
-# Stage rank for progress tracking
-STAGE_RANK = {
-    "structure": 10,
-    "registry": 20,
-    "params": 30,
-    "ownership": 40,
-    "graph": 50,
-    "typecheck": 60,
-    "phase": 70,
-    "composition": 80,
-    "safety": 90,
-    "canonicalize": 100,
-    "dialect_semantics": 110,
-    "geometry_preflight": 120,
-    "runtime_postconditions": 130,
-    "inspection": 140,
-}
+def stage_rank_for(stage_name: str) -> int:
+    """stage 名 → governor rank (正整数; 未知 stage → 0, 跳过回归检查)."""
+    return governor_stage_rank(stage_name)
 
 
 def can_repair_v2(
