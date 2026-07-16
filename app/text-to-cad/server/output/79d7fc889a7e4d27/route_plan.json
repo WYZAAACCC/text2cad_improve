@@ -1,0 +1,49 @@
+{
+  "part_intent": {
+    "object_type": "turbine_disk",
+    "dominant_geometry": "revolved_varying_thickness_profile",
+    "engineering_domain": "aerospace_turbomachinery"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_profile",
+      "version": "0.2.0",
+      "reason": "The disk requires a thickness-by-radius profile (hub thick → web thin → rim thick) with ordered R-Z polygon, filleted transitions, and revolve. Axisymmetric revolve_profile Z-sorts stations and cannot express varying-thickness cross-sections; sketch_profile provides create_2d_sketch→add_polyline→close→revolve_profile for the hub→web→rim varying thickness."
+    },
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "For center bore, annular seal grooves, and the 60× cyclic rim slot pattern. The axisymmetric dialect provides cut_center_bore, cut_annular_groove, and cut_rim_slot_pattern operations needed after the base revolve."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "Multiple dialects (sketch_profile revolved base + axisymmetric cuts and slot pattern) must be combined into a single closed solid. Composition provides boolean operations to unify the contributions."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [
+    {
+      "skill_id": "turbine_disk_profile",
+      "skill_version": "0.1.0",
+      "reason": "Hub-web-rim thickness-by-radius cross-section with filleted transitions, bore, and outer rim thickening for blade-root slots."
+    },
+    {
+      "skill_id": "fir_tree_slot",
+      "skill_version": "0.2.0",
+      "reason": "Multi-stage fir-tree slot profile with alternating neck/lobe stations, flank angles, fillet radii, and mirror symmetry for 60× axial through-slots on the rim."
+    }
+  ],
+  "unsupported_capabilities": [
+    "arbitrary_ordered_R_Z_revolve_polygon_with_thickness_by_radius (sketch_profile provides a close approximation via ordered polyline+revolve, but the axisymmetric dialect alone cannot express this)",
+    "fir_tree_slot_v2 with alternating neck/lobe stations, flank_angles, and per-station fillet_radii (axisymmetric cut_rim_slot_pattern may not produce fully alternating neck/lobe with filleted stations; the deterministic primitive also cannot express multi-stage fir-tree with filleted lobe corners)",
+    "final geometry_postcheck enforcing closed=true and is_valid_solid=true (not a native operation in any available dialect)"
+  ],
+  "safety_notes": [
+    "This is reference geometry only — not for flight, certification, manufacturing, or structural validation.",
+    "No airworthy, certified, manufacturing-ready, or fatigue/life prediction claims are made.",
+    "Output is a conceptual turbine disk for visual reference; fir-tree slot geometry may be approximated rather than true multi-stage fir-tree.",
+    "Sketch_profile dialect selected because axisymmetric revolve_profile cannot express hub→web→rim varying-thickness cross-section (it Z-sorts stations)."
+  ]
+}

@@ -254,19 +254,20 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
         from seekflow_engineering_tools.generative_cad.llm.deepseek_client import DeepSeekToolCaller
         from seekflow_engineering_tools.generative_cad.dialects.default_registry import default_registry
         from seekflow_engineering_tools.generative_cad.skills.orchestrator import (
-            build_level1_routing_prompt, build_level1_tool,
-            build_level2_authoring_prompt, build_level2_tool,
+            build_level1_tool, build_level2_tool,
         )
         from seekflow_engineering_tools.generative_cad.skills.schemas import DialectSelectionPlan
         from seekflow_engineering_tools.generative_cad.validation.pipeline import validate_and_canonicalize_with_bundle
         from seekflow_engineering_tools.generative_cad.authoring.auto_fixer import auto_fix_with_report
         from seekflow_engineering_tools.generative_cad.pipeline.run import run_canonical_gcad
+        from seekflow_engineering_tools.generative_cad.prompt_system import PromptCompiler
 
         out_dir = OUT_ROOT / task_id
         out_dir.mkdir(parents=True, exist_ok=True)
         config = LlmModelConfig(model="deepseek-v4-pro", base_url="https://api.deepseek.com/beta")
         caller = DeepSeekToolCaller()
         reg = default_registry()
+        prompt_compiler = PromptCompiler()
 
         # ---- Load spatial constraint graph if provided ----
         spatial_context = ""
@@ -278,23 +279,15 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                 try:
                     from seekflow_engineering_tools.generative_cad.authoring.spatial.schemas import SpatialConstraintGraph
                     from seekflow_engineering_tools.generative_cad.authoring.spatial.integration import build_spatial_context_for_prompt
+                    from seekflow_engineering_tools.generative_cad.prompt_system.fragments_legacy import (
+                        SERVER_SPATIAL_DIALECT_GUIDANCE,
+                    )
                     cg = SpatialConstraintGraph.model_validate_json(cg_json)
                     spatial_context = build_spatial_context_for_prompt(cg)
                     # 空间交互提供了具体几何参数，但 LLM 必须使用通用建模语言。
                     # 明确指引 LLM 使用 sketch_profile + composition 而非 axisymmetric。
-                    spatial_context += (
-                        "\n\nDIALECT GUIDANCE (spatial context is provided — use general CAD operations):\n"
-                        "- For axisymmetric disk bodies: use sketch_profile dialect with "
-                        "create_2d_sketch(plane=XZ) → add_polyline(R-Z polygon) → close_profile → revolve_profile.\n"
-                        "- Do NOT use axisymmetric.revolve_profile — it Z-sorts stations and cannot express "
-                        "thickness-by-radius profiles (hub thick → web thin → rim thick).\n"
-                        "- For slot features: sketch_profile → create_2d_sketch → add_polyline → "
-                        "close_profile → fillet_sketch → mirror_profile → extrude_profile.\n"
-                        "- For patterning and assembly: composition → circular_pattern_component(rotate_copies=True) "
-                        "→ boolean_cut.\n"
-                        "- The spatial constraints above describe positioning; the dialect guidance above "
-                        "describes HOW to build each component. Use sketch_profile + composition, NOT axisymmetric.\n"
-                    )
+                    # (指引文本已迁移至 prompt_system.fragments_legacy, 内容逐字节不变)
+                    spatial_context += SERVER_SPATIAL_DIALECT_GUIDANCE
                     _update_task(task_id, status="processing", progress=15,
                                  result={"stage": f"Spatial: {len(cg.constraints)} constraints"})
                 except Exception:
@@ -322,14 +315,17 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                          result={"stage": f"L1: forced to {force_route}"})
         else:
             _update_task(task_id, status="processing", progress=20, result={"stage": "L1 routing"})
-            l1 = build_level1_routing_prompt(text, dialect_catalog=reg.export_catalog())
+            l1c = prompt_compiler.compile_level1(text, dialect_catalog=reg.export_catalog(),
+                                                 request_id=task_id)
+            (out_dir/"prompt_trace_l1.json").write_text(
+                l1c.trace.model_dump_json(indent=2), encoding="utf-8")
             l1_tool = build_level1_tool()
             LEGACY = {"axisymmetric_base":"axisymmetric","sketch_extrude_base":"sketch_extrude",
                       "loft_sweep_base":"loft_sweep","shell_housing_base":"shell_housing","composition_base":"composition"}
             for attempt in range(4):
                 try:
                     tc = caller.call_strict_tool(
-                        messages=[{"role":"system","content":l1["system"]},{"role":"user","content":l1["user"]}],
+                        messages=l1c.messages,
                         tool_name=l1_tool["function"]["name"], tool_description=l1_tool["function"]["description"],
                         tool_schema=l1_tool["function"]["parameters"], model_config=config)
                     args = dict(tc.arguments)
@@ -385,58 +381,16 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
         # ---- L2 Author (with context injection) ----
         _update_task(task_id, status="processing", progress=45, result={"stage": "L2 authoring"})
         try:
-            l2 = build_level2_authoring_prompt(text, plan)
-
-            # 构建增强 user prompt：核心约束 + 使用指导 + 反例 + 用户请求
-            user_parts = []
-
-            # 1. 关键约束摘要
-            constraints_block = (
-                "CRITICAL MODELING CONSTRAINTS:\n"
-                "- For axisymmetric disk bodies with varying thickness (hub thick→web thin→rim thick):\n"
-                "  use sketch_profile: create_2d_sketch(plane=XZ) → add_polyline(R-Z polygon points) → close_profile → revolve_profile\n"
-                "  NOT axisymmetric.revolve_profile (Z-sorts stations, cannot express thickness-by-radius profiles)\n"
-                "- For fir-tree slot cutters: sketch_profile → create_2d_sketch(plane=XY) → add_polyline (neck/lobe alternation)\n"
-                "  → close_profile → fillet_sketch → mirror_profile → extrude_profile\n"
-                "- For patterning: composition → circular_pattern_component(rotate_copies=True) → boolean_cut\n"
-                "- Every sketch_profile component MUST include the complete chain: sketch → polyline → close → extrude/revolve\n"
-                "- Every component root_node must be a node that exists and outputs body:solid\n"
-                "- Do NOT use axisymmetric.revolve_profile for thickness-by-radius profiles"
-            )
-            user_parts.append(constraints_block)
-
-            # 2. 使用指导
-            usage = l2.get("usage_skills", {})
-            if usage:
-                usage_parts = ["\nDIALECT USAGE SKILLS:"]
-                for dialect_id, skill_text in usage.items():
-                    usage_parts.append(f"\n--- {dialect_id} ---\n{skill_text[:2000]}")
-                user_parts.append("\n".join(usage_parts))
-
-            # 3. 反例
-            anti = l2.get("anti_examples", {})
-            if anti:
-                anti_parts = ["\nANTI-EXAMPLES (DO NOT replicate):"]
-                for dialect_id, examples in anti.items():
-                    for ex in examples[:3]:
-                        title = ex.get("title", "")
-                        expl = ex.get("explanation", "")
-                        correct = ex.get("correct_approach", "")
-                        anti_parts.append(f"- {title}: {expl}")
-                        if correct:
-                            anti_parts.append(f"  Correct: {correct}")
-                user_parts.append("\n".join(anti_parts))
-
-            # 4. 原始用户请求 + spatial context
-            if spatial_context:
-                user_parts.append(f"\nSPATIAL CONTRACT:\n{spatial_context}")
-            user_parts.append(f"\nUSER REQUEST:\n{l2['user']}")
-
-            user_content = "\n\n".join(user_parts)
+            # 提示词组合迁移至 PromptCompiler (prompt_system) — 输出与原内联拼接
+            # 逐字节一致 (tests/generative_cad/prompt_system 回归锁定), 并落盘 trace。
+            l2c = prompt_compiler.compile_level2(text, plan, spatial_context=spatial_context,
+                                                 request_id=task_id)
+            (out_dir/"prompt_trace_l2.json").write_text(
+                l2c.trace.model_dump_json(indent=2), encoding="utf-8")
 
             l2_tool = build_level2_tool()
             tc2 = caller.call_strict_tool(
-                messages=[{"role":"system","content":l2["system"]},{"role":"user","content":user_content}],
+                messages=l2c.messages,
                 tool_name=l2_tool["function"]["name"], tool_description=l2_tool["function"]["description"],
                 tool_schema=l2_tool["function"]["parameters"], model_config=config)
             raw = tc2.arguments

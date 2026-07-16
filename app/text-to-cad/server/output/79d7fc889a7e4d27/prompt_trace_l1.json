@@ -1,0 +1,19 @@
+{
+  "request_id": "79d7fc889a7e4d27",
+  "stage": "routing",
+  "compiler_version": "1.0.0",
+  "selected_fragments": [
+    {
+      "id": "legacy.skills.level1_routing_system",
+      "version": "1.0.0",
+      "source": "generative_cad.skills.prompts:LEVEL1_ROUTING_SYSTEM_PROMPT",
+      "reason": "stage=routing (legacy production prompt)",
+      "hash": "sha256:ff533779e74defa6465a609cb7d033ba10e60c849fa2a322c59cdd9bce93b405"
+    }
+  ],
+  "rejected_fragments": [],
+  "system_prompt_hash": "sha256:ff533779e74defa6465a609cb7d033ba10e60c849fa2a322c59cdd9bce93b405",
+  "user_prompt_hash": "sha256:6b5e819ffdfdf98b83757bc3ecb3bcbf495c9c99b856f51f65729c1372e22f87",
+  "system_prompt_chars": 3292,
+  "user_prompt_chars": 16891
+}
