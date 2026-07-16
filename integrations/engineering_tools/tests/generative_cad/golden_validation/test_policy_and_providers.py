@@ -51,7 +51,9 @@ class TestOpVersionProvider:
     def test_subscription_matching(self):
         p = OpVersionRepairProvider()
         assert provider_matches(p, {"unknown_op"})
-        assert provider_matches(p, {"dialect_version_mismatch", "other"})
+        # dialect_version_mismatch 属 selected_dialects[].version, 非本 Provider
+        # 能力范围 — 不订阅 (审查 L4)
+        assert not provider_matches(p, {"dialect_version_mismatch"})
         assert not provider_matches(p, {"pydantic_validation_failed"})
 
     def test_fine_grained_provider_repairs_op_version(self):

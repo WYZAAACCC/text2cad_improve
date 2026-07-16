@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "stage": "complete",
+  "issues": [],
+  "stages_run": [
+    "structure",
+    "root_terminal",
+    "registry",
+    "params",
+    "ownership",
+    "graph",
+    "typecheck",
+    "phase",
+    "composition",
+    "safety",
+    "canonicalize",
+    "dialect_semantics",
+    "geometry_preflight"
+  ]
+}

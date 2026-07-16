@@ -88,9 +88,16 @@ def _run_barrier_groups(
             if not report.stages_run:
                 report.stages_run = list(stages_run) + [stage_name]
 
-            reports[stage_name] = report
+            # 同 stage 多规则: report 合并 (issues 拼接, ok 取 and), stages_run 不重复
+            prev = reports.get(stage_name)
+            if prev is not None:
+                prev.issues.extend(report.issues)
+                prev.ok = prev.ok and report.ok
+            else:
+                reports[stage_name] = report
             all_issues.extend(report.issues)
-            stages_run.append(stage_name)
+            if stage_name not in stages_run:
+                stages_run.append(stage_name)
             records.append(RuleExecutionRecord(
                 rule_id=rule.manifest.rule_id,
                 rule_version=rule.manifest.version,

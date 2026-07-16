@@ -123,7 +123,8 @@ def repair_documents(
                 outcome.records.append(record)
                 continue
 
-            q_after = QualityVector.from_report(candidate_run.report)
+            q_after = QualityVector.from_report(
+                candidate_run.report, baseline_error_codes=issue_codes)
             record.quality_after = q_after
 
             if is_strict_improvement(q_before, q_after):

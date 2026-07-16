@@ -407,6 +407,7 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
         from seekflow_engineering_tools.generative_cad.repair_kernel import repair_documents
 
         vrun = run_validation(raw)
+        repair_accepted = False
         if not vrun.report.ok:
             # Issue-driven repair: 由具体 Issue 触发, 原子应用, 质量向量严格改善才接受;
             # 修复框架异常记录于 repair_execution.json, 不静默 (指导书 §8.6)。
@@ -418,6 +419,7 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                 (out_dir/"autofix_report.json").write_text(
                     provider.last_report.model_dump_json(indent=2), encoding="utf-8")
             if rres.outcome.accepted:
+                repair_accepted = True
                 (out_dir/"raw_fixed.json").write_text(
                     json.dumps(rres.document, indent=2, ensure_ascii=False), encoding="utf-8")
             vrun = rres.run
@@ -464,7 +466,7 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
             "stepFileSize": f"{step_kb} KB" if step_kb else "N/A",
             "stlFileUrl": f"/api/files/{task_id}/output.stl" if stl_ok else None,
             "metadataUrl": f"/api/files/{task_id}/output.metadata.json",
-            "autofixApplied": (out_dir/"autofix_report.json").exists(),
+            "autofixApplied": repair_accepted,
             "geometryType": "step", "parameters": {"stepKb": step_kb, "stlOk": stl_ok}}
         if not rr.ok: task_result["error_detail"] = rr.error or "Runtime failed"
         _update_task(task_id, status="completed", progress=100, result=task_result)

@@ -28,20 +28,31 @@ class RepairProviderManifest(BaseModel):
 
 
 class QualityVector(BaseModel):
-    """验证质量向量 (§8.5) — 字典序比较, 不再用 stage rank 判进步."""
+    """验证质量向量 (§8.5) — 字典序比较, 不再用 stage rank 判进步.
+
+    new_issue_count: 相对基线**新引入**的 error issue code 数 — 防止
+    "修好 2 个旧错、引入 1 个新错" 因计数下降被接受 (审查 M4)。
+    """
     error_count: int = 0
     warning_count: int = 0
+    new_issue_count: int = 0
     ok: bool = False
 
     @classmethod
-    def from_report(cls, report) -> "QualityVector":
-        errors = sum(1 for i in report.issues if getattr(i, "severity", "") == "error")
+    def from_report(cls, report, baseline_error_codes: set[str] | None = None) -> "QualityVector":
+        errors = [i for i in report.issues if getattr(i, "severity", "") == "error"]
         warnings = sum(1 for i in report.issues if getattr(i, "severity", "") == "warning")
-        return cls(error_count=errors, warning_count=warnings, ok=report.ok)
+        new_count = 0
+        if baseline_error_codes is not None:
+            new_count = sum(1 for i in errors
+                            if getattr(i, "code", "") not in baseline_error_codes)
+        return cls(error_count=len(errors), warning_count=warnings,
+                   new_issue_count=new_count, ok=report.ok)
 
     def key(self) -> tuple:
-        # ok 优先, 其次 error 少, 其次 warning 少
-        return (0 if self.ok else 1, self.error_count, self.warning_count)
+        # ok 优先; 其次不引入新错误; 再次 error 少; 最后 warning 少
+        return (0 if self.ok else 1, self.new_issue_count,
+                self.error_count, self.warning_count)
 
 
 def is_strict_improvement(before: QualityVector, after: QualityVector) -> bool:

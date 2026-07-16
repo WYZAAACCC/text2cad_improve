@@ -1,7 +1,8 @@
 """统一 Validation / Repair Policy (指导书 §16).
 
 所有阈值集中于此, 不再散落为模块常量。默认值 == 迁移前的模块常量
-(行为冻结); 部署可传入自定义实例覆盖。
+(几何阈值行为冻结)。当前消费方读取 default_validation_policy() 单例;
+per-call 覆盖注入点属后续工作 (审查 M3), 本文件不做虚假承诺。
 Extension 自有阈值须命名空间化, 放各自扩展包内, 不进本文件。
 """
 from __future__ import annotations
@@ -24,8 +25,13 @@ class GeometryPolicy(BaseModel):
 
 
 class RepairPolicy(BaseModel):
-    """修复风险策略 (指导书 §8.3). 默认值 == 当前生产行为."""
-    max_attempts: int = 1
+    """修复风险策略 (指导书 §8.3/§16).
+
+    max_attempts=3 (指导书 §16 默认): 细粒度 Provider 接受提案会消耗一轮,
+    多轮保证剩余错误仍能由后续 Provider (含 legacy 兜底) 处理 —
+    单轮曾导致 "OpVersion 抢占后 legacy 轮不到" 的修复能力回退 (审查 H1)。
+    """
+    max_attempts: int = 3
     auto_apply_risks: set[str] = Field(default_factory=lambda: {
         "normalization", "contract_derived", "geometry_recovery",
     })

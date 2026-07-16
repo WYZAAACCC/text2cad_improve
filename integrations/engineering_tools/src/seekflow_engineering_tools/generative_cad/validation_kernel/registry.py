@@ -122,15 +122,20 @@ class RuleRegistry:
 
 @lru_cache(maxsize=1)
 def default_rule_registry() -> RuleRegistry:
-    """默认注册表: Core legacy 规则 + 内置扩展 (统一注册接口, 无 Kernel 特判)."""
+    """默认注册表: Core legacy 规则 + 内置扩展.
+
+    扩展经 extensions.register_builtin_extensions 统一入口加载 —
+    Kernel 不 import 任何具体扩展模块 (验收标准 1/3), 新增扩展只改
+    extensions/ 包, 不改本文件。
+    """
     from seekflow_engineering_tools.generative_cad.validation_kernel.legacy_adapter import (
         register_legacy_core_rules,
     )
-    from seekflow_engineering_tools.generative_cad.extensions.features.hole import (
-        build_extension as build_hole_extension,
+    from seekflow_engineering_tools.generative_cad.extensions import (
+        register_builtin_extensions,
     )
     reg = RuleRegistry()
     register_legacy_core_rules(reg)
-    build_hole_extension(reg)
+    register_builtin_extensions(reg)
     reg.freeze()
     return reg

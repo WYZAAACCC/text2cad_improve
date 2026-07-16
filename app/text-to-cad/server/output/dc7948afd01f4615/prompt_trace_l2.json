@@ -1,0 +1,26 @@
+{
+  "request_id": "dc7948afd01f4615",
+  "stage": "authoring",
+  "compiler_version": "1.0.0",
+  "selected_fragments": [
+    {
+      "id": "legacy.skills.level2_authoring_system",
+      "version": "1.0.0",
+      "source": "generative_cad.skills.prompts:LEVEL2_AUTHORING_SYSTEM_PROMPT",
+      "reason": "stage=authoring (legacy production prompt)",
+      "hash": "sha256:1e4e4c63d2b19730acbe72b7e273fbd9647d1f3defa7466cb9eaaf1131da301b"
+    },
+    {
+      "id": "legacy.server.l2_constraints_block",
+      "version": "1.0.0",
+      "source": "prompt_system.fragments_legacy:SERVER_L2_CONSTRAINTS_BLOCK (moved from server/main.py)",
+      "reason": "legacy always-injected server constraints",
+      "hash": "sha256:46db7b1faa2c4d70aff2723c3615cf122b371dc6f828d7427d7babc929388fe4"
+    }
+  ],
+  "rejected_fragments": [],
+  "system_prompt_hash": "sha256:1e4e4c63d2b19730acbe72b7e273fbd9647d1f3defa7466cb9eaaf1131da301b",
+  "user_prompt_hash": "sha256:f4a86e1bc6f923b26b48ab83b32b34f1f088cc312fd7f67a5025a5622e09c392",
+  "system_prompt_chars": 15525,
+  "user_prompt_chars": 5884
+}

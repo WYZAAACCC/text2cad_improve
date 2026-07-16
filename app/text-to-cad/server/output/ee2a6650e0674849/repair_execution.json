@@ -1,0 +1,38 @@
+{
+  "attempts": 1,
+  "accepted": true,
+  "final_ok": true,
+  "records": [
+    {
+      "provider_id": "repair.legacy_autofix_chain",
+      "provider_version": "1.0.0",
+      "risk": "mixed_legacy",
+      "triggered_by_issue_codes": [
+        "pydantic_validation_failed"
+      ],
+      "applied_rule_ids": [
+        "fix_chamfer_fillet_optional",
+        "fix_unknown_ops",
+        "fix_cross_component_refs",
+        "fix_phase_ordering",
+        "fix_profile_stations",
+        "fix_fillet_zero_radius",
+        "fix_null_hints",
+        "remove_extra_params"
+      ],
+      "accepted": true,
+      "reject_reason": null,
+      "error": null,
+      "quality_before": {
+        "error_count": 1,
+        "warning_count": 0,
+        "ok": false
+      },
+      "quality_after": {
+        "error_count": 0,
+        "warning_count": 0,
+        "ok": true
+      }
+    }
+  ]
+}

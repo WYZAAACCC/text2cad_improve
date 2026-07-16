@@ -23,7 +23,9 @@ class OpVersionRepairProvider:
     manifest = RepairProviderManifest(
         provider_id="repair.contract.op_version",
         version="1.0.0",
-        handles_issue_codes={"unknown_op", "dialect_version_mismatch"},
+        # 只订阅本 Provider 真正能修的 code (dialect_version_mismatch 属
+        # selected_dialects[].version, 非本 Provider 能力 — 审查 L4)
+        handles_issue_codes={"unknown_op"},
         risk="contract_derived",
         deterministic=True,
     )
@@ -68,13 +70,21 @@ class LegacyAutoFixProvider:
         self.last_report = None
 
     def propose(self, raw_doc: dict, issues: list) -> tuple[dict, list[str]]:
-        """返回 (fixed_doc, applied_rule_ids)。fixed_doc 是新对象。"""
+        """返回 (fixed_doc, applied_rule_ids)。fixed_doc 是新对象。
+
+        applied_rule_ids 只含**实际生效**的修复 (过滤链内被 category 策略
+        跳过的 '<skipped>' 占位条目); 文档未变时返回空列表 — 否则 engine 的
+        "no fixes applicable" 分支不可达且审计失真 (审查 M1)。
+        """
         from seekflow_engineering_tools.generative_cad.authoring.auto_fixer import (
             auto_fix_with_report,
         )
         fixed, af_report = auto_fix_with_report(raw_doc, self._dialect_registry)
-        rule_ids = [e.rule_id for e in af_report.entries]
         self.last_report = af_report  # main.py 落盘 autofix_report.json 用
+        if not af_report.applied:
+            return raw_doc, []
+        rule_ids = [e.rule_id for e in af_report.entries
+                    if e.old_value != "<skipped>"]
         return fixed, rule_ids
 
 
