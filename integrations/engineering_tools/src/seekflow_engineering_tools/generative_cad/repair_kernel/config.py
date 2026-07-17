@@ -28,3 +28,8 @@ class RepairLoopConfig(BaseModel):
 
     max_changes_per_patch: int = 4
     max_relative_numeric_change: float = 0.25   # §10.3 数值修改预算
+    max_absolute_patch_bytes: int = 16_384      # §4 补丁字节上限
+
+    # §10.4: LLM patch 默认禁止改 required/degradation_policy (禁止降级掩盖失败);
+    # 确定性策略降级 (auto_fixer fix_chamfer_fillet_optional) 不受此开关约束
+    allow_degradation_change: bool = False

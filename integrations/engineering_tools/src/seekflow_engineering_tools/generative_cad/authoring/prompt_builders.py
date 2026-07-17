@@ -309,6 +309,7 @@ def build_repair_user_prompt(
     validation_issues: list[dict],
     repairable_paths: list[str] | None = None,
     forbidden_paths: list[str] | None = None,
+    prior_attempts: list[dict] | None = None,
 ) -> str:
     """Build the user prompt for the repair stage.
 
@@ -317,7 +318,15 @@ def build_repair_user_prompt(
         validation_issues: List of validation issues to fix.
         repairable_paths: Paths that the repair agent may modify.
         forbidden_paths: Paths the repair agent must not touch.
+        prior_attempts: Previous patches with rejection reasons (§14.2 #14) —
+            the agent must not repeat a rejected patch.
     """
+    prior_block = ""
+    if prior_attempts:
+        prior_block = f"""PRIOR REPAIR ATTEMPTS (rejected — do NOT repeat these patches):
+{compact_json(prior_attempts)}
+
+"""
     return f"""VALIDATION ISSUES:
 {compact_json(validation_issues)}
 
@@ -331,7 +340,7 @@ FORBIDDEN PATHS:
     "/constraints/require_closed_solid",
 ])}
 
-CURRENT DOCUMENT:
+{prior_block}CURRENT DOCUMENT:
 {compact_json(current_doc)}
 
 Return only the strict repair patch tool arguments.

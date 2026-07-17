@@ -59,6 +59,28 @@ class RepairLoopResult:
         self.outcome = outcome
 
 
+def check_patch_common(patch, *, cfg: RepairLoopConfig) -> tuple[bool, str]:
+    """两阶段共用的补丁硬规则 (§8.1/§10.4/§4).
+
+    - 字节上限 (max_absolute_patch_bytes);
+    - 默认禁止改 required/degradation_policy — LLM 不得用降级掩盖失败
+      (§10.4; 确定性策略降级不走本路径, 不受影响)。
+    """
+    import re
+    if patch.give_up:
+        return True, ""
+    size = len(json.dumps(patch.model_dump(), default=str).encode("utf-8"))
+    if size > cfg.max_absolute_patch_bytes:
+        return False, f"patch size {size}B exceeds limit {cfg.max_absolute_patch_bytes}B"
+    if not cfg.allow_degradation_change:
+        gate = re.compile(r"^/nodes/[^/]+/(required|degradation_policy)$")
+        for ch in patch.changes:
+            if gate.match(ch.path):
+                return False, (f"path {ch.path!r} forbidden: LLM repair must not "
+                               f"weaken required/degradation to mask failures (§10.4)")
+    return True, ""
+
+
 def _numeric(v: Any) -> float | None:
     if isinstance(v, bool):
         return None
@@ -114,6 +136,15 @@ def _runtime_error_signature(report) -> str:
     from seekflow_engineering_tools.generative_cad.ir.hashing import stable_hash
     return stable_hash(sorted(
         [i.stage, i.code, i.node_id or "", i.path or ""] for i in report.issues))
+
+
+def _validation_error_signature(report) -> str:
+    """§11.5: validation 侧同用强签名 — code-only 无法区分不同节点的同类错."""
+    from seekflow_engineering_tools.generative_cad.ir.hashing import stable_hash
+    return stable_hash(sorted(
+        [getattr(i, "stage", "") or "", getattr(i, "code", "") or "",
+         getattr(i, "node_id", "") or "", getattr(i, "path", "") or ""]
+        for i in report.issues))
 
 
 def _write_json(path: Path, obj: Any) -> None:
@@ -207,6 +238,7 @@ def run_generation_loop(
     repair_outcome: RepairOutcome | None = None
     autofix_provider = None
     prior_runtime_attempts: list[dict] = []
+    prior_validation_attempts: list[dict] = []
 
     def _stage(label: str, pct: int) -> None:
         if on_stage is not None:
@@ -281,8 +313,7 @@ def run_generation_loop(
                 return _finish("total_attempts_exhausted", f"{total_llm} LLM attempts used")
 
             raw_hash = stable_hash(current)
-            error_sig = stable_hash(sorted(
-                getattr(i, "code", "") for i in vrun.report.issues))
+            error_sig = _validation_error_signature(vrun.report)
             stage_rank = stage_rank_for(getattr(vrun.report, "stage", "") or "")
             can, why = can_repair_v2(state, raw_graph_hash=raw_hash,
                                      error_sig_hash=error_sig,
@@ -299,7 +330,8 @@ def run_generation_loop(
                 patch = _call_patch_llm(validation_repair_caller, REPAIR_SYSTEM_PROMPT,
                                         build_repair_user_prompt(
                                             current, issues,
-                                            repairable_paths=_V2_PATH_GRAMMAR))
+                                            repairable_paths=_V2_PATH_GRAMMAR,
+                                            prior_attempts=prior_validation_attempts))
             except Exception as exc:
                 return _finish("repair_caller_error", str(exc)[:500])
             if patch is None:
@@ -311,6 +343,23 @@ def run_generation_loop(
                 return _finish("governor_stop", why)
 
             audit: dict[str, Any] = {"patch": patch.model_dump(mode="json")}
+
+            # 两阶段共用硬规则: 字节上限 + 禁止降级掩盖 (§10.4/§4)
+            ok_common, why = check_patch_common(patch, cfg=cfg)
+            if not ok_common:
+                audit["apply_report"] = {"ok": False, "rejection_reason": why}
+                _audit_attempt("validation", attempt_idx, audit)
+                outcome.rejected_patches.append({"phase": "validation",
+                                                 "patch_hash": patch_hash,
+                                                 "reason": why[:200]})
+                prior_validation_attempts.append(
+                    {"patch": patch.model_dump(mode="json"), "rejected": why[:200]})
+                state = update_repair_state_v2(state, raw_graph_hash=raw_hash,
+                                               error_sig_hash=error_sig,
+                                               patch_hash=patch_hash,
+                                               stage_rank=stage_rank)
+                continue
+
             try:
                 candidate = apply_repair_patch_v2(current, patch)
             except Exception as exc:
@@ -318,6 +367,9 @@ def run_generation_loop(
                 _audit_attempt("validation", attempt_idx, audit)
                 outcome.rejected_patches.append({"phase": "validation",
                                                  "reason": str(exc)[:200]})
+                prior_validation_attempts.append(
+                    {"patch": patch.model_dump(mode="json"),
+                     "rejected": str(exc)[:200]})
                 state = update_repair_state_v2(state, raw_graph_hash=raw_hash,
                                                error_sig_hash=error_sig,
                                                patch_hash=patch_hash,
@@ -348,10 +400,14 @@ def run_generation_loop(
                     {"phase": "validation", "patch_hash": patch_hash})
                 current, vrun = candidate, cvrun
             else:
+                reject_why = (f"quality not strictly improved: "
+                              f"before={q_before.key()} after={q_after.key()}")
                 outcome.rejected_patches.append({
                     "phase": "validation", "patch_hash": patch_hash,
-                    "reason": f"quality not strictly improved: "
-                              f"before={q_before.key()} after={q_after.key()}"})
+                    "reason": reject_why})
+                prior_validation_attempts.append(
+                    {"patch": patch.model_dump(mode="json"),
+                     "rejected": reject_why[:200]})
             state = update_repair_state_v2(state, raw_graph_hash=raw_hash,
                                            error_sig_hash=error_sig,
                                            patch_hash=patch_hash,
@@ -454,6 +510,10 @@ def run_generation_loop(
                                                error_sig_hash=rt_sig,
                                                patch_hash=patch_hash, stage_rank=0)
 
+            ok_common, why = check_patch_common(patch, cfg=cfg)
+            if not ok_common:
+                _reject(f"policy: {why}")
+                continue
             ok_policy, why = check_runtime_patch(
                 patch, target_node_id=cls.target_node_id or "",
                 allowed_paths=cls.allowed_paths, cfg=cfg)

@@ -11,6 +11,7 @@ from pathlib import Path
 
 from seekflow_engineering_tools.generative_cad.repair_kernel import (
     RepairLoopConfig,
+    check_patch_common,
     check_runtime_patch,
     run_generation_loop,
 )
@@ -247,6 +248,49 @@ class TestRuntimePatchPolicy:
         ok, why = self._check([{"path": "/nodes/OTHER/params/radius_mm",
                                 "old_value": 4.0, "new_value": 4.5, "reason": "r"}])
         assert not ok and "outside target node" in why
+
+
+class TestCommonPatchPolicy:
+    """check_patch_common — §10.4 禁止降级掩盖 + §4 字节上限."""
+
+    def _patch(self, changes):
+        from seekflow_engineering_tools.generative_cad.repair.patch import RepairPatchV2
+        return RepairPatchV2(changes=changes, reason="t", give_up=False)
+
+    def test_required_flip_rejected(self):
+        # §10.4: LLM 不得把 required=true 改 false 让流程表面通过
+        ok, why = check_patch_common(self._patch([
+            {"path": "/nodes/n1/required", "old_value": True,
+             "new_value": False, "reason": "make it pass"}]),
+            cfg=RepairLoopConfig())
+        assert not ok and "10.4" in why
+
+    def test_degradation_policy_change_rejected(self):
+        ok, why = check_patch_common(self._patch([
+            {"path": "/nodes/n1/degradation_policy", "old_value": "fail",
+             "new_value": "may_skip_with_warning", "reason": "skip it"}]),
+            cfg=RepairLoopConfig())
+        assert not ok
+
+    def test_allowed_when_config_permits(self):
+        ok, _ = check_patch_common(self._patch([
+            {"path": "/nodes/n1/required", "old_value": True,
+             "new_value": False, "reason": "explicitly allowed"}]),
+            cfg=RepairLoopConfig(allow_degradation_change=True))
+        assert ok
+
+    def test_oversized_patch_rejected(self):
+        big = self._patch([{"path": "/nodes/n1/params/x",
+                            "old_value": 1, "new_value": "y" * 20000,
+                            "reason": "r"}])
+        ok, why = check_patch_common(big, cfg=RepairLoopConfig())
+        assert not ok and "exceeds limit" in why
+
+    def test_normal_params_patch_ok(self):
+        ok, why = check_patch_common(self._patch([
+            {"path": "/nodes/n1/params/radius_mm", "old_value": 4.0,
+             "new_value": 4.5, "reason": "r"}]), cfg=RepairLoopConfig())
+        assert ok, why
 
 
 class TestParity:
