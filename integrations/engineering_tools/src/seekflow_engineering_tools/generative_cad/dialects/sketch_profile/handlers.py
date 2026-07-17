@@ -341,7 +341,28 @@ def handle_fillet_sketch(node, ctx) -> dict:
 
     except Exception as e:
         if getattr(node, "required", True) and node.degradation_policy == "fail":
-            raise RuntimeError(f"fillet_sketch failed on '{node.id}': {e}") from e
+            # §6.1 头号可修类别: fillet 半径超局部几何 — 带节点归因的 typed
+            # exception, 使 runtime repair 分类器可证因果 (消息与旧行为一致)
+            from seekflow_engineering_tools.generative_cad.runtime.diagnostics import (
+                RuntimeIssue,
+            )
+            from seekflow_engineering_tools.generative_cad.runtime.errors import (
+                GcadRuntimeError,
+            )
+            raise GcadRuntimeError(RuntimeIssue(
+                stage="operation_execution",
+                code="FILLET_SKETCH_FAILED",
+                message=f"fillet_sketch failed on '{node.id}': {e}",
+                node_id=node.id,
+                component_id=getattr(node, "component", None),
+                dialect=getattr(node, "dialect", None),
+                operation=node.op,
+                operation_version=getattr(node, "op_version", None),
+                exception_type=type(e).__name__,
+                repairability="repairable",
+                suggested_paths=[f"/nodes/{node.id}/params"],
+                evidence={"error_detail": str(e)},
+            )) from e
         ctx.warnings.append(f"fillet_sketch failed on '{node.id}': {e}. Passing through.")
         handle_id = f"profile:{cid}:{node.id}:profile"
         ctx.object_store.put(RuntimeHandle(id=handle_id, type="profile"), wp)

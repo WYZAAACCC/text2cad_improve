@@ -186,6 +186,18 @@ def run_generation_loop(
         from seekflow_engineering_tools.generative_cad.pipeline.run import run_canonical_gcad
         runtime_runner = run_canonical_gcad
 
+    # RepairPatchV2 合法路径语法 (patch.py ALLOWED_PATH_PATTERNS 的人类可读形式) —
+    # 不传则 LLM 常臆造深子路径 (如 /nodes/x/inputs/0/node) 被白名单拒绝空耗预算
+    _V2_PATH_GRAMMAR = [
+        "/nodes/<node_id>/params/<field>",
+        "/nodes/<node_id>/inputs   (replace the ENTIRE inputs array, anchored by old_value)",
+        "/nodes/<node_id>/outputs  (replace the ENTIRE outputs array)",
+        "/nodes/<node_id>/required",
+        "/nodes/<node_id>/degradation_policy",
+        "/components/<component_id>/root_node",
+        "/llm_validation_hints",
+    ]
+
     cfg = config or RepairLoopConfig()
     outcome = RepairLoopOutcome()
     state = RepairStateV2(max_attempts=max(1, cfg.max_total_llm_attempts))
@@ -285,7 +297,9 @@ def run_generation_loop(
             issues = [i.model_dump(mode="json") for i in vrun.report.issues]
             try:
                 patch = _call_patch_llm(validation_repair_caller, REPAIR_SYSTEM_PROMPT,
-                                        build_repair_user_prompt(current, issues))
+                                        build_repair_user_prompt(
+                                            current, issues,
+                                            repairable_paths=_V2_PATH_GRAMMAR))
             except Exception as exc:
                 return _finish("repair_caller_error", str(exc)[:500])
             if patch is None:

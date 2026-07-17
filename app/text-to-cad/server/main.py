@@ -319,6 +319,7 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
             l1_tool = build_level1_tool()
             LEGACY = {"axisymmetric_base":"axisymmetric","sketch_extrude_base":"sketch_extrude",
                       "loft_sweep_base":"loft_sweep","shell_housing_base":"shell_housing","composition_base":"composition"}
+            last_l1_exc: Exception | None = None
             for attempt in range(4):
                 try:
                     tc = caller.call_strict_tool(
@@ -326,17 +327,24 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                         tool_name=l1_tool["function"]["name"], tool_description=l1_tool["function"]["description"],
                         tool_schema=l1_tool["function"]["parameters"], model_config=config)
                     args = dict(tc.arguments)
-                    for s in args.get("selected_domain_skills",[]):
+                    # LLM 可能返回 null (而非缺省): get(k, []) 对存在的 None 键
+                    # 仍返回 None → for 迭代 TypeError。规范化为 []。
+                    if args.get("selected_domain_skills") is None:
+                        args["selected_domain_skills"] = []
+                    for s in args["selected_domain_skills"]:
                         if not s.get("skill_version"): s["skill_version"]="1.0"
                     plan = DialectSelectionPlan.model_validate(args)
                     for sd in plan.selected_dialects:
                         if sd.dialect in LEGACY: sd.dialect = LEGACY[sd.dialect]
                     break
-                except Exception:
+                except Exception as e:
+                    last_l1_exc = e   # 不静默: 保留最后异常用于失败诊断
                     _time.sleep(4)
 
             if plan is None:
-                _update_task(task_id, status="failed", progress=0, error="L1 routing failed after 4 attempts")
+                detail = f": {type(last_l1_exc).__name__}: {last_l1_exc}" if last_l1_exc else ""
+                _update_task(task_id, status="failed", progress=0,
+                             error=f"L1 routing failed after 4 attempts{detail}"[:500])
                 return
 
             (out_dir/"route_plan.json").write_text(plan.model_dump_json(indent=2), encoding="utf-8")
