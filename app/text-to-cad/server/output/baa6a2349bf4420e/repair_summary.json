@@ -1,0 +1,30 @@
+{
+  "outcome": {
+    "ok": false,
+    "stop_code": "governor_stop",
+    "stop_reason": "Raw graph hash repeated — LLM not making progress",
+    "autofix_accepted": true,
+    "validation_llm_attempts": 1,
+    "runtime_llm_attempts": 0,
+    "accepted_patches": [],
+    "rejected_patches": [
+      {
+        "phase": "validation",
+        "reason": "invalid repair patch: path '/nodes/n_asm_final/inputs/0/node' is not allowed; path '/nodes/n_asm_final/inputs/0/output' is not allowed; path '/nodes/n_asm_final/inputs/1/node' is not allowed; path '/n"
+      }
+    ],
+    "raw_hashes": [],
+    "error_signatures": []
+  },
+  "config": {
+    "enabled": true,
+    "validation_repair_enabled": true,
+    "runtime_repair_enabled": true,
+    "deterministic_autofix_enabled": true,
+    "max_validation_llm_attempts": 3,
+    "max_runtime_llm_attempts": 2,
+    "max_total_llm_attempts": 4,
+    "max_changes_per_patch": 4,
+    "max_relative_numeric_change": 0.25
+  }
+}

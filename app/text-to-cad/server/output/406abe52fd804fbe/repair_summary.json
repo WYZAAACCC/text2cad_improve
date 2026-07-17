@@ -1,0 +1,25 @@
+{
+  "outcome": {
+    "ok": false,
+    "stop_code": "non_repairable:unproven_causality",
+    "stop_reason": "cannot prove causality between issue unhandled_runtime_exception and IR parameters",
+    "autofix_accepted": true,
+    "validation_llm_attempts": 0,
+    "runtime_llm_attempts": 0,
+    "accepted_patches": [],
+    "rejected_patches": [],
+    "raw_hashes": [],
+    "error_signatures": []
+  },
+  "config": {
+    "enabled": true,
+    "validation_repair_enabled": true,
+    "runtime_repair_enabled": true,
+    "deterministic_autofix_enabled": true,
+    "max_validation_llm_attempts": 3,
+    "max_runtime_llm_attempts": 2,
+    "max_total_llm_attempts": 4,
+    "max_changes_per_patch": 4,
+    "max_relative_numeric_change": 0.25
+  }
+}

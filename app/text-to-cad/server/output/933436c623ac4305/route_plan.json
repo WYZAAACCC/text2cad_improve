@@ -1,0 +1,23 @@
+{
+  "part_intent": {
+    "object_type": "turbine_disk",
+    "dominant_geometry": "axisymmetric_with_varying_radial_thickness_profile_and_multi_lobe_fir_tree_rim_slots",
+    "engineering_domain": "turbomachinery"
+  },
+  "route_decision": "unsupported",
+  "selected_dialects": [],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [
+    "arbitrary_ordered_R_Z_revolve_polygon_thickness_by_radius_disk_profile",
+    "fir_tree_slot_v2_with_alternating_neck_lobe_stations_flank_angles_and_fillet_radii",
+    "final_geometry_postcheck_enforcing_closed_true_is_valid_solid_true"
+  ],
+  "safety_notes": [
+    "Non-flight reference geometry only. No airworthiness, certification, or manufacturing readiness declared.",
+    "Deterministic primitive axisymmetric_turbine_disk cannot express a user-defined ordered R-Z revolve polygon where axial thickness varies with radius — the primitive maps hub_width, web_width, rim_width as fixed axial extents rather than a thickness-by-radius profile.",
+    "Deterministic primitive fir_tree_slot parameters (rim_slot_style='fir_tree_like') use simplified notch geometry that does not implement multi-stage alternating neck/lobe stations with individual flank angles and fillet radii per station; the requested three-stage symmetrical fir-tree with narrow neck → wide lobe → narrow neck → wide lobe → narrow root is not expressible.",
+    "The sketch_profile dialect can generate revolved profiles from ordered R-Z polylines, which could express the thickness-by-radius cross-section. However, sketch_profile alone cannot generate the fir-tree slots; composition can combine bodies but the slot geometry itself requires a capability (fir_tree_slot_v2) not present in any registered dialect.",
+    "Although a hybrid route (sketch_profile + composition + some slot-cutting dialect) could theoretically approach this, no registered dialect provides multi-stage fir-tree slot generation with station-level flank angle and fillet control. Therefore the request fails closed."
+  ]
+}

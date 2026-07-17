@@ -1,0 +1,33 @@
+{
+  "part_intent": {
+    "object_type": "turbine_disk",
+    "dominant_geometry": "axisymmetric revolved body with hub-web-rim thickness profile and cyclic fir-tree rim slots",
+    "engineering_domain": "turbomachinery (aerospace gas turbine)"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "sketch_profile",
+      "version": "0.2.0",
+      "reason": "The disk cross-section requires an ordered R-Z revolve polygon with hub thick→web thin→rim thick profile with filleted transitions. The axisymmetric dialect's revolve_profile Z-sorts stations and cannot express thickness-by-radius varying cross-sections. sketch_profile provides create_2d_sketch→add_polyline→close→revolve_profile needed for this geometry."
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "The fir-tree slots must be cut from the revolved disk body using boolean_cut after a circular_pattern of the slot profile. Composition handles boolean operations and patterning across the solid."
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [
+    "multi-stage fir_tree_slot_v2 with alternating neck/lobe stations, flank angles, and individual fillet radii per lobe corner — the available rim_slot cut in axisymmetric dialect cannot express the precise alternating neck-lobe-neck-lobe geometry with mirrored angled bearing flanks and individual corner fillets required by spec",
+    "arbitrary ordered R-Z revolve polygon / thickness-by-radius disk profile — axisymmetric dialect Z-sorts station points and cannot express a profile where thickness varies with radius non-monotonically",
+    "final geometry_postcheck enforcing closed=true and is_valid_solid=true with body_count=1 verification is not available as a dialect operation"
+  ],
+  "safety_notes": [
+    "This is reference geometry only — not airworthy, not certified, not manufacturing-ready, not structurally validated, not for fatigue/life prediction",
+    "Fir-tree slot profile cannot be fully expressed with current dialect capabilities; the multi-stage alternating neck/lobe geometry with individual fillet radii per station is unsupported",
+    "The axisymmetric dialect cannot express the R-Z thickness-by-radius profile; sketch_profile is required for the ordered polyline revolve approach",
+    "Output geometry will be approximate and should not be used for any engineering analysis or manufacturing planning"
+  ]
+}

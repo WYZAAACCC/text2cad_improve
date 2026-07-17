@@ -1,0 +1,123 @@
+{
+  "activation": {
+    "dialects": [
+      "sketch_profile",
+      "composition"
+    ],
+    "operations": [
+      "fillet_sketch",
+      "close_profile",
+      "boolean_union",
+      "add_polyline",
+      "extrude_profile",
+      "revolve_profile",
+      "create_2d_sketch"
+    ],
+    "feature_tags": [],
+    "part_families": [],
+    "domain_skills": [],
+    "mode": "enforce"
+  },
+  "records": [
+    {
+      "rule_id": "core.legacy.structure",
+      "rule_version": "1.0.0",
+      "provider_id": "core.legacy",
+      "stage": "structure",
+      "status": "passed",
+      "duration_ms": 0.04610000178217888,
+      "issue_count": 0,
+      "skip_reason": null
+    },
+    {
+      "rule_id": "core.legacy.root_terminal",
+      "rule_version": "1.0.0",
+      "provider_id": "core.legacy",
+      "stage": "root_terminal",
+      "status": "passed",
+      "duration_ms": 0.11750000703614205,
+      "issue_count": 0,
+      "skip_reason": null
+    },
+    {
+      "rule_id": "core.legacy.registry",
+      "rule_version": "1.0.0",
+      "provider_id": "core.legacy",
+      "stage": "registry",
+      "status": "passed",
+      "duration_ms": 0.14289999671746045,
+      "issue_count": 0,
+      "skip_reason": null
+    },
+    {
+      "rule_id": "core.legacy.params",
+      "rule_version": "1.0.0",
+      "provider_id": "core.legacy",
+      "stage": "params",
+      "status": "passed",
+      "duration_ms": 1.2603000068338588,
+      "issue_count": 0,
+      "skip_reason": null
+    },
+    {
+      "rule_id": "core.legacy.ownership",
+      "rule_version": "1.0.0",
+      "provider_id": "core.legacy",
+      "stage": "ownership",
+      "status": "passed",
+      "duration_ms": 0.05400000372901559,
+      "issue_count": 0,
+      "skip_reason": null
+    },
+    {
+      "rule_id": "core.legacy.graph",
+      "rule_version": "1.0.0",
+      "provider_id": "core.legacy",
+      "stage": "graph",
+      "status": "failed",
+      "duration_ms": 0.06710000161547214,
+      "issue_count": 2,
+      "skip_reason": null
+    },
+    {
+      "rule_id": "core.legacy.typecheck",
+      "rule_version": "1.0.0",
+      "provider_id": "core.legacy",
+      "stage": "typecheck",
+      "status": "failed",
+      "duration_ms": 0.19189999147783965,
+      "issue_count": 2,
+      "skip_reason": null
+    },
+    {
+      "rule_id": "core.legacy.phase",
+      "rule_version": "1.0.0",
+      "provider_id": "core.legacy",
+      "stage": "phase",
+      "status": "passed",
+      "duration_ms": 0.13590000162366778,
+      "issue_count": 0,
+      "skip_reason": null
+    },
+    {
+      "rule_id": "core.legacy.composition",
+      "rule_version": "1.0.0",
+      "provider_id": "core.legacy",
+      "stage": "composition",
+      "status": "passed",
+      "duration_ms": 0.040700004319660366,
+      "issue_count": 0,
+      "skip_reason": null
+    },
+    {
+      "rule_id": "core.legacy.safety",
+      "rule_version": "1.0.0",
+      "provider_id": "core.legacy",
+      "stage": "safety",
+      "status": "passed",
+      "duration_ms": 0.020899999071843922,
+      "issue_count": 0,
+      "skip_reason": null
+    }
+  ]
+}

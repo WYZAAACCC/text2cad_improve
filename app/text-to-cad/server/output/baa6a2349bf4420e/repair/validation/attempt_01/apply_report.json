@@ -1,0 +1,4 @@
+{
+  "ok": false,
+  "rejection_reason": "invalid repair patch: path '/nodes/n_asm_final/inputs/0/node' is not allowed; path '/nodes/n_asm_final/inputs/0/output' is not allowed; path '/nodes/n_asm_final/inputs/1/node' is not allowed; path '/nodes/n_asm_final/inputs/1/output' is not allowed"
+}

@@ -1,0 +1,32 @@
+{
+  "target_node": "n_asm_final",
+  "target_component": "__assembly__",
+  "changes": [
+    {
+      "path": "/nodes/n_asm_final/inputs/0/node",
+      "old_value": "n_disc_final",
+      "new_value": "n_disc_revolve",
+      "reason": "Node n_disc_final does not exist. The disc body is produced by n_disc_revolve (solid). Fix both assembly inputs to reference existing solid-producing nodes."
+    },
+    {
+      "path": "/nodes/n_asm_final/inputs/0/output",
+      "old_value": "profile",
+      "new_value": "body",
+      "reason": "n_disc_revolve outputs 'body' of type solid, not 'profile'."
+    },
+    {
+      "path": "/nodes/n_asm_final/inputs/1/node",
+      "old_value": "n_disc_final",
+      "new_value": "n_cutter_extrude",
+      "reason": "Second input should be the slot cutter solid produced by n_cutter_extrude."
+    },
+    {
+      "path": "/nodes/n_asm_final/inputs/1/output",
+      "old_value": "profile",
+      "new_value": "body",
+      "reason": "n_cutter_extrude outputs 'body' of type solid, not 'profile'."
+    }
+  ],
+  "reason": "The assembly node n_asm_final references non-existent node n_disc_final. The two solid bodies available are n_disc_revolve (comp_disc_body) and n_cutter_extrude (comp_slot_cutter). The assembly boolean_union should consume these two solids via their 'body' outputs. This matches the design intent of uniting the disc with the slot cutter.",
+  "give_up": false
+}

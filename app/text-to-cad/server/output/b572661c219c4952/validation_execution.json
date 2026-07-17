@@ -1,0 +1,155 @@
+{
+  "activation": {
+    "dialects": [
+      "composition",
+      "sketch_profile"
+    ],
+    "operations": [
+      "place_component",
+      "extrude_profile",
+      "revolve_profile",
+      "circular_pattern_component",
+      "boolean_cut",
+      "close_profile",
+      "fillet_sketch",
+      "create_2d_sketch",
+      "add_polyline"
+    ],
+    "feature_tags": [],
+    "part_families": [],
+    "domain_skills": [],
+    "mode": "enforce"
+  },
+  "records": [
+    {
+      "rule_id": "core.legacy.structure",
+      "rule_version": "1.0.0",
+      "provider_id": "core.legacy",
+      "stage": "structure",
+      "status": "passed",
+      "duration_ms": 0.023300002794712782,
+      "issue_count": 0,
+      "skip_reason": null
+    },
+    {
+      "rule_id": "core.legacy.root_terminal",
+      "rule_version": "1.0.0",
+      "provider_id": "core.legacy",
+      "stage": "root_terminal",
+      "status": "passed",
+      "duration_ms": 0.04849999095313251,
+      "issue_count": 0,
+      "skip_reason": null
+    },
+    {
+      "rule_id": "core.legacy.registry",
+      "rule_version": "1.0.0",
+      "provider_id": "core.legacy",
+      "stage": "registry",
+      "status": "passed",
+      "duration_ms": 0.11720000475179404,
+      "issue_count": 0,
+      "skip_reason": null
+    },
+    {
+      "rule_id": "core.legacy.params",
+      "rule_version": "1.0.0",
+      "provider_id": "core.legacy",
+      "stage": "params",
+      "status": "passed",
+      "duration_ms": 0.3693000035127625,
+      "issue_count": 0,
+      "skip_reason": null
+    },
+    {
+      "rule_id": "core.legacy.ownership",
+      "rule_version": "1.0.0",
+      "provider_id": "core.legacy",
+      "stage": "ownership",
+      "status": "passed",
+      "duration_ms": 0.044200001866556704,
+      "issue_count": 0,
+      "skip_reason": null
+    },
+    {
+      "rule_id": "core.legacy.graph",
+      "rule_version": "1.0.0",
+      "provider_id": "core.legacy",
+      "stage": "graph",
+      "status": "passed",
+      "duration_ms": 0.04410000110510737,
+      "issue_count": 0,
+      "skip_reason": null
+    },
+    {
+      "rule_id": "core.legacy.typecheck",
+      "rule_version": "1.0.0",
+      "provider_id": "core.legacy",
+      "stage": "typecheck",
+      "status": "passed",
+      "duration_ms": 0.26390000130049884,
+      "issue_count": 0,
+      "skip_reason": null
+    },
+    {
+      "rule_id": "core.legacy.phase",
+      "rule_version": "1.0.0",
+      "provider_id": "core.legacy",
+      "stage": "phase",
+      "status": "passed",
+      "duration_ms": 0.3693999897222966,
+      "issue_count": 0,
+      "skip_reason": null
+    },
+    {
+      "rule_id": "core.legacy.composition",
+      "rule_version": "1.0.0",
+      "provider_id": "core.legacy",
+      "stage": "composition",
+      "status": "passed",
+      "duration_ms": 0.039699996705166996,
+      "issue_count": 0,
+      "skip_reason": null
+    },
+    {
+      "rule_id": "core.legacy.safety",
+      "rule_version": "1.0.0",
+      "provider_id": "core.legacy",
+      "stage": "safety",
+      "status": "passed",
+      "duration_ms": 0.02340000355616212,
+      "issue_count": 0,
+      "skip_reason": null
+    },
+    {
+      "rule_id": "core.legacy.canonicalize",
+      "rule_version": "1.0.0",
+      "provider_id": "core",
+      "stage": "canonicalize",
+      "status": "passed",
+      "duration_ms": 0.0,
+      "issue_count": 0,
+      "skip_reason": null
+    },
+    {
+      "rule_id": "core.legacy.dialect_semantics",
+      "rule_version": "1.0.0",
+      "provider_id": "core.legacy",
+      "stage": "dialect_semantics",
+      "status": "passed",
+      "duration_ms": 0.05949998740106821,
+      "issue_count": 0,
+      "skip_reason": null
+    },
+    {
+      "rule_id": "core.legacy.geometry_preflight",
+      "rule_version": "1.0.0",
+      "provider_id": "core.legacy",
+      "stage": "geometry_preflight",
+      "status": "passed",
+      "duration_ms": 0.06059999577701092,
+      "issue_count": 0,
+      "skip_reason": null
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "part_intent": {
+    "object_type": "turbine_disk",
+    "dominant_geometry": "axisymmetric_with_patterned_slots",
+    "engineering_domain": "turbomachinery_rotating"
+  },
+  "route_decision": "generative_cad_ir",
+  "selected_dialects": [
+    {
+      "dialect": "axisymmetric",
+      "version": "0.2.0",
+      "reason": "Base rotational body: hub-web-rim disk profile with center bore, revolved from R-Z profile"
+    },
+    {
+      "dialect": "sketch_profile",
+      "version": "0.2.0",
+      "reason": "R-Z ordered polygon for thickness-by-radius disk profile (hub thick → web thin → rim thick) with filleted transitions. Axisymmetric.revolve_profile cannot express varying-thickness cross-sections per Rule 8a"
+    },
+    {
+      "dialect": "composition",
+      "version": "0.2.0",
+      "reason": "Combine axisymmetric disk body with patterned fir-tree slots and optional seal land features into single closed solid"
+    }
+  ],
+  "selected_primitive": null,
+  "selected_domain_skills": [],
+  "unsupported_capabilities": [
+    "multi_stage_fir_tree_slot_v2: alternating neck/lobe stations with independent flank angles per stage, individual fillet radii per lobe/neck transition, and asymmetric pressure/relief face angles. axisymmetric.cut_rim_slot_pattern supports only single-lobe fir_tree_like with uniform lobe geometry, not the requested 3-stage fir-tree with entry neck → lobe1 → neck2 → lobe2 → neck3 → root fillet",
+    "arbitrary_ordered_RZ_revolve_polygon: axisymmetric.revolve_profile sorts stations by Z and cannot natively represent a thickness-by-radius profile where hub (Z thick) → web (Z thin) → rim (Z thick) is expressed as an ordered R-Z polygon",
+    "geometry_postcheck: no dialect can enforce body_count=1, is_valid_solid=true, and is_closed=true as a post-condition; this must be verified externally",
+    "sketch_profile_to_axisymmetric_composition: no registered dialect bridges sketch_profile revolve output with axisymmetric rim-slot patterning in a single guaranteed-closed-solid workflow"
+  ],
+  "safety_notes": [
+    "Non-flight reference geometry only. Not airworthy, not certified, not for manufacturing. This system cannot guarantee closed-solid body_count=1 output for fir-tree slotted turbine disks. The requested multi-stage fir-tree geometry exceeds available dialect capabilities for rim slot profiling."
+  ]
+}
