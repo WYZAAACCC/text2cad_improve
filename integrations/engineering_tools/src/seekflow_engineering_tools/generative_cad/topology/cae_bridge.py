@@ -101,6 +101,22 @@ def resolve_named_set_to_faces(
     ambiguous = 0
     worst_quality = "exact_kernel_history"  # start high, degraded by any lower quality
 
+    # V3: empty persistent_ids → fail (cannot apply load/constraint to nothing)
+    if not named_set.persistent_ids:
+        return CaeResolvedSet(
+            name=named_set.name,
+            persistent_ids=[],
+            semantic_purpose=named_set.semantic_purpose,
+            resolution_quality="unresolved",
+            gate_result="fail",
+            issues=[{
+                "code": "TOPOLOGY_EMPTY_SET",
+                "severity": "error",
+                "message": f"NamedTopologySet '{named_set.name}' has no persistent_ids — "
+                           f"cannot apply {named_set.semantic_purpose} to zero entities.",
+            }],
+        )
+
     for pid in named_set.persistent_ids:
         result = registry.resolve(pid)
 
@@ -158,6 +174,17 @@ def resolve_named_set_to_faces(
                 f"Resolution quality '{worst_quality}' does not meet "
                 f"consumer minimum '{consumer_policy.minimum_quality.value}' "
                 f"for purpose '{named_set.semantic_purpose}'"
+            ),
+        })
+    # V3: enforce required_resolution — exact mode rejects non-exact results
+    elif named_set.required_resolution == "exact" and worst_quality != "exact_kernel_history":
+        gate_result = "fail"
+        issues.append({
+            "code": "TOPOLOGY_RESOLUTION_NOT_EXACT",
+            "severity": "error",
+            "message": (
+                f"NamedTopologySet '{named_set.name}' requires exact resolution "
+                f"but best quality is '{worst_quality}'"
             ),
         })
     else:

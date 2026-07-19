@@ -404,7 +404,7 @@ class TestTopologySidecar:
             runtime_version="0.2.0",
         )
         assert sidecar_path.exists()
-        assert meta["topology_schema_version"] in ("gcad_topology_v1", "gcad_topology_v2")
+        assert meta["topology_schema_version"] in ("gcad_topology_v1", "gcad_topology_v2", "gcad_topology_v3")
         assert meta["entity_count"] == 1
 
         # Read into fresh registry

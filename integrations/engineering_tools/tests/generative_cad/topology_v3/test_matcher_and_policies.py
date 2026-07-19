@@ -150,14 +150,10 @@ class TestPolicyDefects:
             f"locator/binding. Resolved sets: {gate.summary}"
         )
 
-    @pytest.mark.xfail(
-        reason="T-008: empty NamedTopologySet passes with best quality (unresolved rank 0).",
-        strict=True,
-    )
     def test_empty_cae_named_set_is_fatal(self):
-        """T-008: Empty CAE NamedTopologySet must be rejected.
+        """T-008 FIX: Empty CAE NamedTopologySet is now rejected.
 
-        V3 target: An empty named set for a load/constraint/contact target
+        V3: An empty named set for a load/constraint/contact target
         is always an error — you cannot apply loads to zero faces.
         """
         reg = TopologyRegistry()
@@ -165,14 +161,13 @@ class TestPolicyDefects:
         named_set = NamedTopologySet(
             name="empty_load_surface",
             entity_type="face",
-            persistent_ids=[],  # EMPTY — no entities
+            persistent_ids=[],
             semantic_purpose="load",
             required_resolution="exact",
         )
 
         result = resolve_named_set_to_faces(named_set, reg)
-        # V3 target: empty set → fail, not pass with 0→0 counts
         assert result.gate_result == "fail", (
-            f"T-008 FAIL: empty CAE set gate result is {result.gate_result}. "
-            f"V3 target: empty sets must be rejected."
+            f"T-008 FIX: empty CAE set must be rejected, "
+            f"got gate_result={result.gate_result}"
         )

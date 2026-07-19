@@ -68,8 +68,9 @@ def write_topology_sidecar(
         cq_ver = "unknown"
 
     sidecar = {
-        "schema": "gcad_topology_v2",
+        "schema": "gcad_topology_v3",
         "document_id": document_id,
+        "document_lineage_id": document_id,  # V3: lineage ID (same as document_id for now)
         "canonical_graph_hash": canonical_graph_hash,
         "topology_registry_hash": registry_hash,
 
@@ -105,7 +106,7 @@ def write_topology_sidecar(
     )
 
     return {
-        "topology_schema_version": "gcad_topology_v2",
+        "topology_schema_version": "gcad_topology_v3",
         "topology_sidecar_path": str(path),
         "topology_sidecar_sha256": _compute_file_hash(path),
         "topology_registry_hash": registry_hash,
@@ -135,10 +136,10 @@ def read_topology_sidecar(
     data = json.loads(path.read_text(encoding="utf-8"))
 
     schema = data.get("schema", "")
-    if schema not in ("gcad_topology_v1", "gcad_topology_v2"):
+    if schema not in ("gcad_topology_v1", "gcad_topology_v2", "gcad_topology_v3"):
         raise ValueError(
             f"Unsupported topology sidecar schema: {schema!r}. "
-            f"Expected: 'gcad_topology_v1' or 'gcad_topology_v2'."
+            f"Expected: 'gcad_topology_v1', 'gcad_topology_v2', or 'gcad_topology_v3'."
         )
 
     # PR 10: Validate registry hash
