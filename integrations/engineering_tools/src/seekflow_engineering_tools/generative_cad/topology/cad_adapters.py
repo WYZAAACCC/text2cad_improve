@@ -92,7 +92,7 @@ class TopologyStepExporter:
         manifest: dict = {
             "step_path": str(step_path),
             "sidecar_path": str(sidecar_path) if sidecar_path else None,
-            "topology_schema_version": "gcad_topology_v1",
+            "topology_schema_version": "gcad_topology_v3",
             "has_topology_sidecar": sidecar_path is not None,
         }
 
@@ -154,13 +154,13 @@ class TopologyStepExporter:
                 "message": f"Sidecar hash {sc_hash} != canonical {canonical_graph_hash}",
             })
 
-        # Check schema version
+        # Check schema version (v1/v2/v3 all accepted)
         schema = data.get("schema", "")
-        if schema != "gcad_topology_v1":
+        if schema not in ("gcad_topology_v1", "gcad_topology_v2", "gcad_topology_v3"):
             issues.append({
                 "code": "SCHEMA_VERSION_MISMATCH",
                 "severity": "warning",
-                "message": f"Sidecar schema {schema} != gcad_topology_v1",
+                "message": f"Sidecar schema {schema} not in accepted versions",
             })
 
         return {"ok": len([i for i in issues if i["severity"] == "error"]) == 0, "issues": issues}
@@ -201,22 +201,39 @@ class SolidWorksTopologyAdapter:
         Returns:
             Dict mapping SW-compatible face name → compact PersistentTopoId.
         """
-        from seekflow_engineering_tools.generative_cad.topology.ids import PersistentTopoId
+        from seekflow_engineering_tools.generative_cad.topology.ids import (
+            PersistentTopoId,
+            parse_persistent_id_key,
+        )
 
         attr_map: dict[str, str] = {}
         snapshot = registry.export_snapshot()
         for pid, data in snapshot.get("entities", {}).items():
             if data.get("status") != "active":
                 continue
-            try:
-                topo_id = PersistentTopoId.from_compact(pid)
-            except ValueError:
-                continue
 
-            # Build SW-compatible face name (max 255 chars, alphanumeric + _)
+            key_info = parse_persistent_id_key(pid)
+            version = key_info.get("version", "unknown")
+
+            # Extract identity fields from entity record metadata
+            # (v2/v3 keys are opaque hashes — cannot parse fields from key)
+            component_id = data.get("component_id", "unknown")
+            producer_id = data.get("producer_node_id", "unknown")
+            role = data.get("semantic_role", "unknown")
+
+            # For v1: also try to parse from compact format (backward compat)
+            if version == "v1":
+                try:
+                    topo_id = PersistentTopoId.from_compact(pid)
+                    component_id = topo_id.component_id
+                    producer_id = topo_id.producer_node_id
+                    role = topo_id.semantic_role
+                except ValueError:
+                    pass  # use metadata fields
+
             sw_name = (
-                f"GCAD_{topo_id.component_id}_{topo_id.producer_node_id}_"
-                f"{topo_id.semantic_role.replace('/', '_')}"
+                f"GCAD_{component_id}_{producer_id}_"
+                f"{role.replace('/', '_')}"
             )[:255]
             attr_map[sw_name] = pid
 

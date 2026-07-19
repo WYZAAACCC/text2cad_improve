@@ -400,11 +400,63 @@ def _try_produce_boolean_topology(
         return
     try:
         doc_id = ctx.document_id or "unknown"
-        delta = name_boolean_faces(
-            solid, document_id=doc_id,
-            component_id=node.component or "unknown",
-            producer_node_id=node.id,
-        )
+
+        # Build delta: use OCCT history when available, fall back to semantic naming
+        if history_result is not None:
+            # V3: Build delta from actual OCCT boolean history
+            # (generated_faces, modified_faces, deleted_entities)
+            from seekflow_engineering_tools.generative_cad.topology.models import (
+                TopologyDelta, TopologyRelation,
+            )
+            relations = []
+            # Generated faces → primitive relations
+            for edge_key, faces in history_result.generated_faces.items():
+                for fi, _face in enumerate(faces):
+                    role = f"boolean/generated.from/{edge_key}"
+                    if len(faces) > 1:
+                        role += f"/{fi}"
+                    relations.append(TopologyRelation(
+                        relation="generated",
+                        source_ids=[edge_key],
+                        result_entity_keys=[],  # filled by build_entity_records
+                        semantic_role=role,
+                        evidence={"method": "occt_boolean_generated", "source": edge_key},
+                    ))
+            # Modified faces → modified relations
+            for face_key, mod_faces in history_result.modified_faces.items():
+                for fi, _face in enumerate(mod_faces):
+                    role = f"boolean/modified.from/{face_key}"
+                    if len(mod_faces) > 1:
+                        role += f"/{fi}"
+                    relations.append(TopologyRelation(
+                        relation="modified",
+                        source_ids=[face_key],
+                        result_entity_keys=[],
+                        semantic_role=role,
+                        evidence={"method": "occt_boolean_modified", "source": face_key},
+                    ))
+            # Deleted entities → deleted relations
+            for del_key in history_result.deleted_entities:
+                relations.append(TopologyRelation(
+                    relation="deleted",
+                    source_ids=[del_key],
+                    evidence={"method": "occt_boolean_deleted"},
+                ))
+            delta = TopologyDelta(
+                node_id=node.id,
+                component_id=node.component or "unknown",
+                result_body_handle_ids=[],
+                relations=relations,
+                history_provider="occt_boolean_history",
+                history_provider_version="3.0.0",
+            )
+        else:
+            delta = name_boolean_faces(
+                solid, document_id=doc_id,
+                component_id=node.component or "unknown",
+                producer_node_id=node.id,
+            )
+
         records = build_entity_records_from_delta(delta, document_id=doc_id)
         with ctx.topology_transaction() as tx:
             for rec in records:
@@ -414,7 +466,7 @@ def _try_produce_boolean_topology(
             "event": "boolean_topology_produced",
             "node_id": node.id, "op": op_name,
             "face_count": len(delta.relations),
-            "method": "history_aware" if history_result is not None else "semantic",
+            "method": "occt_history" if history_result is not None else "semantic",
         }
         if history_result is not None:
             ev["deleted_count"] = len(history_result.deleted_entities)
