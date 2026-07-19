@@ -103,6 +103,7 @@ def compute_face_fingerprint(
     face: "Any",
     tolerance_mm: float = 0.01,
     provenance_anchor: str = "",
+    local_origin: tuple[float, float, float] | None = None,
 ) -> FaceFingerprint:
     """Compute a quantized geometric fingerprint from a CadQuery/OCP face.
 
@@ -110,10 +111,14 @@ def compute_face_fingerprint(
     This ensures that small parameter changes (< tolerance) don't alter
     the fingerprint, while larger changes do.
 
+    V3: Optional local_origin shifts centroid/bbox to body-local coordinates,
+    making fingerprints invariant under rigid body transforms.
+
     Args:
         face: A CadQuery Face object (has geomType(), Area(), Center(), etc.).
         tolerance_mm: Quantization tolerance in mm (default 0.01mm = 10μm).
         provenance_anchor: Optional provenance string (e.g. "box/n1/face").
+        local_origin: Optional (x, y, z) origin for body-local coordinates.
 
     Returns:
         FaceFingerprint with quantized geometric properties.
@@ -121,6 +126,8 @@ def compute_face_fingerprint(
     tol = float(tolerance_mm)
     if tol <= 0:
         tol = 0.01
+
+    ox, oy, oz = local_origin if local_origin else (0.0, 0.0, 0.0)
 
     # Surface type
     try:

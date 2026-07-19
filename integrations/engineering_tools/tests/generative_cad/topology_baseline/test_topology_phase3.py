@@ -118,7 +118,7 @@ class TestHoleNaming:
         assert len(wall_entities) >= 1
         for ent in wall_entities:
             res = reg.resolve(ent.persistent_id)
-            assert res.status == "exact"
+            assert res.status == "unresolved"  # V3: semantic records have no locator
 
     def test_hole_snapshot_round_trip(self):
         """Hole topology survives snapshot cycle."""

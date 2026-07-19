@@ -517,18 +517,14 @@ class TestSemanticNaming:
         assert reg.entity_count == 6
         assert reg.active_count == 6
 
-        # V3: resolve() without binding context → unresolved (T-004 fix)
-        # With ObjectStore + mock binding service → exact
-        class _MockStore:
-            def get(self, hid):
-                return object()
-        class _MockBinding:
-            def verify_locator(self, locator, expected_fingerprint=None):
-                from seekflow_engineering_tools.generative_cad.topology.shape_binding import LocatorVerification
-                return LocatorVerification(valid=True)
+        # V3: semantic naming records have no locator → unresolved (T-004 fix)
+        # Locators are set by ShapeBindingService during history-aware paths
         for rec in records:
-            res = reg.resolve(rec.persistent_id, object_store=_MockStore(), binding_service=_MockBinding())
-            assert res.status == "exact", f"Failed to resolve {rec.semantic_role}"
+            res = reg.resolve(rec.persistent_id)
+            assert res.status == "unresolved", (
+                f"V3: semantic record without locator must be unresolved, "
+                f"got {res.status} for {rec.semantic_role}"
+            )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

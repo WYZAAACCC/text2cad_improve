@@ -737,7 +737,7 @@ def name_fillet_faces(
             if edge_ids and fillet_idx < len(edge_ids):
                 role = f"fillet/face_from/{edge_ids[fillet_idx]}"
             else:
-                role = f"fillet/fallback/{fillet_idx}"
+                role = f"fillet/fallback/f{fillet_idx}"
             fillet_idx += 1
             relations.append(TopologyRelation(
                 relation="generated",
