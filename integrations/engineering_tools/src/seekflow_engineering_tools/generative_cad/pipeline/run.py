@@ -366,6 +366,11 @@ def run_canonical_gcad(
         )
         step_postcheck = validate_step_post_export(out_step, min_size_bytes=200)
 
+        # ════════════════════════════════════════════════════════════
+        # V3: Write topology sidecar after successful STEP export
+        # ════════════════════════════════════════════════════════════
+        _write_topology_sidecar_if_entities(ctx, out_step, canonical)
+
         if not geo_postcheck.ok:
             gp_dict = {
                 "ok": geo_postcheck.ok,
@@ -568,6 +573,36 @@ def _run_components(canonical: CanonicalGcadDocument, ctx: RuntimeContext) -> No
         else:
             # Mixed-dialect component: run each node individually via its own dialect
             _run_mixed_dialect_component(component, nodes, ctx, dialects_in_use)
+
+
+def _write_topology_sidecar_if_entities(
+    ctx: RuntimeContext,
+    out_step: Path,
+    canonical: Any,
+) -> None:
+    """Write topology sidecar V3 if the registry has entities.
+
+    Called after successful STEP export. Sidecar is always written when
+    topology exists — topology_mode="required" operations will have
+    already enforced delta production.
+    """
+    try:
+        if ctx.topology_registry.entity_count == 0:
+            return
+        from seekflow_engineering_tools.generative_cad.topology.persistence import (
+            write_topology_sidecar,
+        )
+        sidecar_path = out_step.with_suffix(".topology.json")
+        write_topology_sidecar(
+            ctx.topology_registry,
+            sidecar_path,
+            document_id=ctx.document_id or getattr(canonical, "document_id", ""),
+            canonical_graph_hash=ctx.canonical_graph_hash
+            or getattr(canonical, "canonical_graph_hash", ""),
+            runtime_version=ctx.runner_version,
+        )
+    except Exception:
+        pass  # Sidecar is best-effort in Phase 9; Phase 10+ will make it required
 
 
 def _run_mixed_dialect_component(component, nodes, ctx, dialects_in_use):

@@ -51,7 +51,7 @@ def name_box_faces(
             relations.append(TopologyRelation(
                 relation="primitive",
                 result_entity_keys=[
-                    _make_compact_id(document_id, component_id, producer_node_id,
+                    _make_compact_key(document_id, component_id, producer_node_id,
                                      "face", f"box/fallback/{i}")
                 ],
                 semantic_role=f"box/fallback/{i}",
@@ -71,7 +71,7 @@ def name_box_faces(
         relations.append(TopologyRelation(
             relation="primitive",
             result_entity_keys=[
-                _make_compact_id(document_id, component_id, producer_node_id,
+                _make_compact_key(document_id, component_id, producer_node_id,
                                  "face", role)
             ],
             semantic_role=role,
@@ -133,7 +133,7 @@ def name_cylinder_faces(
             relations.append(TopologyRelation(
                 relation="primitive",
                 result_entity_keys=[
-                    _make_compact_id(document_id, component_id, producer_node_id,
+                    _make_compact_key(document_id, component_id, producer_node_id,
                                      "face", f"cylinder/face_{i}")
                 ],
                 semantic_role=f"cylinder/face_{i}",
@@ -154,7 +154,7 @@ def name_cylinder_faces(
         relations.append(TopologyRelation(
             relation="primitive",
             result_entity_keys=[
-                _make_compact_id(document_id, component_id, producer_node_id,
+                _make_compact_key(document_id, component_id, producer_node_id,
                                  "face", role)
             ],
             semantic_role=role,
@@ -192,7 +192,7 @@ def name_sphere_faces(
         TopologyRelation(
             relation="primitive",
             result_entity_keys=[
-                _make_compact_id(document_id, component_id, producer_node_id,
+                _make_compact_key(document_id, component_id, producer_node_id,
                                  "face", "sphere/outer_surface")
             ],
             semantic_role="sphere/outer_surface",
@@ -301,29 +301,37 @@ def _make_compact_id(
     producer_node_id: str,
     entity_type: str,
     semantic_role: str,
-) -> str:
-    """Create a V3 PersistentTopoId authoritative key string.
+) -> tuple[str, dict]:
+    """Create a V3 PersistentTopoId authoritative key + descriptor.
 
-    Uses TopologyIdentityDescriptorV3.to_key() which produces a stable
-    content-hash-based key (gct3_<base64url sha256>) from identity-relevant
-    fields only — document_id → document_lineage_id, producer_node_id
-    excluded from key, semantic_role → structured semantic_path tuple.
+    Returns (key_string, descriptor_dict). The descriptor is stored in
+    TopologyEntityRecord.identity_descriptor for full recoverability.
     """
     from seekflow_engineering_tools.generative_cad.topology.ids import (
         make_persistent_id_v3,
     )
-    # Convert free-form semantic_role to structured semantic_path
     semantic_path = tuple(semantic_role.split("/"))
-    key, _desc = make_persistent_id_v3(
+    key, desc = make_persistent_id_v3(
         document_lineage_id=document_id,
         component_stable_id=component_id,
         feature_stable_id=producer_node_id,
         entity_type=entity_type,  # type: ignore[arg-type]
         semantic_path=semantic_path,
     )
-    # Note: _desc (TopologyIdentityDescriptorV3) could be stored in
-    # TopologyEntityRecord.identity_descriptor for recoverability.
-    # Phase 9+ will wire this through build_entity_records_from_delta.
+    return key, desc.model_dump()
+
+
+def _make_compact_key(
+    document_id: str,
+    component_id: str,
+    producer_node_id: str,
+    entity_type: str,
+    semantic_role: str,
+) -> str:
+    """Convenience: return just the V3 key string (discard descriptor)."""
+    key, _desc = _make_compact_id(
+        document_id, component_id, producer_node_id, entity_type, semantic_role,
+    )
     return key
 
 
@@ -412,7 +420,7 @@ def name_extrude_faces(
         relations.append(TopologyRelation(
             relation="primitive",
             result_entity_keys=[
-                _make_compact_id(document_id, component_id, producer_node_id, "face", role)
+                _make_compact_key(document_id, component_id, producer_node_id, "face", role)
             ],
             semantic_role=role,
             evidence={
@@ -508,7 +516,7 @@ def name_revolve_faces(
         relations.append(TopologyRelation(
             relation="primitive",
             result_entity_keys=[
-                _make_compact_id(document_id, component_id, producer_node_id, "face", role)
+                _make_compact_key(document_id, component_id, producer_node_id, "face", role)
             ],
             semantic_role=role,
             evidence={
@@ -593,7 +601,7 @@ def name_hole_faces(
                 role = f"hole_tool/lateral_{lateral_idx}"
             else:
                 role = "hole_tool/lateral"
-            key = _make_compact_id(document_id, component_id, tool_nid, "face", role)
+            key = _make_compact_key(document_id, component_id, tool_nid, "face", role)
             if tool_lateral_key is None:
                 tool_lateral_key = key
             relations.append(TopologyRelation(
@@ -605,11 +613,11 @@ def name_hole_faces(
         elif stype == "PLANE":
             if center.z > 0:
                 role = "hole_tool/cap_end"
-                key = _make_compact_id(document_id, component_id, tool_nid, "face", role)
+                key = _make_compact_key(document_id, component_id, tool_nid, "face", role)
                 tool_cap_end_key = key
             else:
                 role = "hole_tool/cap_start"
-                key = _make_compact_id(document_id, component_id, tool_nid, "face", role)
+                key = _make_compact_key(document_id, component_id, tool_nid, "face", role)
                 tool_cap_start_key = key
             relations.append(TopologyRelation(
                 relation="deleted",
@@ -620,7 +628,7 @@ def name_hole_faces(
 
     # Step 2: Map tool faces → hole semantics
     if tool_lateral_key:
-        hole_wall_id = _make_compact_id(document_id, component_id, producer_node_id, "face", "hole/wall")
+        hole_wall_id = _make_compact_key(document_id, component_id, producer_node_id, "face", "hole/wall")
         relations.append(TopologyRelation(
             relation="generated",
             source_ids=[tool_lateral_key],
@@ -630,7 +638,7 @@ def name_hole_faces(
         ))
 
     if tool_cap_start_key:
-        entry_rim_id = _make_compact_id(document_id, component_id, producer_node_id, "edge", "hole/entry_rim")
+        entry_rim_id = _make_compact_key(document_id, component_id, producer_node_id, "edge", "hole/entry_rim")
         relations.append(TopologyRelation(
             relation="generated",
             source_ids=[tool_cap_start_key],
@@ -640,7 +648,7 @@ def name_hole_faces(
         ))
 
     if tool_cap_end_key and is_through_hole:
-        exit_rim_id = _make_compact_id(document_id, component_id, producer_node_id, "edge", "hole/exit_rim")
+        exit_rim_id = _make_compact_key(document_id, component_id, producer_node_id, "edge", "hole/exit_rim")
         relations.append(TopologyRelation(
             relation="generated",
             source_ids=[tool_cap_end_key],
@@ -734,7 +742,7 @@ def name_fillet_faces(
             relations.append(TopologyRelation(
                 relation="generated",
                 result_entity_keys=[
-                    _make_compact_id(document_id, component_id, producer_node_id, "face", role)
+                    _make_compact_key(document_id, component_id, producer_node_id, "face", role)
                 ],
                 semantic_role=role,
                 evidence={"method": "fillet_face_classification", "surface_type": stype,
@@ -747,7 +755,7 @@ def name_fillet_faces(
             relations.append(TopologyRelation(
                 relation="modified",
                 result_entity_keys=[
-                    _make_compact_id(document_id, component_id, producer_node_id, "face", role)
+                    _make_compact_key(document_id, component_id, producer_node_id, "face", role)
                 ],
                 semantic_role=role,
                 evidence={"method": "fillet_adjacent_face", "surface_type": stype,
@@ -815,7 +823,7 @@ def name_chamfer_faces(
             relations.append(TopologyRelation(
                 relation="generated",
                 result_entity_keys=[
-                    _make_compact_id(document_id, component_id, producer_node_id, "face", role)
+                    _make_compact_key(document_id, component_id, producer_node_id, "face", role)
                 ],
                 semantic_role=role,
                 evidence={"method": "chamfer_face_classification", "surface_type": stype,
@@ -875,7 +883,7 @@ def name_shell_faces(
         relations.append(TopologyRelation(
             relation="modified",
             result_entity_keys=[
-                _make_compact_id(document_id, component_id, producer_node_id, "face", role)
+                _make_compact_key(document_id, component_id, producer_node_id, "face", role)
             ],
             semantic_role=role,
             evidence={"method": "shell_face", "surface_type": stype, "runtime_index": i},
@@ -945,7 +953,7 @@ def name_loft_faces(
         relations.append(TopologyRelation(
             relation="primitive",
             result_entity_keys=[
-                _make_compact_id(document_id, component_id, producer_node_id, "face", role)
+                _make_compact_key(document_id, component_id, producer_node_id, "face", role)
             ],
             semantic_role=role,
             evidence={"method": "loft_face_classification", "surface_type": stype,
@@ -1002,7 +1010,7 @@ def name_sweep_faces(
         relations.append(TopologyRelation(
             relation="primitive",
             result_entity_keys=[
-                _make_compact_id(document_id, component_id, producer_node_id, "face", role)
+                _make_compact_key(document_id, component_id, producer_node_id, "face", role)
             ],
             semantic_role=role,
             evidence={"method": "sweep_face_classification", "surface_type": stype, "runtime_index": i},
@@ -1086,7 +1094,7 @@ def name_boolean_faces(
         relations.append(TopologyRelation(
             relation="modified",
             result_entity_keys=[
-                _make_compact_id(document_id, component_id, producer_node_id, "face", role)
+                _make_compact_key(document_id, component_id, producer_node_id, "face", role)
             ],
             semantic_role=role,
             evidence={"method": "boolean_face_classification", "surface_type": stype,
@@ -1112,7 +1120,7 @@ def _make_fallback_relation(
     return TopologyRelation(
         relation="primitive",
         result_entity_keys=[
-            _make_compact_id(document_id, component_id, producer_node_id, entity_type, fallback_role)
+            _make_compact_key(document_id, component_id, producer_node_id, entity_type, fallback_role)
         ],
         semantic_role=fallback_role,
         evidence={"method": "fallback_enumerate", "index": runtime_index},
