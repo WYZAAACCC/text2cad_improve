@@ -206,6 +206,43 @@ sandbox = ContainerSandbox(image="python:3.11-slim")
 
 ---
 
+## Engineering Tools: Text-to-CAD + FEA Pipeline
+
+SeekFlow includes a full **Generative CAD (G-CAD) subsystem** that converts natural language prompts into production-ready CAD geometry and finite element analysis:
+
+```
+Natural Language → LLM (DeepSeek v4-pro) → Raw IR → 22-stage Validation
+  → Canonical IR → Compiler Middle-End → Runtime Execution → STEP File
+  → SolidWorks/NX Import → ANSYS FEA → 3D Stress Visualization
+```
+
+### Key Capabilities
+
+| Subsystem | Description |
+|-----------|-------------|
+| **6 CAD Dialects** | sketch_extrude, sketch_profile, axisymmetric, composition, loft_sweep, shell_housing |
+| **Validation Kernel** | 14-stage unified validation with RuleRegistry + Barrier Groups + Repair Loop |
+| **FEA Pipeline** | ANSYS APDL 6 analysis types (static, thermal, modal, buckling, plastic) with named topology sets |
+| **4 Backends** | CadQuery (deterministic), SolidWorks 2025 (COM), Siemens NX 12.0 (file bridge), ANSYS 18.1 (APDL) |
+
+### Persistent Topology Naming (v2)
+
+The G-CAD subsystem includes a production-grade persistent topology naming system that gives every face/edge a **stable, deterministic identity** that survives parameter changes, feature insertion, and rebuilds:
+
+| Component | Description |
+|-----------|-------------|
+| **PersistentTopoIdV2** | Hash-based identity (`gct2_<sha256>`) — no truncation, colon-escaping, or runtime index dependence |
+| **TopologyRegistry** | Central identity authority tracking entity lifecycle (active/deleted/superseded/ambiguous) with split/merge lineage DAG |
+| **ShapeBindingService** | OCCT `IndexedMapOfShape`-based subshape location with `FindIndex()` for cross-build face retrieval |
+| **TopologyTransaction** | Atomic commit/rollback — all 7 handler sites use `ctx.topology_transaction()` (side-channel eliminated) |
+| **10 History Wrappers** | `history_aware_extrude/revolve/boolean_fuse/cut/fillet/chamfer/shell/loft/sweep` — capture OCCT `Generated()/Modified()/IsDeleted()` |
+| **CAE Bridge** | `cae_preflight_gate()` with worst-quality gate — blocks ANSYS on unresolved/deleted/ambiguous topology references |
+| **Sidecar v2** | `write/read_topology_sidecar` with SHA256 integrity + `rebind_after_restore` for cross-process rebuild |
+
+**Verification:** 108 unit tests pass. E2E turbine disk test: 14.7MB STEP, 3075 topology entities, 10/10 revolve faces with verified locator chain (PersistentTopoId → RuntimeTopoLocator → actual TopoDS_Face).
+
+---
+
 ## Benchmark
 
 **6 scenarios × 4 frameworks, dual-judge scoring (deepseek-v4-pro)** — [full results →](benchmarks/fair_comparison_v2/)
@@ -284,9 +321,10 @@ See [issues/](docs/issues/) for detailed tracer-bullet issues with acceptance cr
 
 ## Documentation
 
+- [G-CAD Architecture (Chinese)](docs/架构文档与具体规范.md) — full generative_cad subsystem analysis
+- [Topology Naming Guide (Chinese)](docs/text2cad_complete_persistent_topology_repair_implementation_guide_zh.md) — PR 1-13 implementation specification
 - [Why SeekFlow?](docs/why-seekflow.md) — design philosophy and comparison
 - [Security Levels](docs/security/levels.md) — Lv2 production-ready vs Lv3 candidate
-- [Changelog v0.2.0](docs/CHANGELOG-v020.md) — full release notes
 - [Security Policy](docs/SECURITY.md) — vulnerability reporting
 - [Tests](tests/) — 620+ tests covering security, retry, policy, tools, agent
 
