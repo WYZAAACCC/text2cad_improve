@@ -142,19 +142,19 @@ def compute_face_fingerprint(
     except Exception:
         area_q = None
 
-    # Centroid
+    # Centroid (V3: body-local coordinates when local_origin is set)
     try:
         c = face.Center()
-        centroid_q = (round(c.x / tol), round(c.y / tol), round(c.z / tol))
+        centroid_q = (round((c.x - ox) / tol), round((c.y - oy) / tol), round((c.z - oz) / tol))
     except Exception:
         centroid_q = None
 
-    # Bounding box
+    # Bounding box (V3: body-local coordinates when local_origin is set)
     try:
         bb = face.BoundingBox()
         bbox_q = (
-            round(bb.xmin / tol), round(bb.ymin / tol), round(bb.zmin / tol),
-            round(bb.xmax / tol), round(bb.ymax / tol), round(bb.zmax / tol),
+            round((bb.xmin - ox) / tol), round((bb.ymin - oy) / tol), round((bb.zmin - oz) / tol),
+            round((bb.xmax - ox) / tol), round((bb.ymax - oy) / tol), round((bb.zmax - oz) / tol),
         )
     except Exception:
         bbox_q = None
