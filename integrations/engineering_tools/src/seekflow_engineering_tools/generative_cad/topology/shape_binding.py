@@ -33,6 +33,9 @@ class BodyTopologyMaps:
     _face_indexed_map: Any = None  # TopTools_IndexedMapOfShape for FindIndex
     _edge_indexed_map: Any = None  # TopTools_IndexedMapOfShape for FindIndex
     shape_content_hash: str = ""
+    # V3 fields
+    owner_body_revision_id: str = ""          # ObjectStore revision at build time
+    artifact_geometry_digest: str = ""        # Reserved for Phase 4: STEP/BREP digest
 
 
 @dataclass
@@ -71,20 +74,29 @@ class ShapeBindingService:
         Stores forward mapping (position → shape) and reverse mapping
         (shape hash → position) for fast subshape location.
 
+        V3: Captures ObjectStore revision for staleness detection.
+
         Args:
             owner_body_handle_id: The handle ID of the owner body.
             owner_shape: A CadQuery Shape or OCP TopoDS_Shape.
 
         Returns:
-            BodyTopologyMaps with populated face_map, edge_map, and reverse hashes.
+            BodyTopologyMaps with populated face_map, edge_map, and revision.
         """
         face_map, face_idx = self._build_indexed_map(owner_shape, "face")
         edge_map, edge_idx = self._build_indexed_map(owner_shape, "edge")
 
         shape_content_hash = self._compute_shape_content_hash(owner_shape)
 
-        # PR fix: store OCP IndexedMaps for FindIndex-based lookup
-        # (HashCode not available in all OCP builds)
+        # V3: capture ObjectStore revision for locator lifecycle
+        revision_id = ""
+        if self._object_store is not None:
+            try:
+                rev = self._object_store.get_revision(owner_body_handle_id)
+                revision_id = str(rev) if rev > 0 else ""
+            except Exception:
+                pass
+
         return BodyTopologyMaps(
             owner_body_handle_id=owner_body_handle_id,
             face_map=face_map,
@@ -92,6 +104,7 @@ class ShapeBindingService:
             _face_indexed_map=face_idx,
             _edge_indexed_map=edge_idx,
             shape_content_hash=shape_content_hash,
+            owner_body_revision_id=revision_id,
         )
 
     def _build_indexed_map(
@@ -100,40 +113,38 @@ class ShapeBindingService:
         """Build {position: TopoDS_Shape} map + return OCP IndexedMap.
 
         Returns (dict, IndexedMap) — dict for iteration, IndexedMap for FindIndex.
-        Returns ({}, None) if OCP is unavailable.
+        Raises ImportError if OCP is unavailable.
+        Raises RuntimeError on any other failure (V3: no silent degradation).
         """
-        try:
-            from OCP.TopExp import TopExp  # type: ignore[import-untyped]
-            from OCP.TopAbs import TopAbs_ShapeEnum  # type: ignore[import-untyped]
-            from OCP.TopTools import TopTools_IndexedMapOfShape  # type: ignore[import-untyped]
+        from OCP.TopExp import TopExp  # type: ignore[import-untyped]
+        from OCP.TopAbs import TopAbs_ShapeEnum  # type: ignore[import-untyped]
+        from OCP.TopTools import TopTools_IndexedMapOfShape  # type: ignore[import-untyped]
 
-            type_enum = {
-                "face": getattr(TopAbs_ShapeEnum, "TopAbs_FACE", None),
-                "edge": getattr(TopAbs_ShapeEnum, "TopAbs_EDGE", None),
-            }.get(entity_type)
+        type_enum = {
+            "face": getattr(TopAbs_ShapeEnum, "TopAbs_FACE", None),
+            "edge": getattr(TopAbs_ShapeEnum, "TopAbs_EDGE", None),
+        }.get(entity_type)
 
-            if type_enum is None:
-                return {}, None
-
-            # Unwrap CadQuery object to raw TopoDS_Shape:
-            # Workplane → .val() → CadQuery Shape → .wrapped → OCP TopoDS_Shape
-            raw = shape
-            if hasattr(raw, 'val') and callable(raw.val):
-                raw = raw.val()
-            raw = getattr(raw, "wrapped", raw)
-
-            indexed = TopTools_IndexedMapOfShape()
-            _map_shapes = getattr(TopExp, 'MapShapes', getattr(TopExp, 'MapShapes_s', None))
-            if _map_shapes:
-                _map_shapes(raw, type_enum, indexed)  # type: ignore[arg-type]
-
-            result: dict[int, Any] = {}
-            extent = indexed.Extent()
-            for i in range(1, extent + 1):
-                result[i] = indexed.FindKey(i)
-            return result, indexed
-        except Exception:
+        if type_enum is None:
             return {}, None
+
+        # Unwrap CadQuery object to raw TopoDS_Shape:
+        # Workplane → .val() → CadQuery Shape → .wrapped → OCP TopoDS_Shape
+        raw = shape
+        if hasattr(raw, 'val') and callable(raw.val):
+            raw = raw.val()
+        raw = getattr(raw, "wrapped", raw)
+
+        indexed = TopTools_IndexedMapOfShape()
+        _map_shapes = getattr(TopExp, 'MapShapes', getattr(TopExp, 'MapShapes_s', None))
+        if _map_shapes:
+            _map_shapes(raw, type_enum, indexed)  # type: ignore[arg-type]
+
+        result: dict[int, Any] = {}
+        extent = indexed.Extent()
+        for i in range(1, extent + 1):
+            result[i] = indexed.FindKey(i)
+        return result, indexed
 
     # ── Subshape Location ──
 
@@ -180,10 +191,14 @@ class ShapeBindingService:
             owner_body_handle_id=maps.owner_body_handle_id,
             entity_type=entity_type,
             indexed_map_position=position,
-            occt_shape_hash=0,  # HashCode unavailable — use position as identity
+            occt_shape_hash=0,  # HashCode unavailable — use position + revision
             orientation=self._get_orientation(subshape),
             location_hash=self._get_location_hash(subshape),
             owner_shape_content_hash=maps.shape_content_hash,
+            owner_body_revision_id=(
+                maps.owner_body_revision_id
+                if maps.owner_body_revision_id else None
+            ),
         )
 
     # ── Locator Resolution ──
@@ -298,16 +313,15 @@ class ShapeBindingService:
     def _compute_shape_content_hash(shape: Any) -> str:
         """Compute a content hash of the full body shape tree.
 
-        Uses OCCT BRepTools.HashCode to get a fast shape tree hash.
+        Uses OCCT TopoDS_Shape.HashCode() for a fast shape tree hash.
         Returns hex string for readability.
+
+        V3: Raises RuntimeError on failure — never returns a sentinel value.
         """
-        try:
-            wrapped = getattr(shape, "wrapped", shape)
-            max_int = sys.maxsize
-            occt_hash = wrapped.HashCode(max_int)
-            return hashlib.sha256(str(occt_hash).encode()).hexdigest()[:16]
-        except Exception:
-            return "unknown"
+        wrapped = getattr(shape, "wrapped", shape)
+        max_int = sys.maxsize
+        occt_hash = wrapped.HashCode(max_int)
+        return hashlib.sha256(str(occt_hash).encode()).hexdigest()[:16]
 
     @staticmethod
     def _get_location_hash(shape: Any) -> int | None:

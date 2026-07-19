@@ -24,13 +24,40 @@ class RuntimeObjectStore:
     def __init__(self) -> None:
         self._objects: dict[str, Any] = {}
         self._handles: dict[str, RuntimeHandle] = {}
+        # V3: revision tracking for locator staleness detection
+        self._revisions: dict[str, int] = {}
 
     def put(self, handle: RuntimeHandle, obj: Any) -> RuntimeHandle:
         if handle.id in self._objects:
             raise ValueError(f"duplicate runtime handle id: {handle.id}")
         self._handles[handle.id] = handle
         self._objects[handle.id] = obj
+        self._revisions[handle.id] = 1  # V3: initial revision
         return handle
+
+    def replace(self, handle: RuntimeHandle, obj: Any) -> RuntimeHandle:
+        """Replace an existing object, bumping its revision counter.
+
+        Revision is a monotonically increasing integer used for locator
+        staleness detection. When a body is rebuilt, locators created from
+        the old body revision become stale.
+        """
+        if handle.id not in self._objects:
+            raise KeyError(
+                f"Cannot replace non-existent handle: {handle.id}. "
+                f"Use put() for new objects."
+            )
+        self._handles[handle.id] = handle
+        self._objects[handle.id] = obj
+        self._revisions[handle.id] = self._revisions.get(handle.id, 0) + 1
+        return handle
+
+    def get_revision(self, handle_id: str) -> int:
+        """Get the current revision number for a handle.
+
+        Returns 0 if the handle has never been stored (treat as 'unknown revision').
+        """
+        return self._revisions.get(handle_id, 0)
 
     def get(self, handle_or_id: RuntimeHandle | str) -> Any:
         hid = handle_or_id.id if isinstance(handle_or_id, RuntimeHandle) else handle_or_id

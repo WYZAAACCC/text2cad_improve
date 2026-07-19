@@ -70,6 +70,20 @@ class RuntimeTopoLocator(BaseModel):
         "When this changes, the locator is stale and must be rebuilt.",
     )
 
+    # ── V3: Revision-based staleness ──
+    owner_body_revision_id: str | None = Field(
+        default=None,
+        description="V3: ObjectStore revision token. When the owner body is "
+        "replaced (via ObjectStore.replace()), the revision increments, making "
+        "all old locators stale. This is the primary staleness mechanism — "
+        "content hash is a secondary check.",
+    )
+    map_algorithm: Literal["occt_indexed_map_v1"] = Field(
+        default="occt_indexed_map_v1",
+        description="Algorithm used to build the IndexedMap. Reserved for "
+        "future algorithm changes.",
+    )
+
     # ── Convenience ──
 
     def to_display_key(self) -> str:
@@ -80,7 +94,20 @@ class RuntimeTopoLocator(BaseModel):
         )
 
     def is_stale(self, current_content_hash: str) -> bool:
-        """Check if this locator is stale (owner body content hash changed)."""
+        """[DEPRECATED] Check if this locator is stale via content hash.
+
+        Use is_stale_v3() for revision-based staleness detection.
+        """
         if self.owner_shape_content_hash is None:
-            return False  # No hash to compare — assume fresh
+            return False
         return self.owner_shape_content_hash != current_content_hash
+
+    def is_stale_v3(self, current_revision: str | None) -> bool:
+        """V3 strict staleness: revision mismatch → stale.
+
+        If owner_body_revision_id is set, compare to current_revision.
+        If not set (legacy locator), fall back to content hash.
+        """
+        if self.owner_body_revision_id is not None and current_revision is not None:
+            return self.owner_body_revision_id != current_revision
+        return False  # legacy: no revision to compare

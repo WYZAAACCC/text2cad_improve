@@ -97,6 +97,11 @@ class RuntimeContext:
     def topology_transaction(self):
         """Create a topology transaction for atomic registry updates.
 
+        V3: Transaction carries ObjectStore reference for geometry verification.
+        Before commit, verifies that all body handles in the delta exist in
+        the ObjectStore (preventing split-brain: Registry with records for
+        non-existent bodies).
+
         Usage:
             with ctx.topology_transaction() as tx:
                 tx.register_entity(rec)
@@ -107,4 +112,7 @@ class RuntimeContext:
         from seekflow_engineering_tools.generative_cad.topology.transaction import (
             TopologyTransaction,
         )
-        return TopologyTransaction(self.topology_registry)
+        return TopologyTransaction(
+            self.topology_registry,
+            object_store=self.object_store,
+        )

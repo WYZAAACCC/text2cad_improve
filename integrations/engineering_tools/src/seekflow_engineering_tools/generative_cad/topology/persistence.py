@@ -222,17 +222,21 @@ def rebind_after_restore(
     object_store: Any = None,
     binding_service: Any = None,
 ) -> dict:
-    """PR 10: After sidecar restore + rebuild, rebind entities to actual shapes.
+    """V3: After sidecar restore + rebuild, rebind entities to actual shapes.
 
-    All active entities are reset to 'unresolved_pending_rebind'.
+    All active entities are reset to 'unresolved' status with binding_state=UNBOUND.
+    If the entity has an identity_descriptor (V3), it is preserved for
+    descriptor-based key verification during rebuild.
+
     Callers should then rebuild geometry, and for each operation,
     re-verify locators using ShapeBindingService.
 
-    Returns rebind status: {total, active, unresolved_after_rebind}
+    Returns rebind status: {total, reset_to_unresolved, remaining_active, requires_rebuild}
     """
     unresolved = 0
     active = 0
     total = 0
+    with_descriptor = 0
 
     for pid, rec in list(registry._entities.items()):
         total += 1
@@ -240,8 +244,20 @@ def rebind_after_restore(
             # Reset to pending — must be re-verified during rebuild
             rec.status = "unresolved"
             rec.current_locator = None
+            # V3: set binding state to UNBOUND
+            if hasattr(rec, 'binding_state') and rec.binding_state is not None:
+                from seekflow_engineering_tools.generative_cad.topology.models import (
+                    BindingState,
+                )
+                rec.binding_state = BindingState.UNBOUND
+            # V3: preserve identity descriptor for key verification
+            if getattr(rec, 'identity_descriptor', None) is not None:
+                with_descriptor += 1
             rec.evidence.append({
                 "event": "sidecar_restored_pending_rebind",
+                "has_identity_descriptor": (
+                    getattr(rec, 'identity_descriptor', None) is not None
+                ),
             })
             unresolved += 1
         elif rec.status == "deleted":
@@ -259,4 +275,5 @@ def rebind_after_restore(
         "reset_to_unresolved": unresolved,
         "remaining_active": active,
         "requires_rebuild": unresolved > 0,
+        "entities_with_descriptor": with_descriptor,  # V3: how many have recoverable identities
     }

@@ -15,7 +15,7 @@ Usage in handlers:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from seekflow_engineering_tools.generative_cad.topology.registry import TopologyRegistry
@@ -38,10 +38,16 @@ class TopologyTransaction:
     Context manager usage ensures commit on success, rollback on exception.
     """
 
-    def __init__(self, registry: "TopologyRegistry") -> None:
+    def __init__(
+        self,
+        registry: "TopologyRegistry",
+        *,
+        object_store: Any | None = None,
+    ) -> None:
         self._original = registry
         self._staged: "TopologyRegistry | None" = None
         self._committed = False
+        self._object_store = object_store  # V3: geometry verification
 
     # ── Context manager ──
 
@@ -118,6 +124,32 @@ class TopologyTransaction:
         self._committed = False
 
     # ── Properties ──
+
+    # ── V3: Geometry verification ──
+
+    def validate_geometry_bindings(self, delta: "TopologyDelta") -> None:
+        """Verify all body handles in the delta exist in ObjectStore.
+
+        Phase 3: existence check only. Ensures geometry is committed to
+        ObjectStore before topology state is updated — preventing the
+        split-brain state where Registry has records for bodies that
+        don't exist or were never successfully built.
+
+        Phase 4+: will add revision consistency check.
+        """
+        if self._object_store is None:
+            return  # no ObjectStore → skip (test/legacy compatibility)
+        for handle_id in delta.result_body_handle_ids:
+            if not handle_id:
+                continue
+            try:
+                self._object_store.get(handle_id)
+            except (KeyError, AttributeError):
+                raise ValueError(
+                    f"TopologyTransaction: body handle {handle_id!r} "
+                    f"not found in ObjectStore. Geometry must be committed "
+                    f"to ObjectStore before topology delta is applied."
+                )
 
     @property
     def staged(self) -> "TopologyRegistry":
