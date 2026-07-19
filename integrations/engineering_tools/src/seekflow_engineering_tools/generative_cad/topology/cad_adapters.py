@@ -40,7 +40,7 @@ class CrossBackendTopologyProof(BaseModel):
     source_backend: str = Field(description="'gcad_cadquery' — the canonical source")
     target_backend: str = Field(description="'solidworks2025' | 'nx12' | 'step'")
 
-    topology_schema_version: str = "gcad_topology_v1"
+    topology_schema_version: str = "gcad_topology_v3"
     topology_sidecar_sha256: str = ""
 
     # {PersistentTopoId: backend_entity_id}

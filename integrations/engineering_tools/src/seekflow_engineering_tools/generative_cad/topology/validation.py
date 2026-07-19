@@ -198,7 +198,7 @@ def validate_topology_artifact_proof(
 
     # Check schema version
     schema = data.get("schema", "")
-    if schema != "gcad_topology_v1":
+    if schema not in ("gcad_topology_v1", "gcad_topology_v2", "gcad_topology_v3"):
         issues.append({
             "code": "TOPOLOGY_SIDECAR_SCHEMA_UNSUPPORTED",
             "severity": "warning",
