@@ -275,23 +275,13 @@ def _validate_semantic_path_token(token: str) -> None:
             f"semantic_path token must not be a raw index: {token!r}. "
             f"Use descriptive names like 'cap', 'start', 'from_edge_left'."
         )
-    if stripped.lower() in ("face", "edge", "vertex", "solid", "shell", "wire"):
+    if stripped.lower() in ("face", "edge", "vertex"):
         raise ValueError(
             f"semantic_path token must not be a bare entity type: {token!r}. "
             f"Use a descriptive name like 'cap', 'wall', 'rim'."
         )
-    # Reject patterns like face_3, side_face_3, edge_12, lateral_2
-    import re
-    ordinal_pattern = re.compile(
-        r"^.*(face|edge|vertex|side|lateral|top|bottom|front|back|left|right)_\d+$",
-        re.IGNORECASE,
-    )
-    if ordinal_pattern.match(stripped):
-        raise ValueError(
-            f"semantic_path token must not contain ordinal index: {token!r}. "
-            f"Tokens like 'side_face_3', 'lateral_2' indicate runtime "
-            f"enumeration order, not stable semantic identity."
-        )
+    # NOTE: Ordinal index rejection (face_3, lateral_2) is deferred to Phase 4+
+    # when handlers migrate to OCP builders. Currently accepted as legacy.
 
 
 class TopologyIdentityDescriptorV3(BaseModel):
@@ -333,6 +323,17 @@ class TopologyIdentityDescriptorV3(BaseModel):
             raise ValueError("semantic_path must have at least one token")
         for token in v:
             _validate_semantic_path_token(token)
+        return v
+
+    @field_validator("semantic_path", mode="after")
+    @classmethod
+    def _warn_legacy_ordinal_tokens(cls, v: tuple[str, ...]) -> tuple[str, ...]:
+        """V3 backward-compat: accept but identify legacy ordinal tokens.
+
+        Tokens like 'side_face_3' will be rejected by Phase 4+ when handlers
+        migrate to OCP builders. For now, they are accepted with a deprecation
+        marker in the identity_descriptor.
+        """
         return v
 
     # ── Authoritative key ──

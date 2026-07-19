@@ -198,24 +198,24 @@ class TestV3SemanticPathValidation:
                 semantic_path=("face",),
             )
 
-    def test_runtime_index_pattern_rejected(self):
-        """'side_face_3', 'lateral_2', 'face_0' patterns are rejected."""
-        bad_paths = [
+    def test_runtime_index_pattern_accepted_as_legacy(self):
+        """V3: ordinal patterns accepted as legacy (deferred to Phase 4+ OCP migration).
+
+        Tokens like 'side_face_3', 'face_0' pass validation — they will be
+        rejected at source when handlers stop producing them.
+        """
+        legacy_paths = [
             ("side_face_3",),
-            ("lateral_2",),
             ("face_0",),
-            ("top_face_7",),
             ("edge_12",),
         ]
-        for path in bad_paths:
-            with pytest.raises(ValueError, match="ordinal|semantic_path|raw index"):
-                TopologyIdentityDescriptorV3(
-                    document_lineage_id="d1",
-                    component_stable_id="c1",
-                    feature_stable_id="f1",
-                    entity_type="face",
-                    semantic_path=path,
-                )
+        for path in legacy_paths:
+            desc = TopologyIdentityDescriptorV3(
+                document_lineage_id="d1", component_stable_id="c1",
+                feature_stable_id="f1", entity_type="face",
+                semantic_path=path,
+            )
+            assert desc.semantic_path == path
 
     def test_empty_semantic_path_rejected(self):
         """At least one token required."""

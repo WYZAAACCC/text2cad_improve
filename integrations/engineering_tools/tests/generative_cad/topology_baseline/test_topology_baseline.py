@@ -517,9 +517,17 @@ class TestSemanticNaming:
         assert reg.entity_count == 6
         assert reg.active_count == 6
 
-        # Each face should resolve as exact
+        # V3: resolve() without binding context → unresolved (T-004 fix)
+        # With ObjectStore + mock binding service → exact
+        class _MockStore:
+            def get(self, hid):
+                return object()
+        class _MockBinding:
+            def verify_locator(self, locator, expected_fingerprint=None):
+                from seekflow_engineering_tools.generative_cad.topology.shape_binding import LocatorVerification
+                return LocatorVerification(valid=True)
         for rec in records:
-            res = reg.resolve(rec.persistent_id)
+            res = reg.resolve(rec.persistent_id, object_store=_MockStore(), binding_service=_MockBinding())
             assert res.status == "exact", f"Failed to resolve {rec.semantic_role}"
 
 
@@ -565,11 +573,11 @@ class TestEndToEnd:
         reg2 = TopologyRegistry()
         read_topology_sidecar(sidecar_path, reg2)
 
-        # All 6 faces should resolve
+        # V3: after sidecar restore, entities have no locator → unresolved (T-009 fix)
         for rec in records:
             res = reg2.resolve(rec.persistent_id)
-            assert res.status == "exact", (
-                f"Face {rec.semantic_role} not resolved after restore"
+            assert res.status == "unresolved", (
+                f"V3: after restore, face {rec.semantic_role} should be unresolved (no locator)"
             )
 
         # Integrity check
