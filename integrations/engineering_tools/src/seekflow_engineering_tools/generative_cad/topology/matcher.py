@@ -241,7 +241,7 @@ class ConstrainedTopologyMatcher:
 
         return MatchResult(
             requested_id=best.entity_id,
-            status="exact",
+            status="fingerprint_unique",  # V3: never kernel exact
             best_match=best,
             candidates=ranked,
             margin=margin,

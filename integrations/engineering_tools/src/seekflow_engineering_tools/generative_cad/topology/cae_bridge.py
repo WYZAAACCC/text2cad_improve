@@ -15,7 +15,7 @@ Usage (from fea_pipeline.py, when ANSYS is available):
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -81,6 +81,9 @@ class CaePreflightResult(BaseModel):
 def resolve_named_set_to_faces(
     named_set: NamedTopologySet,
     registry: "TopologyRegistry",
+    *,
+    object_store: Any = None,
+    binding_service: Any = None,
 ) -> CaeResolvedSet:
     """Resolve a NamedTopologySet through the TopologyRegistry.
 
@@ -118,7 +121,9 @@ def resolve_named_set_to_faces(
         )
 
     for pid in named_set.persistent_ids:
-        result = registry.resolve(pid)
+        result = registry.resolve(
+            pid, object_store=object_store, binding_service=binding_service,
+        )
 
         if result.status == "exact":
             resolved += 1

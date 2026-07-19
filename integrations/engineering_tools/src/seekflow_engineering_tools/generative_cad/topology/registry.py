@@ -194,10 +194,15 @@ class TopologyRegistry:
         self._node_index[delta.node_id]["modified"].append(source_id)
 
     def _apply_delete(self, source_id: str, delta: TopologyDelta) -> None:
-        """Mark an entity as deleted — downstream references will fail explicitly."""
+        """Mark an entity as deleted — downstream references will fail explicitly.
+
+        V3 strict: unknown source raises ValueError.
+        """
         if source_id not in self._entities:
-            self._record_event("delete_unknown_source", {"source_id": source_id})
-            return
+            raise ValueError(
+                f"TopologyDelta references unknown source {source_id!r} "
+                f"in delete relation (node={delta.node_id})."
+            )
 
         rec = self._entities[source_id]
         rec.status = "deleted"
@@ -217,7 +222,10 @@ class TopologyRegistry:
         resolve(source) will return status="set" with descendant_ids.
         """
         if source_id not in self._entities:
-            return
+            raise ValueError(
+                f"TopologyDelta references unknown source {source_id!r} "
+                f"in split relation (node={_delta.node_id})."
+            )
         rec = self._entities[source_id]
         # Old entity is superseded — no longer directly resolvable
         rec.status = "superseded"
@@ -241,7 +249,10 @@ class TopologyRegistry:
         Target entity records ancestors.
         """
         if key not in self._entities:
-            return
+            raise ValueError(
+                f"TopologyDelta references unknown merge target {key!r} "
+                f"in merge relation (node={_delta.node_id})."
+            )
         rec = self._entities[key]
         for src_id in relation.source_ids:
             if src_id not in rec.ancestor_ids:

@@ -302,23 +302,29 @@ def _make_compact_id(
     entity_type: str,
     semantic_role: str,
 ) -> str:
-    """Create a v2 PersistentTopoId authoritative key string.
+    """Create a V3 PersistentTopoId authoritative key string.
 
-    Uses PersistentTopoIdV2.to_key() which produces a content-hash-based
-    key (gct2_<base64url sha256>) — no truncation, no colon-encoding issues.
+    Uses TopologyIdentityDescriptorV3.to_key() which produces a stable
+    content-hash-based key (gct3_<base64url sha256>) from identity-relevant
+    fields only — document_id → document_lineage_id, producer_node_id
+    excluded from key, semantic_role → structured semantic_path tuple.
     """
     from seekflow_engineering_tools.generative_cad.topology.ids import (
-        PersistentTopoIdV2,
+        make_persistent_id_v3,
     )
-    pid = PersistentTopoIdV2(
-        document_id=document_id,
-        component_id=component_id,
-        lineage_root_node_id=producer_node_id,
-        producer_node_id=producer_node_id,
+    # Convert free-form semantic_role to structured semantic_path
+    semantic_path = tuple(semantic_role.split("/"))
+    key, _desc = make_persistent_id_v3(
+        document_lineage_id=document_id,
+        component_stable_id=component_id,
+        feature_stable_id=producer_node_id,
         entity_type=entity_type,  # type: ignore[arg-type]
-        semantic_role=semantic_role,
+        semantic_path=semantic_path,
     )
-    return pid.to_key()
+    # Note: _desc (TopologyIdentityDescriptorV3) could be stored in
+    # TopologyEntityRecord.identity_descriptor for recoverability.
+    # Phase 9+ will wire this through build_entity_records_from_delta.
+    return key
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
