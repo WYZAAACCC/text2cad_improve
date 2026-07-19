@@ -104,6 +104,11 @@ def execute_operation(
            for e in op_spec.effects):
         _validate_geometry(node=node, result=result, ctx=ctx)
 
+    # ── Persistent topology: apply topology delta if present (Phase 1+) ──
+    # Phase 1: delta is optional. If present, apply to registry.
+    # Phase 3+: delta required for operations with topology contract.
+    _apply_topology_delta_if_present(node=node, result=result, ctx=ctx)
+
     # Propagate side-channel data
     for w in result.warnings:
         ctx.warnings.append(w)
@@ -265,3 +270,43 @@ def _validate_geometry(*, node, result, ctx) -> None:
         raise  # Re-raise required enforcement errors (GcadRuntimeError 亦是 RuntimeError)
     except Exception as e:
         ctx.warnings.append(f"Geometry validation skipped on '{node.id}': {e}")
+
+
+def _apply_topology_delta_if_present(
+    *,
+    node: CanonicalNode,
+    result: OperationResult,
+    ctx: RuntimeContext,
+) -> None:
+    """Apply the topology delta from an operation result to the registry.
+
+    Phase 1: delta is optional. If not present, this is a no-op.
+    Phase 3+: operations with topology contracts REQUIRE a delta.
+
+    Topology delta application failure is a warning in Phase 1
+    (non-fatal), not a build failure. This will tighten in Phase 3+
+    for operations that declare required topology contracts.
+    """
+    if result.topology_delta is None:
+        return
+
+    try:
+        ctx.topology_registry.apply_delta(result.topology_delta)
+        ctx.topology_events.append({
+            "event": "delta_applied",
+            "node_id": node.id,
+            "component_id": getattr(node, "component", None),
+            "entity_count": ctx.topology_registry.entity_count,
+            "history_provider": result.topology_delta.history_provider,
+        })
+    except Exception as exc:
+        ctx.topology_warnings.append({
+            "node_id": node.id,
+            "error": str(exc),
+            "phase": "topology_delta_apply",
+        })
+        # Phase 1: non-fatal warning only
+        ctx.warnings.append(
+            f"Topology delta application failed on '{node.id}': {exc}. "
+            f"Model geometry is valid, but topology identity may be incomplete."
+        )

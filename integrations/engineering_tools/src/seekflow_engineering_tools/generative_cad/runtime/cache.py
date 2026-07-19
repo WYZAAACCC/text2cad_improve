@@ -31,16 +31,37 @@ class OperationCache:
         return f"op:{node.dialect}:{node.op}:{node_hash}"
 
     def get(self, node: CanonicalNode) -> Any | None:
-        """Return cached result for a node, or None if not cached."""
+        """Return cached result for a node, or None if not cached.
+
+        Phase 1+: unwraps dict entries (backward compat: raw entries
+        stored before Phase 1 are returned as-is).
+        """
         node_key = self._node_keys.get(node.id)
         if node_key is None:
             return None
-        return self._store.get(node_key)
+        entry = self._store.get(node_key)
+        if entry is None:
+            return None
+        # Phase 1+: entries are dicts with "result" key
+        if isinstance(entry, dict) and "result" in entry:
+            return entry["result"]
+        # Backward compat: pre-Phase 1 entries are raw results
+        return entry
 
     def put(self, node: CanonicalNode, result: Any) -> None:
-        """Store a result in the cache."""
+        """Store a result in the cache.
+
+        Phase 1+: wraps result in a dict entry for future topology awareness.
+        Backward compatible: old raw-result entries are unwrapped on get().
+        """
         node_key = self.key(node)
-        self._store[node_key] = result
+        entry = {
+            "result": result,
+            "node_id": node.id,
+            # Phase 2+: snapshot relevant topology registry entries here
+            "topology_registry_fragment": None,
+        }
+        self._store[node_key] = entry
         self._node_keys[node.id] = node_key
 
     def invalidate(self, node_id: str) -> None:

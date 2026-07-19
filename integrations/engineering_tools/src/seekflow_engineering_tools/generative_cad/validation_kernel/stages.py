@@ -29,6 +29,11 @@ class ValidationStage(str, Enum):
     # ── Canonical 层 (输入为 CanonicalGcadDocument) ──
     DIALECT_SEMANTICS = "dialect_semantics"
     GEOMETRY_PREFLIGHT = "geometry_preflight"
+    # ── Topology persistent naming (Phase 2+) ──
+    TOPOLOGY_CONTRACT = "topology_contract"
+    TOPOLOGY_REFERENCE = "topology_reference"
+    TOPOLOGY_RUNTIME_INTEGRITY = "topology_runtime_integrity"
+    TOPOLOGY_ARTIFACT_PROOF = "topology_artifact_proof"
     # ── Runtime/产物层 (repair governor 进度排序用; 不在本 executor 执行) ──
     RUNTIME_POSTCONDITIONS = "runtime_postconditions"
     INSPECTION = "inspection"
@@ -63,6 +68,10 @@ FULL_STAGE_ORDER: tuple[ValidationStage, ...] = (
 # 进度排序用的完整顺序 (含 runtime/产物层)
 RANK_ORDER: tuple[ValidationStage, ...] = (
     *FULL_STAGE_ORDER,
+    ValidationStage.TOPOLOGY_CONTRACT,
+    ValidationStage.TOPOLOGY_REFERENCE,
+    ValidationStage.TOPOLOGY_RUNTIME_INTEGRITY,
+    ValidationStage.TOPOLOGY_ARTIFACT_PROOF,
     ValidationStage.RUNTIME_POSTCONDITIONS,
     ValidationStage.INSPECTION,
 )
@@ -87,6 +96,8 @@ RAW_BARRIER_GROUPS: tuple[tuple[ValidationStage, ...], ...] = (
 
 CANONICAL_BARRIER_GROUPS: tuple[tuple[ValidationStage, ...], ...] = (
     CANONICAL_STAGE_ORDER,
+    # Topology advisory: runs after canonical validation, never fails build (Phase 7)
+    (ValidationStage.TOPOLOGY_CONTRACT,),
 )
 
 

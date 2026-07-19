@@ -67,3 +67,31 @@ def register_legacy_core_rules(reg: RuleRegistry) -> None:
             ),
             fn,
         )
+
+    # ── Topology persistent naming validators (Phase 7) ──
+    from seekflow_engineering_tools.generative_cad.topology.kernel_validators import (
+        validate_topology_contracts,
+        validate_topology_references,
+    )
+    reg.register_rule(
+        RuleManifest(
+            rule_id="core.topology.contract",
+            version="1.0.0",
+            provider_id="core.topology",
+            layer=RuleLayer.CORE,
+            stage=ValidationStage.TOPOLOGY_CONTRACT,
+            selector=RuleSelector(always=True),
+        ),
+        validate_topology_contracts,
+    )
+    reg.register_rule(
+        RuleManifest(
+            rule_id="core.topology.reference",
+            version="1.0.0",
+            provider_id="core.topology",
+            layer=RuleLayer.CORE,
+            stage=ValidationStage.TOPOLOGY_REFERENCE,
+            selector=RuleSelector(always=True),
+        ),
+        validate_topology_references,
+    )

@@ -282,13 +282,13 @@ def handle_boolean_union(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, 
             n_a = len(list(a.Solids())) if hasattr(a, 'Solids') else 1
             n_b = len(list(b.Solids())) if hasattr(b, 'Solids') else 1
             if n_result < n_a + n_b:
-                return {"body": _store_solid(node, ctx, result)}
+                return _finish_boolean_op(node, ctx, result, "boolean_union")
             ctx.warnings.append(
                 f"boolean_union: CadQuery union produced {n_result} solids "
                 f"(a={n_a}, b={n_b}) — trying fuse"
             )
         else:
-            return {"body": _store_solid(node, ctx, result)}
+            return _finish_boolean_op(node, ctx, result, "boolean_union")
     except Exception:
         pass
 
@@ -303,13 +303,13 @@ def handle_boolean_union(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, 
                 ctx.warnings.append(
                     f"boolean_union: OCCT fuse succeeded ({n_result} solids)"
                 )
-                return {"body": _store_solid(node, ctx, result)}
+                return _finish_boolean_op(node, ctx, result, "boolean_union")
             ctx.warnings.append(
                 f"boolean_union: OCCT fuse produced {n_result} solids "
                 f"(expected < {n_a + n_b}) — trying tolerance-expanded fuse"
             )
         else:
-            return {"body": _store_solid(node, ctx, result)}
+            return _finish_boolean_op(node, ctx, result, "boolean_union")
     except Exception:
         pass
 
@@ -325,7 +325,7 @@ def handle_boolean_union(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, 
             f"boolean_union: fuzzy fuse succeeded "
             f"(clearance={_fmt_clr(pre.clearance_mm)})"
         )
-        return {"body": _store_solid(node, ctx, result)}
+        return _finish_boolean_op(node, ctx, result, "boolean_union")
     except Exception:
         pass
 
@@ -379,7 +379,47 @@ def handle_boolean_cut(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, st
                 f"Tool={_fmt_vol(pre.b_volume_mm3)}. "
                 f"Clearance={_fmt_clr(pre.clearance_mm)}."
             )
-    return {"body": _store_solid(node, ctx, result)}
+    return _finish_boolean_op(node, ctx, result, "boolean_cut")
+
+
+def _try_produce_boolean_topology(
+    *, node: CanonicalNode, ctx: RuntimeContext, solid, op_name: str,
+) -> None:
+    """Phase 5: Build topology delta for boolean result faces."""
+    try:
+        from seekflow_engineering_tools.generative_cad.topology.semantic_naming import (
+            build_entity_records_from_delta, name_boolean_faces,
+        )
+    except ImportError:
+        return
+    try:
+        doc_id = getattr(node, "component", "unknown") or "unknown"
+        delta = name_boolean_faces(
+            solid, document_id=doc_id,
+            component_id=node.component or "unknown",
+            producer_node_id=node.id,
+        )
+        records = build_entity_records_from_delta(delta, document_id=doc_id)
+        for rec in records:
+            ctx.topology_registry.register_entity(rec)
+        ctx.topology_registry.apply_delta(delta)
+        ctx.topology_events.append({
+            "event": "boolean_topology_produced",
+            "node_id": node.id, "op": op_name,
+            "face_count": len(delta.relations),
+        })
+    except Exception as exc:
+        ctx.topology_warnings.append({
+            "node_id": node.id, "phase": "boolean_topology", "op": op_name,
+            "error": str(exc),
+        })
+
+
+def _finish_boolean_op(node, ctx, solid, op_name: str) -> dict[str, str]:
+    """Store solid + produce topology delta, then return result map."""
+    body_id = _store_solid(node, ctx, solid)
+    _try_produce_boolean_topology(node=node, ctx=ctx, solid=solid, op_name=op_name)
+    return {"body": body_id}
 
 
 # ── Formatting helpers ────────────────────────────────────────────────────────

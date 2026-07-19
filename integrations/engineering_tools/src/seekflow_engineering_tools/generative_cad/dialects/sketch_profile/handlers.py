@@ -182,6 +182,10 @@ def handle_extrude_profile(node, ctx) -> dict:
         raise RuntimeError(f"extrude_profile failed on '{node.id}': {e}")
     handle = SolidHandle(id=f"solid:{cid}:{node.id}:body", producer_node=node.id, component_id=cid)
     ctx.object_store.put_solid(handle, solid)
+
+    # ── Phase 5: Produce topology delta for extrude faces ──
+    _try_produce_extrude_profile_topology(node=node, ctx=ctx, solid=solid)
+
     return {"body": f"solid:{cid}:{node.id}:body"}
 
 
@@ -229,7 +233,79 @@ def handle_revolve_profile(node, ctx) -> dict:
 
     handle = SolidHandle(id=f"solid:{cid}:{node.id}:body", producer_node=node.id, component_id=cid)
     ctx.object_store.put_solid(handle, solid_wp)
+
+    # ── Phase 5: Produce topology delta for revolve faces ──
+    _try_produce_revolve_profile_topology(
+        node=node, ctx=ctx, solid=solid_wp,
+        angle_deg=angle, axis="Z",
+    )
+
     return {"body": f"solid:{cid}:{node.id}:body"}
+
+
+def _try_produce_extrude_profile_topology(
+    *, node, ctx, solid,
+) -> None:
+    """Phase 5: Build topology delta for sketch_profile extrude faces."""
+    try:
+        from seekflow_engineering_tools.generative_cad.topology.semantic_naming import (
+            build_entity_records_from_delta, name_extrude_faces,
+        )
+    except ImportError:
+        return
+    try:
+        doc_id = getattr(node, "component", "unknown") or "unknown"
+        delta = name_extrude_faces(
+            solid, document_id=doc_id,
+            component_id=node.component or "unknown",
+            producer_node_id=node.id,
+            extrude_plane="XY", direction="+",
+        )
+        records = build_entity_records_from_delta(delta, document_id=doc_id)
+        for rec in records:
+            ctx.topology_registry.register_entity(rec)
+        ctx.topology_registry.apply_delta(delta)
+        ctx.topology_events.append({
+            "event": "extrude_profile_topology_produced",
+            "node_id": node.id, "face_count": len(delta.relations),
+        })
+    except Exception as exc:
+        ctx.topology_warnings.append({
+            "node_id": node.id, "phase": "extrude_profile_topology", "error": str(exc),
+        })
+
+
+def _try_produce_revolve_profile_topology(
+    *, node, ctx, solid,
+    angle_deg: float = 360.0, axis: str = "Z",
+) -> None:
+    """Phase 5: Build topology delta for sketch_profile revolve faces."""
+    try:
+        from seekflow_engineering_tools.generative_cad.topology.semantic_naming import (
+            build_entity_records_from_delta, name_revolve_faces,
+        )
+    except ImportError:
+        return
+    try:
+        doc_id = getattr(node, "component", "unknown") or "unknown"
+        delta = name_revolve_faces(
+            solid, document_id=doc_id,
+            component_id=node.component or "unknown",
+            producer_node_id=node.id,
+            angle_deg=angle_deg, axis=axis,
+        )
+        records = build_entity_records_from_delta(delta, document_id=doc_id)
+        for rec in records:
+            ctx.topology_registry.register_entity(rec)
+        ctx.topology_registry.apply_delta(delta)
+        ctx.topology_events.append({
+            "event": "revolve_profile_topology_produced",
+            "node_id": node.id, "face_count": len(delta.relations),
+        })
+    except Exception as exc:
+        ctx.topology_warnings.append({
+            "node_id": node.id, "phase": "revolve_profile_topology", "error": str(exc),
+        })
 
 
 def handle_fillet_sketch(node, ctx) -> dict:

@@ -1,0 +1,185 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "concept_geometry",
+    "document_id": "e2e-topology-test",
+    "part_name": "BlockWithHole",
+    "selected_dialects": [
+      {
+        "dialect": "sketch_extrude",
+        "version": "0.2.0",
+        "contract_hash": "sha256:e1f6c0d5611cf6c326da0a85b324ddd57444bf99de809a776db2665bdc096a17"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "n1",
+        "dialect": "sketch_extrude",
+        "op": "extrude_rectangle",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n2",
+        "dialect": "sketch_extrude",
+        "op": "cut_hole",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:9c8009082993f0a0bfa76e17fc3a55643fbaeba020b7ba4414d120a6e7e21540",
+    "canonical_graph_hash": "sha256:ccc1ac2b4d65e819871ebef4b746483593c702533defa1c8a25dab77826b26ad",
+    "paths": {
+      "canonical_ir_path": "<in_memory>",
+      "validation_seed_path": "<in_memory>",
+      "step_path": "E:\\text_to_cad_improve\\auto_detection_process\\turbine_disc\\test_topology_e2e\\output.step",
+      "metadata_path": "E:\\text_to_cad_improve\\auto_detection_process\\turbine_disc\\test_topology_e2e\\output.metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:39b48e4364d8e96db38d0f62ccafcf3ab86c901a38c8f579838e0a8627ee4ab9",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [],
+    "degraded_features": [],
+    "operation_metrics": [
+      {
+        "node_id": "n1",
+        "op": "extrude_rectangle",
+        "status": "ok"
+      },
+      {
+        "node_id": "n2",
+        "op": "cut_hole",
+        "status": "ok"
+      }
+    ],
+    "unsupported_capabilities": [],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [],
+  "validation": {
+    "core_validation": {
+      "ok": false,
+      "stage": "core_validation",
+      "issues": [
+        {
+          "code": "missing_core_validation_report",
+          "message": "No core_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "dialect_semantics": {
+      "ok": false,
+      "stage": "dialect_semantics",
+      "issues": [
+        {
+          "code": "missing_dialect_semantics_report",
+          "message": "No dialect_semantics report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "geometry_preflight": {
+      "ok": false,
+      "stage": "geometry_preflight",
+      "issues": [
+        {
+          "code": "missing_geometry_preflight_report",
+          "message": "No geometry_preflight report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "geometry_postcheck": {
+      "ok": true,
+      "volume_mm3": 170575.22203923063,
+      "n_solids": 1,
+      "bbox_mm": [
+        100.0,
+        60.0,
+        30.0
+      ],
+      "closed": true,
+      "is_valid_solid": true,
+      "errors": [],
+      "warnings": []
+    },
+    "ok": true,
+    "stage": "complete",
+    "stages": {},
+    "compiler_middle_end": {
+      "ok": true,
+      "passes_run": [
+        "fact_propagation",
+        "planning"
+      ],
+      "diagnostics": []
+    },
+    "geometry_health_summary": {
+      "ok": true,
+      "total_ops_checked": 2,
+      "errors": 0,
+      "warnings": 2,
+      "entries": {
+        "n1.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 180000.0,
+          "body_count": 1
+        },
+        "n2.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 170575.22203923063,
+          "body_count": 1
+        }
+      }
+    },
+    "planning_report": {
+      "ok": true,
+      "issues": [],
+      "optimization_opportunities": []
+    }
+  }
+}

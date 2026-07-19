@@ -11,6 +11,7 @@ from seekflow_engineering_tools.generative_cad.runtime.geometry_runtime import G
 from seekflow_engineering_tools.generative_cad.runtime.object_store import RuntimeObjectStore
 from seekflow_engineering_tools.generative_cad.runtime.tolerance import DEFAULT_TOLERANCE, GeometryTolerance
 from seekflow_engineering_tools.generative_cad.runtime.cache import OperationCache
+from seekflow_engineering_tools.generative_cad.topology.registry import TopologyRegistry
 
 
 @dataclass
@@ -19,6 +20,7 @@ class RuntimeContext:
     metadata_path: Path
     workspace_root: Path
     object_store: RuntimeObjectStore = field(default_factory=RuntimeObjectStore)
+    topology_registry: TopologyRegistry = field(default_factory=TopologyRegistry)
     geometry_runtime: GeometryRuntime = field(default_factory=CadQueryRuntime)
     tolerance: GeometryTolerance = field(default=DEFAULT_TOLERANCE)
     cache: OperationCache = field(default_factory=OperationCache)
@@ -44,6 +46,11 @@ class RuntimeContext:
     compiler_diagnostics: list[dict[str, Any]] = field(default_factory=list)
     # v6.3: Planning report from compiler middle-end (Phase 3+)
     planning_report: dict[str, Any] | None = None
+    # ── Persistent topology (Phase 1+) ──
+    topology_events: list[dict[str, Any]] = field(default_factory=list)
+    topology_warnings: list[dict[str, Any]] = field(default_factory=list)
+    topology_validation: dict[str, Any] = field(default_factory=dict)
+
     # v6.3 Phase 2: Per-operation geometry health records
     # Key: "{node_id}.{output_name}", Value: GeometryHealth.model_dump()
     geometry_health_log: dict[str, dict[str, Any]] = field(default_factory=dict)

@@ -2,6 +2,9 @@
 
 All handlers follow: validate params → try full op → try fallback → warn+skip.
 No silent None propagation. No uncaught OCCT errors.
+
+Phase 3: handle_cut_hole produces topology_delta for hole faces (hole_wall,
+entry_rim, exit_rim). Topology is registered via ctx.topology_registry.
 """
 
 from __future__ import annotations
@@ -71,7 +74,70 @@ def handle_extrude_rectangle(node: CanonicalNode, ctx: RuntimeContext) -> dict[s
             solid = wp.rect(w, h).extrude(d)
     except Exception as e:
         raise RuntimeError(f"extrude_rectangle failed: {e}")
+
+    # ── Phase 5: Produce topology delta for extrude faces ──
+    _try_produce_extrude_topology(
+        node=node, ctx=ctx, solid=solid,
+        plane=plane, direction=direction,
+    )
+
     return {"body": _store_solid(node, ctx, solid)}
+
+
+def _try_produce_extrude_topology(
+    *,
+    node: CanonicalNode,
+    ctx: RuntimeContext,
+    solid,
+    plane: str = "XY",
+    direction: str = "+",
+) -> None:
+    """Phase 5: Build topology delta for extrude faces via side-channel.
+
+    Names the result faces using name_extrude_faces → classifies into
+    end_cap_positive, end_cap_negative, and side_face_N.
+    Registers entities with TopologyRegistry.
+
+    Non-fatal: topology failure is a warning, not a build failure.
+    """
+    try:
+        from seekflow_engineering_tools.generative_cad.topology.semantic_naming import (
+            build_entity_records_from_delta,
+            name_extrude_faces,
+        )
+    except ImportError:
+        return
+
+    try:
+        doc_id = getattr(node, "component", "unknown") or "unknown"
+
+        delta = name_extrude_faces(
+            solid,
+            document_id=doc_id,
+            component_id=node.component or "unknown",
+            producer_node_id=node.id,
+            extrude_plane=plane,
+            direction=direction,
+        )
+
+        records = build_entity_records_from_delta(delta, document_id=doc_id)
+        for rec in records:
+            ctx.topology_registry.register_entity(rec)
+
+        ctx.topology_registry.apply_delta(delta)
+
+        ctx.topology_events.append({
+            "event": "extrude_topology_produced",
+            "node_id": node.id,
+            "plane": plane,
+            "face_count": len(delta.relations),
+        })
+    except Exception as exc:
+        ctx.topology_warnings.append({
+            "node_id": node.id,
+            "phase": "extrude_topology",
+            "error": str(exc),
+        })
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -107,6 +173,9 @@ def handle_cut_hole(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
     axis=Z (default): hole on XY plane, extrude along Z (existing behavior)
     axis=Y: hole on XZ plane, extrude along Y (side hole)
     axis=X: hole on YZ plane, extrude along X (side hole)
+
+    Phase 3: produces topology_delta for hole faces (hole_wall, entry_rim,
+    exit_rim) via the TopologyRegistry side-channel.
     """
     import cadquery as cq
     body = resolve_input_object(node, ctx, 0)
@@ -119,34 +188,104 @@ def handle_cut_hole(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
     y = pos[1] if len(pos) > 1 else 0
     z = pos[2] if len(pos) > 2 else 0
     axis = p.get("axis", "Z")
+    depth_val = 0.0  # Track for through-hole detection
     try:
         bb = body.val().BoundingBox()
         if axis == "Z":
             # XY plane, extrude along Z
-            depth = bb.zlen + 10
+            depth_val = bb.zlen + 10
             cutter = (cq.Workplane("XY").center(x, y)
-                      .circle(dia / 2.0).extrude(depth, both=True))
+                      .circle(dia / 2.0).extrude(depth_val, both=True))
         elif axis == "Y":
             # XZ plane, extrude along Y (side hole)
             z_center = z if z != 0 else (bb.zmin + bb.zmax) / 2.0
-            depth = bb.ylen + 10
+            depth_val = bb.ylen + 10
             cutter = (cq.Workplane("XZ").center(x, z_center)
-                      .circle(dia / 2.0).extrude(depth, both=True))
+                      .circle(dia / 2.0).extrude(depth_val, both=True))
         elif axis == "X":
             # YZ plane, extrude along X (side hole)
             z_center = z if z != 0 else (bb.zmin + bb.zmax) / 2.0
-            depth = bb.xlen + 10
+            depth_val = bb.xlen + 10
             cutter = (cq.Workplane("YZ").center(y, z_center)
-                      .circle(dia / 2.0).extrude(depth, both=True))
+                      .circle(dia / 2.0).extrude(depth_val, both=True))
         else:
             ctx.warnings.append(f"cut_hole: unsupported axis '{axis}', defaulting to Z")
-            depth = bb.zlen + 10
+            depth_val = bb.zlen + 10
             cutter = (cq.Workplane("XY").center(x, y)
-                      .circle(dia / 2.0).extrude(depth, both=True))
+                      .circle(dia / 2.0).extrude(depth_val, both=True))
         result = body.cut(cutter)
+
+        # ── Phase 3: Produce topology delta for hole faces ──
+        _try_produce_hole_topology(
+            node=node, ctx=ctx,
+            cutter=cutter, dia=dia, depth_val=depth_val,
+            body_bbox_zlen=bb.zlen if axis == "Z" else None,
+        )
     except Exception:
         return {"body": _degrade(node, ctx, body, "cut_hole")}
     return {"body": _store_solid(node, ctx, result)}
+
+
+def _try_produce_hole_topology(
+    *,
+    node: CanonicalNode,
+    ctx: RuntimeContext,
+    cutter,
+    dia: float,
+    depth_val: float,
+    body_bbox_zlen: float | None = None,
+) -> None:
+    """Phase 3: Build topology delta for hole faces via side-channel.
+
+    Names the tool body faces → maps to hole semantics → registers with
+    TopologyRegistry. Non-fatal: topology failure is a warning, not a build
+    failure (Phase 3 is best-effort; Phase 5+ will enforce).
+
+    Uses component_id as document identifier for topology naming.
+    """
+    try:
+        from seekflow_engineering_tools.generative_cad.topology.semantic_naming import (
+            build_entity_records_from_delta,
+            name_hole_faces,
+        )
+    except ImportError:
+        return  # Topology module not available — skip
+
+    try:
+        doc_id = getattr(node, "component", "unknown") or "unknown"
+        is_through = True
+        if body_bbox_zlen is not None and depth_val <= body_bbox_zlen + 5:
+            is_through = False
+
+        # Build hole delta
+        hole_delta = name_hole_faces(
+            cutter,
+            document_id=doc_id,
+            component_id=node.component or "unknown",
+            producer_node_id=node.id,
+            is_through_hole=is_through,
+        )
+
+        # Register entities into TopologyRegistry
+        records = build_entity_records_from_delta(hole_delta, document_id=doc_id)
+        for rec in records:
+            ctx.topology_registry.register_entity(rec)
+
+        # Apply delta
+        ctx.topology_registry.apply_delta(hole_delta)
+
+        ctx.topology_events.append({
+            "event": "hole_topology_produced",
+            "node_id": node.id,
+            "dia": dia,
+            "hole_wall": bool(hole_delta.relations),
+        })
+    except Exception as exc:
+        ctx.topology_warnings.append({
+            "node_id": node.id,
+            "phase": "hole_topology",
+            "error": str(exc),
+        })
 
 
 def handle_cut_hole_pattern_linear(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:

@@ -23,6 +23,8 @@ class AddLineSegmentParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
     start: Point2D
     end: Point2D
+    element_id: str | None = Field(default=None, description="Stable sketch element ID, e.g. 'sketch_1/edge/profile_0'")
+    semantic_role: str | None = Field(default=None, description="Human-readable role, e.g. 'outer_wall_edge'")
 
 
 class AddArcSegmentParams(BaseModel):
@@ -31,17 +33,23 @@ class AddArcSegmentParams(BaseModel):
     end: Point2D
     center: Point2D
     direction: Literal["cw", "ccw"] = "ccw"
+    element_id: str | None = Field(default=None, description="Stable sketch element ID")
+    semantic_role: str | None = Field(default=None, description="Human-readable role")
 
 
 class AddCircleParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
     center: Point2D
     radius_mm: float = Field(gt=0)
+    element_id: str | None = Field(default=None, description="Stable sketch element ID")
+    semantic_role: str | None = Field(default=None, description="Human-readable role")
 
 
 class AddPolylineParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
     points: list[Point2D] = Field(min_length=2, description="Ordered list of polyline vertices")
+    element_id: str | None = Field(default=None, description="Stable sketch element ID")
+    semantic_role: str | None = Field(default=None, description="Human-readable role")
 
 
 class CloseProfileParams(BaseModel):
@@ -68,6 +76,8 @@ class AddSlotParams(BaseModel):
     length_mm: float = Field(gt=0)
     width_mm: float = Field(gt=0)
     angle_deg: float = Field(default=0.0, description="Rotation angle in degrees")
+    element_id: str | None = Field(default=None, description="Stable sketch element ID")
+    semantic_role: str | None = Field(default=None, description="Human-readable role")
 
 
 class LinearPatternParams(BaseModel):

@@ -49,6 +49,9 @@ class OperationSpec(BaseModel):
     handler: OperationHandler
     handler_kind: Literal["v1_dict", "v2_result"] = "v1_dict"
 
+    # ── Persistent topology (Phase 2+) ──
+    topology_contract: object | None = None  # TopologyContract | None (lazy to avoid circular import)
+
     # ── LLM-facing metadata (for skill generation / docs only) ──
     # These fields do NOT affect validation semantics.
     # They are used by Level-2 skill generators and tool schema compilers

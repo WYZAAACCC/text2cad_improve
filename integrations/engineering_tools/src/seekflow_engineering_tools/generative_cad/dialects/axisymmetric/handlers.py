@@ -95,6 +95,9 @@ def handle_revolve_profile(node: CanonicalNode, ctx: RuntimeContext) -> dict[str
         result = result.lineTo(0, z_max).close()
         solid = result.revolve(360)
 
+    # ── Phase 5: Produce topology delta for revolve faces ──
+    _try_produce_axisymmetric_revolve_topology(node=node, ctx=ctx, solid=solid)
+
     result_map = {"body": _store_solid(node, ctx, solid)}
 
     if any(o.name == "outer_frame" for o in node.outputs):
@@ -103,6 +106,38 @@ def handle_revolve_profile(node: CanonicalNode, ctx: RuntimeContext) -> dict[str
         ctx.bind_node_output(node.id, "outer_frame", fid)
         result_map["outer_frame"] = fid
     return result_map
+
+
+def _try_produce_axisymmetric_revolve_topology(
+    *, node: CanonicalNode, ctx: RuntimeContext, solid,
+) -> None:
+    """Phase 5: Build topology delta for axisymmetric revolve faces."""
+    try:
+        from seekflow_engineering_tools.generative_cad.topology.semantic_naming import (
+            build_entity_records_from_delta, name_revolve_faces,
+        )
+    except ImportError:
+        return
+    try:
+        doc_id = getattr(node, "component", "unknown") or "unknown"
+        delta = name_revolve_faces(
+            solid, document_id=doc_id,
+            component_id=node.component or "unknown",
+            producer_node_id=node.id,
+            angle_deg=360.0, axis="Z",
+        )
+        records = build_entity_records_from_delta(delta, document_id=doc_id)
+        for rec in records:
+            ctx.topology_registry.register_entity(rec)
+        ctx.topology_registry.apply_delta(delta)
+        ctx.topology_events.append({
+            "event": "axisymmetric_revolve_topology_produced",
+            "node_id": node.id, "face_count": len(delta.relations),
+        })
+    except Exception as exc:
+        ctx.topology_warnings.append({
+            "node_id": node.id, "phase": "axisymmetric_revolve_topology", "error": str(exc),
+        })
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

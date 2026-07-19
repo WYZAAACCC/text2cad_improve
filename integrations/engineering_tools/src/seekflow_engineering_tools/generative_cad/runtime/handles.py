@@ -54,17 +54,53 @@ class ProfileHandle(RuntimeHandle):
 
 
 class EdgeHandle(RuntimeHandle):
-    """Handle for a specific edge on a solid body."""
+    """Handle for a specific edge on a solid body.
+
+    Persistent topology (Phase 1+):
+      persistent_topology_id: stable across rebuilds (gcad_topo_v1 scheme)
+      semantic_role: human-readable label (e.g. "entry_rim", "top_edge")
+      generation: lineage generation counter
+      resolution_status: "exact" | "set" | "ambiguous" | "deleted" | "unresolved"
+
+    Deprecated (runtime-only, NOT for persistence):
+      edge_index: current B-Rep enumeration index — DO NOT persist
+    """
     type: Literal["edge"] = "edge"
     parent_solid_id: str | None = None
-    edge_index: int = 0
+
+    # ── Persistent topology (Phase 1+) ──
+    persistent_topology_id: str = ""
+    semantic_role: str | None = None
+    generation: int = 0
+    resolution_status: str = "exact"
+
+    # ── Deprecated: runtime index only, NOT for persistence ──
+    edge_index: int = 0  # @deprecated: use persistent_topology_id for stable references
 
 
 class FaceHandle(RuntimeHandle):
-    """Handle for a specific face on a solid body."""
+    """Handle for a specific face on a solid body.
+
+    Persistent topology (Phase 1+):
+      persistent_topology_id: stable across rebuilds (gcad_topo_v1 scheme)
+      semantic_role: human-readable label (e.g. "top", "hole_wall")
+      generation: lineage generation counter
+      resolution_status: "exact" | "set" | "ambiguous" | "deleted" | "unresolved"
+
+    Deprecated (runtime-only, NOT for persistence):
+      face_index: current B-Rep enumeration index — DO NOT persist
+    """
     type: Literal["face"] = "face"
     parent_solid_id: str | None = None
-    face_index: int = 0
+
+    # ── Persistent topology (Phase 1+) ──
+    persistent_topology_id: str = ""
+    semantic_role: str | None = None
+    generation: int = 0
+    resolution_status: str = "exact"
+
+    # ── Deprecated: runtime index only, NOT for persistence ──
+    face_index: int = 0  # @deprecated: use persistent_topology_id for stable references
 
 
 RuntimeValue = (

@@ -11,6 +11,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from seekflow_engineering_tools.generative_cad.ir.canonical import CanonicalNode
+from seekflow_engineering_tools.generative_cad.topology.models import TopologyDelta
 
 
 class OperationOutput(BaseModel):
@@ -39,6 +40,9 @@ class OperationResult(BaseModel):
     degraded_features: list[dict] = Field(default_factory=list)
     metrics: list[OperationMetric] = Field(default_factory=list)
     postcondition_results: list[dict] = Field(default_factory=list)
+
+    # ── Persistent topology (Phase 1+): optional topology evolution delta ──
+    topology_delta: TopologyDelta | None = None
 
 
 # ── Legacy adapter ──
