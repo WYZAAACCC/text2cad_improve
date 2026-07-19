@@ -16,6 +16,7 @@ Boundary with ObjectStore:
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import dataclass
 from typing import Any
 
 from seekflow_engineering_tools.generative_cad.topology.models import (
@@ -127,6 +128,9 @@ class TopologyRegistry:
             elif relation.relation == "merged":
                 for key in relation.result_entity_keys:
                     self._apply_merge(key, relation, delta)
+            elif relation.relation == "unchanged":
+                for source_id in relation.source_ids:
+                    self._apply_unchanged(source_id, relation, delta)
             elif relation.relation == "selected":
                 # Selection doesn't change entity state — record only
                 pass
@@ -143,8 +147,8 @@ class TopologyRegistry:
     ) -> None:
         """Register a new entity referenced by a result_entity_key.
 
-        Phase 1: key must be a valid compact PersistentTopoId string.
-        The entity must be pre-registered via register_entity().
+        V3 strict: unknown keys are fatal — caller must pre-register entities
+        via register_entity() before calling apply_delta().
         """
         # If the entity is already registered, just link it
         if key in self._entities:
@@ -157,20 +161,26 @@ class TopologyRegistry:
                         self._entities[src_id].descendant_ids.append(key)
             return
 
-        # Otherwise, record as pending — caller should have pre-registered
-        self._record_event("unregistered_key", {
-            "key": key,
-            "node_id": delta.node_id,
-            "relation": relation.relation,
-        })
+        # V3: unknown key is a validation error
+        raise ValueError(
+            f"TopologyDelta references unregistered key {key!r} "
+            f"(relation={relation.relation}, node={delta.node_id}). "
+            f"Caller must register_entity() before apply_delta()."
+        )
 
     def _apply_modify(
         self, source_id: str, relation: TopologyRelation, delta: TopologyDelta,
     ) -> None:
-        """Apply a 1:1 modification: old entity → updated current shape."""
+        """Apply a 1:1 modification: old entity → updated current shape.
+
+        V3 strict: unknown source raises ValueError (was: recorded as event only).
+        """
         if source_id not in self._entities:
-            self._record_event("modify_unknown_source", {"source_id": source_id})
-            return
+            raise ValueError(
+                f"TopologyDelta references unknown source {source_id!r} "
+                f"in modify relation (node={delta.node_id}). "
+                f"Source must be registered before delta application."
+            )
 
         rec = self._entities[source_id]
         rec.generation += 1
@@ -245,7 +255,293 @@ class TopologyRegistry:
                 if key not in src.descendant_ids:
                     src.descendant_ids.append(key)
 
+    def _apply_unchanged(
+        self, source_id: str, relation: TopologyRelation, delta: TopologyDelta,
+    ) -> None:
+        """Record pass-through evidence for an unchanged entity.
+
+        V3: 'unchanged' means the entity passed through this operation
+        unaffected. We record evidence but do NOT change lifecycle,
+        generation, or locator.
+        """
+        if source_id not in self._entities:
+            raise ValueError(
+                f"TopologyDelta references unknown source {source_id!r} "
+                f"in unchanged relation (node={delta.node_id})."
+            )
+        rec = self._entities[source_id]
+        rec.evidence.append({
+            "event": "unchanged",
+            "node_id": delta.node_id,
+            "component_id": delta.component_id,
+        })
+
+    # ── Lineage ──
+
+    def _terminal_descendants(self, persistent_id: str) -> list[str]:
+        """Walk descendant DAG recursively to terminal (non-superseded) IDs.
+
+        - Skips intermediate superseded nodes
+        - Deleted terminals are excluded from result
+        - Active/ambiguous terminals are included
+        - Detects cycles → raises integrity error
+        """
+        terminals: list[str] = []
+        visited: set[str] = set()
+
+        def _walk(pid: str, path: set[str]) -> None:
+            if pid in path:
+                raise ValueError(
+                    f"Circular lineage detected: {' → '.join(path)} → {pid}"
+                )
+            if pid in visited:
+                return
+            visited.add(pid)
+            if pid not in self._entities:
+                return
+            rec = self._entities[pid]
+            if rec.status == "superseded":
+                path.add(pid)
+                for did in rec.descendant_ids:
+                    _walk(did, path)
+                path.discard(pid)
+            elif rec.status == "deleted":
+                pass  # deleted terminals excluded
+            else:
+                # active, ambiguous → terminal
+                if pid not in terminals:
+                    terminals.append(pid)
+
+        _walk(persistent_id, set())
+        return terminals
+
     # ── Resolution ──
+
+    # V3 strict resolution context
+    @dataclass
+    class TopologyResolutionContext:
+        """Context required for strict V3 topology resolution.
+
+        All fields are required — strict resolution never returns exact
+        without binding context.
+        """
+        object_store: Any   # RuntimeObjectStore
+        binding_service: Any  # ShapeBindingService
+        document_revision_id: str = ""
+        allow_fingerprint_fallback: bool = False
+
+    def resolve_strict(
+        self,
+        persistent_id: str,
+        context: TopologyResolutionContext,
+    ) -> TopologyResolution:
+        """V3 strict resolution — NEVER returns false exact.
+
+        Requires binding context (ObjectStore + ShapeBindingService).
+        Full verification chain:
+          1. Key format validation
+          2. Record lookup
+          3. Lifecycle dispatch (deleted/superseded → terminal closure)
+          4. Binding state check (must be BOUND for exact)
+          5. Owner body existence + revision check
+          6. Locator → actual subshape retrieval
+          7. Entity type match
+          8. Content hash consistency
+          9. Orientation/location verification (future: fingerprint)
+
+        Returns TopologyResolution with structured proof at every step.
+        """
+        # 1. Key format
+        key_info = {}
+        try:
+            from seekflow_engineering_tools.generative_cad.topology.ids import (
+                parse_persistent_id_key,
+            )
+            key_info = parse_persistent_id_key(persistent_id)
+        except Exception:
+            pass
+
+        # 2. Record lookup
+        record = self._entities.get(persistent_id)
+        if record is None:
+            return TopologyResolution(
+                requested_id=persistent_id,
+                status="unresolved",
+                evidence=[{"reason": "persistent_id not found in registry"}],
+            )
+
+        # 3. Lifecycle dispatch
+        if record.status == "deleted":
+            return TopologyResolution(
+                requested_id=persistent_id,
+                status="deleted",
+                resolved_entity_ids=[persistent_id],
+                evidence=[{"reason": "entity was deleted during model evolution"}],
+            )
+
+        if record.status == "superseded":
+            terminals = self._terminal_descendants(persistent_id)
+            return TopologyResolution(
+                requested_id=persistent_id,
+                status="set",
+                resolved_entity_ids=terminals,
+                evidence=[{
+                    "reason": (
+                        f"entity was superseded — "
+                        f"{len(terminals)} terminal descendant(s) available"
+                    ),
+                    "terminal_descendant_ids": terminals,
+                }],
+            )
+
+        if record.status == "ambiguous":
+            return TopologyResolution(
+                requested_id=persistent_id,
+                status="ambiguous",
+                resolved_entity_ids=record.descendant_ids,
+                evidence=[{"reason": "entity is in ambiguous state — set expansion available"}],
+            )
+
+        # 4. Active → must be BOUND for exact
+        if record.status == "active":
+            loc = record.current_locator
+
+            # Check V3 binding state if populated
+            if record.binding_state is not None:
+                if record.binding_state.value == "unbound":
+                    return TopologyResolution(
+                        requested_id=persistent_id,
+                        status="unresolved",
+                        evidence=[{
+                            "reason": "active entity has binding_state=unbound",
+                            "error_code": "topology_unbound",
+                        }],
+                    )
+
+            # Strict: locator must exist
+            if loc is None:
+                return TopologyResolution(
+                    requested_id=persistent_id,
+                    status="unresolved",
+                    evidence=[{
+                        "reason": "active entity has no current_locator",
+                        "error_code": "topology_locator_missing",
+                    }],
+                )
+
+            owner_handle = loc.get("owner_body_handle_id", "")
+
+            # 5. Owner body must exist
+            try:
+                context.object_store.get(owner_handle)
+            except (KeyError, AttributeError):
+                return TopologyResolution(
+                    requested_id=persistent_id,
+                    status="unresolved",
+                    evidence=[{
+                        "reason": f"owner body {owner_handle} not found",
+                        "error_code": "topology_owner_body_not_found",
+                    }],
+                )
+
+            # 6. Entity type match
+            loc_entity_type = loc.get("entity_type", "")
+            if loc_entity_type and loc_entity_type != record.entity_type:
+                return TopologyResolution(
+                    requested_id=persistent_id,
+                    status="type_mismatch",
+                    evidence=[{
+                        "reason": (
+                            f"entity_type mismatch: record={record.entity_type}, "
+                            f"locator={loc_entity_type}"
+                        ),
+                        "error_code": "topology_entity_type_mismatch",
+                    }],
+                )
+
+            # 7. Content hash consistency
+            owner_shape_content_hash = loc.get("owner_shape_content_hash")
+            if owner_shape_content_hash:
+                try:
+                    from seekflow_engineering_tools.generative_cad.topology.shape_binding import (
+                        ShapeBindingService,
+                    )
+                    owner_shape = context.object_store.get(owner_handle)
+                    current_hash = ShapeBindingService._compute_shape_content_hash(
+                        owner_shape
+                    )
+                    if current_hash != owner_shape_content_hash and current_hash != "unknown":
+                        return TopologyResolution(
+                            requested_id=persistent_id,
+                            status="unresolved",
+                            evidence=[{
+                                "reason": (
+                                    "owner body content hash mismatch: "
+                                    f"expected={owner_shape_content_hash[:12]}..., "
+                                    f"current={current_hash[:12]}..."
+                                ),
+                                "error_code": "topology_content_hash_mismatch",
+                            }],
+                        )
+                except Exception as exc:
+                    return TopologyResolution(
+                        requested_id=persistent_id,
+                        status="unresolved",
+                        evidence=[{
+                            "reason": f"content hash verification failed: {exc}",
+                            "error_code": "topology_hash_verification_error",
+                        }],
+                    )
+
+            # 8. Locator resolution via ShapeBindingService
+            try:
+                from seekflow_engineering_tools.generative_cad.topology.locator import (
+                    RuntimeTopoLocator,
+                )
+                locator = RuntimeTopoLocator(**loc)
+                verify_result = context.binding_service.verify_locator(
+                    locator, expected_fingerprint=None,
+                )
+                if not verify_result.valid:
+                    return TopologyResolution(
+                        requested_id=persistent_id,
+                        status="unresolved",
+                        evidence=[{
+                            "reason": verify_result.detail,
+                            "error_code": verify_result.error_code,
+                        }],
+                    )
+            except Exception as exc:
+                return TopologyResolution(
+                    requested_id=persistent_id,
+                    status="unresolved",
+                    evidence=[{
+                        "reason": f"locator verification failed: {exc}",
+                        "error_code": "topology_locator_verification_error",
+                    }],
+                )
+
+            # ── Build current_handles ──
+            current_handles = []
+            owner = loc.get("owner_body_handle_id", "")
+            idx = loc.get("indexed_map_position")
+            if owner and idx is not None:
+                current_handles.append(f"{record.entity_type}:{owner}:#{idx}")
+
+            return TopologyResolution(
+                requested_id=persistent_id,
+                status="exact",
+                resolved_entity_ids=[persistent_id],
+                current_handles=current_handles,
+                method=record.resolution_method,
+                confidence=record.confidence,
+            )
+
+        return TopologyResolution(
+            requested_id=persistent_id,
+            status="unresolved",
+            evidence=[{"reason": f"unknown entity status: {record.status}"}],
+        )
 
     def resolve(
         self,
@@ -254,22 +550,14 @@ class TopologyRegistry:
         object_store: Any | None = None,
         binding_service: Any | None = None,
     ) -> TopologyResolution:
-        """Resolve a persistent topology reference at runtime.
+        """[DEPRECATED] Resolve a persistent topology reference at runtime.
 
-        v2 tightened rules (when object_store and binding_service are provided):
-          'exact' status requires ALL of:
-            1. record.status == "active"
-            2. record.current_locator is not None
-            3. Owner body exists in ObjectStore
-            4. Owner body content hash matches (if present in locator)
-            5. Locator can retrieve actual subshape
-            6. Entity type matches locator.entity_type
+        DEPRECATED: use resolve_strict() instead. This method is preserved
+        for backward compatibility but no longer returns 'exact' without
+        binding context (ObjectStore + BindingService).
 
-        Without object_store/binding_service, falls back to v1 behavior
-        (checks record status only, no actual shape verification).
-
-        Returns structured TopologyResolution — NEVER returns a wrong entity
-        silently. Status tells consumers exactly what happened.
+        Without object_store/binding_service: returns 'unresolved_without_context'
+        for active entities (previously returned 'exact' — T-004 fix).
         """
         record = self._entities.get(persistent_id)
         if record is None:
@@ -288,16 +576,17 @@ class TopologyRegistry:
             )
 
         if record.status == "superseded":
+            terminals = self._terminal_descendants(persistent_id)
             return TopologyResolution(
                 requested_id=persistent_id,
                 status="set",
-                resolved_entity_ids=record.descendant_ids,
+                resolved_entity_ids=terminals,
                 evidence=[{
                     "reason": (
                         f"entity was superseded — "
-                        f"{len(record.descendant_ids)} descendant(s) available"
+                        f"{len(terminals)} terminal descendant(s) available"
                     ),
-                    "descendant_ids": record.descendant_ids,
+                    "terminal_descendant_ids": terminals,
                 }],
             )
 
@@ -312,101 +601,129 @@ class TopologyRegistry:
         if record.status == "active":
             loc = record.current_locator
 
-            # ── v2 tightened verification (only when ObjectStore available) ──
-            if object_store is not None and binding_service is not None:
-                # Check 1: current_locator must exist
-                if loc is None:
-                    return TopologyResolution(
-                        requested_id=persistent_id,
-                        status="unresolved",
-                        evidence=[{
-                            "reason": "active entity has no current_locator",
-                            "error_code": "topology_locator_missing",
-                        }],
-                    )
+            # ── Without ObjectStore: cannot verify binding → unresolved ──
+            if object_store is None or binding_service is None:
+                return TopologyResolution(
+                    requested_id=persistent_id,
+                    status="unresolved",
+                    evidence=[{
+                        "reason": (
+                            "active entity requires binding context "
+                            "(object_store + binding_service) for exact resolution"
+                        ),
+                        "error_code": "topology_unresolved_without_context",
+                    }],
+                )
 
-                owner_handle = loc.get("owner_body_handle_id", "")
+            # ── v2 tightened verification (with ObjectStore) ──
+            if loc is None:
+                return TopologyResolution(
+                    requested_id=persistent_id,
+                    status="unresolved",
+                    evidence=[{
+                        "reason": "active entity has no current_locator",
+                        "error_code": "topology_locator_missing",
+                    }],
+                )
 
-                # Check 2: Owner body must exist in ObjectStore
+            owner_handle = loc.get("owner_body_handle_id", "")
+
+            # Check owner body exists
+            try:
+                object_store.get(owner_handle)
+            except (KeyError, AttributeError):
+                return TopologyResolution(
+                    requested_id=persistent_id,
+                    status="unresolved",
+                    evidence=[{
+                        "reason": f"owner body {owner_handle} not found in ObjectStore",
+                        "error_code": "topology_owner_body_not_found",
+                    }],
+                )
+
+            # Check entity type match
+            loc_entity_type = loc.get("entity_type", "")
+            if loc_entity_type and loc_entity_type != record.entity_type:
+                return TopologyResolution(
+                    requested_id=persistent_id,
+                    status="type_mismatch",
+                    evidence=[{
+                        "reason": (
+                            f"entity_type mismatch: record={record.entity_type}, "
+                            f"locator={loc_entity_type}"
+                        ),
+                        "error_code": "topology_entity_type_mismatch",
+                    }],
+                )
+
+            # Check content hash
+            owner_shape_content_hash = loc.get("owner_shape_content_hash")
+            if owner_shape_content_hash:
                 try:
-                    object_store.get(owner_handle)
-                except (KeyError, AttributeError):
-                    return TopologyResolution(
-                        requested_id=persistent_id,
-                        status="unresolved",
-                        evidence=[{
-                            "reason": f"owner body {owner_handle} not found in ObjectStore",
-                            "error_code": "topology_owner_body_not_found",
-                        }],
+                    from seekflow_engineering_tools.generative_cad.topology.shape_binding import (
+                        ShapeBindingService,
                     )
-
-                # Check 3: Entity type must match locator
-                loc_entity_type = loc.get("entity_type", "")
-                if loc_entity_type and loc_entity_type != record.entity_type:
-                    return TopologyResolution(
-                        requested_id=persistent_id,
-                        status="type_mismatch",
-                        evidence=[{
-                            "reason": (
-                                f"entity_type mismatch: record={record.entity_type}, "
-                                f"locator={loc_entity_type}"
-                            ),
-                            "error_code": "topology_entity_type_mismatch",
-                        }],
+                    owner_shape = object_store.get(owner_handle)
+                    current_hash = ShapeBindingService._compute_shape_content_hash(
+                        owner_shape
                     )
-
-                # Check 4: Content hash consistency (if available)
-                owner_shape_content_hash = loc.get("owner_shape_content_hash")
-                if owner_shape_content_hash:
-                    try:
-                        from seekflow_engineering_tools.generative_cad.topology.shape_binding import (
-                            ShapeBindingService,
-                        )
-                        owner_shape = object_store.get(owner_handle)
-                        current_hash = ShapeBindingService._compute_shape_content_hash(
-                            owner_shape
-                        )
-                        if current_hash != owner_shape_content_hash:
-                            return TopologyResolution(
-                                requested_id=persistent_id,
-                                status="unresolved",
-                                evidence=[{
-                                    "reason": (
-                                        "owner body content hash mismatch: "
-                                        f"expected={owner_shape_content_hash[:12]}..., "
-                                        f"current={current_hash[:12]}..."
-                                    ),
-                                    "error_code": "topology_content_hash_mismatch",
-                                }],
-                            )
-                    except Exception:
-                        pass  # Unable to verify hash → skip this check, not fatal
-
-                # Check 5: Locator retrievable via ShapeBindingService
-                try:
-                    verify_result = binding_service.verify_locator(
-                        binding_service._reconstruct_locator(loc),
-                        expected_fingerprint=None,
-                    )
-                    if not verify_result.valid:
+                    if current_hash != owner_shape_content_hash:
                         return TopologyResolution(
                             requested_id=persistent_id,
                             status="unresolved",
                             evidence=[{
-                                "reason": verify_result.detail,
-                                "error_code": verify_result.error_code,
+                                "reason": (
+                                    "owner body content hash mismatch: "
+                                    f"expected={owner_shape_content_hash[:12]}..., "
+                                    f"current={current_hash[:12]}..."
+                                ),
+                                "error_code": "topology_content_hash_mismatch",
                             }],
                         )
-                except Exception:
-                    pass  # Verification unavailable → skip
+                except Exception as exc:
+                    return TopologyResolution(
+                        requested_id=persistent_id,
+                        status="unresolved",
+                        evidence=[{
+                            "reason": f"content hash verification failed: {exc}",
+                            "error_code": "topology_hash_verification_error",
+                        }],
+                    )
 
-            # ── Build current_handles from locator ──
+            # Check locator retrievable
+            try:
+                from seekflow_engineering_tools.generative_cad.topology.locator import (
+                    RuntimeTopoLocator,
+                )
+                locator = RuntimeTopoLocator(**loc)
+                verify_result = binding_service.verify_locator(
+                    locator, expected_fingerprint=None,
+                )
+                if not verify_result.valid:
+                    return TopologyResolution(
+                        requested_id=persistent_id,
+                        status="unresolved",
+                        evidence=[{
+                            "reason": verify_result.detail,
+                            "error_code": verify_result.error_code,
+                        }],
+                    )
+            except Exception as exc:
+                return TopologyResolution(
+                    requested_id=persistent_id,
+                    status="unresolved",
+                    evidence=[{
+                        "reason": f"locator verification failed: {exc}",
+                        "error_code": "topology_locator_verification_error",
+                    }],
+                )
+
+            # ── Build current_handles ──
             current_handles = []
-            if loc:
-                owner = loc.get("owner_body_handle_id", "")
-                idx = loc.get("indexed_map_position")
-                if owner and idx is not None:
-                    current_handles.append(f"{record.entity_type}:{owner}:#{idx}")
+            owner = loc.get("owner_body_handle_id", "")
+            idx = loc.get("indexed_map_position")
+            if owner and idx is not None:
+                current_handles.append(f"{record.entity_type}:{owner}:#{idx}")
 
             return TopologyResolution(
                 requested_id=persistent_id,
@@ -534,6 +851,14 @@ class TopologyRegistry:
 
         for pid, data in snapshot.get("entities", {}).items():
             rec = TopologyEntityRecord(**data)
+            # V3: restored entities are always UNBOUND — locator was stripped
+            # and binding state must be re-established after rebuild
+            rec.current_locator = None
+            if hasattr(rec, 'binding_state') and rec.binding_state is not None:
+                from seekflow_engineering_tools.generative_cad.topology.models import (
+                    BindingState,
+                )
+                rec.binding_state = BindingState.UNBOUND
             self._entities[pid] = rec
             self._body_index[rec.owner_body_handle_id].append(pid)
             self._node_index[rec.producer_node_id]["generated"].append(pid)

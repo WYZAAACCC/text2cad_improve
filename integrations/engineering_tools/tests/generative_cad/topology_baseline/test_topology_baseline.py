@@ -56,7 +56,7 @@ class TestTopologyRegistry:
     """Unit tests for TopologyRegistry lifecycle."""
 
     def test_register_and_resolve_active(self, empty_registry):
-        """Entity registered as active resolves with status=exact."""
+        """Entity registered as active resolves with status=exact (with binding context)."""
         reg = empty_registry
         pid = "gct:v1:doc-1:box1:n1:n1:face:box/x_max"
         rec = TopologyEntityRecord(
@@ -68,14 +68,39 @@ class TestTopologyRegistry:
             semantic_role="box/x_max",
             status="active",
             resolution_method="primitive_semantic",
+            current_locator={
+                "owner_body_handle_id": "solid:box1:n1:body",
+                "entity_type": "face",
+                "indexed_map_position": 1,
+                "occt_shape_hash": 0,
+            },
         )
         reg.register_entity(rec)
         assert reg.entity_count == 1
         assert reg.active_count == 1
 
+        # V3: resolve without binding context → unresolved (T-004 fix)
         res = reg.resolve(pid)
-        assert res.status == "exact"
-        assert res.method == "primitive_semantic"
+        assert res.status == "unresolved", (
+            f"Without binding context, expected unresolved, got {res.status}"
+        )
+
+        # V3: resolve with binding context → exact (when locator is valid)
+        class FakeStore:
+            def get(self, hid):
+                return object()
+        class FakeBindingService:
+            def verify_locator(self, locator, expected_fingerprint=None):
+                from seekflow_engineering_tools.generative_cad.topology.shape_binding import (
+                    LocatorVerification,
+                )
+                return LocatorVerification(valid=True)
+        res2 = reg.resolve(
+            pid,
+            object_store=FakeStore(),
+            binding_service=FakeBindingService(),
+        )
+        assert res2.status == "exact"
 
     def test_resolve_deleted(self, empty_registry):
         """Deleted entity resolves with status=deleted (not unresolved)."""
@@ -388,9 +413,11 @@ class TestTopologySidecar:
         assert reg2.entity_count == 1
         assert meta2["entity_count"] == 1
 
-        # Resolve the restored entity
+        # V3: after restore, entity has no locator → unresolved (T-009 fix)
         res = reg2.resolve(pid)
-        assert res.status == "exact"
+        assert res.status == "unresolved", (
+            f"After sidecar restore, expected unresolved (no locator), got {res.status}"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

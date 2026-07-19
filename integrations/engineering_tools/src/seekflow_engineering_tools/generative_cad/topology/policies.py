@@ -39,7 +39,7 @@ class ResolutionQuality(str, Enum):
     EXACT_KERNEL_HISTORY = "exact_kernel_history"
 
 
-# Ordered ranking for comparison
+# Ordered ranking for comparison (single source of truth)
 _QUALITY_RANK: dict[str, int] = {
     "unresolved": 0,
     "fingerprint_unique": 1,
@@ -49,7 +49,7 @@ _QUALITY_RANK: dict[str, int] = {
     "primitive_semantic": 4,
     "kernel_modified": 5,
     "kernel_generated": 5,
-    "exact_kernel_history": 5,
+    "exact_kernel_history": 6,  # highest: requires OCCT builder history
 }
 
 

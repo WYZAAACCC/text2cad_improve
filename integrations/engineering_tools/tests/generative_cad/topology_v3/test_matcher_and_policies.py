@@ -122,15 +122,12 @@ class TestPolicyDefects:
             f"T-011 check: misspelled quality passes gate? meets={meets}"
         )
 
-    @pytest.mark.xfail(
-        reason=(
-            "T-008: cae_preflight_gate does not pass ObjectStore/BindingService "
-            "to registry.resolve(). Without binding context, any active record "
-            "resolves as exact, regardless of actual face availability."
-        ),
-        strict=True,
-    )
     def test_cae_preflight_requires_real_bound_faces(self):
+        """T-008 FIX: CAE gate now rejects entities without locator.
+
+        After T-004 fix, resolve() without binding context returns unresolved,
+        so the CAE gate correctly blocks entities without locators.
+        """
         """T-008: CAE gate must verify actual shape binding, not just registry state.
 
         V3 target: cae_preflight_gate must require a resolution context

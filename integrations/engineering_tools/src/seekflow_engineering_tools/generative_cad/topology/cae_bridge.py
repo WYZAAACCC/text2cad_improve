@@ -21,6 +21,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from seekflow_engineering_tools.generative_cad.topology.models import NamedTopologySet
 from seekflow_engineering_tools.generative_cad.topology.policies import (
+    _QUALITY_RANK,
     get_consumer_policy,
     resolution_meets_quality,
 )
@@ -242,12 +243,6 @@ def cae_preflight_gate(
 # ═══════════════════════════════════════════════════════════════════════════════
 # Internal helpers
 # ═══════════════════════════════════════════════════════════════════════════════
-
-_QUALITY_RANK: dict[str, int] = {
-    "unresolved": 0, "fingerprint_unique": 1, "set_expansion": 2,
-    "kernel_selected": 3, "deterministic_semantic": 3, "primitive_semantic": 4,
-    "kernel_modified": 5, "kernel_generated": 5, "exact_kernel_history": 6,
-}
 
 
 def _worst_of(a: str, b: str) -> str:
