@@ -46,7 +46,7 @@ def build_default_registry() -> DialectRegistry:
     }
 
     for dialect_name, op_name in _topology_required_ops:
-        dialect = registry.require_dialect(dialect_name)
+        dialect = registry.require(dialect_name)
         try:
             op_spec = dialect.get_op_spec(op_name)
             contract_key = (dialect_name, op_name)
