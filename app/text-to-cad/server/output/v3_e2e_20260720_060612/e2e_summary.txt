@@ -1,0 +1,24 @@
+V3 持久拓扑命名 E2E 测试报告
+===============================
+测试时间: 2026-07-20
+测试数据: b572661c219c4952 (HPT_Disk_KT787_JB_210_RefGeo)
+Python: 3.11.9
+CadQuery: 2.7.0
+
+测试结果:
+- Pipeline: OK, 30.4s
+- STEP: 15.1MB
+- Registry 实体: 3067
+- 完整性检查: PASS (0 issues)
+- 单元测试: 184 passed, 0 failed
+
+实体分布:
+- n_bool_cut_all: 3015 faces (name_boolean_faces — 后验分类)
+  - PLANE: 1504, CYLINDER: 1505, TORUS: 4, CONE: 2
+- n_extrude_cutter: 52 faces (name_extrude_faces — 侧面+端面)
+- n_revolve_disc: 0 (未单独追踪)
+
+已知限制:
+- LOC=0: sketch_profile dialect 使用 CadQuery 语义命名路径
+- V3 descriptor=0: _make_compact_key() 丢弃 descriptor
+- boolean_cut 使用 name_boolean_faces() 后验分类，无 OCP Generated/Modified/IsDeleted 谱系
