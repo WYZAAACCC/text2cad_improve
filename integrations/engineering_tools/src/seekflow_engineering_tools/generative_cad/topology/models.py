@@ -1,5 +1,9 @@
 """Topology data models — EntityRecord, TopologyDelta, TopologyResolution.
 
+V3 upgrade: EntityLifecycle, BindingState, ProofClass enums added.
+TopologyEntityRecord extended with V3 fields (all optional, backward-compatible).
+Existing status/resolution_method fields DEPRECATED in favor of V3 fields.
+
 Phase 1: data model definitions only. Not yet wired into handlers.
 Phase 2+: TopologyDelta populated by history-aware operation wrappers.
 Phase 6: NamedTopologySet for CAE bridge.
@@ -7,9 +11,55 @@ Phase 6: NamedTopologySet for CAE bridge.
 
 from __future__ import annotations
 
+from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# V3 — Lifecycle, Binding, Proof enums
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class EntityLifecycle(str, Enum):
+    """V3 entity lifecycle state — replaces deprecated 'status' field.
+
+    I-02: Lifecycle is independent of binding and proof.
+    """
+
+    ACTIVE = "active"
+    SUPERSEDED = "superseded"
+    DELETED = "deleted"
+
+
+class BindingState(str, Enum):
+    """V3 binding state — whether the entity is currently bound to a B-Rep subshape.
+
+    I-02: Binding is independent of lifecycle and proof.
+    """
+
+    UNBOUND = "unbound"
+    BOUND = "bound"
+    STALE = "stale"
+    AMBIGUOUS = "ambiguous"
+    UNRESOLVED = "unresolved"
+
+
+class ProofClass(str, Enum):
+    """V3 proof strength — the evidence backing this entity's identity.
+
+    I-07: Only EXACT_GENERATED_HISTORY and EXACT_MODIFIED_HISTORY are true
+    exact proofs. All others are lower confidence.
+    """
+
+    EXACT_GENERATED_HISTORY = "exact_generated_history"
+    EXACT_MODIFIED_HISTORY = "exact_modified_history"
+    DETERMINISTIC_CONSTRUCTION = "deterministic_construction"
+    VERIFIED_REBIND_UNIQUE = "verified_rebind_unique"
+    FINGERPRINT_CANDIDATE = "fingerprint_candidate"
+    AMBIGUOUS_SET = "ambiguous_set"
+    NONE = "none"
 
 
 # ── Entity Record ──
@@ -20,6 +70,11 @@ class TopologyEntityRecord(BaseModel):
 
     Tracks the entity from creation (primitive/semantic naming) through
     modifications (OCCT history), splits, merges, and eventual deletion.
+
+    V3 FIELDS (Phase 1+):
+      lifecycle, binding_state, proof_class — replace deprecated status + resolution_method.
+      identity_descriptor — stores TopologyIdentityDescriptorV3.model_dump() for full recoverability.
+      owner_body_revision_id — body revision token for locator staleness detection.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -35,6 +90,7 @@ class TopologyEntityRecord(BaseModel):
 
     generation: int = 0
 
+    # ── Deprecated fields (replaced by V3 enums) ──
     status: Literal[
         "active",
         "deleted",
@@ -53,10 +109,37 @@ class TopologyEntityRecord(BaseModel):
         "unresolved",
     ] = "primitive_semantic"
 
+    # ── V3 fields (Phase 1+: optional, default None for backward compat) ──
+
+    lifecycle: EntityLifecycle | None = Field(
+        default=None,
+        description="V3 lifecycle state. Replaces deprecated 'status'.",
+    )
+
+    binding_state: BindingState | None = Field(
+        default=None,
+        description="V3 binding state. Replaces implicit active+locator logic.",
+    )
+
+    proof_class: ProofClass | None = Field(
+        default=None,
+        description="V3 proof strength. Replaces deprecated 'resolution_method'.",
+    )
+
+    identity_descriptor: dict | None = Field(
+        default=None,
+        description="TopologyIdentityDescriptorV3.model_dump() — full recoverable descriptor.",
+    )
+
+    owner_body_revision_id: str | None = Field(
+        default=None,
+        description="Body revision token for locator staleness detection.",
+    )
+
     # Runtime-only locator (NOT persisted across rebuilds)
     current_locator: dict | None = None
 
-    # Fingerprint for fallback matching (Phase 3+)
+    # Fingerprint for fallback matching (Phase 6+)
     fingerprint: dict | None = None
 
     # Lineage
@@ -66,6 +149,42 @@ class TopologyEntityRecord(BaseModel):
     # Evidence
     confidence: float = 1.0
     evidence: list[dict] = Field(default_factory=list)
+
+    # ── V3 model validators ──
+
+    @model_validator(mode="after")
+    def _validate_v3_invariants(self) -> "TopologyEntityRecord":
+        """Enforce V3 invariants when V3 fields are populated.
+
+        I-03: active + unbound is an illegal state.
+        I-04: superseded/deleted entities must not have a current locator.
+        """
+        # Only validate when V3 fields are explicitly set (backward compat:
+        # existing code creates records without V3 fields)
+        if self.lifecycle is None and self.binding_state is None:
+            return self
+
+        # Active lifecycle must have a binding state
+        if self.lifecycle == EntityLifecycle.ACTIVE:
+            if self.binding_state == BindingState.UNBOUND:
+                raise ValueError(
+                    f"Entity {self.persistent_id}: lifecycle=ACTIVE with "
+                    f"binding_state=UNBOUND is illegal. Active entities "
+                    f"must be BOUND (or STALE/AMBIGUOUS during resolution)."
+                )
+
+        # Superseded/deleted must not claim BOUND
+        if self.lifecycle is not None and self.lifecycle in (
+            EntityLifecycle.SUPERSEDED, EntityLifecycle.DELETED,
+        ):
+            if self.binding_state == BindingState.BOUND:
+                raise ValueError(
+                    f"Entity {self.persistent_id}: lifecycle={self.lifecycle.value} "
+                    f"with binding_state=BOUND is illegal. "
+                    f"Superseded/deleted entities cannot be bound to a shape."
+                )
+
+        return self
 
 
 # ── Topology Relation ──

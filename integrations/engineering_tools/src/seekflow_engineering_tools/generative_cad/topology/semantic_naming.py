@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from seekflow_engineering_tools.generative_cad.topology.ids import PersistentTopoId
 from seekflow_engineering_tools.generative_cad.topology.models import (
     TopologyDelta,
     TopologyEntityRecord,

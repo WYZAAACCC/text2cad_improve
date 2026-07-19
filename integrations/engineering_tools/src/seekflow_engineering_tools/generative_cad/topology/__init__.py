@@ -5,6 +5,9 @@ Three-layer architecture:
   Layer 2: OCCT kernel shape history (Generated / Modified / Deleted)
   Layer 3: Constrained fingerprint matching (provenance + adjacency)
 
+V3 identity model (Phase 1+): TopologyIdentityDescriptorV3 is the canonical
+descriptor. v1/v2 classes are deprecated — reader preserved, writer → v3 only.
+
 Phase 1: infrastructure skeleton — no operation handler changes.
 Phase 2: topology contracts, history-aware OCP wrappers, extrude/revolve naming,
          resolution policies, constrained matcher framework, validation rules.
@@ -30,7 +33,12 @@ from seekflow_engineering_tools.generative_cad.topology.history_wrappers import 
 from seekflow_engineering_tools.generative_cad.topology.ids import (
     PersistentTopoId,
     PersistentTopoIdV2,
+    TopologyIdentityDescriptorV3,
     make_persistent_id_v2,
+    make_persistent_id_v3,
+    parse_persistent_id_key,
+    LEGACY_V1_MARKER,
+    LEGACY_V2_IRREVERSIBLE,
 )
 from seekflow_engineering_tools.generative_cad.topology.locator import RuntimeTopoLocator
 from seekflow_engineering_tools.generative_cad.topology.shape_binding import (
@@ -49,7 +57,10 @@ from seekflow_engineering_tools.generative_cad.topology.matcher import (
     MatchWeights,
 )
 from seekflow_engineering_tools.generative_cad.topology.models import (
+    BindingState,
+    EntityLifecycle,
     NamedTopologySet,
+    ProofClass,
     TopologyDelta,
     TopologyEntityRecord,
     TopologyRelation,
@@ -95,7 +106,12 @@ __all__ = [
     # IDs
     "PersistentTopoId",
     "PersistentTopoIdV2",
+    "TopologyIdentityDescriptorV3",
     "make_persistent_id_v2",
+    "make_persistent_id_v3",
+    "parse_persistent_id_key",
+    "LEGACY_V1_MARKER",
+    "LEGACY_V2_IRREVERSIBLE",
     # Locator
     "RuntimeTopoLocator",
     # Shape Binding
@@ -104,7 +120,11 @@ __all__ = [
     "LocatorVerification",
     # Transaction
     "TopologyTransaction",
-    # Models
+    # Models — V3 enums
+    "EntityLifecycle",
+    "BindingState",
+    "ProofClass",
+    # Models — records
     "TopologyEntityRecord",
     "TopologyDelta",
     "TopologyRelation",
