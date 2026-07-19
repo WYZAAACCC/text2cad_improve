@@ -52,10 +52,10 @@ def name_box_faces(
                 relation="primitive",
                 result_entity_keys=[
                     _make_compact_id(document_id, component_id, producer_node_id,
-                                     "face", f"box/face_{i}")
+                                     "face", f"box/fallback/{i}")
                 ],
-                semantic_role=f"box/face_{i}",
-                evidence={"method": "fallback_enumerate", "index": i},
+                semantic_role=f"box/fallback/{i}",
+                evidence={"method": "fallback_enumerate", "entity_type": "face", "index": i},
             ))
             continue
 
@@ -77,12 +77,12 @@ def name_box_faces(
             semantic_role=role,
             evidence={
                 "method": "bbox_extreme_normal",
+                "entity_type": "face",
                 "normal": (
                     round(normal.x, 3),
                     round(normal.y, 3),
                     round(normal.z, 3),
                 ),
-                "runtime_index": i,
             },
         ))
 
@@ -137,7 +137,7 @@ def name_cylinder_faces(
                                      "face", f"cylinder/face_{i}")
                 ],
                 semantic_role=f"cylinder/face_{i}",
-                evidence={"method": "fallback_enumerate", "index": i},
+                evidence={"method": "fallback_enumerate", "entity_type": "face", "index": i},
             ))
             continue
 
@@ -276,29 +276,22 @@ def _infer_entity_type(
     semantic_role: str | None,
     evidence: dict,
 ) -> str:
-    """Infer entity type from semantic role prefix or evidence.
+    """Derive entity type from relation evidence.
 
-    v2 keys are opaque hashes — entity type must be derived from metadata.
-    Role prefixes like 'edge/', 'face/', 'solid/' signal the type.
+    V3: entity_type is recorded in relation.evidence by each name_* function.
+    No longer guesses from semantic_role string patterns.
     Default: 'face'.
     """
-    if semantic_role:
-        # Check for explicit type prefix: edge/xxx, face/xxx, etc.
-        if "/" in semantic_role:
-            prefix = semantic_role.split("/")[0].lower()
-            if prefix in ("edge", "face", "solid", "shell", "wire", "vertex"):
-                return prefix
-        # hole/entry_rim, hole/exit_rim → edge
-        if "rim" in semantic_role.lower():
-            return "edge"
-        # hole/wall → face
-        if "wall" in semantic_role.lower():
-            return "face"
-    # Fallback: check evidence
+    # Primary: from evidence (V3: all name_* functions set this)
     if evidence:
         ev_type = evidence.get("entity_type", "")
         if ev_type:
             return ev_type
+    # Fallback: check explicit type prefix in semantic_role (legacy compat)
+    if semantic_role and "/" in semantic_role:
+        prefix = semantic_role.split("/")[0].lower()
+        if prefix in ("edge", "face", "solid", "shell", "wire", "vertex"):
+            return prefix
     return "face"
 
 
