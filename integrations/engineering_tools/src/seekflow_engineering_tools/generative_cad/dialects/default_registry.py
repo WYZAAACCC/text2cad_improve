@@ -32,6 +32,30 @@ def build_default_registry() -> DialectRegistry:
         error_msgs = "; ".join(i.message for i in gov_report.issues if i.severity == "error")
         raise RuntimeError(f"Dialect governance check failed: {error_msgs}")
 
+    # ── Phase 4: Wire topology contracts to core operations ──
+    from seekflow_engineering_tools.generative_cad.topology.contracts import (
+        CONTRACT_REGISTRY,
+    )
+
+    _topology_required_ops = {
+        ("axisymmetric", "revolve_profile"),
+        ("sketch_extrude", "extrude_rectangle"),
+        ("composition", "boolean_union"),
+        ("composition", "boolean_cut"),
+        ("sketch_profile", "revolve_profile"),
+    }
+
+    for dialect_name, op_name in _topology_required_ops:
+        dialect = registry.require_dialect(dialect_name)
+        try:
+            op_spec = dialect.get_op_spec(op_name)
+            contract_key = (dialect_name, op_name)
+            if contract_key in CONTRACT_REGISTRY:
+                op_spec.topology_contract = CONTRACT_REGISTRY[contract_key]
+            op_spec.topology_mode = "required"
+        except (KeyError, AttributeError):
+            pass  # dialect or op not found — skip (test/compat)
+
     registry.freeze()
     return registry
 

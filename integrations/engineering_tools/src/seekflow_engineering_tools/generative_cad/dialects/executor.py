@@ -8,6 +8,7 @@ and handle value_type are validated at runtime.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 from seekflow_engineering_tools.generative_cad.dialects.operation import OperationSpec
 from seekflow_engineering_tools.generative_cad.dialects.results import (
@@ -66,7 +67,8 @@ def execute_operation(
 
     # Check cache before executing handler
     cached = ctx.cache.get(node, input_hashes=input_hashes)
-    if cached is not None:
+    cache_hit = cached is not None
+    if cache_hit:
         # Re-wrap cached result — it was already validated
         if isinstance(cached, OperationResult):
             raw_result = cached
@@ -74,16 +76,18 @@ def execute_operation(
             raw_result = cached
         else:
             raw_result = op_spec.handler(node, ctx)
+            cache_hit = False  # re-ran handler, treat as miss
     else:
         raw_result = op_spec.handler(node, ctx)
-        # Cache the result for future incremental rebuilds
-        if isinstance(raw_result, (OperationResult, dict)):
-            topology_snap = ctx.topology_registry.export_snapshot()
-            ctx.cache.put(
-                node, raw_result,
-                input_hashes=input_hashes,
-                topology_snapshot=topology_snap,
-            )
+
+    # Cache the result for future incremental rebuilds (only on miss)
+    if not cache_hit and isinstance(raw_result, (OperationResult, dict)):
+        topology_snap = ctx.topology_registry.export_snapshot()
+        ctx.cache.put(
+            node, raw_result,
+            input_hashes=input_hashes,
+            topology_snapshot=topology_snap,
+        )
 
     # Normalize to OperationResult
     if isinstance(raw_result, OperationResult):
@@ -112,10 +116,10 @@ def execute_operation(
            for e in op_spec.effects):
         _validate_geometry(node=node, result=result, ctx=ctx)
 
-    # ── Persistent topology: apply topology delta if present (Phase 1+) ──
-    # Phase 1: delta is optional. If present, apply to registry.
-    # Phase 3+: delta required for operations with topology contract.
-    _apply_topology_delta_if_present(node=node, result=result, ctx=ctx)
+    # ── Persistent topology: apply topology delta if present (Phase 4+) ──
+    _apply_topology_delta_if_present(
+        node=node, result=result, ctx=ctx, op_spec=op_spec,
+    )
 
     # Propagate side-channel data
     for w in result.warnings:
@@ -285,22 +289,38 @@ def _apply_topology_delta_if_present(
     node: CanonicalNode,
     result: OperationResult,
     ctx: RuntimeContext,
+    op_spec: Any = None,
 ) -> None:
     """Apply the topology delta from an operation result to the registry.
 
-    Phase 1: delta is optional. If not present, this is a no-op.
-    Phase 3+: operations with topology contracts REQUIRE a delta.
-
-    Topology delta application failure is a warning in Phase 1
-    (non-fatal), not a build failure. This will tighten in Phase 3+
-    for operations that declare required topology contracts.
+    Phase 4+: topology_mode controls enforcement:
+      - "forbidden": delta is a no-op (sketch ops, transforms)
+      - "optional":   delta is a warning on failure (legacy)
+      - "required":   missing or invalid delta → build error (T-007 fix)
     """
+    mode = getattr(op_spec, 'topology_mode', 'optional') if op_spec is not None else 'optional'
+
     if result.topology_delta is None:
-        return
+        if mode == "required":
+            raise GcadRuntimeError(_node_issue(
+                node,
+                code="TOPOLOGY_DELTA_MISSING",
+                message=(
+                    f"Operation {node.id} ({node.dialect}.{node.op}) "
+                    f"declares topology_mode='required' but produced no "
+                    f"topology delta. Handler must return OperationResult "
+                    f"with a valid topology_delta."
+                ),
+                repairability="repairable",
+                suggested_paths=[f"/nodes/{node.id}/params"],
+            ))
+        return  # optional/forbidden: no-op
 
     try:
         with ctx.topology_transaction() as tx:
             tx.apply_delta(result.topology_delta)
+            if mode == "required":
+                tx.validate_geometry_bindings(result.topology_delta)
         ctx.topology_events.append({
             "event": "delta_applied",
             "node_id": node.id,
@@ -309,12 +329,23 @@ def _apply_topology_delta_if_present(
             "history_provider": result.topology_delta.history_provider,
         })
     except Exception as exc:
+        if mode == "required":
+            raise GcadRuntimeError(_node_issue(
+                node,
+                code="TOPOLOGY_DELTA_INVALID",
+                message=(
+                    f"Topology delta application failed for {node.id}: {exc}"
+                ),
+                repairability="repairable",
+                suggested_paths=[f"/nodes/{node.id}/params"],
+                evidence={"exception": str(exc)},
+            )) from exc
+        # optional: topology failure is a warning
         ctx.topology_warnings.append({
             "node_id": node.id,
             "error": str(exc),
             "phase": "topology_delta_apply",
         })
-        # Non-fatal: topology failure is a warning
         ctx.warnings.append(
             f"Topology delta application failed on '{node.id}': {exc}. "
             f"Model geometry is valid, but topology identity may be incomplete."

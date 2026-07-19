@@ -52,6 +52,15 @@ class OperationSpec(BaseModel):
     # ── Persistent topology (Phase 2+) ──
     topology_contract: object | None = None  # TopologyContract | None (lazy to avoid circular import)
 
+    # ── Topology enforcement (Phase 4+) ──
+    topology_mode: Literal["forbidden", "optional", "required"] = "optional"
+    """Topology enforcement level for this operation.
+
+    - "forbidden": operation must NOT produce topology (sketch ops, transforms)
+    - "optional":  topology is nice-to-have, failure → warning (legacy behavior)
+    - "required":  topology delta MUST be valid; missing/invalid delta → build error
+    """
+
     # ── LLM-facing metadata (for skill generation / docs only) ──
     # These fields do NOT affect validation semantics.
     # They are used by Level-2 skill generators and tool schema compilers
