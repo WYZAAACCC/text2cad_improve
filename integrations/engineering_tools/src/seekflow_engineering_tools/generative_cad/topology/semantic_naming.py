@@ -134,9 +134,9 @@ def name_cylinder_faces(
                 relation="primitive",
                 result_entity_keys=[
                     _make_compact_key(document_id, component_id, producer_node_id,
-                                     "face", f"cylinder/face_{i}")
+                                     "face", f"cylinder/fallback/{i}")
                 ],
-                semantic_role=f"cylinder/face_{i}",
+                semantic_role=f"cylinder/fallback/{i}",
                 evidence={"method": "fallback_enumerate", "entity_type": "face", "index": i},
             ))
             continue
@@ -149,7 +149,7 @@ def name_cylinder_faces(
             else:
                 role = "cylinder/cap_start"
         else:
-            role = f"cylinder/face_{i}"
+            role = f"cylinder/fallback/{i}"
 
         relations.append(TopologyRelation(
             relation="primitive",
@@ -391,7 +391,7 @@ def name_extrude_faces(
             normal = face.normalAt()
         except Exception:
             relations.append(_make_fallback_relation(
-                document_id, component_id, producer_node_id, "face", f"extrude/face_{i}", i,
+                document_id, component_id, producer_node_id, "face", f"extrude/fallback/{i}", i,
             ))
             continue
 
@@ -496,7 +496,7 @@ def name_revolve_faces(
             center = face.Center()
         except Exception:
             relations.append(_make_fallback_relation(
-                document_id, component_id, producer_node_id, "face", f"revolve/face_{i}", i,
+                document_id, component_id, producer_node_id, "face", f"revolve/fallback/{i}", i,
             ))
             continue
 
@@ -737,7 +737,7 @@ def name_fillet_faces(
             if edge_ids and fillet_idx < len(edge_ids):
                 role = f"fillet/face_from/{edge_ids[fillet_idx]}"
             else:
-                role = f"fillet/face_{fillet_idx}"
+                role = f"fillet/fallback/{fillet_idx}"
             fillet_idx += 1
             relations.append(TopologyRelation(
                 relation="generated",

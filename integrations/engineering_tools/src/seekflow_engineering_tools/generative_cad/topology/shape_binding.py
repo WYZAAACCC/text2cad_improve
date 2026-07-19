@@ -306,8 +306,10 @@ class ShapeBindingService:
             wrapped = getattr(shape, "wrapped", shape)
             max_int = sys.maxsize
             return wrapped.HashCode(max_int)
-        except Exception:
-            return id(shape)  # fallback — Python id, not persistent
+        except Exception as exc:
+            raise RuntimeError(
+                f"Failed to compute OCCT hash for shape: {exc}"
+            ) from exc
 
     @staticmethod
     def _compute_shape_content_hash(shape: Any) -> str:

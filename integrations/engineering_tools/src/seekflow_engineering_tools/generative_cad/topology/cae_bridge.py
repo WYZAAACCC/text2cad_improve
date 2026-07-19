@@ -278,8 +278,17 @@ def cae_preflight_gate(
 
 
 def _worst_of(a: str, b: str) -> str:
-    """Return the lower-quality of two resolution methods (PR 12: worst quality gate)."""
-    return a if _QUALITY_RANK.get(a, 0) <= _QUALITY_RANK.get(b, 0) else b
+    """Return the lower-quality of two resolution methods (V3: worst quality gate).
+
+    Raises ValueError if either method is unknown — fail-closed.
+    """
+    rank_a = _QUALITY_RANK.get(a)
+    rank_b = _QUALITY_RANK.get(b)
+    if rank_a is None:
+        raise ValueError(f"Unknown quality method in CAE gate: {a!r}")
+    if rank_b is None:
+        raise ValueError(f"Unknown quality method in CAE gate: {b!r}")
+    return a if rank_a <= rank_b else b
 
 
 def _purpose_to_consumer(purpose: str) -> str:

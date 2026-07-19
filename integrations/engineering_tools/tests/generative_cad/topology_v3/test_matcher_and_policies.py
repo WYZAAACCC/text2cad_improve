@@ -18,6 +18,7 @@ from seekflow_engineering_tools.generative_cad.topology.models import (
 )
 from seekflow_engineering_tools.generative_cad.topology.registry import TopologyRegistry
 from seekflow_engineering_tools.generative_cad.topology.cae_bridge import (
+    _worst_of,
     cae_preflight_gate,
     resolve_named_set_to_faces,
 )
@@ -84,32 +85,22 @@ class TestPolicyDefects:
     """V3 Section 4.8: Unknown consumer/quality defaults may be too lenient."""
 
     def test_unknown_consumer_policy_is_denied(self):
-        """T-011 BASELINE: Unknown consumer type gets a default policy.
+        """T-011 FIX: Unknown consumer/quality now raises ValueError (fail-closed).
 
-        Current behavior: unknown consumer → debug_visualization fallback
-        with DETERMINISTIC_SEMANTIC minimum. This is relatively strict,
-        but unknown quality strings default to rank 0 (permissive).
+        V3: Unknown quality strings raise ValueError instead of defaulting
+        to rank 0. This is stricter fail-closed behavior.
         """
-        # Unknown consumer → deterministic_semantic (baseline: reasonable)
+        # Unknown consumer → deterministic_semantic fallback
         policy = get_consumer_policy("totally_unknown_consumer_v3")
-        assert policy.consumer_type == "debug_visualization", (
-            "Unknown consumer falls back to debug_visualization (baseline)"
-        )
+        assert policy.consumer_type == "debug_visualization"
 
-        # Unknown quality string → rank 0 (T-011 defect)
-        unknown_rank = _QUALITY_RANK.get("some_misspelled_quality", 0)
-        # This is the defect: 0 = unresolved, effectively disabling the gate
-        assert unknown_rank == 0, (
-            "T-011 BASELINE: unknown quality defaults to rank 0 (permissive)"
-        )
+        # Unknown quality → ValueError (V3 strict)
+        with pytest.raises(ValueError, match="Unknown resolution"):
+            resolution_meets_quality("some_misspelled_quality", "exact_kernel_history")
 
-        # Demonstrate the consequence: a misspelled quality returns False
-        # because rank 0 (< 5). This is coincidentally correct safety-wise,
-        # but the real risk is in _worst_of() where misspelled → rank 0 → wins.
-        meets = resolution_meets_quality("some_misspelled_quality", "exact_kernel_history")
-        assert meets is False, (
-            f"T-011 check: misspelled quality passes gate? meets={meets}"
-        )
+        # Unknown method in _worst_of → ValueError
+        with pytest.raises(ValueError, match="Unknown quality"):
+            _worst_of("exact_kernel_history", "some_misspelled")
 
     def test_cae_preflight_requires_real_bound_faces(self):
         """T-008 FIX: CAE gate now rejects entities without locator.

@@ -66,9 +66,19 @@ def resolution_meets_quality(
     Returns:
         True if the method's quality rank >= required rank.
     """
-    method_rank = _QUALITY_RANK.get(method, 0)
+    method_rank = _QUALITY_RANK.get(method)
+    if method_rank is None:
+        raise ValueError(
+            f"Unknown resolution method: {method!r}. "
+            f"Valid methods: {sorted(_QUALITY_RANK.keys())}"
+        )
     req_str = required.value if isinstance(required, ResolutionQuality) else required
-    required_rank = _QUALITY_RANK.get(req_str, 0)
+    required_rank = _QUALITY_RANK.get(req_str)
+    if required_rank is None:
+        raise ValueError(
+            f"Unknown resolution quality: {req_str!r}. "
+            f"Valid qualities: {sorted(_QUALITY_RANK.keys())}"
+        )
     return method_rank >= required_rank
 
 
