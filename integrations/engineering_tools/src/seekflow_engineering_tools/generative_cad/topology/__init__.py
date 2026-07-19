@@ -27,7 +27,20 @@ from seekflow_engineering_tools.generative_cad.topology.history_wrappers import 
     history_aware_extrude,
     history_aware_revolve,
 )
-from seekflow_engineering_tools.generative_cad.topology.ids import PersistentTopoId
+from seekflow_engineering_tools.generative_cad.topology.ids import (
+    PersistentTopoId,
+    PersistentTopoIdV2,
+    make_persistent_id_v2,
+)
+from seekflow_engineering_tools.generative_cad.topology.locator import RuntimeTopoLocator
+from seekflow_engineering_tools.generative_cad.topology.shape_binding import (
+    BodyTopologyMaps,
+    LocatorVerification,
+    ShapeBindingService,
+)
+from seekflow_engineering_tools.generative_cad.topology.transaction import (
+    TopologyTransaction,
+)
 from seekflow_engineering_tools.generative_cad.topology.matcher import (
     ConstrainedTopologyMatcher,
     MatchCandidate,
@@ -81,6 +94,16 @@ from seekflow_engineering_tools.generative_cad.topology.validation import (
 __all__ = [
     # IDs
     "PersistentTopoId",
+    "PersistentTopoIdV2",
+    "make_persistent_id_v2",
+    # Locator
+    "RuntimeTopoLocator",
+    # Shape Binding
+    "ShapeBindingService",
+    "BodyTopologyMaps",
+    "LocatorVerification",
+    # Transaction
+    "TopologyTransaction",
     # Models
     "TopologyEntityRecord",
     "TopologyDelta",

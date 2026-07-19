@@ -46,6 +46,10 @@ class RuntimeContext:
     compiler_diagnostics: list[dict[str, Any]] = field(default_factory=list)
     # v6.3: Planning report from compiler middle-end (Phase 3+)
     planning_report: dict[str, Any] | None = None
+    # ── Document identity (v2 persistent topology) ──
+    document_id: str = ""
+    canonical_graph_hash: str = ""
+
     # ── Persistent topology (Phase 1+) ──
     topology_events: list[dict[str, Any]] = field(default_factory=list)
     topology_warnings: list[dict[str, Any]] = field(default_factory=list)
@@ -89,3 +93,18 @@ class RuntimeContext:
 
     def get_component_state(self, component_id: str, key: str, default: object = None) -> object:
         return self.component_state.get(component_id, {}).get(key, default)
+
+    def topology_transaction(self):
+        """Create a topology transaction for atomic registry updates.
+
+        Usage:
+            with ctx.topology_transaction() as tx:
+                tx.register_entity(rec)
+                tx.apply_delta(delta)
+            # Automatically validates integrity and commits on success,
+            # rolls back on exception.
+        """
+        from seekflow_engineering_tools.generative_cad.topology.transaction import (
+            TopologyTransaction,
+        )
+        return TopologyTransaction(self.topology_registry)

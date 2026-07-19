@@ -34,6 +34,37 @@ class CanonicalValueRef(BaseModel):
     resolved_type: ValueType
 
 
+class CanonicalPersistentTopoRef(BaseModel):
+    """PR 9: Resolved persistent topology reference in canonical IR.
+
+    The canonicalizer resolves RawPersistentTopoRef.semantic_query to
+    concrete persistent_ids. If pre-build resolution is impossible,
+    uses DeferredPersistentTopoRef (symbolic, resolved during runtime).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    persistent_ids: list[str] = Field(
+        description="Resolved persistent topology IDs (gct2_<hash>)",
+    )
+    entity_type: Literal["face", "edge", "vertex"] = Field(
+        description="Expected entity type",
+    )
+    cardinality: Literal[
+        "exactly_one", "zero_or_one", "one_or_more", "zero_or_more",
+    ] = "exactly_one"
+    resolution_policy: Literal[
+        "exact_only",
+        "allow_deterministic_semantic",
+        "allow_set_expansion",
+        "allow_fingerprint_unique",
+    ] = "exact_only"
+    producer_contract_hash: str = Field(
+        default="",
+        description="Hash of the producer's TopologyContract at build time",
+    )
+
+
 class CanonicalValueDecl(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str

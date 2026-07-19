@@ -1,0 +1,286 @@
+{
+  "generative_metadata": {
+    "metadata_version": "generative_metadata_v3",
+    "source_route": "llm_skill_base",
+    "schema_version": "g_cad_core_v0.2",
+    "canonical_version": "canonical_gcad_v0.2",
+    "trust_level": "reference_geometry",
+    "document_id": "turbine-disc-hpt-kt787-jb-210",
+    "part_name": "HPT_Disc_KT787_JB_210",
+    "selected_dialects": [
+      {
+        "dialect": "sketch_profile",
+        "version": "0.2.0",
+        "contract_hash": "sha256:503caf566d76cdf30c64725a1051b8ff2780f0e5f8b55b67df7452f7103966d2"
+      },
+      {
+        "dialect": "composition",
+        "version": "0.2.0",
+        "contract_hash": "sha256:1ff66c680d94f60891bf00260f365ffa2a0d213d5571a2366a3f1c27748f5382"
+      }
+    ],
+    "op_versions": [
+      {
+        "node_id": "n_sketch_disc",
+        "dialect": "sketch_profile",
+        "op": "create_2d_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_sketch_cutter",
+        "dialect": "sketch_profile",
+        "op": "create_2d_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_polyline_disc",
+        "dialect": "sketch_profile",
+        "op": "add_polyline",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_close_disc",
+        "dialect": "sketch_profile",
+        "op": "close_profile",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_polyline_cutter",
+        "dialect": "sketch_profile",
+        "op": "add_polyline",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_close_cutter",
+        "dialect": "sketch_profile",
+        "op": "close_profile",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_pattern_cutters",
+        "dialect": "composition",
+        "op": "circular_pattern_component",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_hub_web_lower",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_web_rim_lower",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_web_rim_upper",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_hub_web_upper",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_r15",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_r10",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_fillet_cutter_r08",
+        "dialect": "sketch_profile",
+        "op": "fillet_sketch",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_asm_final",
+        "dialect": "composition",
+        "op": "boolean_cut",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_disc_final",
+        "dialect": "sketch_profile",
+        "op": "revolve_profile",
+        "op_version": "1.0.0"
+      },
+      {
+        "node_id": "n_cutter_extrude",
+        "dialect": "sketch_profile",
+        "op": "extrude_profile",
+        "op_version": "1.0.0"
+      }
+    ],
+    "raw_graph_hash": "sha256:12dfc649be9032bc9f4fe2d711ac02325b196e33ee003418192031081ae36644",
+    "canonical_graph_hash": "sha256:e6014ef3698bbe1300b2b2d53378c9458ad8a08f52ae06f293b3aef8fa88c47e",
+    "paths": {
+      "canonical_ir_path": "<in_memory>",
+      "validation_seed_path": "<in_memory>",
+      "step_path": "E:\\text_to_cad_improve\\auto_detection_process\\turbine_disc\\test_topology_verify\\output2.step",
+      "metadata_path": "E:\\text_to_cad_improve\\auto_detection_process\\turbine_disc\\test_topology_verify\\output2.metadata.json"
+    },
+    "runtime": {
+      "runner_version": "0.2.0",
+      "geometry_runtime": "cadquery",
+      "geometry_runtime_version": "cadquery_runtime_v1"
+    },
+    "artifact": {
+      "step_sha256": "sha256:8bb27e59a93273e5019cbe2c278a70a3659e238d700cdab95b54355fcc50be03",
+      "metadata_schema_hash": null
+    },
+    "import_policy": {
+      "native_rebuild_allowed": false,
+      "requires_import_gate": true,
+      "step_import_candidate": true,
+      "step_import_allowed": false
+    },
+    "repair_attempts": 0,
+    "repair_patch_hashes": [],
+    "warnings": [
+      "fillet_sketch failed on 'n_fillet_web_rim_upper': BRep_API: command not done. Passing through.",
+      "fillet_sketch failed on 'n_fillet_hub_web_upper': BRep_API: command not done. Passing through."
+    ],
+    "degraded_features": [],
+    "operation_metrics": [
+      {
+        "node_id": "n_pattern_cutters",
+        "op": "circular_pattern_component",
+        "status": "ok"
+      },
+      {
+        "node_id": "n_asm_final",
+        "op": "boolean_cut",
+        "status": "ok"
+      }
+    ],
+    "unsupported_capabilities": [],
+    "safety": {
+      "non_flight_reference_only": true,
+      "not_airworthy": true,
+      "not_certified": true,
+      "not_for_manufacturing": true,
+      "not_for_installation": true,
+      "no_structural_validation": true,
+      "no_life_prediction": true
+    }
+  },
+  "build_warnings": [
+    "fillet_sketch failed on 'n_fillet_web_rim_upper': BRep_API: command not done. Passing through.",
+    "fillet_sketch failed on 'n_fillet_hub_web_upper': BRep_API: command not done. Passing through."
+  ],
+  "validation": {
+    "core_validation": {
+      "ok": false,
+      "stage": "core_validation",
+      "issues": [
+        {
+          "code": "missing_core_validation_report",
+          "message": "No core_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "dialect_semantics": {
+      "ok": false,
+      "stage": "dialect_semantics",
+      "issues": [
+        {
+          "code": "missing_dialect_semantics_report",
+          "message": "No dialect_semantics report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "geometry_preflight": {
+      "ok": false,
+      "stage": "geometry_preflight",
+      "issues": [
+        {
+          "code": "missing_geometry_preflight_report",
+          "message": "No geometry_preflight report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "runtime_postconditions": {
+      "ok": true,
+      "stage": "runtime_postconditions",
+      "issues": []
+    },
+    "inspection_validation": {
+      "ok": false,
+      "stage": "inspection_validation",
+      "issues": [
+        {
+          "code": "missing_inspection_validation_report",
+          "message": "No inspection_validation report was provided.",
+          "severity": "error"
+        }
+      ]
+    },
+    "geometry_postcheck": {
+      "ok": true,
+      "volume_mm3": 8680374.789324148,
+      "n_solids": 1,
+      "bbox_mm": [
+        499.9366697296174,
+        499.9366697296174,
+        76.0
+      ],
+      "closed": true,
+      "is_valid_solid": true,
+      "errors": [],
+      "warnings": []
+    },
+    "ok": true,
+    "stage": "complete",
+    "stages": {},
+    "compiler_middle_end": {
+      "ok": true,
+      "passes_run": [
+        "fact_propagation",
+        "planning"
+      ],
+      "diagnostics": []
+    },
+    "geometry_health_summary": {
+      "ok": true,
+      "total_ops_checked": 2,
+      "errors": 0,
+      "warnings": 2,
+      "entries": {
+        "n_disc_final.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 9290707.14406786,
+          "body_count": 1
+        },
+        "n_cutter_extrude.body": {
+          "status": "warning",
+          "score": 0.85,
+          "closed": true,
+          "volume_mm3": 13569.714100574049,
+          "body_count": 1
+        }
+      }
+    },
+    "planning_report": {
+      "ok": true,
+      "issues": [],
+      "optimization_opportunities": []
+    }
+  }
+}

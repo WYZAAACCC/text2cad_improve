@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+from typing import Any
 
 from seekflow_engineering_tools.generative_cad.topology.registry import TopologyRegistry
 
@@ -59,17 +60,24 @@ def write_topology_sidecar(
                 "topology_contract_hash": "",
             })
 
+    # Detect runtime versions for reproducibility
+    try:
+        import cadquery as cq
+        cq_ver = getattr(cq, "__version__", "unknown")
+    except ImportError:
+        cq_ver = "unknown"
+
     sidecar = {
-        "schema": "gcad_topology_v1",
+        "schema": "gcad_topology_v2",
         "document_id": document_id,
         "canonical_graph_hash": canonical_graph_hash,
         "topology_registry_hash": registry_hash,
 
-        "runtime": {
-            "geometry_runtime": "cadquery",
-            "runtime_version": runtime_version,
-            "occt_version": occt_version,
-            "topology_algorithm_version": topology_algorithm_version,
+        "versions": {
+            "topology_algorithm": topology_algorithm_version,
+            "runtime": runtime_version,
+            "cadquery": cq_ver,
+            "occt": occt_version,
         },
 
         "contracts": contracts,
@@ -78,7 +86,7 @@ def write_topology_sidecar(
 
         "lineage": _extract_lineage(entities_list),
 
-        "semantic_sets": {},
+        "named_sets": _extract_named_sets(entities_list),
 
         "unresolved": [
             ent["persistent_id"] for ent in entities_list
@@ -97,7 +105,7 @@ def write_topology_sidecar(
     )
 
     return {
-        "topology_schema_version": "gcad_topology_v1",
+        "topology_schema_version": "gcad_topology_v2",
         "topology_sidecar_path": str(path),
         "topology_sidecar_sha256": _compute_file_hash(path),
         "topology_registry_hash": registry_hash,
@@ -127,11 +135,22 @@ def read_topology_sidecar(
     data = json.loads(path.read_text(encoding="utf-8"))
 
     schema = data.get("schema", "")
-    if schema != "gcad_topology_v1":
+    if schema not in ("gcad_topology_v1", "gcad_topology_v2"):
         raise ValueError(
             f"Unsupported topology sidecar schema: {schema!r}. "
-            f"Expected: 'gcad_topology_v1'."
+            f"Expected: 'gcad_topology_v1' or 'gcad_topology_v2'."
         )
+
+    # PR 10: Validate registry hash
+    expected_hash = data.get("topology_registry_hash", "")
+    if expected_hash:
+        computed_hash = _compute_snapshot_hash(data.get("entities", []))
+        if computed_hash != expected_hash:
+            raise ValueError(
+                f"Topology sidecar registry hash mismatch: "
+                f"expected={expected_hash}, computed={computed_hash}. "
+                f"The sidecar may be corrupted or tampered."
+            )
 
     # Rebuild snapshot-compatible dict
     entities_dict: dict[str, dict] = {}
@@ -165,6 +184,21 @@ def _compute_file_hash(path: Path) -> str:
     return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _extract_named_sets(entities: list[dict]) -> dict[str, list[str]]:
+    """Extract named sets from entity semantic_roles for sidecar."""
+    sets: dict[str, list[str]] = {}
+    for ent in entities:
+        role = ent.get("semantic_role", "")
+        if not role:
+            continue
+        # Group by role prefix (e.g., "extrude/end_cap_positive" → "extrude/end_cap")
+        prefix = "/".join(role.split("/")[:2]) if "/" in role else role
+        if prefix not in sets:
+            sets[prefix] = []
+        sets[prefix].append(ent.get("persistent_id", ""))
+    return sets
+
+
 def _extract_lineage(entities: list[dict]) -> list[dict]:
     """Extract lineage edges from entity records for sidecar visualization."""
     edges: list[dict] = []
@@ -181,3 +215,48 @@ def _extract_lineage(entities: list[dict]) -> list[dict]:
                 "relation": "parent_of",
             })
     return edges
+
+
+def rebind_after_restore(
+    registry: TopologyRegistry,
+    object_store: Any = None,
+    binding_service: Any = None,
+) -> dict:
+    """PR 10: After sidecar restore + rebuild, rebind entities to actual shapes.
+
+    All active entities are reset to 'unresolved_pending_rebind'.
+    Callers should then rebuild geometry, and for each operation,
+    re-verify locators using ShapeBindingService.
+
+    Returns rebind status: {total, active, unresolved_after_rebind}
+    """
+    unresolved = 0
+    active = 0
+    total = 0
+
+    for pid, rec in list(registry._entities.items()):
+        total += 1
+        if rec.status == "active":
+            # Reset to pending — must be re-verified during rebuild
+            rec.status = "unresolved"
+            rec.current_locator = None
+            rec.evidence.append({
+                "event": "sidecar_restored_pending_rebind",
+            })
+            unresolved += 1
+        elif rec.status == "deleted":
+            pass  # Deleted entities stay deleted
+        elif rec.status == "superseded":
+            pass  # Superseded entities stay superseded
+
+    for pid in list(registry._entities.keys()):
+        rec = registry._entities.get(pid)
+        if rec and rec.status == "active":
+            active += 1
+
+    return {
+        "total": total,
+        "reset_to_unresolved": unresolved,
+        "remaining_active": active,
+        "requires_rebuild": unresolved > 0,
+    }

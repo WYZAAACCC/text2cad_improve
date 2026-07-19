@@ -66,6 +66,38 @@ class RawNode(BaseModel):
         return self
 
 
+class RawPersistentTopoRef(BaseModel):
+    """PR 9: LLM-facing persistent topology reference.
+
+    The LLM writes a semantic_query (human-readable, e.g. "disk/center_bore/wall"),
+    NOT an internal stable hash. The canonicalizer resolves this to concrete
+    persistent_ids using the TopologyRegistry.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    component_id: str = Field(description="Which component owns the entity")
+    producer_node_id: str | None = Field(
+        default=None,
+        description="Which node produced the entity (optional, for scoping)",
+    )
+    semantic_query: str = Field(
+        description="Human-readable query, e.g. 'disk/center_bore/wall'",
+    )
+    entity_type: Literal["face", "edge", "vertex"] = Field(
+        description="What type of topology entity",
+    )
+    cardinality: Literal[
+        "exactly_one", "zero_or_one", "one_or_more", "zero_or_more",
+    ] = Field(default="exactly_one", description="How many entities expected")
+    resolution_policy: Literal[
+        "exact_only",
+        "allow_deterministic_semantic",
+        "allow_set_expansion",
+        "allow_fingerprint_unique",
+    ] = Field(default="exact_only", description="Minimum resolution quality required")
+
+
 class RawConstraints(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

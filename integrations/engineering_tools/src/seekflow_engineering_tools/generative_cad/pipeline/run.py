@@ -178,6 +178,8 @@ def run_canonical_gcad(
         out_step=out_step,
         metadata_path=metadata_path,
         workspace_root=out_step.parent,
+        document_id=canonical.document_id,
+        canonical_graph_hash=canonical.canonical_graph_hash,
     )
 
     try:

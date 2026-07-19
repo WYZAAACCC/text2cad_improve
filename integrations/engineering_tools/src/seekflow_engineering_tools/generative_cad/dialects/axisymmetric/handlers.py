@@ -110,30 +110,75 @@ def handle_revolve_profile(node: CanonicalNode, ctx: RuntimeContext) -> dict[str
 
 def _try_produce_axisymmetric_revolve_topology(
     *, node: CanonicalNode, ctx: RuntimeContext, solid,
+    history_result: Any = None,
 ) -> None:
-    """Phase 5: Build topology delta for axisymmetric revolve faces."""
+    """PR 5: Build topology delta for axisymmetric revolve faces.
+
+    When history_result is provided, uses OCCT history for
+    'revolved.from/edge_N' naming. Falls back to semantic naming.
+    """
     try:
-        from seekflow_engineering_tools.generative_cad.topology.semantic_naming import (
-            build_entity_records_from_delta, name_revolve_faces,
+        from seekflow_engineering_tools.generative_cad.topology.ids import (
+            make_persistent_id_v2,
+        )
+        from seekflow_engineering_tools.generative_cad.topology.models import (
+            TopologyEntityRecord,
+        )
+        from seekflow_engineering_tools.generative_cad.topology.shape_binding import (
+            ShapeBindingService,
         )
     except ImportError:
         return
     try:
-        doc_id = getattr(node, "component", "unknown") or "unknown"
-        delta = name_revolve_faces(
-            solid, document_id=doc_id,
-            component_id=node.component or "unknown",
-            producer_node_id=node.id,
-            angle_deg=360.0, axis="Z",
-        )
-        records = build_entity_records_from_delta(delta, document_id=doc_id)
-        for rec in records:
-            ctx.topology_registry.register_entity(rec)
-        ctx.topology_registry.apply_delta(delta)
-        ctx.topology_events.append({
-            "event": "axisymmetric_revolve_topology_produced",
-            "node_id": node.id, "face_count": len(delta.relations),
-        })
+        doc_id = ctx.document_id or "unknown"
+        body_handle_id = f"solid:{node.component}:{node.id}:body"
+        service = ShapeBindingService(ctx.object_store)
+        maps = service.build_body_maps(body_handle_id, solid)
+
+        if history_result is not None and history_result.generated_edge_faces:
+            with ctx.topology_transaction() as tx:
+                for edge_id, gen_faces in history_result.generated_edge_faces.items():
+                    for face in gen_faces:
+                        role = f"revolved.from/{edge_id}"
+                        pid = make_persistent_id_v2(
+                            doc_id, node.component or "unknown", node.id,
+                            "face", role,
+                        )
+                        locator = service.locate_subshape(maps, face, "face")
+                        rec = TopologyEntityRecord(
+                            persistent_id=pid,
+                            entity_type="face",
+                            component_id=node.component or "unknown",
+                            owner_body_handle_id=body_handle_id,
+                            producer_node_id=node.id,
+                            semantic_role=role,
+                            current_locator=locator.model_dump() if locator else None,
+                        )
+                        tx.register_entity(rec)
+            ctx.topology_events.append({
+                "event": "axisymmetric_revolve_topology_produced",
+                "node_id": node.id, "method": "history_aware",
+                "face_count": sum(len(v) for v in history_result.generated_edge_faces.values()),
+            })
+        else:
+            from seekflow_engineering_tools.generative_cad.topology.semantic_naming import (
+                build_entity_records_from_delta, name_revolve_faces,
+            )
+            delta = name_revolve_faces(
+                solid, document_id=doc_id,
+                component_id=node.component or "unknown",
+                producer_node_id=node.id,
+                angle_deg=360.0, axis="Z",
+            )
+            records = build_entity_records_from_delta(delta, document_id=doc_id)
+            with ctx.topology_transaction() as tx:
+                for rec in records:
+                    tx.register_entity(rec)
+                tx.apply_delta(delta)
+            ctx.topology_events.append({
+                "event": "axisymmetric_revolve_topology_produced",
+                "node_id": node.id, "face_count": len(delta.relations),
+            })
     except Exception as exc:
         ctx.topology_warnings.append({
             "node_id": node.id, "phase": "axisymmetric_revolve_topology", "error": str(exc),

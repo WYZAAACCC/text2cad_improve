@@ -42,7 +42,7 @@ class CaeResolvedSet(BaseModel):
     name: str = Field(description="NamedTopologySet name, e.g. 'disk.center_bore.wall'")
     persistent_ids: list[str] = Field(description="Input persistent topology IDs")
     semantic_purpose: str = Field(description="load | constraint | contact | mesh_control")
-    resolution_quality: str = Field(description="Best resolution method across all IDs")
+    resolution_quality: str = Field(description="Worst (minimum) resolution method — CAE gate uses this")
 
     resolved_count: int = 0
     unresolved_count: int = 0
@@ -98,17 +98,17 @@ def resolve_named_set_to_faces(
     unresolved = 0
     deleted = 0
     ambiguous = 0
-    best_quality = "unresolved"
+    worst_quality = "exact_kernel_history"  # start high, degraded by any lower quality
 
     for pid in named_set.persistent_ids:
         result = registry.resolve(pid)
 
         if result.status == "exact":
             resolved += 1
-            best_quality = _best_of(best_quality, result.method)
+            worst_quality = _worst_of(worst_quality, result.method)
         elif result.status == "set":
             resolved += len(result.resolved_entity_ids)
-            best_quality = _best_of(best_quality, "set_expansion")
+            worst_quality = _worst_of(worst_quality, "set_expansion")
             issues.append({
                 "code": "TOPOLOGY_SET_EXPANSION",
                 "persistent_id": pid,
@@ -148,13 +148,13 @@ def resolve_named_set_to_faces(
         gate_result = "fail"
     elif ambiguous > 0:
         gate_result = "warn"
-    elif not resolution_meets_quality(best_quality, consumer_policy.minimum_quality):
+    elif not resolution_meets_quality(worst_quality, consumer_policy.minimum_quality):
         gate_result = "fail"
         issues.append({
             "code": "TOPOLOGY_QUALITY_INSUFFICIENT",
             "severity": "error",
             "message": (
-                f"Resolution quality '{best_quality}' does not meet "
+                f"Resolution quality '{worst_quality}' does not meet "
                 f"consumer minimum '{consumer_policy.minimum_quality.value}' "
                 f"for purpose '{named_set.semantic_purpose}'"
             ),
@@ -166,7 +166,7 @@ def resolve_named_set_to_faces(
         name=named_set.name,
         persistent_ids=named_set.persistent_ids,
         semantic_purpose=named_set.semantic_purpose,
-        resolution_quality=best_quality,
+        resolution_quality=worst_quality,
         resolved_count=resolved,
         unresolved_count=unresolved,
         deleted_count=deleted,
@@ -246,12 +246,13 @@ def cae_preflight_gate(
 _QUALITY_RANK: dict[str, int] = {
     "unresolved": 0, "fingerprint_unique": 1, "set_expansion": 2,
     "kernel_selected": 3, "deterministic_semantic": 3, "primitive_semantic": 4,
-    "kernel_modified": 5, "kernel_generated": 5,
+    "kernel_modified": 5, "kernel_generated": 5, "exact_kernel_history": 6,
 }
 
 
-def _best_of(a: str, b: str) -> str:
-    return a if _QUALITY_RANK.get(a, 0) >= _QUALITY_RANK.get(b, 0) else b
+def _worst_of(a: str, b: str) -> str:
+    """Return the lower-quality of two resolution methods (PR 12: worst quality gate)."""
+    return a if _QUALITY_RANK.get(a, 0) <= _QUALITY_RANK.get(b, 0) else b
 
 
 def _purpose_to_consumer(purpose: str) -> str:

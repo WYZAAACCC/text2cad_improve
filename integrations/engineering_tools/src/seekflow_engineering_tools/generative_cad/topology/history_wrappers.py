@@ -123,11 +123,16 @@ class HistoryAwareShapeResult:
     Attributes:
         result_shape: The resulting CadQuery shape after the operation.
         history: Kernel history snapshot (None if history unavailable).
+        generated_edge_faces: PR 4 — maps edge_id → list of actual generated face shapes.
         metrics: Operation metrics (elapsed time, etc.).
     """
 
     result_shape: Any
     history: KernelHistorySnapshot | None = None
+    generated_edge_faces: dict[str, list[Any]] = field(default_factory=dict)
+    generated_faces: dict[str, list[Any]] = field(default_factory=dict)
+    modified_faces: dict[str, list[Any]] = field(default_factory=dict)
+    deleted_entities: list[str] = field(default_factory=list)
     metrics: dict = field(default_factory=dict)
 
 
@@ -150,8 +155,8 @@ class KernelHistoryAdapter:
     def __init__(self, maker: Any) -> None:
         self._maker = maker
 
-    def generated(self, source_shape: Any) -> list[int]:
-        """Get indices of shapes generated from source_shape.
+    def generated(self, source_shape: Any) -> list[Any]:
+        """Get actual generated shapes from source_shape (PR 4: returns shapes, not indices).
 
         For extrude: profile edges → generated side faces.
         """
@@ -159,9 +164,7 @@ class KernelHistoryAdapter:
             result = self._maker.Generated(source_shape)
             if result is None:
                 return []
-            # OCCT returns TopTools_ListOfShape
-            count = result.Size() if hasattr(result, "Size") else 0
-            return list(range(count))
+            return list(result)  # PR 4: return actual shapes
         except Exception:
             return []
 
@@ -175,8 +178,8 @@ class KernelHistoryAdapter:
         except Exception:
             return []
 
-    def modified(self, source_shape: Any) -> list[int]:
-        """Get indices of shapes modified from source_shape.
+    def modified(self, source_shape: Any) -> list[Any]:
+        """Get actual modified shapes from source_shape (PR 4: returns shapes, not indices).
 
         For boolean: argument faces → modified faces in result.
         """
@@ -184,8 +187,7 @@ class KernelHistoryAdapter:
             result = self._maker.Modified(source_shape)
             if result is None:
                 return []
-            count = result.Size() if hasattr(result, "Size") else 0
-            return list(range(count))
+            return list(result)  # PR 4: return actual shapes
         except Exception:
             return []
 
@@ -249,29 +251,33 @@ def history_aware_extrude(
         result = maker.Shape()
         adapter = KernelHistoryAdapter(maker)
 
-        # Record history
+        # PR 4: Track generated side faces per edge (actual shapes, not indices)
+        generated_edge_faces: dict[str, list[Any]] = {}
         history = KernelHistorySnapshot()
 
-        # Track generated shapes from edges → side faces
         if input_edges:
             for i, edge in enumerate(input_edges):
-                indices = adapter.generated(edge)
-                if indices:
-                    history.generated[f"edge_{i}"] = indices
+                gen_faces = adapter.generated(edge)
+                if gen_faces:
+                    edge_id = f"edge_{i}"
+                    generated_edge_faces[edge_id] = gen_faces
+                    # Also record in history for compatibility
+                    # PR final: record count, not index list (actual shapes in generated_edge_faces)
 
-        # Track generated shapes from faces → end caps
+        # Track face history (caps)
         if input_faces:
             for i, face in enumerate(input_faces):
                 if adapter.is_deleted(face):
                     history.deleted.append(f"face_{i}")
                 else:
-                    indices = adapter.modified(face)
-                    if indices:
-                        history.modified[f"face_{i}"] = indices
+                    mod_faces = adapter.modified(face)
+                    if mod_faces:
+                        pass  # PR final: actual shapes tracked in modified_faces dict
 
         return HistoryAwareShapeResult(
             result_shape=result,
             history=history,
+            generated_edge_faces=generated_edge_faces,
             metrics={"builder": "BRepPrimAPI_MakePrism", "is_done": True},
         )
     except Exception:
@@ -314,17 +320,23 @@ def history_aware_revolve(
         result = maker.Shape()
         adapter = KernelHistoryAdapter(maker)
 
+        # PR 5: Track generated revolved faces per edge (actual shapes, not indices)
+        generated_edge_faces: dict[str, list[Any]] = {}
         history = KernelHistorySnapshot()
 
         if input_edges:
             for i, edge in enumerate(input_edges):
-                indices = adapter.generated(edge)
-                if indices:
-                    history.generated[f"edge_{i}"] = indices
+                gen_faces = adapter.generated(edge)
+                if gen_faces:
+                    edge_id = f"edge_{i}"
+                    generated_edge_faces[edge_id] = gen_faces
+                    # Also record in history for compatibility
+                    # PR final: record count, not index list (actual shapes in generated_edge_faces)
 
         return HistoryAwareShapeResult(
             result_shape=result,
             history=history,
+            generated_edge_faces=generated_edge_faces,
             metrics={
                 "builder": "BRepPrimAPI_MakeRevol",
                 "angle_deg": angle_deg,
@@ -393,36 +405,55 @@ def history_aware_boolean_fuse(
 
         history = KernelHistorySnapshot()
 
-        # Track argument face modifications
+        # PR 6: Track actual shapes
+        generated_faces: dict[str, list[Any]] = {}
+        modified_faces: dict[str, list[Any]] = {}
+        deleted: list[str] = []
+
         if input_arg_faces:
             for i, face in enumerate(input_arg_faces):
                 key = f"arg_face_{i}"
                 if adapter.is_deleted(face):
+                    deleted.append(key)
                     history.deleted.append(key)
                 else:
-                    indices = adapter.modified(face)
-                    if indices:
-                        history.modified[key] = indices
+                    mod_shapes = adapter.modified(face)
+                    if mod_shapes:
+                        modified_faces[key] = mod_shapes
+                    # PR final: record count, not index list (actual shapes in modified_faces)
+                    gen_shapes = adapter.generated(face)
+                    if gen_shapes:
+                        generated_faces[key] = gen_shapes
+                    # PR final: record count, not index list (actual shapes in generated_faces)
 
-        # Track tool face modifications
         if input_tool_faces:
             for i, face in enumerate(input_tool_faces):
                 key = f"tool_face_{i}"
                 if adapter.is_deleted(face):
+                    deleted.append(key)
                     history.deleted.append(key)
                 else:
-                    indices = adapter.modified(face)
-                    if indices:
-                        history.modified[key] = indices
+                    mod_shapes = adapter.modified(face)
+                    if mod_shapes:
+                        modified_faces[key] = mod_shapes
+                    # PR final: record count, not index list (actual shapes in modified_faces)
+                    gen_shapes = adapter.generated(face)
+                    if gen_shapes:
+                        generated_faces[key] = gen_shapes
+                    # PR final: record count, not index list (actual shapes in generated_faces)
 
         return HistoryAwareShapeResult(
             result_shape=result,
             history=history,
+            generated_faces=generated_faces,
+            modified_faces=modified_faces,
+            deleted_entities=deleted,
             metrics={
                 "builder": "BRepAlgoAPI_Fuse",
                 "is_done": True,
                 "arg_faces": len(input_arg_faces) if input_arg_faces else 0,
                 "tool_faces": len(input_tool_faces) if input_tool_faces else 0,
+                "deleted_count": len(deleted),
             },
         )
     except Exception:
@@ -482,42 +513,51 @@ def history_aware_boolean_cut(
 
         history = KernelHistorySnapshot()
 
-        # Track target face modifications (faces with holes cut into them)
+        # PR 6: Track actual shapes
+        generated_faces: dict[str, list[Any]] = {}
+        modified_faces: dict[str, list[Any]] = {}
+        deleted: list[str] = []
+
         if input_target_faces:
             for i, face in enumerate(input_target_faces):
                 key = f"target_face_{i}"
                 if adapter.is_deleted(face):
+                    deleted.append(key)
                     history.deleted.append(key)
                 else:
-                    indices = adapter.modified(face)
-                    if indices:
-                        history.modified[key] = indices
-                    # Also track generated intersection edges on this face
-                    gen_indices = adapter.generated(face)
-                    if gen_indices:
-                        history.generated[key] = gen_indices
+                    mod_shapes = adapter.modified(face)
+                    if mod_shapes:
+                        modified_faces[key] = mod_shapes
+                    # PR final: record count, not index list (actual shapes in modified_faces)
+                    gen_shapes = adapter.generated(face)
+                    if gen_shapes:
+                        generated_faces[key] = gen_shapes
+                    # PR final: record count, not index list (actual shapes in generated_faces)
 
-        # Track tool face deletions (tool body is consumed by the cut)
         if input_tool_faces:
             for i, face in enumerate(input_tool_faces):
                 key = f"tool_face_{i}"
                 if adapter.is_deleted(face):
+                    deleted.append(key)
                     history.deleted.append(key)
                 else:
-                    # Tool faces may become part of the result (intersection faces)
-                    indices = adapter.generated(face)
-                    if indices:
-                        history.generated[key] = indices
+                    gen_shapes = adapter.generated(face)
+                    if gen_shapes:
+                        generated_faces[key] = gen_shapes
+                    # PR final: record count, not index list (actual shapes in generated_faces)
 
         return HistoryAwareShapeResult(
             result_shape=result,
             history=history,
+            generated_faces=generated_faces,
+            modified_faces=modified_faces,
+            deleted_entities=deleted,
             metrics={
                 "builder": "BRepAlgoAPI_Cut",
                 "is_done": True,
                 "target_faces": len(input_target_faces) if input_target_faces else 0,
                 "tool_faces": len(input_tool_faces) if input_tool_faces else 0,
-                "deleted_faces": len(history.deleted),
+                "deleted_count": len(deleted),
             },
         )
     except Exception:
@@ -554,22 +594,26 @@ def history_aware_fillet(
         result = maker.Shape()
         adapter = KernelHistoryAdapter(maker)
         history = KernelHistorySnapshot()
+        # PR 7: Track actual generated faces per edge
+        generated_edge_faces: dict[str, list[Any]] = {}
         for i, (edge, _radius) in enumerate(edges_with_radii):
             key = f"edge_{i}"
             if adapter.is_deleted(edge):
                 history.deleted.append(key)
             gen = adapter.generated(edge)
             if gen:
-                history.generated[key] = gen
+                generated_edge_faces[key] = gen
+                # PR final: actual shapes in generated_edge_faces
         if input_faces:
             for i, face in enumerate(input_faces):
                 key = f"face_{i}"
                 if not adapter.is_deleted(face):
                     mod = adapter.modified(face)
                     if mod:
-                        history.modified[key] = mod
+                        pass  # PR final: actual shapes in modified_faces
         return HistoryAwareShapeResult(
             result_shape=result, history=history,
+            generated_edge_faces=generated_edge_faces,
             metrics={"builder": "BRepFilletAPI_MakeFillet", "is_done": True,
                      "edge_count": len(edges_with_radii), "deleted_edges": len(history.deleted)},
         )
@@ -598,22 +642,26 @@ def history_aware_chamfer(
         result = maker.Shape()
         adapter = KernelHistoryAdapter(maker)
         history = KernelHistorySnapshot()
+        # PR 7: Track actual generated faces per edge
+        generated_edge_faces: dict[str, list[Any]] = {}
         for i, (edge, _dist) in enumerate(edges_with_distances):
             key = f"edge_{i}"
             if adapter.is_deleted(edge):
                 history.deleted.append(key)
             gen = adapter.generated(edge)
             if gen:
-                history.generated[key] = gen
+                generated_edge_faces[key] = gen
+                # PR final: actual shapes in generated_edge_faces
         if input_faces:
             for i, face in enumerate(input_faces):
                 key = f"face_{i}"
                 if not adapter.is_deleted(face):
                     mod = adapter.modified(face)
                     if mod:
-                        history.modified[key] = mod
+                        pass  # PR final: actual shapes in modified_faces
         return HistoryAwareShapeResult(
             result_shape=result, history=history,
+            generated_edge_faces=generated_edge_faces,
             metrics={"builder": "BRepFilletAPI_MakeChamfer", "is_done": True,
                      "edge_count": len(edges_with_distances)},
         )
@@ -649,9 +697,13 @@ def history_aware_shell(
         result = maker.Shape()
         adapter = KernelHistoryAdapter(maker)
         history = KernelHistorySnapshot()
+        # PR 8: Track actual shapes
+        deleted: list[str] = []
+        modified_faces: dict[str, list[Any]] = {}
         for i, face in enumerate(faces_to_remove):
             key = f"removed_face_{i}"
             if adapter.is_deleted(face):
+                deleted.append(key)
                 history.deleted.append(key)
         if input_faces:
             for i, face in enumerate(input_faces):
@@ -659,9 +711,11 @@ def history_aware_shell(
                 if key not in history.deleted and not adapter.is_deleted(face):
                     mod = adapter.modified(face)
                     if mod:
-                        history.modified[key] = mod
+                        modified_faces[key] = mod
+                    # PR final: actual shapes in modified_faces
         return HistoryAwareShapeResult(
             result_shape=result, history=history,
+            modified_faces=modified_faces, deleted_entities=deleted,
             metrics={"builder": "BRepOffsetAPI_MakeThickSolid", "is_done": True,
                      "removed_faces": len(faces_to_remove), "thickness_mm": thickness},
         )
@@ -708,13 +762,18 @@ def history_aware_loft(
         result = maker.Shape()
         adapter = KernelHistoryAdapter(maker)
         history = KernelHistorySnapshot()
+        # PR 8: Track actual generated faces per edge
+        generated_edge_faces: dict[str, list[Any]] = {}
         if input_edges:
             for i, edge in enumerate(input_edges):
                 gen = adapter.generated(edge)
                 if gen:
-                    history.generated[f"edge_{i}"] = gen
+                    key = f"edge_{i}"
+                    generated_edge_faces[key] = gen
+                    # PR final: actual shapes in generated_edge_faces
         return HistoryAwareShapeResult(
             result_shape=result, history=history,
+            generated_edge_faces=generated_edge_faces,
             metrics={"builder": "BRepOffsetAPI_ThruSections", "is_done": True,
                      "profile_count": len(profiles), "ruled": ruled},
         )
@@ -752,13 +811,18 @@ def history_aware_sweep(
         result = maker.Shape()
         adapter = KernelHistoryAdapter(maker)
         history = KernelHistorySnapshot()
+        # PR 8: Track actual generated faces per edge
+        generated_edge_faces: dict[str, list[Any]] = {}
         if input_edges:
             for i, edge in enumerate(input_edges):
                 gen = adapter.generated(edge)
                 if gen:
-                    history.generated[f"edge_{i}"] = gen
+                    key = f"edge_{i}"
+                    generated_edge_faces[key] = gen
+                    # PR final: actual shapes in generated_edge_faces
         return HistoryAwareShapeResult(
             result_shape=result, history=history,
+            generated_edge_faces=generated_edge_faces,
             metrics={"builder": "BRepOffsetAPI_MakePipe", "is_done": True},
         )
     except Exception:

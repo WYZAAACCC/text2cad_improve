@@ -244,15 +244,15 @@ def build_entity_records_from_delta(
             keys_to_register.extend(relation.source_ids)
 
         for key in keys_to_register:
-            # Parse the compact ID
-            try:
-                pid = PersistentTopoId.from_compact(key)
-            except ValueError:
-                continue
+            # Derive entity type from relation metadata (v2 keys are opaque hashes,
+            # cannot be round-tripped like v1 colon-delimited format)
+            entity_type_str = _infer_entity_type(
+                relation.semantic_role, relation.evidence,
+            )
 
             records.append(TopologyEntityRecord(
                 persistent_id=key,
-                entity_type="face" if pid.entity_type == "face" else pid.entity_type,  # type: ignore[arg-type]
+                entity_type=entity_type_str,  # type: ignore[arg-type]
                 component_id=delta.component_id,
                 owner_body_handle_id=(
                     delta.result_body_handle_ids[0]
@@ -260,7 +260,7 @@ def build_entity_records_from_delta(
                     else ""
                 ),
                 producer_node_id=delta.node_id,
-                semantic_role=relation.semantic_role or pid.semantic_role,
+                semantic_role=relation.semantic_role or "unknown",
                 generation=0,
                 status=entity_status,  # type: ignore[arg-type]
                 resolution_method="primitive_semantic",
@@ -273,6 +273,36 @@ def build_entity_records_from_delta(
 # ── Internal helpers ──
 
 
+def _infer_entity_type(
+    semantic_role: str | None,
+    evidence: dict,
+) -> str:
+    """Infer entity type from semantic role prefix or evidence.
+
+    v2 keys are opaque hashes — entity type must be derived from metadata.
+    Role prefixes like 'edge/', 'face/', 'solid/' signal the type.
+    Default: 'face'.
+    """
+    if semantic_role:
+        # Check for explicit type prefix: edge/xxx, face/xxx, etc.
+        if "/" in semantic_role:
+            prefix = semantic_role.split("/")[0].lower()
+            if prefix in ("edge", "face", "solid", "shell", "wire", "vertex"):
+                return prefix
+        # hole/entry_rim, hole/exit_rim → edge
+        if "rim" in semantic_role.lower():
+            return "edge"
+        # hole/wall → face
+        if "wall" in semantic_role.lower():
+            return "face"
+    # Fallback: check evidence
+    if evidence:
+        ev_type = evidence.get("entity_type", "")
+        if ev_type:
+            return ev_type
+    return "face"
+
+
 def _make_compact_id(
     document_id: str,
     component_id: str,
@@ -280,8 +310,15 @@ def _make_compact_id(
     entity_type: str,
     semantic_role: str,
 ) -> str:
-    """Create a compact PersistentTopoId string."""
-    pid = PersistentTopoId(
+    """Create a v2 PersistentTopoId authoritative key string.
+
+    Uses PersistentTopoIdV2.to_key() which produces a content-hash-based
+    key (gct2_<base64url sha256>) — no truncation, no colon-encoding issues.
+    """
+    from seekflow_engineering_tools.generative_cad.topology.ids import (
+        PersistentTopoIdV2,
+    )
+    pid = PersistentTopoIdV2(
         document_id=document_id,
         component_id=component_id,
         lineage_root_node_id=producer_node_id,
@@ -289,7 +326,7 @@ def _make_compact_id(
         entity_type=entity_type,  # type: ignore[arg-type]
         semantic_role=semantic_role,
     )
-    return pid.to_compact()
+    return pid.to_key()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

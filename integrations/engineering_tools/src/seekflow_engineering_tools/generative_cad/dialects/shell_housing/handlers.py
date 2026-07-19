@@ -27,6 +27,7 @@ def handle_shell_body(node, ctx) -> dict:
             solid = body.shell(thickness)
         except Exception as e:
             raise RuntimeError(f"shell_body failed on '{node.id}': {e}")
+    _try_produce_shell_topology(node=node, ctx=ctx, solid=solid, op_name="shell_body")
     return {"body": _store_solid(node, ctx, solid)}
 
 
@@ -50,4 +51,29 @@ def handle_hollow_body(node, ctx) -> dict:
         solid = body.cut(inner)
     except Exception as e:
         raise RuntimeError(f"hollow_body failed on '{node.id}': {e}")
+    _try_produce_shell_topology(node=node, ctx=ctx, solid=solid, op_name="hollow_body")
     return {"body": _store_solid(node, ctx, solid)}
+
+
+def _try_produce_shell_topology(*, node, ctx, solid, op_name: str) -> None:
+    """Topology production for shell/hollow operations. Non-fatal."""
+    try:
+        from seekflow_engineering_tools.generative_cad.topology.semantic_naming import (
+            build_entity_records_from_delta, name_boolean_faces,
+        )
+    except ImportError:
+        return
+    try:
+        doc_id = ctx.document_id or "unknown"
+        delta = name_boolean_faces(
+            solid, document_id=doc_id,
+            component_id=node.component or "unknown",
+            producer_node_id=node.id,
+        )
+        records = build_entity_records_from_delta(delta, document_id=doc_id)
+        with ctx.topology_transaction() as tx:
+            for rec in records:
+                tx.register_entity(rec)
+            tx.apply_delta(delta)
+    except Exception:
+        pass

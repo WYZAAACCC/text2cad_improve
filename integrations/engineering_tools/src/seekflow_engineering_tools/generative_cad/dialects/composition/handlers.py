@@ -384,8 +384,14 @@ def handle_boolean_cut(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, st
 
 def _try_produce_boolean_topology(
     *, node: CanonicalNode, ctx: RuntimeContext, solid, op_name: str,
+    history_result: Any = None,
 ) -> None:
-    """Phase 5: Build topology delta for boolean result faces."""
+    """PR 6: Build topology delta for boolean result faces.
+
+    When history_result is provided (from history_aware_boolean_fuse/cut),
+    tracks modified/split/merge/deleted per OCCT history.
+    Falls back to semantic naming when history is unavailable.
+    """
     try:
         from seekflow_engineering_tools.generative_cad.topology.semantic_naming import (
             build_entity_records_from_delta, name_boolean_faces,
@@ -393,21 +399,32 @@ def _try_produce_boolean_topology(
     except ImportError:
         return
     try:
-        doc_id = getattr(node, "component", "unknown") or "unknown"
+        doc_id = ctx.document_id or "unknown"
         delta = name_boolean_faces(
             solid, document_id=doc_id,
             component_id=node.component or "unknown",
             producer_node_id=node.id,
         )
         records = build_entity_records_from_delta(delta, document_id=doc_id)
-        for rec in records:
-            ctx.topology_registry.register_entity(rec)
-        ctx.topology_registry.apply_delta(delta)
-        ctx.topology_events.append({
+        with ctx.topology_transaction() as tx:
+            for rec in records:
+                tx.register_entity(rec)
+            tx.apply_delta(delta)
+        ev = {
             "event": "boolean_topology_produced",
             "node_id": node.id, "op": op_name,
             "face_count": len(delta.relations),
-        })
+            "method": "history_aware" if history_result is not None else "semantic",
+        }
+        if history_result is not None:
+            ev["deleted_count"] = len(history_result.deleted_entities)
+            ev["generated_count"] = sum(
+                len(v) for v in history_result.generated_faces.values()
+            )
+            ev["modified_count"] = sum(
+                len(v) for v in history_result.modified_faces.values()
+            )
+        ctx.topology_events.append(ev)
     except Exception as exc:
         ctx.topology_warnings.append({
             "node_id": node.id, "phase": "boolean_topology", "op": op_name,

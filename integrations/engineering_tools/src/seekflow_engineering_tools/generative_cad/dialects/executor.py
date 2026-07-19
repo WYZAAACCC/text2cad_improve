@@ -61,8 +61,11 @@ def execute_operation(
     4. Propagate warnings, degraded_features, metrics
     5. Bind node outputs and return ExecutedNode
     """
+    # Compute input geometry hashes for cache-busting
+    input_hashes = _compute_input_geometry_hashes(node, ctx)
+
     # Check cache before executing handler
-    cached = ctx.cache.get(node)
+    cached = ctx.cache.get(node, input_hashes=input_hashes)
     if cached is not None:
         # Re-wrap cached result — it was already validated
         if isinstance(cached, OperationResult):
@@ -75,7 +78,12 @@ def execute_operation(
         raw_result = op_spec.handler(node, ctx)
         # Cache the result for future incremental rebuilds
         if isinstance(raw_result, (OperationResult, dict)):
-            ctx.cache.put(node, raw_result)
+            topology_snap = ctx.topology_registry.export_snapshot()
+            ctx.cache.put(
+                node, raw_result,
+                input_hashes=input_hashes,
+                topology_snapshot=topology_snap,
+            )
 
     # Normalize to OperationResult
     if isinstance(raw_result, OperationResult):
@@ -291,7 +299,8 @@ def _apply_topology_delta_if_present(
         return
 
     try:
-        ctx.topology_registry.apply_delta(result.topology_delta)
+        with ctx.topology_transaction() as tx:
+            tx.apply_delta(result.topology_delta)
         ctx.topology_events.append({
             "event": "delta_applied",
             "node_id": node.id,
@@ -305,8 +314,72 @@ def _apply_topology_delta_if_present(
             "error": str(exc),
             "phase": "topology_delta_apply",
         })
-        # Phase 1: non-fatal warning only
+        # Non-fatal: topology failure is a warning
         ctx.warnings.append(
             f"Topology delta application failed on '{node.id}': {exc}. "
             f"Model geometry is valid, but topology identity may be incomplete."
         )
+
+
+def _compute_input_geometry_hashes(
+    node: CanonicalNode,
+    ctx: RuntimeContext,
+) -> dict[str, str]:
+    """Compute geometry content hashes for all solid-type input handles.
+
+    Used for cache-busting: if any upstream input geometry changes,
+    the cache key changes → cache miss → recompute.
+
+    Args:
+        node: The CanonicalNode being executed.
+        ctx: RuntimeContext with ObjectStore.
+
+    Returns:
+        dict mapping handle_id → content_hash.
+    """
+    import hashlib
+
+    hashes: dict[str, str] = {}
+    for inp in node.inputs:
+        handle_id = getattr(inp, "producer_node", None)
+        if not handle_id:
+            continue
+        # Look up the actual handle ID from node outputs
+        try:
+            # Input refs reference producer_node + output name
+            producer = inp.producer_node
+            output_name = inp.output
+            if producer and output_name:
+                actual_handle_id = ctx.resolve_node_output(producer, output_name)
+                hashes[actual_handle_id] = _compute_single_geometry_hash(
+                    ctx, actual_handle_id,
+                )
+        except (KeyError, Exception):
+            pass
+    return hashes
+
+
+def _compute_single_geometry_hash(
+    ctx: RuntimeContext,
+    handle_id: str,
+) -> str:
+    """Compute a fast content hash for one geometry object.
+
+    Tries OCCT HashCode first, falls back to Python id-based hash.
+    """
+    try:
+        obj = ctx.object_store.get(handle_id)
+    except KeyError:
+        return "missing"
+
+    try:
+        # Unwrap CadQuery object to TopoDS_Shape
+        wrapped = getattr(obj, "wrapped", obj)
+        import sys
+        max_int = sys.maxsize
+        occt_hash = wrapped.HashCode(max_int)
+        import hashlib
+        return hashlib.sha256(str(occt_hash).encode()).hexdigest()[:16]
+    except Exception:
+        # Fallback: Python id (not content-stable, but dectects object swaps)
+        return f"py:{id(obj):x}"
