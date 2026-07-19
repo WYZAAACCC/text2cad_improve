@@ -1,5 +1,5 @@
-"""V3 Topology E2E Deep Monitor — HPT Turbine Disk."""
-import json, sys, time, hashlib
+"""V3 Topology E2E Deep Monitor — 最新测试数据持久化拓扑命名全链路监控"""
+import json, sys, time
 from pathlib import Path
 from collections import Counter
 
@@ -9,173 +9,172 @@ REF_DIR = Path(r"E:\text_to_cad_improve\auto_detection_process\app\text-to-cad\s
 OUT_DIR = Path(__file__).resolve().parent / "test_topo_e2e_v3"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-print("=" * 70)
-print("  V3 TOPOLOGY E2E MONITOR — HPT Turbine Disk")
-print("=" * 70)
+print("=" * 72)
+print("  V3 持久拓扑命名全链路深度监控")
+print("  HPT Turbine Disk — b572661c219c4952")
+print("=" * 72)
 
-# Load IR
+# ═══════════════════════════════════════════════════════════════
+# 1. IR 分析
+# ═══════════════════════════════════════════════════════════════
 raw = json.loads((REF_DIR / "raw_fixed.json").read_text(encoding="utf-8"))
 raw.setdefault("llm_validation_hints", {})
-print(f"\n[IR] {raw['part_name']} | {len(raw['nodes'])} nodes | {raw['document_id']}")
+print(f"\n[1. IR分析] {raw['part_name']} | {len(raw['nodes'])} nodes | {raw['document_id']}")
+for n in raw['nodes']:
+    req = "REQ" if n.get('required', True) else "OPT"
+    effects = []
+    op = n['op']
+    if 'revolve' in op or 'extrude' in op: effects.append("CREATES_SOLID")
+    if 'cut' in op or 'boolean_cut' in op: effects.append("CUTS")
+    if 'fillet' in op: effects.append("TREATMENT")
+    print(f"  {n['id'][:30]:30s} {n['dialect']}.{op:25s} [{req}] {' '.join(effects)}")
 
-# Manual canonicalize (bypass pre-existing validation bug)
-from seekflow_engineering_tools.generative_cad.ir.parse import parse_raw_gcad_document
-from seekflow_engineering_tools.generative_cad.ir.canonical import (
-    CanonicalGcadDocument, CanonicalNode, CanonicalComponent,
-    CanonicalSelectedDialect, CanonicalValueRef, CanonicalValueDecl,
-)
-from seekflow_engineering_tools.generative_cad.ir.hashing import graph_hash
-from seekflow_engineering_tools.generative_cad.dialects.registry import require_dialect
+# ═══════════════════════════════════════════════════════════════
+# 2. 校验
+# ═══════════════════════════════════════════════════════════════
+from seekflow_engineering_tools.generative_cad.validation_kernel.executor import run_validation
+t0 = time.time()
+run = run_validation(raw)
+print(f"\n[2. 校验] ok={run.report.ok}, stage={run.report.stage}, {time.time()-t0:.1f}s")
+assert run.canonical is not None, "Canonical must succeed"
+canonical = run.canonical
+print(f"  canonical_graph_hash: {canonical.canonical_graph_hash}")
 
-parsed = parse_raw_gcad_document(raw)
-if not parsed.ok:
-    print("PARSE FAILED"); sys.exit(1)
-raw_doc = parsed.document
-
-# Build canonical
-nodes = []
-for rn in raw_doc.nodes:
-    try:
-        dialect = require_dialect(rn.dialect)
-        op_spec = dialect.get_op_spec(rn.op, rn.op_version)
-        if op_spec is None:
-            print(f"  SKIP {rn.id}: no op_spec for {rn.dialect}.{rn.op}")
-            continue
-        cn = CanonicalNode(
-            id=rn.id, dialect=rn.dialect, op=rn.op, op_version=rn.op_version,
-            phase=rn.phase or op_spec.phase,
-            component=rn.component, required=rn.required,
-            degradation_policy=rn.degradation_policy,
-            params=rn.params, typed_params={},
-            inputs=[CanonicalValueRef(**i.model_dump()) for i in (rn.inputs or [])],
-            outputs=[CanonicalValueDecl(**o.model_dump()) for o in (rn.outputs or [])],
-            operation_effects=list(op_spec.effects),
-            postconditions=list(op_spec.postconditions),
-        )
-        nodes.append(cn)
-    except Exception as exc:
-        print(f"  ERROR building {rn.id}: {exc}")
-
-comps = [CanonicalComponent(
-    id=rc.id, owner_dialect=rc.owner_dialect, root_node=rc.root_node, output_aliases={},
-) for rc in raw_doc.components]
-
-dials = [CanonicalSelectedDialect(
-    dialect=sd.dialect, version=sd.version,
-    contract_hash="sha256:" + hashlib.sha256(b"v3").hexdigest(),
-) for sd in raw_doc.selected_dialects]
-
-canonical = CanonicalGcadDocument(
-    document_id=raw_doc.document_id, part_name=raw_doc.part_name,
-    units=raw_doc.units, trust_level=raw_doc.trust_level,
-    schema_version=raw_doc.schema_version,
-    selected_dialects=dials, components=comps, nodes=nodes,
-    constraints=raw_doc.constraints, safety=raw_doc.safety,
-    canonical_version="0.2.0",
-    canonical_graph_hash=graph_hash(nodes),
-    raw_graph_hash=graph_hash([n.model_dump() for n in raw_doc.nodes]),
-    llm_validation_hints=raw_doc.llm_validation_hints or {},
-)
-print(f"  Canonical: {len(canonical.nodes)} nodes, hash={canonical.canonical_graph_hash[:24]}")
-
-# Runtime
+# ═══════════════════════════════════════════════════════════════
+# 3. 运行时 + 拓扑拦截
+# ═══════════════════════════════════════════════════════════════
 from seekflow_engineering_tools.generative_cad.pipeline.run import run_canonical_gcad
 import seekflow_engineering_tools.generative_cad.dialects.executor as exec_mod
 
-_orig = exec_mod._apply_topology_delta_if_present
+_orig_apply = exec_mod._apply_topology_delta_if_present
 topo_log = []
 ctx_ref = {}
 
 def _intercept(*, node, result, ctx, op_spec=None):
-    before = ctx.topology_registry.entity_count
-    _orig(node=node, result=result, ctx=ctx, op_spec=op_spec)
-    after = ctx.topology_registry.entity_count
-    d = result.topology_delta
+    before_count = ctx.topology_registry.entity_count
+    _orig_apply(node=node, result=result, ctx=ctx, op_spec=op_spec)
+    after_count = ctx.topology_registry.entity_count
+    delta = result.topology_delta
+
     entry = {
-        "node": node.id, "op": node.op, "dialect": node.dialect,
-        "before": before, "after": after, "added": after - before,
-        "has_delta": d is not None,
-        "provider": d.history_provider if d else "none",
-        "relations": len(d.relations) if d else 0,
+        "node_id": node.id, "op": node.op, "dialect": node.dialect,
+        "entities_before": before_count, "entities_after": after_count,
+        "added": after_count - before_count,
+        "has_delta": delta is not None,
+        "provider": delta.history_provider if delta else "NONE",
+        "relation_count": len(delta.relations) if delta else 0,
     }
-    if d:
-        entry["roles"] = dict(Counter(r.semantic_role or "?" for r in d.relations))
+    if delta and delta.relations:
+        roles_sample = [r.semantic_role for r in delta.relations[:5] if r.semantic_role]
+        entry["sample_roles"] = roles_sample[:3]
     topo_log.append(entry)
-    if after > 0:
+    if after_count > 0:
         ctx_ref['ctx'] = ctx
 
 exec_mod._apply_topology_delta_if_present = _intercept
 
-print(f"\n[RUNTIME] Building geometry...")
+print(f"\n[3. 运行时] 构建几何体 + 拓扑命名...")
 t0 = time.time()
-try:
-    res = run_canonical_gcad(
-        canonical=canonical,
-        out_step=OUT_DIR / "output.step",
-        metadata_path=OUT_DIR / "output.metadata.json",
-        validation_seed={"ok": True, "stage": "complete", "stages": {}},
-    )
-    elapsed = time.time() - t0
-    exec_mod._apply_topology_delta_if_present = _orig
-    print(f"  {'OK' if res.ok else 'FAIL'}, {elapsed:.1f}s")
-    if not res.ok and res.error:
-        print(f"  Error: {res.error[:300]}")
-except Exception as exc:
-    elapsed = time.time() - t0
-    exec_mod._apply_topology_delta_if_present = _orig
-    print(f"  EXCEPTION: {exc}")
-    import traceback; traceback.print_exc()
+result = run_canonical_gcad(
+    canonical=canonical,
+    out_step=OUT_DIR / "output.step",
+    metadata_path=OUT_DIR / "output.metadata.json",
+    validation_seed={"ok": True, "stage": "complete", "stages": {}},
+)
+elapsed = time.time() - t0
+exec_mod._apply_topology_delta_if_present = _orig_apply
+
+print(f"  Pipeline: {'OK' if result.ok else 'FAIL'}, {elapsed:.1f}s")
+if result.warnings:
+    topo_warnings = [w for w in result.warnings if 'topology' in w.lower()]
+    print(f"  Topology warnings: {len(topo_warnings)}")
+    for w in topo_warnings[:3]:
+        print(f"    {w[:150]}")
+
+# ═══════════════════════════════════════════════════════════════
+# 4. 拓扑生产日志
+# ═══════════════════════════════════════════════════════════════
+print(f"\n[4. 拓扑生产日志]")
+print(f"  {'Node':<30s} {'Op':<22s} {'+Ent':>5s} {'Delta':>5s} {'Provider':<30s} {'Relations':>5s} {'Sample Roles'}")
+print(f"  {'-'*30} {'-'*22} {'-'*5} {'-'*5} {'-'*30} {'-'*5} {'-'*20}")
+total_entities = 0
+delta_ops = 0
+no_delta_ops = 0
+for e in topo_log:
+    total_entities += e["added"]
+    if e["has_delta"]: delta_ops += 1
+    else: no_delta_ops += 1
+    roles_str = ", ".join(e.get("sample_roles", [])[:2]) if e.get("sample_roles") else ""
+    print(f"  {e['node_id'][:30]:30s} {e['op'][:22]:22s} {e['added']:5d} {str(e['has_delta']):5s} {e['provider'][:30]:30s} {e['relation_count']:5d} {roles_str}")
+print(f"  TOTAL: {total_entities} entities | {delta_ops} ops with delta | {no_delta_ops} without")
+
+# ═══════════════════════════════════════════════════════════════
+# 5. Registry 状态
+# ═══════════════════════════════════════════════════════════════
+ctx = ctx_ref.get('ctx')
+if not ctx:
+    print("\n[5. Registry] NO TOPOLOGY DATA!")
     sys.exit(1)
 
-# Topology log
-print(f"\n{'='*70}\n[TOPOLOGY PRODUCTION LOG]")
-total = 0
-for e in topo_log:
-    total += e["added"]
-    flag = "*" if e["has_delta"] else " "
-    print(f"  {flag} {e['node'][:30]:30s} | {e['op'][:20]:20s} | +{e['added']:3d}e | {e['provider'][:28]}")
-    if e.get("roles"):
-        for r, c in list(e["roles"].items())[:2]:
-            print(f"       {r} (x{c})")
-print(f"  TOTAL: {total} entities across {len(topo_log)} operations")
+reg = ctx.topology_registry
 
-# Registry
-ctx = ctx_ref.get('ctx')
-if ctx:
-    reg = ctx.topology_registry
-    sup_count = reg.entity_count - reg.active_count - reg.deleted_count
-    integ = reg.validate_integrity()
-    issues_n = len(integ["issues"])
+print(f"\n[5. Registry 状态]")
+print(f"  总实体: {reg.entity_count}")
+print(f"  Active: {reg.active_count} | Deleted: {reg.deleted_count} | Superseded: {reg.entity_count - reg.active_count - reg.deleted_count}")
 
-    print(f"\n{'='*70}\n[REGISTRY STATE]")
-    print(f"  Total: {reg.entity_count} | Active: {reg.active_count} | "
-          f"Deleted: {reg.deleted_count} | Superseded: {sup_count}")
-    print(f"  Integrity: {'OK' if integ['ok'] else f'FAIL ({issues_n} issues)'}")
-    for iss in integ['issues'][:5]:
-        print(f"    [{iss['code']}] {iss['message'][:100]}")
-
-    print(f"\n[BY PRODUCER NODE]")
-    for nid in sorted(set(r.producer_node_id for r in reg._entities.values())):
-        recs = [r for r in reg._entities.values() if r.producer_node_id == nid]
-        st = Counter(r.status for r in recs)
-        w_loc = sum(1 for r in recs if r.current_locator)
-        w_v3 = sum(1 for r in recs if getattr(r, 'identity_descriptor', None))
-        ops = "/".join(list(set(r.semantic_role.split("/")[0] for r in recs))[:3])
-        print(f"  {nid}: {len(recs)}e [LOC={w_loc} V3={w_v3}] {dict(st)} [{ops}]")
-
-    active = [r for r in reg._entities.values() if r.status == "active"]
-    w_loc = sum(1 for r in active if r.current_locator)
-    w_v3 = sum(1 for r in active if getattr(r, 'identity_descriptor', None))
-    step_exists = (OUT_DIR / "output.step").exists()
-    step_mb = (OUT_DIR / "output.step").stat().st_size / 1e6 if step_exists else 0
-
-    print(f"\n[FINAL SUMMARY]")
-    print(f"  Active entities: {len(active)} ({w_loc} with locator, {w_v3} with V3 descriptor)")
-    print(f"  STEP file: {step_mb:.1f}MB" if step_exists else "  STEP: NOT CREATED")
-    print(f"  Pipeline time: {elapsed:.1f}s")
-    passed = integ["ok"] and w_loc > 0
-    print(f"  => {'ALL CHECKS PASSED' if passed else 'ISSUES FOUND'}")
+integrity = reg.validate_integrity()
+if integrity["ok"]:
+    print(f"  完整性: [PASS] PASS")
 else:
-    print("\n[WARNING] No topology registry state captured")
+    print(f"  完整性: [FAIL] FAIL ({len(integrity['issues'])} issues)")
+    for iss in integrity['issues'][:5]:
+        print(f"    [{iss['code']}] {iss['message'][:120]}")
 
-print(f"\n{'='*70}")
+# ═══════════════════════════════════════════════════════════════
+# 6. 按生产者分析
+# ═══════════════════════════════════════════════════════════════
+print(f"\n[6. 按操作分析]")
+for nid in sorted(set(r.producer_node_id for r in reg._entities.values())):
+    recs = [r for r in reg._entities.values() if r.producer_node_id == nid]
+    statuses = Counter(r.status for r in recs)
+    types = Counter(r.entity_type for r in recs)
+    with_loc = sum(1 for r in recs if r.current_locator)
+    with_v3 = sum(1 for r in recs if getattr(r, 'identity_descriptor', None))
+    roles = list(set(r.semantic_role for r in recs))[:3]
+    roles_str = ", ".join(roles)
+    print(f"  {nid}: {len(recs)} entities [LOC={with_loc}, V3={with_v3}]")
+    print(f"    Status: {dict(statuses)} | Types: {dict(types)}")
+    print(f"    Roles: {roles_str}")
+
+# ═══════════════════════════════════════════════════════════════
+# 7. 全链路检查
+# ═══════════════════════════════════════════════════════════════
+print(f"\n[7. 全链路检查]")
+active = [r for r in reg._entities.values() if r.status == "active"]
+w_loc = sum(1 for r in active if r.current_locator)
+w_v3 = sum(1 for r in active if getattr(r, 'identity_descriptor', None))
+step_size = (OUT_DIR / "output.step").stat().st_size / 1e6 if (OUT_DIR / "output.step").exists() else 0
+
+checks = [
+    ("Registry 有实体", reg.entity_count > 0),
+    ("有 Active 实体", len(active) > 0),
+    ("有 Locator 绑定", w_loc > 0),
+    ("有 V3 Descriptor", w_v3 > 0),
+    ("完整性检查通过", integrity["ok"]),
+    ("STEP 文件生成", step_size > 0),
+    ("Pipeline 成功", result.ok),
+]
+
+all_ok = True
+for name, ok in checks:
+    mark = "[PASS]" if ok else "[FAIL]"
+    if not ok: all_ok = False
+    print(f"  {mark} {name}")
+
+print(f"\n  Active: {len(active)} ({w_loc} LOC, {w_v3} V3)")
+print(f"  STEP: {step_size:.1f}MB | Pipeline: {elapsed:.1f}s")
+print(f"  => {'[PASS] ALL CHECKS PASSED' if all_ok else '[FAIL] ISSUES FOUND'}")
+
+print(f"\n{'='*72}")
+print(f"  监控完成")
+print(f"{'='*72}")

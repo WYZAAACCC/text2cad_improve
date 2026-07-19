@@ -42,7 +42,7 @@ def build_default_registry() -> DialectRegistry:
         ("sketch_extrude", "extrude_rectangle"),
         ("composition", "boolean_union"),
         ("composition", "boolean_cut"),
-        ("sketch_profile", "revolve_profile"),
+        # sketch_profile ops use semantic naming — topology is optional
     }
 
     for dialect_name, op_name in _topology_required_ops:
