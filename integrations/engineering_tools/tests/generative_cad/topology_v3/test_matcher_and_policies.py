@@ -31,21 +31,11 @@ from seekflow_engineering_tools.generative_cad.topology.policies import (
 class TestMatcherDefects:
     """V3 §4.8: Matcher is a placeholder — all costs zero, single → exact."""
 
-    @pytest.mark.xfail(
-        reason=(
-            "T-010: rank_candidates() sets all costs to 0.0. Single candidate "
-            "with cost=0 resolves as exact in resolve(). Fingerprint is not "
-            "a substitute for kernel history."
-        ),
-        strict=True,
-    )
     def test_single_fingerprint_candidate_is_not_kernel_exact(self):
-        """T-010: Single match candidate with zero cost → NOT kernel exact.
+        """T-010 FIX: Single match candidate → fingerprint_unique, never exact.
 
-        V3 target: fingerprint matching can at best produce 'verified_rebind_unique'.
+        V3: fingerprint matching can at best produce 'fingerprint_unique'.
         Only OCCT builder history (Generated/Modified/IsDeleted) can produce exact.
-
-        The matcher's resolve() method: one candidate → exact (line 196-202).
         """
         matcher = ConstrainedTopologyMatcher()
         candidates = [
@@ -58,10 +48,9 @@ class TestMatcherDefects:
             target_component="disk",
             target_entity_type="face",
         )
-        assert result.status != "exact", (
-            f"T-010 FAIL: single fingerprint candidate resolved as exact. "
-            f"V3 target: fingerprint can only produce verified_rebind_unique "
-            f"or ambiguous, never kernel exact."
+        assert result.status == "fingerprint_unique", (
+            f"T-010 FIX: single fingerprint candidate resolved as "
+            f"{result.status}, expected fingerprint_unique"
         )
 
     def test_symmetric_candidates_remain_ambiguous(self):

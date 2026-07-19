@@ -241,7 +241,8 @@ class TestMatcher:
             candidates, {},
             target_component="box", target_entity_type="face",
         )
-        assert result.status == "exact"
+        # V3: fingerprint matching → fingerprint_unique, never exact
+        assert result.status == "fingerprint_unique"
         assert result.best_match.entity_id == "gct:only"
 
     def test_resolve_no_candidates_unresolved(self):

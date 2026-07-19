@@ -77,10 +77,15 @@ class MatchCandidate:
 
 @dataclass
 class MatchResult:
-    """Result of constrained fingerprint matching."""
+    """Result of constrained fingerprint matching.
+
+    V3: status can be "fingerprint_unique" (single candidate, non-zero cost),
+    "ambiguous" (margin too small), or "unresolved" (no candidates).
+    NEVER "exact" — fingerprint matching cannot produce kernel history proof.
+    """
 
     requested_id: str
-    status: str = "unresolved"  # "exact", "ambiguous", "unresolved"
+    status: str = "unresolved"  # "fingerprint_unique", "ambiguous", "unresolved"
     best_match: MatchCandidate | None = None
     candidates: list[MatchCandidate] = field(default_factory=list)
     margin: float = 0.0
@@ -144,8 +149,9 @@ class ConstrainedTopologyMatcher:
     ) -> list[MatchCandidate]:
         """Rank candidates by geometric cost.
 
-        Phase 2: returns candidates with zero costs (placeholder).
-        Phase 3+: actual fingerprint comparison.
+        V3: fingerprint matching always has a non-zero base cost.
+        Fingerprint evidence can NEVER produce exact — only OCCT builder
+        history (Generated/Modified/IsDeleted) can.
         """
         ranked = []
         for c in candidates:
@@ -154,7 +160,7 @@ class ConstrainedTopologyMatcher:
                 provenance_cost=0.0,
                 type_cost=0.0,
                 adjacency_cost=0.0,
-                geometry_cost=0.0,
+                geometry_cost=0.10,   # V3: base fingerprint cost > 0
                 location_cost=0.0,
             )
             ranked.append(mc)
@@ -194,11 +200,20 @@ class ConstrainedTopologyMatcher:
         ranked = self.rank_candidates(filtered, target_fingerprint)
 
         if len(ranked) == 1:
+            # V3: single fingerprint candidate is never exact —
+            # fingerprint matching cannot produce kernel history proof
             return MatchResult(
                 requested_id=ranked[0].entity_id,
-                status="exact",
+                status="fingerprint_unique",
                 best_match=ranked[0],
                 candidates=ranked,
+                evidence=[{
+                    "reason": (
+                        "Single fingerprint candidate with base cost. "
+                        "Fingerprint matching can at best produce "
+                        "verified_rebind_unique — never kernel exact."
+                    ),
+                }],
             )
 
         # Check ambiguity margin
