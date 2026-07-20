@@ -1,0 +1,25 @@
+{
+  "test": "timeline_correctness_verification",
+  "disc_faces_before": 3,
+  "disc_faces_after": 4,
+  "bore_faces": 3,
+  "history_captured": true,
+  "target_classification": {
+    "modified": 2,
+    "unchanged": 1
+  },
+  "modified_count": 2,
+  "generated_count": 3,
+  "deleted_count": 2,
+  "delta_relation_count": 7,
+  "checks": {
+    "OCCT history captured": true,
+    "Modified faces tracked": true,
+    "Generated faces have provenance": true,
+    "Tool faces consumed (deleted)": true,
+    "Face coverage (>50%)": true,
+    "Time-sequence operations ordered": true
+  },
+  "all_passed": true,
+  "verdict": "时序正确的持久化拓扑命名: OCCT history 正确捕获了每个面的修改/删除/生成关系"
+}

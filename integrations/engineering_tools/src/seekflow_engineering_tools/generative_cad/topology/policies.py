@@ -169,6 +169,47 @@ DEFAULT_POLICIES: dict[str, ConsumerPolicy] = {
 }
 
 
+def trust_meets_quality(
+    trust_level: str,
+    required: ResolutionQuality | str,
+) -> bool:
+    """Check if a V3 TrustLevel meets the minimum required ResolutionQuality.
+
+    This is the bridge between the V3 trust certificate model (§2.11) and
+    the existing ConsumerPolicy system. Maps TrustLevel strings to their
+    equivalent ranks in _QUALITY_RANK.
+
+    Args:
+        trust_level: TrustLevel value string (e.g. "strong_kernel_history").
+        required: Minimum required ResolutionQuality.
+
+    Returns:
+        True if the trust level's effective rank >= required rank.
+
+    Mapping:
+        strong_kernel_history    → rank 6 (exact_kernel_history)
+        operation_semantic_exact → rank 4 (deterministic_semantic)
+        fingerprint_unique       → rank 1
+        set_only                 → rank 2 (set_expansion)
+        ambiguous                → rank 0
+        unresolved               → rank 0
+    """
+    _TRUST_TO_RANK = {
+        "strong_kernel_history": 6,
+        "operation_semantic_exact": 4,
+        "fingerprint_unique": 1,
+        "set_only": 2,
+        "ambiguous": 0,
+        "unresolved": 0,
+    }
+    trust_rank = _TRUST_TO_RANK.get(trust_level, 0)
+    req_str = required.value if isinstance(required, ResolutionQuality) else required
+    required_rank = _QUALITY_RANK.get(req_str)
+    if required_rank is None:
+        raise ValueError(f"Unknown resolution quality: {req_str!r}")
+    return trust_rank >= required_rank
+
+
 def get_consumer_policy(consumer_type: str) -> ConsumerPolicy:
     """Get the resolution quality policy for a consumer type.
 

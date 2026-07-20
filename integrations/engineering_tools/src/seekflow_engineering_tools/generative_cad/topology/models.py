@@ -146,6 +146,9 @@ class TopologyEntityRecord(BaseModel):
     ancestor_ids: list[str] = Field(default_factory=list)
     descendant_ids: list[str] = Field(default_factory=list)
 
+    # V3 §2.11: multi-dimensional trust certificate (set by assess())
+    trust_certificate: dict | None = None
+
     # Evidence
     confidence: float = 1.0
     evidence: list[dict] = Field(default_factory=list)
@@ -219,6 +222,9 @@ class TopologyRelation(BaseModel):
 
     source_ids: list[str] = Field(default_factory=list)
     result_entity_keys: list[str] = Field(default_factory=list)
+
+    # V3 §2.9: kernel history edges for identity transfer decisions
+    kernel_edges: list[dict] | None = None
 
     semantic_role: str | None = None
     evidence: dict = Field(default_factory=dict)

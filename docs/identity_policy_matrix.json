@@ -1,0 +1,37 @@
+{
+  "schema": "identity_policy_matrix_v1",
+  "generated": "2026-07-21",
+  "policies": {
+    "pattern": {
+      "ordinal": {
+        "description": "第 i 个实例身份保持，即使角度因 count 改变而移动",
+        "60_to_61": "前 60 保持，新增 1",
+        "implemented": true
+      },
+      "angular_anchor": {
+        "description": "身份跟随绝对角度",
+        "60_to_61": "需 angular_position_deg 设置，否则全部 ambiguous",
+        "implemented": true
+      },
+      "explicit_instance_uid": {
+        "description": "上层设计系统显式管理每个实例 UID",
+        "60_to_61": "surviving 由 UID 持久性决定",
+        "implemented": true,
+        "recommended_for": "turbine_disc"
+      }
+    },
+    "boolean_cut": {
+      "target_face_modified": "modified_same_identity (keep PID)",
+      "tool_face_modified": "generated_from_tool (new PID)",
+      "tool_face_deleted": "consumed (mark deleted)",
+      "implemented": true
+    },
+    "revolve": {
+      "profile_edge_generated": "generated_new_identity",
+      "cap_face": "generated_new_identity (from FirstShape/LastShape)",
+      "degenerated_edge": "recorded, identity-significant",
+      "full_360": "no caps fabricated",
+      "implemented": true
+    }
+  }
+}

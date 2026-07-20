@@ -452,3 +452,58 @@ class NXTopologyAdapter:
                   "message": f"Match rate {match_rate:.2%} < 80%"}] if match_rate < 0.80 else []
             ),
         )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# §4 — Cross-backend strict validation policy
+# ═══════════════════════════════════════════════════════════════════════════════
+
+STRICT_FACE_MAPPING_RATIO: float = 1.0
+
+CAE_CRITICAL_PURPOSES: frozenset[str] = frozenset({
+    "load", "constraint", "contact",
+})
+
+
+class CrossBackendValidationPolicy(BaseModel):
+    """§4 — Policy for cross-backend face mapping validation."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    required_sets_strict: bool = True
+    statistical_threshold: float = 0.80
+    fuzzy_name_match_forbidden: bool = True
+
+
+def validate_required_set_coverage(
+    named_set_mappings: list[dict],
+    *,
+    policy: CrossBackendValidationPolicy | None = None,
+) -> dict:
+    """§4: Validate 100% coverage for CAE-critical NamedTopologySets."""
+    if policy is None:
+        policy = CrossBackendValidationPolicy()
+
+    failed_sets: list[dict] = []
+    for ns in named_set_mappings:
+        purpose = ns.get("purpose", "")
+        if purpose not in CAE_CRITICAL_PURPOSES:
+            continue
+        expected = ns.get("expected", 0)
+        matched = ns.get("matched", 0)
+        if expected > 0 and matched < expected:
+            failed_sets.append({
+                "name": ns.get("name", "unknown"),
+                "purpose": purpose,
+                "matched": matched,
+                "expected": expected,
+                "missing": expected - matched,
+            })
+
+    ok = len(failed_sets) == 0
+    summary = (
+        f"Required set coverage: {'PASS' if ok else 'FAIL'}. "
+        f"{len(failed_sets)} set(s) with missing faces."
+    ) if failed_sets else "Required set coverage: PASS (all CAE-critical sets at 100%)"
+
+    return {"ok": ok, "failed_sets": failed_sets, "summary": summary}

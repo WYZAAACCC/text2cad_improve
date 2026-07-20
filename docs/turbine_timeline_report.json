@@ -1,0 +1,31 @@
+{
+  "report": "turbine_timeline_report",
+  "design_id": "turbine_disc_audit",
+  "generated_at": "2026-07-21T01:35:41",
+  "operations": [
+    {
+      "seq": 1,
+      "op": "revolve_profile",
+      "entity_count": 7,
+      "history_provider": "operation_semantics",
+      "faces_after": 7
+    },
+    {
+      "seq": 2,
+      "op": "boolean_cut (bore)",
+      "entity_count": 7,
+      "history_provider": "occt_boolean_history",
+      "faces_after": 7
+    }
+  ],
+  "final_registry": {
+    "entity_count": 7,
+    "active_count": 7,
+    "deleted_count": 0,
+    "face_coverage": 7
+  },
+  "timestamps": {
+    "start": "2026-07-21T01:35:41",
+    "generation_complete": "2026-07-21T01:35:41"
+  }
+}

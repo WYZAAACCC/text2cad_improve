@@ -1,0 +1,176 @@
+{
+  "ok": true,
+  "stage": "complete",
+  "issues": [
+    {
+      "code": "TOPOLOGY_CONTRACT_MISSING",
+      "message": "Geometry-producing operation 'add_polyline' (dialect=sketch_profile, node=n_polyline_disc) has no topology_contract. Persistent topology naming will be unavailable for faces/edges from this operation.",
+      "severity": "warning",
+      "stage": "topology_contract",
+      "node_id": "n_polyline_disc",
+      "component_id": null,
+      "path": "/nodes/n_polyline_disc",
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "TOPOLOGY_CONTRACT_MISSING",
+      "message": "Geometry-producing operation 'close_profile' (dialect=sketch_profile, node=n_close_disc) has no topology_contract. Persistent topology naming will be unavailable for faces/edges from this operation.",
+      "severity": "warning",
+      "stage": "topology_contract",
+      "node_id": "n_close_disc",
+      "component_id": null,
+      "path": "/nodes/n_close_disc",
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "TOPOLOGY_CONTRACT_MISSING",
+      "message": "Geometry-producing operation 'add_polyline' (dialect=sketch_profile, node=n_polyline_cutter) has no topology_contract. Persistent topology naming will be unavailable for faces/edges from this operation.",
+      "severity": "warning",
+      "stage": "topology_contract",
+      "node_id": "n_polyline_cutter",
+      "component_id": null,
+      "path": "/nodes/n_polyline_cutter",
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "TOPOLOGY_CONTRACT_MISSING",
+      "message": "Geometry-producing operation 'close_profile' (dialect=sketch_profile, node=n_close_cutter) has no topology_contract. Persistent topology naming will be unavailable for faces/edges from this operation.",
+      "severity": "warning",
+      "stage": "topology_contract",
+      "node_id": "n_close_cutter",
+      "component_id": null,
+      "path": "/nodes/n_close_cutter",
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "TOPOLOGY_CONTRACT_MISSING",
+      "message": "Geometry-producing operation 'fillet_sketch' (dialect=sketch_profile, node=n_fillet_disc_hub_web_lower) has no topology_contract. Persistent topology naming will be unavailable for faces/edges from this operation.",
+      "severity": "warning",
+      "stage": "topology_contract",
+      "node_id": "n_fillet_disc_hub_web_lower",
+      "component_id": null,
+      "path": "/nodes/n_fillet_disc_hub_web_lower",
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "TOPOLOGY_CONTRACT_MISSING",
+      "message": "Geometry-producing operation 'fillet_sketch' (dialect=sketch_profile, node=n_fillet_disc_web_rim_lower) has no topology_contract. Persistent topology naming will be unavailable for faces/edges from this operation.",
+      "severity": "warning",
+      "stage": "topology_contract",
+      "node_id": "n_fillet_disc_web_rim_lower",
+      "component_id": null,
+      "path": "/nodes/n_fillet_disc_web_rim_lower",
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "TOPOLOGY_CONTRACT_MISSING",
+      "message": "Geometry-producing operation 'fillet_sketch' (dialect=sketch_profile, node=n_fillet_disc_web_rim_upper) has no topology_contract. Persistent topology naming will be unavailable for faces/edges from this operation.",
+      "severity": "warning",
+      "stage": "topology_contract",
+      "node_id": "n_fillet_disc_web_rim_upper",
+      "component_id": null,
+      "path": "/nodes/n_fillet_disc_web_rim_upper",
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "TOPOLOGY_CONTRACT_MISSING",
+      "message": "Geometry-producing operation 'fillet_sketch' (dialect=sketch_profile, node=n_fillet_disc_hub_web_upper) has no topology_contract. Persistent topology naming will be unavailable for faces/edges from this operation.",
+      "severity": "warning",
+      "stage": "topology_contract",
+      "node_id": "n_fillet_disc_hub_web_upper",
+      "component_id": null,
+      "path": "/nodes/n_fillet_disc_hub_web_upper",
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "TOPOLOGY_CONTRACT_MISSING",
+      "message": "Geometry-producing operation 'fillet_sketch' (dialect=sketch_profile, node=n_fillet_cutter_lobe_tops) has no topology_contract. Persistent topology naming will be unavailable for faces/edges from this operation.",
+      "severity": "warning",
+      "stage": "topology_contract",
+      "node_id": "n_fillet_cutter_lobe_tops",
+      "component_id": null,
+      "path": "/nodes/n_fillet_cutter_lobe_tops",
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "TOPOLOGY_CONTRACT_MISSING",
+      "message": "Geometry-producing operation 'fillet_sketch' (dialect=sketch_profile, node=n_fillet_cutter_flanks) has no topology_contract. Persistent topology naming will be unavailable for faces/edges from this operation.",
+      "severity": "warning",
+      "stage": "topology_contract",
+      "node_id": "n_fillet_cutter_flanks",
+      "component_id": null,
+      "path": "/nodes/n_fillet_cutter_flanks",
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "TOPOLOGY_CONTRACT_MISSING",
+      "message": "Geometry-producing operation 'fillet_sketch' (dialect=sketch_profile, node=n_fillet_cutter_neck_root) has no topology_contract. Persistent topology naming will be unavailable for faces/edges from this operation.",
+      "severity": "warning",
+      "stage": "topology_contract",
+      "node_id": "n_fillet_cutter_neck_root",
+      "component_id": null,
+      "path": "/nodes/n_fillet_cutter_neck_root",
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "TOPOLOGY_CONTRACT_MISSING",
+      "message": "Geometry-producing operation 'boolean_cut' (dialect=composition, node=n_bool_cut_all) has no topology_contract. Persistent topology naming will be unavailable for faces/edges from this operation.",
+      "severity": "warning",
+      "stage": "topology_contract",
+      "node_id": "n_bool_cut_all",
+      "component_id": null,
+      "path": "/nodes/n_bool_cut_all",
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "TOPOLOGY_CONTRACT_MISSING",
+      "message": "Geometry-producing operation 'revolve_profile' (dialect=sketch_profile, node=n_revolve_disc) has no topology_contract. Persistent topology naming will be unavailable for faces/edges from this operation.",
+      "severity": "warning",
+      "stage": "topology_contract",
+      "node_id": "n_revolve_disc",
+      "component_id": null,
+      "path": "/nodes/n_revolve_disc",
+      "expected": null,
+      "actual": null
+    },
+    {
+      "code": "TOPOLOGY_CONTRACT_MISSING",
+      "message": "Geometry-producing operation 'extrude_profile' (dialect=sketch_profile, node=n_extrude_cutter) has no topology_contract. Persistent topology naming will be unavailable for faces/edges from this operation.",
+      "severity": "warning",
+      "stage": "topology_contract",
+      "node_id": "n_extrude_cutter",
+      "component_id": null,
+      "path": "/nodes/n_extrude_cutter",
+      "expected": null,
+      "actual": null
+    }
+  ],
+  "stages_run": [
+    "structure",
+    "root_terminal",
+    "registry",
+    "params",
+    "ownership",
+    "graph",
+    "typecheck",
+    "phase",
+    "composition",
+    "safety",
+    "canonicalize",
+    "dialect_semantics",
+    "geometry_preflight",
+    "topology_contract"
+  ]
+}

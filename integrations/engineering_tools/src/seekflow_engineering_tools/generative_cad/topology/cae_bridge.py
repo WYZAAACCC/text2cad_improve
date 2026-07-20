@@ -161,10 +161,26 @@ def resolve_named_set_to_faces(
                 "message": f"ID '{pid}' not found in topology registry",
             })
 
+    # V3 §2.11: attempt trust certificate assessment for stronger gating
+    trust_ok = True
+    try:
+        from seekflow_engineering_tools.generative_cad.topology.trust_certificate import (
+            TopologyTrustCertificate,
+        )
+        for pid in named_set.persistent_ids:
+            record = registry._entities.get(pid)
+            if record is not None:
+                cert = TopologyTrustCertificate.assess(record)
+                if cert.ambiguity_count > 0:
+                    trust_ok = False
+                    break
+    except Exception:
+        pass  # trust certificate unavailable → use legacy quality gate below
+
     # Determine gate result
     consumer_policy = get_consumer_policy(_purpose_to_consumer(named_set.semantic_purpose))
 
-    if unresolved > 0 or deleted > 0:
+    if unresolved > 0 or deleted > 0 or not trust_ok:
         gate_result = "fail"
     elif ambiguous > 0 and not consumer_policy.allows_ambiguity:
         gate_result = "fail"

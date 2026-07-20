@@ -24,6 +24,8 @@ def write_topology_sidecar(
     runtime_version: str,
     occt_version: str = "unknown",
     topology_algorithm_version: str = "1",
+    design_identity: Any = None,  # V3 §2.1: DesignIdentity | None
+    prev_integrity_hash: str = "",  # V3 §3: previous sidecar hash for chain
 ) -> dict:
     """Write topology sidecar JSON and return sidecar metadata.
 
@@ -67,10 +69,22 @@ def write_topology_sidecar(
     except ImportError:
         cq_ver = "unknown"
 
+    # V3 §2.1: determine stable lineage ID from design identity when available
+    if design_identity is not None and hasattr(design_identity, "is_strong") and design_identity.is_strong:
+        lineage_id = design_identity.design_id
+        identity_source = design_identity.identity_source.value
+        design_identity_id = design_identity.design_id
+    else:
+        lineage_id = document_id
+        identity_source = "ephemeral_generated"
+        design_identity_id = document_id
+
     sidecar = {
         "schema": "gcad_topology_v3",
         "document_id": document_id,
-        "document_lineage_id": document_id,  # V3: lineage ID (same as document_id for now)
+        "document_lineage_id": lineage_id,
+        "identity_source": identity_source,    # V3 §2.1: trust provenance
+        "design_id": design_identity_id,        # V3 §2.1: stable design identifier
         "canonical_graph_hash": canonical_graph_hash,
         "topology_registry_hash": registry_hash,
 
@@ -100,8 +114,15 @@ def write_topology_sidecar(
     }
 
     path.parent.mkdir(parents=True, exist_ok=True)
+
+    # V3 §3: canonicalize for deterministic cross-process output
+    from seekflow_engineering_tools.generative_cad.topology.sidecar_canonical import (
+        canonicalize_sidecar,
+    )
+    sidecar = canonicalize_sidecar(sidecar, prev_hash=prev_integrity_hash)
+
     path.write_text(
-        json.dumps(sidecar, indent=2, ensure_ascii=False),
+        json.dumps(sidecar, indent=2, ensure_ascii=False, sort_keys=True),
         encoding="utf-8",
     )
 

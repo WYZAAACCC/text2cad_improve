@@ -49,6 +49,8 @@ class RuntimeContext:
     # ── Document identity (v2 persistent topology) ──
     document_id: str = ""
     canonical_graph_hash: str = ""
+    # ── Design identity (V3 supplementary spec §2.1) ──
+    design_identity: Any = None  # DesignIdentity | None
 
     # ── Persistent topology (Phase 1+) ──
     topology_events: list[dict[str, Any]] = field(default_factory=list)

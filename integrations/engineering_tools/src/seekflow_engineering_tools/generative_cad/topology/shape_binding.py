@@ -290,10 +290,20 @@ class ShapeBindingService:
                 ),
             )
 
-        # Check 4: Fingerprint (stub in PR 1 — always passes)
+        # Check 4: Fingerprint — fail-closed until implemented (§2.10C)
+        # When full fingerprint computation is available, compare:
+        #   actual = compute_face_fingerprint(subshape)
+        #   if actual != expected_fingerprint → valid=False
         if expected_fingerprint:
-            # Future: compare with compute_face_fingerprint(subshape)
-            pass
+            return LocatorVerification(
+                valid=False,
+                error_code="topology_fingerprint_not_verified",
+                detail=(
+                    "Fingerprint verification is not yet implemented. "
+                    "expected_fingerprint was provided but cannot be verified — "
+                    "returning unresolved per §2.10C fail-closed policy."
+                ),
+            )
 
         return LocatorVerification(valid=True)
 
@@ -313,11 +323,17 @@ class ShapeBindingService:
 
     @staticmethod
     def _compute_shape_content_hash(shape: Any) -> str:
-        """Compute a content hash of the full body shape tree.
+        """Compute a tree-structure hash of the full body shape tree.
 
-        Uses OCCT TopoDS_Shape.HashCode() for a fast shape tree hash.
+        **IMPORTANT (§2.10A):** This is an OCCT TopoDS_Shape.HashCode()
+        tree-structure hash, NOT a geometric content hash. It is suitable for
+        runtime staleness detection (in combination with body_revision_id)
+        but MUST NOT be used as a cross-process or cross-rebuild geometry
+        equivalence proof.
+
+        For artifact-level proof, use a canonicalized BREP/STEP byte SHA-256.
+
         Returns hex string for readability.
-
         V3: Raises RuntimeError on failure — never returns a sentinel value.
         """
         wrapped = getattr(shape, "wrapped", shape)

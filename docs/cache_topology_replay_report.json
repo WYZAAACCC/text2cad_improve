@@ -1,0 +1,27 @@
+{
+  "report": "cache_topology_replay_report",
+  "build_a_face_count": 7,
+  "build_b_face_count": 7,
+  "build_a_relation_count": 7,
+  "build_b_relation_count": 7,
+  "roles_identical": true,
+  "roles_a": [
+    "revolve/lateral_0",
+    "revolve/lateral_1",
+    "revolve/lateral_2",
+    "revolve/lateral_3",
+    "revolve/lateral_4",
+    "revolve/lateral_5",
+    "revolve/lateral_6"
+  ],
+  "roles_b": [
+    "revolve/lateral_0",
+    "revolve/lateral_1",
+    "revolve/lateral_2",
+    "revolve/lateral_3",
+    "revolve/lateral_4",
+    "revolve/lateral_5",
+    "revolve/lateral_6"
+  ],
+  "cache_replay_consistent": true
+}

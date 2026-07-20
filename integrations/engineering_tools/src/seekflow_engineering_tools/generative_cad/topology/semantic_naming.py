@@ -301,11 +301,21 @@ def _make_compact_id(
     producer_node_id: str,
     entity_type: str,
     semantic_role: str,
+    *,
+    feature_uid: str | None = None,
 ) -> tuple[str, dict]:
     """Create a V3 PersistentTopoId authoritative key + descriptor.
 
     Returns (key_string, descriptor_dict). The descriptor is stored in
     TopologyEntityRecord.identity_descriptor for full recoverability.
+
+    When feature_uid is provided (§2.2), it replaces producer_node_id as the
+    feature_stable_id in the V3 PID key. This isolates the PID from LLM node
+    renames, insertions, and deletions.
+
+    When feature_uid is None (backward-compat), producer_node_id is used —
+    preserving existing behaviour for callers that have not adopted stable
+    feature identities.
     """
     from seekflow_engineering_tools.generative_cad.topology.ids import (
         make_persistent_id_v3,
@@ -314,7 +324,7 @@ def _make_compact_id(
     key, desc = make_persistent_id_v3(
         document_lineage_id=document_id,
         component_stable_id=component_id,
-        feature_stable_id=producer_node_id,
+        feature_stable_id=feature_uid if feature_uid else producer_node_id,
         entity_type=entity_type,  # type: ignore[arg-type]
         semantic_path=semantic_path,
     )
@@ -327,10 +337,17 @@ def _make_compact_key(
     producer_node_id: str,
     entity_type: str,
     semantic_role: str,
+    *,
+    feature_uid: str | None = None,
 ) -> str:
-    """Convenience: return just the V3 key string (discard descriptor)."""
+    """Convenience: return just the V3 key string (discard descriptor).
+
+    When feature_uid is provided (§2.2), it replaces producer_node_id
+    as the feature_stable_id in the PID key.
+    """
     key, _desc = _make_compact_id(
         document_id, component_id, producer_node_id, entity_type, semantic_role,
+        feature_uid=feature_uid,
     )
     return key
 

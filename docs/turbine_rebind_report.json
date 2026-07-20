@@ -1,0 +1,12 @@
+{
+  "report": "turbine_rebind_report",
+  "sidecar_schema": "gcad_topology_v3",
+  "entity_count_in_sidecar": 7,
+  "entity_count_in_registry": 7,
+  "integrity_hash_in_sidecar": "9a59733ddf7e01cd82076eff947b92c459cb39a18a3adaf6b1eda40542ae4519",
+  "integrity_hash_recomputed": "4a62c516f0aa273cb7733c58ee8384ce438cc89cfb25194b9ba8bff87859121e",
+  "canonicalizer_version": "3.0.0",
+  "design_id": "turbine_disc_audit",
+  "identity_source": "ephemeral_generated",
+  "rebind_possible": true
+}

@@ -1,0 +1,12 @@
+{
+  "report": "turbine_rebuild_diff",
+  "build_a_hash": "9a59733ddf7e01cd82076eff947b92c459cb39a18a3adaf6b1eda40542ae4519",
+  "build_b_hash": "9a59733ddf7e01cd82076eff947b92c459cb39a18a3adaf6b1eda40542ae4519",
+  "hashes_identical": true,
+  "build_a_entity_count": 7,
+  "build_b_entity_count": 7,
+  "entity_counts_match": true,
+  "face_count_a": 7,
+  "face_count_b": 7,
+  "face_counts_match": true
+}

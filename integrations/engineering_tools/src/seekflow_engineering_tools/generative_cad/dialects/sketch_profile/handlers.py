@@ -228,15 +228,15 @@ def handle_revolve_profile(node, ctx) -> dict:
 
     if hr is not None and hr.result_shape is not None:
         shape = hr.result_shape
-        # Produce topology BEFORE ShapeFix (faces match history)
         cad_solid = cq.Shape.cast(shape)
         solid_wp = cq.Workplane("XY").newObject([cad_solid])
+        # Try history-aware topology first; always fall through to semantic
         _try_produce_revolve_profile_topology(
             node=node, ctx=ctx, solid=solid_wp,
             angle_deg=angle, axis="Z",
             history_result=hr,
         )
-        # NOW fix and store
+        # ShapeFix after topology
         fixer = ShapeFix_Shape(shape)
         fixer.Perform()
         shape = fixer.Shape()
@@ -257,10 +257,38 @@ def handle_revolve_profile(node, ctx) -> dict:
         _try_produce_revolve_profile_topology(
             node=node, ctx=ctx, solid=solid_wp,
             angle_deg=angle, axis="Z",
+            # Always use semantic naming fallback for reliability
         )
 
     handle = SolidHandle(id=f"solid:{cid}:{node.id}:body", producer_node=node.id, component_id=cid)
     ctx.object_store.put_solid(handle, solid_wp)
+
+    # V3: guaranteed topology registration via semantic naming
+    try:
+        from seekflow_engineering_tools.generative_cad.topology.semantic_naming import (
+            build_entity_records_from_delta, name_revolve_faces,
+        )
+        doc_id = ctx.document_id or "unknown"
+        delta = name_revolve_faces(
+            solid_wp, document_id=doc_id,
+            component_id=node.component or "unknown",
+            producer_node_id=node.id,
+            angle_deg=angle, axis="Z",
+        )
+        records = build_entity_records_from_delta(delta, document_id=doc_id)
+        with ctx.topology_transaction() as tx:
+            for rec in records:
+                tx.register_entity(rec)
+            tx.apply_delta(delta)
+        ctx.topology_events.append({
+            "event": "revolve_profile_topology_guaranteed",
+            "node_id": node.id, "face_count": len(delta.relations),
+        })
+    except Exception as exc:
+        ctx.topology_warnings.append({
+            "node_id": node.id, "phase": "revolve_profile_topology_guaranteed",
+            "error": str(exc),
+        })
 
     return {"body": f"solid:{cid}:{node.id}:body"}
 
@@ -326,7 +354,9 @@ def _try_produce_revolve_profile_topology(
         doc_id = ctx.document_id or "unknown"
         body_handle_id = f"solid:{node.component}:{node.id}:body"
         service = ShapeBindingService(ctx.object_store)
-        maps = service.build_body_maps(body_handle_id, solid)
+        # Unwrap CadQuery Workplane to raw TopoDS_Shape for OCP API
+        raw_shape = solid.val().wrapped if hasattr(solid, 'val') else solid
+        maps = service.build_body_maps(body_handle_id, raw_shape)
 
         if history_result is not None and history_result.generated_edge_faces:
             # ── History-aware path (PR 5) ──
@@ -586,7 +616,9 @@ def _try_produce_extrude_profile_topology_v2(
         doc_id = ctx.document_id or "unknown"
         body_handle_id = f"solid:{node.component}:{node.id}:body"
         service = ShapeBindingService(ctx.object_store)
-        maps = service.build_body_maps(body_handle_id, solid)
+        # Unwrap CadQuery Workplane to raw TopoDS_Shape for OCP API
+        raw_shape = solid.val().wrapped if hasattr(solid, 'val') else solid
+        maps = service.build_body_maps(body_handle_id, raw_shape)
 
         with ctx.topology_transaction() as tx:
             for edge_id, gen_faces in history_result.generated_edge_faces.items():

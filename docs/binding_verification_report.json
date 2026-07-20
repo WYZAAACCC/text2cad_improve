@@ -1,0 +1,58 @@
+{
+  "report": "binding_verification_report",
+  "total_entities": 7,
+  "with_locators": 0,
+  "verified": 0,
+  "failed": 0,
+  "entities": [
+    {
+      "persistent_id": "gct3_eh7LrdrlPMJRFSiCR66EqdUfBEmI7EQS_2L7DxVnCvE",
+      "entity_type": "face",
+      "semantic_role": "revolve/lateral_0",
+      "has_locator": false,
+      "binding_state": "legacy"
+    },
+    {
+      "persistent_id": "gct3_Je87Avpc6f8REFUzo11h3K6DIl2YKULIFKN2mhdG1ZQ",
+      "entity_type": "face",
+      "semantic_role": "revolve/lateral_1",
+      "has_locator": false,
+      "binding_state": "legacy"
+    },
+    {
+      "persistent_id": "gct3_hAz6ZgzxzNri2SJETqf7sDpgCiZGxV1s5HeYOoWhI7U",
+      "entity_type": "face",
+      "semantic_role": "revolve/lateral_2",
+      "has_locator": false,
+      "binding_state": "legacy"
+    },
+    {
+      "persistent_id": "gct3_QAnGC5MBUwWTSO2WdcVu2L35ckazE8FSTqVhXuNB8Fo",
+      "entity_type": "face",
+      "semantic_role": "revolve/lateral_3",
+      "has_locator": false,
+      "binding_state": "legacy"
+    },
+    {
+      "persistent_id": "gct3_H2qIOywq86mjNlsQfUmCWMBQ4nwel2HTx-ckyY5upjE",
+      "entity_type": "face",
+      "semantic_role": "revolve/lateral_4",
+      "has_locator": false,
+      "binding_state": "legacy"
+    },
+    {
+      "persistent_id": "gct3_NgqncWRiCIKCCYNXDyUfrkgpxNfFCbDEN6vAjdxBNx0",
+      "entity_type": "face",
+      "semantic_role": "revolve/lateral_5",
+      "has_locator": false,
+      "binding_state": "legacy"
+    },
+    {
+      "persistent_id": "gct3_qfGi4VRdgJjgX8u0v6ijm3MaABkZdToTk9Cw6uFoUH8",
+      "entity_type": "face",
+      "semantic_role": "revolve/lateral_6",
+      "has_locator": false,
+      "binding_state": "legacy"
+    }
+  ]
+}

@@ -117,3 +117,6 @@ class CanonicalGcadDocument(BaseModel):
 
     canonical_graph_hash: str
     raw_graph_hash: str | None = None
+
+    # V3 §2.1: design identity carried through from RawGcadDocument
+    design_identity: dict | None = None

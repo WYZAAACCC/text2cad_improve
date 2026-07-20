@@ -1,0 +1,21 @@
+{
+  "test_data": "E:\\text_to_cad_improve\\auto_detection_process\\app\\text-to-cad\\server\\output\\v3_e2e_20260720_060612",
+  "pipeline_ok": true,
+  "elapsed_s": 59.6,
+  "nodes": 18,
+  "total_entities": 3083,
+  "active_entities": 3015,
+  "v3_descriptors": 0,
+  "ops_with_reg": 0,
+  "checks": {
+    "Pipeline 畅通": true,
+    "IR 校验通过": true,
+    "STEP 生成": true,
+    "拓扑实体已追踪": true,
+    "Active 实体覆盖": true,
+    "Registry 有实体": true,
+    "Sidecar 有实体": true,
+    "两次重建均成功": true
+  },
+  "all_passed": true
+}

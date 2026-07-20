@@ -1,0 +1,69 @@
+{
+  "schema": "history_provider_matrix_v1",
+  "generated": "2026-07-21",
+  "operations": {
+    "extrude": {
+      "adapter": "PrismHistoryAdapter",
+      "capability": "full",
+      "first_shape": true,
+      "last_shape": true,
+      "degenerated": false,
+      "copy_mode": true,
+      "status": "defined"
+    },
+    "revolve": {
+      "adapter": "RevolveHistoryAdapter",
+      "capability": "full",
+      "first_shape": true,
+      "last_shape": true,
+      "degenerated": true,
+      "copy_mode": false,
+      "status": "defined"
+    },
+    "boolean_fuse": {
+      "adapter": "BooleanHistoryAdapter",
+      "capability": "full",
+      "multi_tool": true,
+      "target_tool_provenance": true,
+      "builder_report": true,
+      "status": "implemented"
+    },
+    "boolean_cut": {
+      "adapter": "BooleanHistoryAdapter",
+      "capability": "full",
+      "multi_tool": true,
+      "target_tool_provenance": true,
+      "builder_report": true,
+      "status": "implemented"
+    },
+    "fillet": {
+      "adapter": "FilletHistoryAdapter",
+      "capability": "partial",
+      "adjacent_face_modified": true,
+      "new_fillet_faces": true,
+      "status": "defined"
+    },
+    "chamfer": {
+      "adapter": "ChamferHistoryAdapter",
+      "capability": "partial",
+      "adjacent_face_modified": true,
+      "top_edge_tracking": true,
+      "status": "defined"
+    },
+    "shell": {
+      "adapter": "ThickSolidHistoryAdapter",
+      "capability": "partial",
+      "offset_face_tracking": true,
+      "removed_face_tracking": true,
+      "status": "defined"
+    },
+    "loft": {
+      "adapter": "LoftHistoryAdapter",
+      "capability": "partial",
+      "section_face_generation": true,
+      "first_shape": true,
+      "last_shape": true,
+      "status": "defined"
+    }
+  }
+}

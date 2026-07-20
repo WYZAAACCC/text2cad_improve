@@ -1,0 +1,146 @@
+[
+  {
+    "node_id": "n_sketch_disc",
+    "op": "sketch_profile.create_2d_sketch",
+    "entities_before": 0,
+    "entities_after": 0,
+    "delta": false,
+    "provider": "none"
+  },
+  {
+    "node_id": "n_polyline_disc",
+    "op": "sketch_profile.add_polyline",
+    "entities_before": 0,
+    "entities_after": 0,
+    "delta": false,
+    "provider": "none"
+  },
+  {
+    "node_id": "n_close_disc",
+    "op": "sketch_profile.close_profile",
+    "entities_before": 0,
+    "entities_after": 0,
+    "delta": false,
+    "provider": "none"
+  },
+  {
+    "node_id": "n_fillet_disc_hub_web_lower",
+    "op": "sketch_profile.fillet_sketch",
+    "entities_before": 0,
+    "entities_after": 0,
+    "delta": false,
+    "provider": "none"
+  },
+  {
+    "node_id": "n_fillet_disc_web_rim_lower",
+    "op": "sketch_profile.fillet_sketch",
+    "entities_before": 0,
+    "entities_after": 0,
+    "delta": false,
+    "provider": "none"
+  },
+  {
+    "node_id": "n_fillet_disc_web_rim_upper",
+    "op": "sketch_profile.fillet_sketch",
+    "entities_before": 0,
+    "entities_after": 0,
+    "delta": false,
+    "provider": "none"
+  },
+  {
+    "node_id": "n_fillet_disc_hub_web_upper",
+    "op": "sketch_profile.fillet_sketch",
+    "entities_before": 0,
+    "entities_after": 0,
+    "delta": false,
+    "provider": "none"
+  },
+  {
+    "node_id": "n_revolve_disc",
+    "op": "sketch_profile.revolve_profile",
+    "entities_before": 16,
+    "entities_after": 16,
+    "delta": false,
+    "provider": "none"
+  },
+  {
+    "node_id": "n_sketch_cutter",
+    "op": "sketch_profile.create_2d_sketch",
+    "entities_before": 16,
+    "entities_after": 16,
+    "delta": false,
+    "provider": "none"
+  },
+  {
+    "node_id": "n_polyline_cutter",
+    "op": "sketch_profile.add_polyline",
+    "entities_before": 16,
+    "entities_after": 16,
+    "delta": false,
+    "provider": "none"
+  },
+  {
+    "node_id": "n_close_cutter",
+    "op": "sketch_profile.close_profile",
+    "entities_before": 16,
+    "entities_after": 16,
+    "delta": false,
+    "provider": "none"
+  },
+  {
+    "node_id": "n_fillet_cutter_lobe_tops",
+    "op": "sketch_profile.fillet_sketch",
+    "entities_before": 16,
+    "entities_after": 16,
+    "delta": false,
+    "provider": "none"
+  },
+  {
+    "node_id": "n_fillet_cutter_flanks",
+    "op": "sketch_profile.fillet_sketch",
+    "entities_before": 16,
+    "entities_after": 16,
+    "delta": false,
+    "provider": "none"
+  },
+  {
+    "node_id": "n_fillet_cutter_neck_root",
+    "op": "sketch_profile.fillet_sketch",
+    "entities_before": 16,
+    "entities_after": 16,
+    "delta": false,
+    "provider": "none"
+  },
+  {
+    "node_id": "n_extrude_cutter",
+    "op": "sketch_profile.extrude_profile",
+    "entities_before": 68,
+    "entities_after": 68,
+    "delta": false,
+    "provider": "none"
+  },
+  {
+    "node_id": "n_place_disc",
+    "op": "composition.place_component",
+    "entities_before": 68,
+    "entities_after": 68,
+    "delta": false,
+    "provider": "none"
+  },
+  {
+    "node_id": "n_pattern_cutters",
+    "op": "composition.circular_pattern_component",
+    "entities_before": 68,
+    "entities_after": 68,
+    "delta": false,
+    "provider": "none"
+  },
+  {
+    "node_id": "n_bool_cut_all",
+    "op": "composition.boolean_cut",
+    "entities_before": 3083,
+    "entities_after": 3083,
+    "delta": false,
+    "provider": "none"
+  }
+]

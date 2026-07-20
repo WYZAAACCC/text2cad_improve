@@ -142,6 +142,153 @@ class TopologyRegistry:
             "history_provider": delta.history_provider,
         })
 
+    # ── V3 §2.9: Identity decision application ──
+
+    def apply_identity_decisions(
+        self,
+        decisions: list,
+        node_id: str,
+        component_id: str,
+    ) -> None:
+        """Apply domain-level identity decisions to the registry.
+
+        This is the V3 §2.9 entry point for kernel→identity layering.
+        Unlike apply_delta() which uses raw TopologyRelation, this accepts
+        IdentityDecision objects that carry full provenance (kernel edges,
+        policy IDs, orientation/location tracking).
+
+        Each IdentityDecision is dispatched to the appropriate internal
+        _apply_* method based on its identity_relation.
+
+        Args:
+            decisions: list[IdentityDecision] from IdentityTransferPolicy.
+            node_id: Producer node ID for index updates.
+            component_id: Component context.
+        """
+        for decision in decisions:
+            rel = decision.identity_relation.value if hasattr(decision, "identity_relation") else str(decision.identity_relation)
+
+            if rel in ("unchanged", "reoriented", "relocated", "modified_same_identity"):
+                for source_id in decision.source_pids:
+                    rec = self._entities.get(source_id)
+                    if rec is None:
+                        continue
+                    rec.generation += 1
+                    rec.resolution_method = "kernel_modified"
+                    # Record kernel edges if available
+                    if decision.provenance_edges:
+                        rec.evidence.append({
+                            "event": "identity_decision",
+                            "relation": rel,
+                            "node_id": node_id,
+                            "kernel_edges": [
+                                {"source": e.source_pid, "result": e.result_occurrence_key,
+                                 "relation": e.kernel_relation.value}
+                                for e in decision.provenance_edges
+                            ],
+                        })
+                    self._node_index[node_id]["modified"].append(source_id)
+
+            elif rel == "generated_new_identity":
+                for key in decision.result_keys:
+                    if key not in self._entities:
+                        from seekflow_engineering_tools.generative_cad.topology.models import (
+                            TopologyEntityRecord,
+                        )
+                        rec = TopologyEntityRecord(
+                            persistent_id=key,
+                            entity_type="face",
+                            component_id=component_id,
+                            owner_body_handle_id="",
+                            producer_node_id=node_id,
+                            semantic_role=key,
+                            resolution_method="kernel_generated",
+                        )
+                        self.register_entity(rec)
+
+            elif rel == "generated_from_tool":
+                for key in decision.result_keys:
+                    if key not in self._entities:
+                        from seekflow_engineering_tools.generative_cad.topology.models import (
+                            TopologyEntityRecord,
+                        )
+                        rec = TopologyEntityRecord(
+                            persistent_id=key,
+                            entity_type="face",
+                            component_id=component_id,
+                            owner_body_handle_id="",
+                            producer_node_id=node_id,
+                            semantic_role=key,
+                            resolution_method="kernel_generated",
+                        )
+                        self.register_entity(rec)
+                    # Mark tool sources as consumed
+                    for source_id in decision.source_pids:
+                        if source_id in self._entities:
+                            self._entities[source_id].evidence.append({
+                                "event": "tool_consumed",
+                                "node_id": node_id,
+                                "result_key": key,
+                            })
+
+            elif rel == "split":
+                fake_rel = TopologyRelation(relation="split",
+                    result_entity_keys=decision.result_keys,
+                    source_ids=decision.source_pids)
+                fake_delta = TopologyDelta(node_id=node_id, component_id=component_id)
+                for source_id in decision.source_pids:
+                    self._apply_split(source_id, fake_rel, fake_delta)
+                    # Link each child
+                    for key in decision.result_keys:
+                        if key in self._entities and source_id in self._entities:
+                            if key not in self._entities[source_id].descendant_ids:
+                                self._entities[source_id].descendant_ids.append(key)
+                            if source_id not in self._entities[key].ancestor_ids:
+                                self._entities[key].ancestor_ids.append(source_id)
+
+            elif rel in ("merge", "repartition"):
+                for source_id in decision.source_pids:
+                    if source_id in self._entities:
+                        rec = self._entities[source_id]
+                        rec.status = "superseded"
+                        rec.current_locator = None
+                        rec.resolution_method = "set_expansion"
+                for key in decision.result_keys:
+                    if key not in self._entities:
+                        from seekflow_engineering_tools.generative_cad.topology.models import (
+                            TopologyEntityRecord,
+                        )
+                        rec = TopologyEntityRecord(
+                            persistent_id=key,
+                            entity_type="face",
+                            component_id=component_id,
+                            owner_body_handle_id="",
+                            producer_node_id=node_id,
+                            semantic_role=key,
+                        )
+                        self.register_entity(rec)
+                    # Link ancestors
+                    for source_id in decision.source_pids:
+                        if source_id in self._entities:
+                            if source_id not in self._entities[key].ancestor_ids:
+                                self._entities[key].ancestor_ids.append(source_id)
+                            if key not in self._entities[source_id].descendant_ids:
+                                self._entities[source_id].descendant_ids.append(key)
+
+            elif rel == "consumed":
+                for source_id in decision.source_pids:
+                    if source_id in self._entities:
+                        self._entities[source_id].status = "deleted"
+                        self._entities[source_id].current_locator = None
+                        self._node_index[node_id]["deleted"].append(source_id)
+
+            elif rel == "deleted":
+                for source_id in decision.source_pids:
+                    if source_id in self._entities:
+                        self._entities[source_id].status = "deleted"
+                        self._entities[source_id].current_locator = None
+                        self._node_index[node_id]["deleted"].append(source_id)
+
     def _register_from_relation(
         self, key: str, relation: TopologyRelation, delta: TopologyDelta,
     ) -> None:

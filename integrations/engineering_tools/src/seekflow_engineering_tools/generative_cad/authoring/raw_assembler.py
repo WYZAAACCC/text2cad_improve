@@ -19,6 +19,12 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any, DefaultDict
 
+from seekflow_engineering_tools.generative_cad.topology.design_identity import (
+    DesignIdentity,
+    FeatureIdentityReconciler,
+    IdentitySource,
+)
+
 from seekflow_engineering_tools.generative_cad.authoring.schemas import (
     FeatureSequenceDraft,
     NodeParamsDraft,
@@ -114,6 +120,7 @@ def assemble_raw_gcad_document(
     dialect_registry,  # DialectRegistry
     document_id: str | None = None,
     units: str = "mm",
+    design_identity: DesignIdentity | None = None,
 ) -> RawAssemblyResult:
     """Assemble a RawGcadDocument dict from staged authoring outputs.
 
@@ -125,10 +132,21 @@ def assemble_raw_gcad_document(
       - node op_version, outputs, inputs (typed wiring), phase
       - pairwise boolean_union expansion for 3+ assembly solids
 
+    design_identity (V3 §2.1): When provided and is_strong=True,
+    enables strong persistent topology claims across rebuilds.
+    When None or is_strong=False, the system runs in ephemeral mode.
+
     Raises AssemblyError on unrecoverable wiring failures.
     """
     if document_id is None:
         document_id = f"gcad-{uuid.uuid4().hex[:12]}"
+
+    if design_identity is None:
+        design_identity = DesignIdentity(
+            design_id=document_id,
+            run_id=uuid.uuid4().hex[:8],
+            identity_source=IdentitySource.EPHEMERAL_GENERATED,
+        )
 
     # ── Build selected_dialects ──
     selected_dialects = []
@@ -179,6 +197,13 @@ def assemble_raw_gcad_document(
             "params": nd.params if nd else {},
             "required": node_plan.required,
             "degradation_policy": node_plan.degradation_policy,
+            # V3 §2.2: inject stable feature_uid for persistent topology
+            "_meta": {
+                "feature_uid": FeatureIdentityReconciler.generate_feature_uid(
+                    component_uid=node_plan.component_id,
+                    operation_kind=node_plan.op,
+                ),
+            },
         }
         leaf_nodes.append(node)
 
@@ -238,6 +263,12 @@ def assemble_raw_gcad_document(
         "selected_dialects": selected_dialects,
         "components": components,
         "nodes": all_nodes,
+        "design_identity": {  # V3 §2.1: embedded for downstream consumers
+            "design_id": design_identity.design_id,
+            "revision_id": design_identity.revision_id,
+            "run_id": design_identity.run_id,
+            "identity_source": design_identity.identity_source.value,
+        },
         "constraints": {
             "require_step_file": True,
             "require_metadata_sidecar": True,

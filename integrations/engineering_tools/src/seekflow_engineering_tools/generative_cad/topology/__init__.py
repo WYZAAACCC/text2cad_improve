@@ -24,11 +24,15 @@ from seekflow_engineering_tools.generative_cad.topology.fingerprint import (
     FaceFingerprint,
 )
 from seekflow_engineering_tools.generative_cad.topology.history_wrappers import (
+    BooleanBuilderReport,
     HistoryAwareShapeResult,
     KernelHistoryAdapter,
     KernelHistorySnapshot,
     history_aware_extrude,
     history_aware_revolve,
+    history_aware_boolean_fuse,
+    history_aware_boolean_cut,
+    history_aware_boolean_multi_tool,
 )
 from seekflow_engineering_tools.generative_cad.topology.ids import (
     PersistentTopoId,
@@ -101,6 +105,50 @@ from seekflow_engineering_tools.generative_cad.topology.validation import (
     validate_topology_reference,
     validate_topology_runtime_integrity,
 )
+from seekflow_engineering_tools.generative_cad.topology.design_identity import (
+    DesignIdentity,
+    FeatureIdentity,
+    FeatureIdentityReconciler,
+    IdentitySource,
+)
+from seekflow_engineering_tools.generative_cad.topology.kernel_identity import (
+    IdentityDecision,
+    IdentityRelation,
+    IdentityTransferPolicy,
+    KernelHistoryEdge,
+    KernelRelation,
+)
+from seekflow_engineering_tools.generative_cad.topology.trust_certificate import (
+    TopologyTrustCertificate,
+    TrustLevel,
+    trust_meets_quality as trust_certificate_meets_quality,
+)
+from seekflow_engineering_tools.generative_cad.topology.staging import (
+    BuildCommitBundle,
+    StagedObjectStore,
+)
+from seekflow_engineering_tools.generative_cad.topology.operation_adapters import (
+    BooleanHistoryAdapter,
+    ChamferHistoryAdapter,
+    FilletHistoryAdapter,
+    LoftHistoryAdapter,
+    OperationHistoryAdapter,
+    PrismHistoryAdapter,
+    RevolveHistoryAdapter,
+    SweepHistoryAdapter,
+    ThickSolidHistoryAdapter,
+)
+from seekflow_engineering_tools.generative_cad.topology.pattern_identity import (
+    PatternIdentityLedger,
+    PatternIdentityPolicy,
+    PatternInstance,
+)
+from seekflow_engineering_tools.generative_cad.topology.sidecar_canonical import (
+    canonicalize_entities,
+    canonicalize_float,
+    canonicalize_sidecar,
+    compute_integrity_hash,
+)
 
 __all__ = [
     # IDs
@@ -145,6 +193,10 @@ __all__ = [
     "KernelHistorySnapshot",
     "history_aware_extrude",
     "history_aware_revolve",
+    "history_aware_boolean_fuse",
+    "history_aware_boolean_cut",
+    "history_aware_boolean_multi_tool",
+    "BooleanBuilderReport",
     # Semantic naming (Phase 1 + 2)
     "name_box_faces",
     "name_cylinder_faces",
@@ -171,4 +223,36 @@ __all__ = [
     "validate_topology_reference",
     "validate_topology_runtime_integrity",
     "validate_topology_artifact_proof",
+    # Design identity (V3 supplementary spec §2.1, §2.2)
+    "DesignIdentity",
+    "FeatureIdentity",
+    "FeatureIdentityReconciler",
+    "IdentitySource",
+    # Kernel identity layering (V3 supplementary spec §2.5, §2.9)
+    "IdentityDecision",
+    "IdentityRelation",
+    "IdentityTransferPolicy",
+    "KernelHistoryEdge",
+    "KernelRelation",
+    # Trust certificate (V3 supplementary spec §2.11)
+    "TopologyTrustCertificate",
+    "TrustLevel",
+    "trust_certificate_meets_quality",
+    # Atomic staging (V3 supplementary spec §2.13)
+    "BuildCommitBundle",
+    "StagedObjectStore",
+    # Operation-specific history adapters (V3 supplementary spec §2.3, §2.4)
+    "BooleanHistoryAdapter",
+    "ChamferHistoryAdapter",
+    "FilletHistoryAdapter",
+    "LoftHistoryAdapter",
+    "OperationHistoryAdapter",
+    "PrismHistoryAdapter",
+    "RevolveHistoryAdapter",
+    "SweepHistoryAdapter",
+    "ThickSolidHistoryAdapter",
+    # Pattern identity (V3 supplementary spec §2.6, §2.7)
+    "PatternIdentityLedger",
+    "PatternIdentityPolicy",
+    "PatternInstance",
 ]

@@ -159,6 +159,9 @@ class RawGcadDocument(BaseModel):
 
     llm_validation_hints: dict[str, Any] = Field(default_factory=dict)
 
+    # V3 §2.1: embedded design identity (set by raw_assembler, never by LLM)
+    design_identity: dict | None = None
+
     @model_validator(mode="after")
     def validate_basic(self):
         if not self.document_id.strip():

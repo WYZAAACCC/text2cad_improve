@@ -1,0 +1,66 @@
+{
+  "test_data": "E:\\text_to_cad_improve\\auto_detection_process\\app\\text-to-cad\\server\\output\\v3_e2e_20260720_060612",
+  "pipeline_ok": true,
+  "elapsed_s": 57.2,
+  "total_entities": 3083,
+  "active_count": 3015,
+  "deleted_count": 68,
+  "producers": [
+    "n_revolve_disc",
+    "n_extrude_cutter",
+    "n_bool_cut_all"
+  ],
+  "producer_counts": {
+    "n_revolve_disc": 16,
+    "n_extrude_cutter": 52,
+    "n_bool_cut_all": 3015
+  },
+  "by_generation": {
+    "0": 3080,
+    "1": 3
+  },
+  "by_ancestor_count": {
+    "0": 68,
+    "1": 3015
+  },
+  "by_descendant_count": {
+    "3015": 1,
+    "0": 3082
+  },
+  "checks": {
+    "多 producer 共存 (时序累积)": {
+      "ok": true,
+      "detail": "3 producers: ['n_revolve_disc', 'n_extrude_cutter', 'n_bool_cut_all']"
+    },
+    "非单一操作产生 (非全部重命名)": {
+      "ok": true,
+      "detail": "3 distinct producers"
+    },
+    "有 active 实体": {
+      "ok": true,
+      "detail": "3015 active"
+    },
+    "Registry 有实体": {
+      "ok": true,
+      "detail": "3083 entities"
+    },
+    "存在非零 generation (修改被追踪)": {
+      "ok": true,
+      "detail": "generation distribution: {0: 3080, 1: 3}"
+    },
+    "存在 ancestor 链接 (lineage DAG)": {
+      "ok": true,
+      "detail": "ancestor distribution: {0: 68, 1: 3015}"
+    },
+    "存在 descendant 链接": {
+      "ok": true,
+      "detail": "descendant distribution: {3015: 1, 0: 3082}"
+    },
+    "存在被修改的 entity (非全部新建)": {
+      "ok": true,
+      "detail": "entities with gen>0: 3"
+    }
+  },
+  "all_passed": true,
+  "verdict": "时序正确的持久化拓扑命名: 实体在操作间正确累积、继承和修改"
+}

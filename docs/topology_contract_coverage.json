@@ -1,0 +1,19 @@
+{
+  "schema": "topology_contract_coverage_v1",
+  "generated": "2026-07-21",
+  "prs": [
+    {"id": "PR-0", "name": "Failure tests", "contracts_covered": ["document_id_churn", "feature_stable_id_mutable", "design_identity_missing", "sidecar_lineage_id"]},
+    {"id": "PR-1", "name": "Design + Feature Identity", "contracts_covered": ["design_id_stability", "feature_uid_isolation", "ephemeral_mode_declaration"]},
+    {"id": "PR-2", "name": "Kernel/Identity Layering", "contracts_covered": ["kernel_relation_purity", "identity_decision_domain", "tool_face_generated_from_tool", "trust_certificate_multi_dimension"]},
+    {"id": "PR-3", "name": "Binding + Transaction", "contracts_covered": ["fingerprint_fail_closed", "staged_object_store", "build_commit_bundle_validate_before_commit"]},
+    {"id": "PR-4", "name": "Operation Adapters", "contracts_covered": ["kernel_tracked_entity_scope", "derived_aggregate_scope", "first_shape_last_shape", "degenerated_edge_tracking"]},
+    {"id": "PR-5", "name": "Pattern Identity", "contracts_covered": ["ordinal_policy", "angular_anchor_policy", "explicit_instance_uid_policy", "symmetric_equivalence_set"]},
+    {"id": "PR-6", "name": "Multi-tool Boolean", "contracts_covered": ["per_tool_history_tracking", "builder_report_recording", "degradation_tier_tracking"]},
+    {"id": "PR-7", "name": "Sidecar Canonical", "contracts_covered": ["entity_ordering", "float_quantization", "integrity_hash_chain", "byte_identical_output"]},
+    {"id": "PR-8", "name": "Cross-backend Gate", "contracts_covered": ["required_sets_100_percent", "cae_critical_purposes", "fuzzy_name_match_forbidden"]},
+    {"id": "PR-9", "name": "E2E Acceptance", "contracts_covered": ["identical_rebuild_stability", "boolean_cut_history", "sidecar_roundtrip", "registry_coverage"]}
+  ],
+  "total_contracts": 36,
+  "covered_contracts": 36,
+  "coverage_ratio": 1.0
+}

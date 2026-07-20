@@ -379,7 +379,21 @@ def handle_boolean_cut(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, st
                 f"Tool={_fmt_vol(pre.b_volume_mm3)}. "
                 f"Clearance={_fmt_clr(pre.clearance_mm)}."
             )
-    return _finish_boolean_op(node, ctx, result, "boolean_cut")
+    # V3 §2.8: capture OCCT history for topology delta
+    history_result = None
+    try:
+        from seekflow_engineering_tools.generative_cad.topology.history_wrappers import (
+            history_aware_boolean_cut,
+        )
+        history_result = history_aware_boolean_cut(
+            target.val().wrapped, tool.val().wrapped,
+            input_target_faces=[f.wrapped for f in target.faces().vals()],
+            input_tool_faces=[f.wrapped for f in tool.faces().vals()],
+        )
+    except Exception:
+        pass
+    return _finish_boolean_op(node, ctx, result, "boolean_cut",
+                              history_result=history_result)
 
 
 def _try_produce_boolean_topology(
@@ -401,8 +415,72 @@ def _try_produce_boolean_topology(
     try:
         doc_id = ctx.document_id or "unknown"
 
-        # Build delta: use OCCT history when available, fall back to semantic naming
+        # Build delta: hybrid approach.
+        # 1. Use OCCT history to UPDATE existing entities (modified/deleted) — always.
+        # 2. Use OCCT history for generated entities ONLY if count is reasonable.
+        # 3. Always run semantic naming for complete face coverage on result body.
+        _total_gen = 0
         if history_result is not None:
+            _total_gen = sum(len(v) for v in history_result.generated_faces.values())
+
+        # Step 1: Update existing entities from OCCT history (modified + deleted)
+        # Also build ancestor_pids list BEFORE entities are deleted (for later linking)
+        ancestor_pids = []
+        if history_result is not None:
+            try:
+                with ctx.topology_transaction() as tx:
+                    reg = tx.staged
+
+                    # Collect existing active face PIDs for ancestor linking
+                    ancestor_pids = [pid for pid, rec in reg._entities.items()
+                                     if rec.status == "active" and rec.entity_type == "face"]
+
+                    # Collect existing PIDs grouped by producer
+                    prev_pids = {}
+                    for pid, rec in reg._entities.items():
+                        if rec.status == "active" and rec.entity_type == "face":
+                            prev_pids.setdefault(rec.producer_node_id, []).append(pid)
+
+                    # Modified faces → mark target entities as modified
+                    mod_i = 0
+                    for face_key in history_result.modified_faces:
+                        for pn in sorted(prev_pids):
+                            if prev_pids[pn]:
+                                pid = prev_pids[pn][mod_i % len(prev_pids[pn])]
+                                rec = reg._entities.get(pid)
+                                if rec:
+                                    rec.generation += 1
+                                    rec.resolution_method = "kernel_modified"
+                                    rec.evidence.append({
+                                        "event": "boolean_modified",
+                                        "node_id": node.id, "face_key": face_key,
+                                    })
+                                mod_i += 1
+                                break
+
+                    # Deleted faces → mark tool entities as deleted
+                    del_i = 0
+                    for del_key in history_result.deleted_entities:
+                        for pn in sorted(prev_pids):
+                            if prev_pids[pn]:
+                                pid = prev_pids[pn].pop(0)
+                                rec = reg._entities.get(pid)
+                                if rec:
+                                    rec.status = "deleted"
+                                    rec.current_locator = None
+                                    rec.evidence.append({
+                                        "event": "boolean_deleted",
+                                        "node_id": node.id, "del_key": del_key,
+                                    })
+                                del_i += 1
+                                break
+                        if del_i >= 500:
+                            break
+            except Exception:
+                pass  # history update is best-effort; semantic naming is the fallback
+
+        # Step 2+3: Always produce semantic naming delta for complete coverage
+        if history_result is not None and _total_gen <= 500 and _total_gen > 0:
             # V3: Build delta from actual OCCT boolean history
             # (generated_faces, modified_faces, deleted_entities)
             from seekflow_engineering_tools.generative_cad.topology.models import (
@@ -462,6 +540,17 @@ def _try_produce_boolean_topology(
             for rec in records:
                 tx.register_entity(rec)
             tx.apply_delta(delta)
+
+            # V3: link newly created entities to existing ones (ancestor/descendant)
+            reg = tx.staged
+            if ancestor_pids:
+                for pid, rec in reg._entities.items():
+                    if rec.producer_node_id == node.id and not rec.ancestor_ids:
+                        rec.ancestor_ids = ancestor_pids[:1]
+                        for aid in rec.ancestor_ids:
+                            ancestor = reg._entities.get(aid)
+                            if ancestor and pid not in ancestor.descendant_ids:
+                                ancestor.descendant_ids.append(pid)
         ev = {
             "event": "boolean_topology_produced",
             "node_id": node.id, "op": op_name,
@@ -484,10 +573,12 @@ def _try_produce_boolean_topology(
         })
 
 
-def _finish_boolean_op(node, ctx, solid, op_name: str) -> dict[str, str]:
+def _finish_boolean_op(node, ctx, solid, op_name: str,
+                      history_result: Any = None) -> dict[str, str]:
     """Store solid + produce topology delta, then return result map."""
     body_id = _store_solid(node, ctx, solid)
-    _try_produce_boolean_topology(node=node, ctx=ctx, solid=solid, op_name=op_name)
+    _try_produce_boolean_topology(node=node, ctx=ctx, solid=solid, op_name=op_name,
+                                   history_result=history_result)
     return {"body": body_id}
 
 

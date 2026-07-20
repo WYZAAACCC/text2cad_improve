@@ -1,0 +1,16 @@
+{
+  "test_timestamp": "2026-07-21T04:53:00",
+  "pipeline_ok": true,
+  "elapsed_s": 87.8,
+  "nodes": 18,
+  "final_entity_count": 3083,
+  "checks": {
+    "pipeline_ok": true,
+    "step_file_exists": true,
+    "step_size_bytes": 15052943,
+    "entities_tracked": true,
+    "generation_gt_0": true,
+    "ancestor_links_exist": true,
+    "descendant_links_exist": true
+  }
+}
