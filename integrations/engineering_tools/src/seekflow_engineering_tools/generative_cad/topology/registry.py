@@ -152,6 +152,8 @@ class TopologyRegistry:
         decisions: list,
         node_id: str,
         component_id: str,
+        *,
+        owner_body_handle_id: str = "",
     ) -> None:
         """Apply domain-level identity decisions to the registry.
 
@@ -167,6 +169,7 @@ class TopologyRegistry:
             decisions: list[IdentityDecision] from IdentityTransferPolicy.
             node_id: Producer node ID for index updates.
             component_id: Component context.
+            owner_body_handle_id: Body handle for newly created entities.
         """
         for decision in decisions:
             rel = decision.identity_relation.value if hasattr(decision, "identity_relation") else str(decision.identity_relation)
@@ -202,11 +205,11 @@ class TopologyRegistry:
                             persistent_id=key,
                             entity_type="face",
                             component_id=component_id,
-                            owner_body_handle_id="",
+                            owner_body_handle_id=owner_body_handle_id or "",
                             producer_node_id=node_id,
                             semantic_role=key,
                             resolution_method="kernel_generated",
-                            # ── V3 fields (Phase 1) ──
+                            # ── V3 fields (Phase 1+11) ──
                             lifecycle=EntityLifecycle.ACTIVE,
                             binding_state=BindingState.BOUND,
                             proof_class=ProofClass.EXACT_GENERATED_HISTORY,
@@ -223,11 +226,11 @@ class TopologyRegistry:
                             persistent_id=key,
                             entity_type="face",
                             component_id=component_id,
-                            owner_body_handle_id="",
+                            owner_body_handle_id=owner_body_handle_id or "",
                             producer_node_id=node_id,
                             semantic_role=key,
                             resolution_method="kernel_generated",
-                            # ── V3 fields (Phase 1) ──
+                            # ── V3 fields (Phase 1+11) ──
                             lifecycle=EntityLifecycle.ACTIVE,
                             binding_state=BindingState.BOUND,
                             proof_class=ProofClass.EXACT_GENERATED_HISTORY,
@@ -273,10 +276,10 @@ class TopologyRegistry:
                             persistent_id=key,
                             entity_type="face",
                             component_id=component_id,
-                            owner_body_handle_id="",
+                            owner_body_handle_id=owner_body_handle_id or "",
                             producer_node_id=node_id,
                             semantic_role=key,
-                            # ── V3 fields (Phase 1) ──
+                            # ── V3 fields (Phase 1+11) ──
                             lifecycle=EntityLifecycle.ACTIVE,
                             binding_state=BindingState.BOUND,
                             proof_class=ProofClass.EXACT_MODIFIED_HISTORY,

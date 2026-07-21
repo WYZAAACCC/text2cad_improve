@@ -277,6 +277,11 @@ def _try_produce_extrude_topology_v2(
     try:
         doc_id = ctx.document_id or "unknown"
         body_handle_id = f"solid:{node.component}:{node.id}:body"
+        # ── V3 Phase 9: stable feature_uid from design identity context ──
+        fuid = None
+        dctx = getattr(ctx, 'design_identity_context', None)
+        if dctx is not None:
+            fuid = dctx.feature_stable_id_for(node.id, component_id=node.component or "")
         service = ShapeBindingService(ctx.object_store)
         maps = service.build_body_maps(body_handle_id, solid)
 
@@ -289,7 +294,7 @@ def _try_produce_extrude_topology_v2(
                     role = f"extrude/side.from/{edge_id}"
                     pid = _make_compact_key(
                         doc_id, node.component or "unknown", node.id,
-                        "face", role,
+                        "face", role, feature_uid=fuid,
                     )
                     locator = service.locate_subshape(maps, face, "face")
                     rec = TopologyEntityRecord(

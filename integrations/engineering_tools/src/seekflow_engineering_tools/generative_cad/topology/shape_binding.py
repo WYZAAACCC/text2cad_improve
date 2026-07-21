@@ -367,3 +367,58 @@ class ShapeBindingService:
             return mapping.get(orient_val, "forward")  # type: ignore[return-value]
         except Exception:
             return "forward"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# V3 Phase 10: Operation input topology snapshot
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def build_operation_input_snapshot(
+    body: Any,
+    body_handle_id: str,
+    registry: Any,
+    binding_service: "ShapeBindingService",
+) -> dict[str, tuple]:
+    """Build {source_pid: (TopoDS_Face, locator_dict)} binding table.
+
+    For an input body just before a Boolean/cut operation, maps every active
+    face PID in the registry back to its actual OCP TopoDS_Face instance.
+    This enables the OCCT history wrapper to return PID-keyed results
+    instead of positional string keys like "target_face_0".
+
+    Args:
+        body: The input body (CadQuery Workplane or raw TopoDS_Shape).
+        body_handle_id: ObjectStore handle ID for this body.
+        registry: TopologyRegistry with entity records.
+        binding_service: ShapeBindingService for building maps.
+
+    Returns:
+        dict mapping persistent_id → (TopoDS_Face, current_locator_dict).
+        Empty dict if registry has no matching entities.
+    """
+    # Unwrap CadQuery Workplane to raw TopoDS_Shape
+    raw = body
+    if hasattr(raw, 'val') and callable(raw.val):
+        raw = raw.val()
+    raw = getattr(raw, "wrapped", raw)
+
+    maps = binding_service.build_body_maps(body_handle_id, raw)
+    bindings: dict[str, tuple] = {}
+
+    for pid, rec in registry._entities.items():
+        if rec.status != "active" or rec.entity_type != "face":
+            continue
+        if rec.owner_body_handle_id != body_handle_id:
+            continue
+        loc = rec.current_locator
+        if loc is None:
+            continue
+        pos = loc.get("indexed_map_position")
+        if pos is None:
+            continue
+        face = maps.face_map.get(pos)
+        if face is not None:
+            bindings[pid] = (face, loc)
+
+    return bindings

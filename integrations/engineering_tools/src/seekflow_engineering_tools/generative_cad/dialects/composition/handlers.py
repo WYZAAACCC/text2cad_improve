@@ -575,16 +575,31 @@ def handle_boolean_cut(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, st
                 f"Tool={_fmt_vol(pre.b_volume_mm3)}. "
                 f"Clearance={_fmt_clr(pre.clearance_mm)}."
             )
-    # V3 §2.8: capture OCCT history for topology delta
+    # V3 Phase 10: capture OCCT history with PID-keyed source snapshots
     history_result = None
     try:
         from seekflow_engineering_tools.generative_cad.topology.history_wrappers import (
             history_aware_boolean_cut,
         )
+        from seekflow_engineering_tools.generative_cad.topology.shape_binding import (
+            ShapeBindingService, build_operation_input_snapshot,
+        )
+        service = ShapeBindingService(ctx.object_store)
+        # Build PID→face binding tables for target and tool
+        target_handle = f"solid:{node.component}:{node.inputs[0].producer_node}:body"
+        tool_handle = f"solid:{node.component}:{node.inputs[1].producer_node}:body"
+        target_pids = build_operation_input_snapshot(
+            target.val().wrapped, target_handle, ctx.topology_registry, service,
+        )
+        tool_pids = build_operation_input_snapshot(
+            tool.val().wrapped, tool_handle, ctx.topology_registry, service,
+        )
         history_result = history_aware_boolean_cut(
             target.val().wrapped, tool.val().wrapped,
             input_target_faces=[f.wrapped for f in target.faces().vals()],
             input_tool_faces=[f.wrapped for f in tool.faces().vals()],
+            input_target_pids=target_pids,
+            input_tool_pids=tool_pids,
         )
     except Exception:
         pass
@@ -680,21 +695,86 @@ def _try_produce_boolean_topology(
             for rec in records:
                 tx.register_entity(rec)
             tx.apply_delta(delta)
-        ev = {
-            "event": "boolean_topology_produced",
-            "node_id": node.id, "op": op_name,
-            "face_count": len(delta.relations),
-            "method": "occt_history" if history_result is not None else "semantic",
-        }
-        if history_result is not None:
-            ev["deleted_count"] = len(history_result.deleted_entities)
-            ev["generated_count"] = sum(
-                len(v) for v in history_result.generated_faces.values()
-            )
-            ev["modified_count"] = sum(
-                len(v) for v in history_result.modified_faces.values()
-            )
-        ctx.topology_events.append(ev)
+
+            # ── V3 Phase 11: supplementary identity decisions from kernel history ──
+            if history_result is not None and history_result.generated_faces:
+                try:
+                    from seekflow_engineering_tools.generative_cad.topology.kernel_identity import (
+                        IdentityTransferPolicy, KernelHistoryEdge, KernelRelation,
+                    )
+                    decisions = []
+                    # Generated faces → GENERATED_FROM_TOOL or GENERATED_NEW_IDENTITY
+                    for src_key, gen_faces in history_result.generated_faces.items():
+                        for fi, _face in enumerate(gen_faces):
+                            result_key = f"bool_gen:{node.id}:{src_key}:{fi}"
+                            is_tool = str(src_key).startswith("gct3_") and (
+                                "tool" in str(src_key).lower()
+                                or "cutter" in str(src_key).lower()
+                            ) or src_key.startswith("tool_")
+                            edge = KernelHistoryEdge(
+                                source_pid=str(src_key),
+                                result_occurrence_key=result_key,
+                                kernel_relation=KernelRelation.GENERATED,
+                            )
+                            decision = IdentityTransferPolicy.decide(
+                                [edge],
+                                source_role="tool" if is_tool else "target",
+                                operation_kind=op_name,
+                                entity_dimension="face",
+                            )
+                            decisions.append(decision)
+                    # Modified faces → MODIFIED_SAME_IDENTITY
+                    for src_key, mod_faces in history_result.modified_faces.items():
+                        edge = KernelHistoryEdge(
+                            source_pid=str(src_key),
+                            result_occurrence_key=f"bool_mod:{node.id}:{src_key}",
+                            kernel_relation=KernelRelation.MODIFIED,
+                        )
+                        decision = IdentityTransferPolicy.decide(
+                            [edge],
+                            source_role="target",
+                            operation_kind=op_name,
+                            entity_dimension="face",
+                        )
+                        decisions.append(decision)
+                    # Deleted entities → DELETED/CONSUMED
+                    for del_key in history_result.deleted_entities:
+                        is_tool = str(del_key).startswith("gct3_") and (
+                            "tool" in str(del_key).lower()
+                            or "cutter" in str(del_key).lower()
+                        ) or del_key.startswith("tool_")
+                        edge = KernelHistoryEdge(
+                            source_pid=str(del_key),
+                            result_occurrence_key="",
+                            kernel_relation=KernelRelation.REMOVED,
+                        )
+                        decision = IdentityTransferPolicy.decide(
+                            [edge],
+                            source_role="tool" if is_tool else "target",
+                            operation_kind=op_name,
+                            entity_dimension="face",
+                        )
+                        decisions.append(decision)
+
+                    if decisions:
+                        tx.staged.apply_identity_decisions(
+                            decisions,
+                            node_id=node.id,
+                            component_id=node.component or "unknown",
+                        )
+                except Exception:
+                    pass  # identity decisions are supplementary; delta is authoritative
+
+        ctx.record_topology_event(
+            event="boolean_topology_produced",
+            node_id=node.id,
+            op=op_name,
+            face_count=len(delta.relations),
+            method="occt_history" if history_result is not None else "semantic",
+            deleted_count=len(history_result.deleted_entities) if history_result is not None else 0,
+            generated_count=sum(len(v) for v in history_result.generated_faces.values()) if history_result is not None else 0,
+            modified_count=sum(len(v) for v in history_result.modified_faces.values()) if history_result is not None else 0,
+        )
     except Exception as exc:
         ctx.topology_warnings.append({
             "node_id": node.id, "phase": "boolean_topology", "op": op_name,

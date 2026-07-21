@@ -489,6 +489,8 @@ def history_aware_boolean_cut(
     *,
     input_target_faces: list[Any] | None = None,
     input_tool_faces: list[Any] | None = None,
+    input_target_pids: dict[str, Any] | None = None,
+    input_tool_pids: dict[str, Any] | None = None,
 ) -> HistoryAwareShapeResult | None:
     """OCCT boolean cut with full history capture.
 
@@ -568,6 +570,30 @@ def history_aware_boolean_cut(
                     if gen_shapes:
                         generated_faces[key] = gen_shapes
                     # PR final: record count, not index list (actual shapes in generated_faces)
+
+        # ── V3 Phase 10: PID-keyed history ──
+        if input_target_pids:
+            for pid, face in input_target_pids.items():
+                if adapter.is_deleted(face):
+                    deleted.append(pid)
+                    history.deleted.append(pid)
+                else:
+                    mod_shapes = adapter.modified(face)
+                    if mod_shapes:
+                        modified_faces[pid] = mod_shapes
+                    gen_shapes = adapter.generated(face)
+                    if gen_shapes:
+                        generated_faces[pid] = gen_shapes
+
+        if input_tool_pids:
+            for pid, face in input_tool_pids.items():
+                if adapter.is_deleted(face):
+                    deleted.append(pid)
+                    history.deleted.append(pid)
+                else:
+                    gen_shapes = adapter.generated(face)
+                    if gen_shapes:
+                        generated_faces[pid] = gen_shapes
 
         return HistoryAwareShapeResult(
             result_shape=result,

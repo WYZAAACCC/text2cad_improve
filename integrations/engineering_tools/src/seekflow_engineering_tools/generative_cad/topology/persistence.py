@@ -299,3 +299,62 @@ def rebind_after_restore(
         "requires_rebuild": unresolved > 0,
         "entities_with_descriptor": with_descriptor,  # V3: how many have recoverable identities
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# V3 Phase 12: Topology coverage report
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def write_topology_coverage_report(
+    registry: TopologyRegistry,
+    path: Path,
+) -> dict:
+    """Generate a coverage report for the topology registry.
+
+    Reports how many entities are active/deleted/superseded, how many have
+    V3 descriptors, and lineage statistics.
+    """
+    total = registry.entity_count
+    active = registry.active_count
+    deleted = registry.deleted_count
+    superseded = total - active - deleted
+
+    with_descriptor = sum(
+        1 for r in registry._entities.values()
+        if r.identity_descriptor is not None
+    )
+    with_locator = sum(
+        1 for r in registry._entities.values()
+        if r.current_locator is not None and r.status == "active"
+    )
+    # Lineage stats
+    max_descendants = 0
+    max_ancestors = 0
+    for rec in registry._entities.values():
+        nd = len(rec.descendant_ids)
+        na = len(rec.ancestor_ids)
+        if nd > max_descendants:
+            max_descendants = nd
+        if na > max_ancestors:
+            max_ancestors = na
+
+    report = {
+        "total_entities": total,
+        "active": active,
+        "deleted": deleted,
+        "superseded": superseded,
+        "with_v3_descriptor": with_descriptor,
+        "descriptor_coverage_pct": round(100 * with_descriptor / max(total, 1), 1),
+        "active_with_locator": with_locator,
+        "active_without_locator": active - with_locator,
+        "max_descendants": max_descendants,
+        "max_ancestors": max_ancestors,
+        "star_lineage_detected": max_descendants > total * 0.5 and total > 10,
+    }
+
+    path.write_text(
+        json.dumps(report, indent=2, ensure_ascii=False, default=str),
+        encoding="utf-8",
+    )
+    return report

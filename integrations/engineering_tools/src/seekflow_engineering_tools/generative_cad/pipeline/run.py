@@ -558,6 +558,24 @@ def _run_components(canonical: CanonicalGcadDocument, ctx: RuntimeContext) -> No
     component's owner_dialect. Nodes are run in topological order within
     the component so cross-dialect dependencies resolve correctly.
     """
+    # ── V3 Phase 9: build stable feature identity context ──
+    try:
+        from seekflow_engineering_tools.generative_cad.topology.design_identity import (
+            DesignIdentityContext, FeatureIdentityReconciler,
+        )
+        fids = {}
+        for node in canonical.nodes:
+            fids[node.id] = FeatureIdentityReconciler.generate_feature_uid(
+                component_uid=node.component, operation_kind=node.op,
+            )
+        ctx.design_identity_context = DesignIdentityContext(
+            document_lineage_id=ctx.document_id or canonical.document_id,
+            feature_stable_ids=fids,
+            design_identity=getattr(canonical, 'design_identity', None),
+        )
+    except Exception:
+        pass
+
     components = [c for c in canonical.components if c.id != "__assembly__"]
     for component in components:
         nodes = [n for n in canonical.nodes if n.component == component.id]
