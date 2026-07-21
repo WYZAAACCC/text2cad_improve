@@ -51,6 +51,9 @@ class RuntimeContext:
     canonical_graph_hash: str = ""
     # ── Design identity (V3 supplementary spec §2.1) ──
     design_identity: Any = None  # DesignIdentity | None
+    # ── V3 runtime identity context (Phase 1+) ──
+    design_identity_context: Any = None  # DesignIdentityContext | None
+    strict_topology_mode: bool = False
 
     # ── Persistent topology (Phase 1+) ──
     topology_events: list[dict[str, Any]] = field(default_factory=list)
@@ -95,6 +98,18 @@ class RuntimeContext:
 
     def get_component_state(self, component_id: str, key: str, default: object = None) -> object:
         return self.component_state.get(component_id, {}).get(key, default)
+
+    def record_topology_event(self, **kwargs) -> None:
+        """Record a topology event with automatic before/after entity counts.
+
+        Captures entities_before from the current registry state BEFORE the
+        transaction, and entities_after AFTER the transaction commits.
+        Callers should capture `before` before the transaction and pass it.
+        """
+        before = kwargs.pop("_entities_before", self.topology_registry.entity_count)
+        kwargs.setdefault("entities_before", before)
+        kwargs.setdefault("entities_after", self.topology_registry.entity_count)
+        self.topology_events.append(kwargs)
 
     def topology_transaction(self):
         """Create a topology transaction for atomic registry updates.

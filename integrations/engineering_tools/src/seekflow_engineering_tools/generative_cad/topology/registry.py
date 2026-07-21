@@ -20,6 +20,9 @@ from dataclasses import dataclass
 from typing import Any
 
 from seekflow_engineering_tools.generative_cad.topology.models import (
+    BindingState,
+    EntityLifecycle,
+    ProofClass,
     TopologyDelta,
     TopologyEntityRecord,
     TopologyRelation,
@@ -203,6 +206,10 @@ class TopologyRegistry:
                             producer_node_id=node_id,
                             semantic_role=key,
                             resolution_method="kernel_generated",
+                            # ── V3 fields (Phase 1) ──
+                            lifecycle=EntityLifecycle.ACTIVE,
+                            binding_state=BindingState.BOUND,
+                            proof_class=ProofClass.EXACT_GENERATED_HISTORY,
                         )
                         self.register_entity(rec)
 
@@ -220,6 +227,10 @@ class TopologyRegistry:
                             producer_node_id=node_id,
                             semantic_role=key,
                             resolution_method="kernel_generated",
+                            # ── V3 fields (Phase 1) ──
+                            lifecycle=EntityLifecycle.ACTIVE,
+                            binding_state=BindingState.BOUND,
+                            proof_class=ProofClass.EXACT_GENERATED_HISTORY,
                         )
                         self.register_entity(rec)
                     # Mark tool sources as consumed
@@ -265,6 +276,10 @@ class TopologyRegistry:
                             owner_body_handle_id="",
                             producer_node_id=node_id,
                             semantic_role=key,
+                            # ── V3 fields (Phase 1) ──
+                            lifecycle=EntityLifecycle.ACTIVE,
+                            binding_state=BindingState.BOUND,
+                            proof_class=ProofClass.EXACT_MODIFIED_HISTORY,
                         )
                         self.register_entity(rec)
                     # Link ancestors
@@ -1156,6 +1171,28 @@ class TopologyRegistry:
                                 f"non-existent entity {pid}"
                             ),
                         })
+
+        # ── 9: V3 descriptor→key consistency (gct3_ records only) ──
+        for pid, rec in self._entities.items():
+            if str(pid).startswith("gct3_") and rec.identity_descriptor is not None:
+                try:
+                    from seekflow_engineering_tools.generative_cad.topology.ids import (
+                        TopologyIdentityDescriptorV3,
+                    )
+                    desc = TopologyIdentityDescriptorV3.from_descriptor_dict(
+                        rec.identity_descriptor
+                    )
+                    if desc.to_key() != pid:
+                        issues.append({
+                            "code": "v3_descriptor_key_mismatch",
+                            "persistent_id": pid,
+                            "message": (
+                                f"identity_descriptor.to_key() does not match "
+                                f"persistent_id for {pid}"
+                            ),
+                        })
+                except Exception:
+                    pass
 
         return {"ok": len(issues) == 0, "issues": issues}
 

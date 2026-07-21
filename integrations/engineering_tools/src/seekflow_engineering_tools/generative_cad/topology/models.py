@@ -298,6 +298,33 @@ class TopologyResolution(BaseModel):
     evidence: list[dict] = Field(default_factory=list)
 
 
+# ── Topology Timeline Event (Phase 6) ──
+
+
+class TopologyTimelineEvent(BaseModel):
+    """Structured topology timeline event — recorded at transaction commit time.
+
+    Replaces ad-hoc dict events with structured fields including
+    before/after entity counts for timeline verification.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    node_id: str = ""
+    op: str = ""
+    event: str = ""
+    entities_before: int = 0
+    entities_after: int = 0
+    method: str = ""
+    face_count: int = 0
+    deleted_count: int = 0
+    generated_count: int = 0
+    modified_count: int = 0
+    relocated: int = 0
+    unmatched: int = 0
+    occurrence_count: int = 0
+
+
 # ── Named Topology Set (CAE bridge, Phase 6) ──
 
 

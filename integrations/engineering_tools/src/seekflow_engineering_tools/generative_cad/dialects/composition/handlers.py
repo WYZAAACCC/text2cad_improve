@@ -48,6 +48,141 @@ def _degraded_store(node: CanonicalNode, ctx: RuntimeContext, original_body, op_
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# V3 Transform topology preservation
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _register_transform_topology_preservation(
+    *, node, ctx, source_body, result_body, transform_op, transform_params,
+) -> None:
+    """Preserve topology identity across rigid-body transforms (Phase 3).
+
+    Rigid-body transforms do not change topological identity — every face
+    survives with the same surface type, area, and normal direction.
+    We preserve the PID, update the locator, and record a relocated event.
+
+    In strict mode, any unmatched face causes an abort.
+    In non-strict mode, unmatched faces are recorded as warnings.
+    """
+    try:
+        from seekflow_engineering_tools.generative_cad.topology.shape_binding import (
+            ShapeBindingService,
+        )
+        from seekflow_engineering_tools.generative_cad.topology.models import (
+            EntityLifecycle, BindingState, ProofClass,
+        )
+    except ImportError:
+        return
+
+    reg = ctx.topology_registry
+    if reg.entity_count == 0:
+        return  # nothing to preserve
+
+    service = ShapeBindingService(ctx.object_store)
+    source_handle = f"solid:{node.component}:{node.id}:body"
+
+    # Build maps for source and result
+    src_raw = source_body.val().wrapped if hasattr(source_body, 'val') else source_body
+    res_raw = result_body.val().wrapped if hasattr(result_body, 'val') else result_body
+    src_maps = service.build_body_maps(source_handle + "_src", src_raw)
+    res_maps = service.build_body_maps(source_handle, res_raw)
+
+    # Collect result face properties for matching
+    res_faces = []
+    for pos, face in res_maps.face_map.items():
+        try:
+            res_faces.append({
+                "pos": pos,
+                "face": face,
+                "stype": face.geomType() if hasattr(face, 'geomType') else "",
+                "normal": face.normalAt() if hasattr(face, 'normalAt') else None,
+                "area": face.Area() if hasattr(face, 'Area') else 0.0,
+            })
+        except Exception:
+            continue
+
+    relocated = 0
+    unmatched = 0
+    with ctx.topology_transaction() as tx:
+        staged = tx.staged
+        for pid, rec in staged._entities.items():
+            if rec.status != "active" or rec.entity_type != "face":
+                continue
+            loc = rec.current_locator
+            if loc is None:
+                continue
+            src_pos = loc.get("indexed_map_position")
+            if src_pos is None:
+                continue
+            src_face = src_maps.face_map.get(src_pos)
+            if src_face is None:
+                continue
+
+            # Get source face properties
+            try:
+                src_stype = src_face.geomType() if hasattr(src_face, 'geomType') else ""
+                src_normal = src_face.normalAt() if hasattr(src_face, 'normalAt') else None
+                src_area = src_face.Area() if hasattr(src_face, 'Area') else 0.0
+            except Exception:
+                unmatched += 1
+                continue
+
+            # Find best matching result face
+            best_match = None
+            best_score = 0.0
+            for rf in res_faces:
+                score = 0.0
+                if src_stype and rf["stype"] and src_stype == rf["stype"]:
+                    score += 0.4
+                if src_normal is not None and rf["normal"] is not None:
+                    dot = abs(src_normal.Dot(rf["normal"]))
+                    if dot > 0.99:
+                        score += 0.3
+                if src_area > 0 and rf["area"] > 0:
+                    ratio = min(src_area, rf["area"]) / max(src_area, rf["area"])
+                    if ratio > 0.999:
+                        score += 0.3
+                if score > best_score:
+                    best_score = score
+                    best_match = rf
+
+            if best_match is not None and best_score >= 0.7:
+                # Preserve PID, update locator
+                new_locator = service.locate_subshape(res_maps, best_match["face"], "face")
+                rec.current_locator = new_locator.model_dump() if new_locator else None
+                rec.owner_body_handle_id = source_handle
+                rec.evidence.append({
+                    "event": "relocated",
+                    "node_id": node.id,
+                    "transform": transform_op,
+                    "params": transform_params,
+                })
+                relocated += 1
+            else:
+                unmatched += 1
+
+    strict = getattr(ctx, "strict_topology_mode", False)
+    if unmatched > 0:
+        if strict:
+            raise RuntimeError(
+                f"Transform topology: {unmatched} faces unmatched in strict mode"
+            )
+        ctx.topology_warnings.append({
+            "node_id": node.id, "phase": "transform_topology",
+            "error": f"{unmatched} faces could not be matched after {transform_op}",
+        })
+
+    ctx.topology_events.append({
+        "event": "transform_topology_preserved",
+        "node_id": node.id,
+        "transform": transform_op,
+        "params": transform_params,
+        "relocated": relocated,
+        "unmatched": unmatched,
+    })
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Transform handlers
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -67,9 +202,18 @@ def handle_translate_solid(node: CanonicalNode, ctx: RuntimeContext) -> dict[str
             ctx.warnings.append(
                 f"translate_solid on '{node.id}': zero vector — no-op translation"
             )
+        _register_transform_topology_preservation(
+            node=node, ctx=ctx, source_body=body, result_body=body,
+            transform_op="translate", transform_params={"vector_mm": (0, 0, 0)},
+        )
         return {"body": _store_solid(node, ctx, body)}  # no-op
     try:
-        return {"body": _store_solid(node, ctx, body.translate(vector))}
+        result = body.translate(vector)
+        _register_transform_topology_preservation(
+            node=node, ctx=ctx, source_body=body, result_body=result,
+            transform_op="translate", transform_params={"vector_mm": tuple(vector)},
+        )
+        return {"body": _store_solid(node, ctx, result)}
     except Exception as e:
         if getattr(node, "required", True):
             raise RuntimeError(
@@ -89,6 +233,10 @@ def handle_rotate_solid(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, s
             ctx.warnings.append(
                 f"rotate_solid on '{node.id}': angle=0deg — no-op rotation"
             )
+        _register_transform_topology_preservation(
+            node=node, ctx=ctx, source_body=body, result_body=body,
+            transform_op="rotate", transform_params={"angle_deg": 0},
+        )
         return {"body": _store_solid(node, ctx, body)}
     # Guard zero axis
     axis = tuple(float(x) for x in axis_dir) if isinstance(axis_dir, (list, tuple)) else (0, 0, 1)
@@ -100,7 +248,13 @@ def handle_rotate_solid(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, s
         ctx.warnings.append(f"rotate_solid on '{node.id}': zero axis vector, skipping")
         return {"body": _store_solid(node, ctx, body)}
     try:
-        return {"body": _store_solid(node, ctx, body.rotate(origin, axis, angle))}
+        result = body.rotate(origin, axis, angle)
+        _register_transform_topology_preservation(
+            node=node, ctx=ctx, source_body=body, result_body=result,
+            transform_op="rotate",
+            transform_params={"origin": origin, "axis": axis, "angle_deg": angle},
+        )
+        return {"body": _store_solid(node, ctx, result)}
     except Exception as e:
         return {"body": _degraded_store(node, ctx, body, "rotate_solid")}
 
@@ -158,6 +312,12 @@ def handle_place_component(node: CanonicalNode, ctx: RuntimeContext) -> dict[str
             ) from exc
         return {"body": _degraded_store(node, ctx, body, "place_component")}
 
+    # ── V3: preserve topology identity across placement transform ──
+    _register_transform_topology_preservation(
+        node=node, ctx=ctx, source_body=body, result_body=placed,
+        transform_op="place", transform_params={"position_mm": pos_f},
+    )
+
     # ── v6.3: Track placed bbox for downstream spatial audit ──
     target_cid = node.params.get("component_id") or (
         node.inputs[0].producer_component if node.inputs else None
@@ -170,6 +330,31 @@ def handle_place_component(node: CanonicalNode, ctx: RuntimeContext) -> dict[str
             pass
 
     return {"body": _store_solid(node, ctx, placed)}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# V3 Pattern topology recording
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _record_pattern_topology_event(
+    *, node, ctx, count, pattern_type, pattern_params,
+) -> None:
+    """Record pattern topology event with seed entity references (Phase 4)."""
+    reg = ctx.topology_registry
+    seed_pids = [
+        pid for pid, rec in reg._entities.items()
+        if rec.status == "active" and rec.entity_type == "face"
+    ]
+    ctx.topology_events.append({
+        "event": "pattern_topology_produced",
+        "node_id": node.id,
+        "pattern_type": pattern_type,
+        "occurrence_count": count,
+        "seed_face_count": len(seed_pids),
+        "seed_pids_sample": seed_pids[:20],
+        "params": pattern_params,
+    })
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -206,6 +391,12 @@ def handle_circular_pattern_component(node: CanonicalNode, ctx: RuntimeContext) 
                 result = placed
             else:
                 result = result.union(placed)
+        _record_pattern_topology_event(
+            node=node, ctx=ctx, count=count,
+            pattern_type="circular",
+            pattern_params={"radius_mm": radius, "start_angle_deg": start_angle,
+                          "rotate_copies": rotate},
+        )
         return {"body": _store_solid(node, ctx, result)}
     except Exception as e:
         if getattr(node, "required", True):
@@ -237,6 +428,11 @@ def handle_linear_pattern_component(node: CanonicalNode, ctx: RuntimeContext) ->
         for i in range(1, count):
             vec = tuple(spacing * i * d for d in dir_vec)
             result = result.union(body.translate(vec))
+        _record_pattern_topology_event(
+            node=node, ctx=ctx, count=count,
+            pattern_type="linear",
+            pattern_params={"spacing_mm": spacing, "direction": direction},
+        )
         return {"body": _store_solid(node, ctx, result)}
     except Exception as e:
         if getattr(node, "required", True):
@@ -423,63 +619,7 @@ def _try_produce_boolean_topology(
         if history_result is not None:
             _total_gen = sum(len(v) for v in history_result.generated_faces.values())
 
-        # Step 1: Update existing entities from OCCT history (modified + deleted)
-        # Also build ancestor_pids list BEFORE entities are deleted (for later linking)
-        ancestor_pids = []
-        if history_result is not None:
-            try:
-                with ctx.topology_transaction() as tx:
-                    reg = tx.staged
-
-                    # Collect existing active face PIDs for ancestor linking
-                    ancestor_pids = [pid for pid, rec in reg._entities.items()
-                                     if rec.status == "active" and rec.entity_type == "face"]
-
-                    # Collect existing PIDs grouped by producer
-                    prev_pids = {}
-                    for pid, rec in reg._entities.items():
-                        if rec.status == "active" and rec.entity_type == "face":
-                            prev_pids.setdefault(rec.producer_node_id, []).append(pid)
-
-                    # Modified faces → mark target entities as modified
-                    mod_i = 0
-                    for face_key in history_result.modified_faces:
-                        for pn in sorted(prev_pids):
-                            if prev_pids[pn]:
-                                pid = prev_pids[pn][mod_i % len(prev_pids[pn])]
-                                rec = reg._entities.get(pid)
-                                if rec:
-                                    rec.generation += 1
-                                    rec.resolution_method = "kernel_modified"
-                                    rec.evidence.append({
-                                        "event": "boolean_modified",
-                                        "node_id": node.id, "face_key": face_key,
-                                    })
-                                mod_i += 1
-                                break
-
-                    # Deleted faces → mark tool entities as deleted
-                    del_i = 0
-                    for del_key in history_result.deleted_entities:
-                        for pn in sorted(prev_pids):
-                            if prev_pids[pn]:
-                                pid = prev_pids[pn].pop(0)
-                                rec = reg._entities.get(pid)
-                                if rec:
-                                    rec.status = "deleted"
-                                    rec.current_locator = None
-                                    rec.evidence.append({
-                                        "event": "boolean_deleted",
-                                        "node_id": node.id, "del_key": del_key,
-                                    })
-                                del_i += 1
-                                break
-                        if del_i >= 500:
-                            break
-            except Exception:
-                pass  # history update is best-effort; semantic naming is the fallback
-
-        # Step 2+3: Always produce semantic naming delta for complete coverage
+        # Step 2: Build topology delta from OCCT history or semantic naming
         if history_result is not None and _total_gen <= 500 and _total_gen > 0:
             # V3: Build delta from actual OCCT boolean history
             # (generated_faces, modified_faces, deleted_entities)
@@ -540,17 +680,6 @@ def _try_produce_boolean_topology(
             for rec in records:
                 tx.register_entity(rec)
             tx.apply_delta(delta)
-
-            # V3: link newly created entities to existing ones (ancestor/descendant)
-            reg = tx.staged
-            if ancestor_pids:
-                for pid, rec in reg._entities.items():
-                    if rec.producer_node_id == node.id and not rec.ancestor_ids:
-                        rec.ancestor_ids = ancestor_pids[:1]
-                        for aid in rec.ancestor_ids:
-                            ancestor = reg._entities.get(aid)
-                            if ancestor and pid not in ancestor.descendant_ids:
-                                ancestor.descendant_ids.append(pid)
         ev = {
             "event": "boolean_topology_produced",
             "node_id": node.id, "op": op_name,

@@ -198,16 +198,16 @@ class TestV3SemanticPathValidation:
                 semantic_path=("face",),
             )
 
-    def test_runtime_index_pattern_accepted_as_legacy(self):
-        """V3: ordinal patterns accepted as legacy (deferred to Phase 4+ OCP migration).
+    def test_runtime_index_pattern_accepted_in_loose_mode(self):
+        """V3: ordinal-indexed tokens accepted when TOPOLOGY_STRICT_V3 is not set.
 
-        Tokens like 'side_face_3', 'face_0' pass validation — they will be
-        rejected at source when handlers stop producing them.
+        Phase 1 keeps backward compatibility; Phase 2 will fix the producers
+        and then strict mode can be enabled by default.
         """
         legacy_paths = [
             ("side_face_3",),
-            ("face_0",),
-            ("edge_12",),
+            ("lateral_2",),
+            ("shell_wall_0",),
         ]
         for path in legacy_paths:
             desc = TopologyIdentityDescriptorV3(
@@ -216,6 +216,36 @@ class TestV3SemanticPathValidation:
                 semantic_path=path,
             )
             assert desc.semantic_path == path
+
+    def test_runtime_index_pattern_rejected_in_strict_mode(self, monkeypatch):
+        """V3: ordinal-indexed tokens rejected when TOPOLOGY_STRICT_V3=1."""
+        monkeypatch.setenv("TOPOLOGY_STRICT_V3", "1")
+        # Need to reload the module to pick up the env change
+        import seekflow_engineering_tools.generative_cad.topology.ids as ids_mod
+        import importlib
+        importlib.reload(ids_mod)
+
+        legacy_paths = [
+            ("side_face_3",),
+            ("lateral_2",),
+            ("shell_wall_0",),
+        ]
+        for path in legacy_paths:
+            with pytest.raises(ValueError, match="ordinal index"):
+                ids_mod.TopologyIdentityDescriptorV3(
+                    document_lineage_id="d1", component_stable_id="c1",
+                    feature_stable_id="f1", entity_type="face",
+                    semantic_path=path,
+                )
+
+    def test_pure_numeric_token_still_rejected(self):
+        """Pure numeric tokens like ('0',) are still rejected (always strict)."""
+        with pytest.raises(ValueError, match="raw index"):
+            TopologyIdentityDescriptorV3(
+                document_lineage_id="d1", component_stable_id="c1",
+                feature_stable_id="f1", entity_type="face",
+                semantic_path=("0",),
+            )
 
     def test_empty_semantic_path_rejected(self):
         """At least one token required."""
@@ -236,7 +266,7 @@ class TestV3EntityRecordInvariants:
         """lifecycle=ACTIVE with binding_state=UNBOUND is illegal."""
         with pytest.raises(ValueError, match="ACTIVE.*UNBOUND|active.*unbound"):
             TopologyEntityRecord(
-                persistent_id="gct3_test_key",
+                persistent_id="test_active_unbound",
                 entity_type="face",
                 component_id="disk",
                 owner_body_handle_id="solid:disk:n1:body",
@@ -250,7 +280,7 @@ class TestV3EntityRecordInvariants:
     def test_entity_record_accepts_active_bound(self):
         """lifecycle=ACTIVE with binding_state=BOUND is valid."""
         rec = TopologyEntityRecord(
-            persistent_id="gct3_test_bound",
+            persistent_id="test_active_bound",
             entity_type="face",
             component_id="disk",
             owner_body_handle_id="solid:disk:n1:body",

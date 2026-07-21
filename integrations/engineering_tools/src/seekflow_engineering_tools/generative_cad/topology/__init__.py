@@ -107,6 +107,7 @@ from seekflow_engineering_tools.generative_cad.topology.validation import (
 )
 from seekflow_engineering_tools.generative_cad.topology.design_identity import (
     DesignIdentity,
+    DesignIdentityContext,
     FeatureIdentity,
     FeatureIdentityReconciler,
     IdentitySource,
@@ -225,6 +226,7 @@ __all__ = [
     "validate_topology_artifact_proof",
     # Design identity (V3 supplementary spec §2.1, §2.2)
     "DesignIdentity",
+    "DesignIdentityContext",
     "FeatureIdentity",
     "FeatureIdentityReconciler",
     "IdentitySource",

@@ -114,9 +114,36 @@ class TopologyTransaction:
                 f"{len(issues)} issue(s) — {issue_codes}"
             )
 
+        # V3: validate geometry bindings before commit
+        if self._object_store is not None:
+            self._validate_staged_geometry_bindings()
+
         # Atomically replace original state with staged state
         self._original._replace_from(self._staged)
         self._committed = True
+
+    def _validate_staged_geometry_bindings(self) -> None:
+        """V3: Verify all staged body handles exist in ObjectStore before commit.
+
+        Prevents split-brain: registry records referencing non-existent bodies.
+        Non-fatal in non-strict mode (issues are logged to warnings).
+        """
+        missing = []
+        for pid, rec in self._staged._entities.items():
+            hid = rec.owner_body_handle_id
+            if hid and self._object_store is not None:
+                try:
+                    self._object_store.get(hid)
+                except (KeyError, AttributeError):
+                    missing.append((pid, hid))
+        if missing:
+            import warnings
+            warnings.warn(
+                f"TopologyTransaction: {len(missing)} staged entities "
+                f"have missing bodies (first 3): {missing[:3]}. "
+                f"Run with strict_topology_mode=True to enforce.",
+                RuntimeWarning, stacklevel=2,
+            )
 
     def rollback(self) -> None:
         """Discard all staged changes (no-op on original registry)."""

@@ -118,11 +118,11 @@ def _try_produce_axisymmetric_revolve_topology(
     'revolved.from/edge_N' naming. Falls back to semantic naming.
     """
     try:
-        from seekflow_engineering_tools.generative_cad.topology.ids import (
-            make_persistent_id_v2,
+        from seekflow_engineering_tools.generative_cad.topology.semantic_naming import (
+            _make_compact_key,
         )
         from seekflow_engineering_tools.generative_cad.topology.models import (
-            TopologyEntityRecord,
+            BindingState, EntityLifecycle, ProofClass, TopologyEntityRecord,
         )
         from seekflow_engineering_tools.generative_cad.topology.shape_binding import (
             ShapeBindingService,
@@ -140,7 +140,7 @@ def _try_produce_axisymmetric_revolve_topology(
                 for edge_id, gen_faces in history_result.generated_edge_faces.items():
                     for face in gen_faces:
                         role = f"revolved.from/{edge_id}"
-                        pid = make_persistent_id_v2(
+                        pid = _make_compact_key(
                             doc_id, node.component or "unknown", node.id,
                             "face", role,
                         )
@@ -153,6 +153,9 @@ def _try_produce_axisymmetric_revolve_topology(
                             producer_node_id=node.id,
                             semantic_role=role,
                             current_locator=locator.model_dump() if locator else None,
+                            lifecycle=EntityLifecycle.ACTIVE,
+                            binding_state=BindingState.BOUND,
+                            proof_class=ProofClass.EXACT_GENERATED_HISTORY,
                         )
                         tx.register_entity(rec)
             ctx.topology_events.append({

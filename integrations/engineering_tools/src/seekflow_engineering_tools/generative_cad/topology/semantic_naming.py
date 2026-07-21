@@ -13,6 +13,9 @@ from __future__ import annotations
 from typing import Any
 
 from seekflow_engineering_tools.generative_cad.topology.models import (
+    BindingState,
+    EntityLifecycle,
+    ProofClass,
     TopologyDelta,
     TopologyEntityRecord,
     TopologyRelation,
@@ -210,6 +213,45 @@ def name_sphere_faces(
     )
 
 
+def _status_to_lifecycle(status: str) -> EntityLifecycle:
+    """Map legacy status string → V3 EntityLifecycle enum."""
+    if status == "active":
+        return EntityLifecycle.ACTIVE
+    elif status == "deleted":
+        return EntityLifecycle.DELETED
+    elif status in ("superseded", "ambiguous"):
+        return EntityLifecycle.SUPERSEDED
+    return EntityLifecycle.ACTIVE
+
+
+def _reconstruct_descriptor(
+    *,
+    document_id: str,
+    component_id: str,
+    producer_node_id: str,
+    entity_type: str,
+    semantic_role: str,
+) -> dict | None:
+    """Re-derive the V3 identity descriptor from the same inputs used by
+    _make_compact_key().  Returns the descriptor dict, or None on failure.
+
+    This is called by build_entity_records_from_delta() so that every
+    gct3_ record gets its identity_descriptor populated without changing
+    the 25 call sites of _make_compact_key().
+    """
+    try:
+        _key, desc = _make_compact_id(
+            document_id=document_id,
+            component_id=component_id,
+            producer_node_id=producer_node_id,
+            entity_type=entity_type,
+            semantic_role=semantic_role,
+        )
+        return desc
+    except Exception:
+        return None
+
+
 def build_entity_records_from_delta(
     delta: TopologyDelta,
     document_id: str,
@@ -265,6 +307,17 @@ def build_entity_records_from_delta(
                 resolution_method="primitive_semantic",
                 confidence=1.0,
                 evidence=[relation.evidence] if relation.evidence else [],
+                # ── V3 fields (Phase 1) ──
+                identity_descriptor=_reconstruct_descriptor(
+                    document_id=document_id,
+                    component_id=delta.component_id,
+                    producer_node_id=delta.node_id,
+                    entity_type=entity_type_str,
+                    semantic_role=relation.semantic_role or "unknown",
+                ),
+                lifecycle=_status_to_lifecycle(entity_status),
+                binding_state=BindingState.BOUND if entity_status == "active" else BindingState.UNBOUND,
+                proof_class=ProofClass.DETERMINISTIC_CONSTRUCTION if entity_status == "active" else ProofClass.NONE,
             ))
     return records
 

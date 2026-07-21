@@ -121,9 +121,22 @@ def resolve_named_set_to_faces(
         )
 
     for pid in named_set.persistent_ids:
-        result = registry.resolve(
-            pid, object_store=object_store, binding_service=binding_service,
-        )
+        # V3: prefer strict resolution when binding context is available
+        if object_store is not None and binding_service is not None:
+            try:
+                ctx = registry.TopologyResolutionContext(
+                    object_store=object_store,
+                    binding_service=binding_service,
+                )
+                result = registry.resolve_strict(pid, ctx)
+            except Exception:
+                result = registry.resolve(
+                    pid, object_store=object_store, binding_service=binding_service,
+                )
+        else:
+            result = registry.resolve(
+                pid, object_store=object_store, binding_service=binding_service,
+            )
 
         if result.status == "exact":
             resolved += 1

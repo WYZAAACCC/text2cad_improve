@@ -199,3 +199,43 @@ class FeatureIdentityReconciler:
                 if feat.display_node_id == new_node_id:
                     return feat, "exact_match"
             return None, "no_match"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DesignIdentityContext — runtime wrapper (§4.1 of the repair guide)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class DesignIdentityContext(BaseModel):
+    """Runtime wrapper carrying stable design identity for topology operations.
+
+    Makes document_lineage_id, component_stable_ids, and feature_stable_ids
+    accessible to all handlers via RuntimeContext.  Separates the *stable*
+    identity fields (which enter PID keys) from mutable runtime state.
+
+    Ref: text2cad_persistent_topology_v3_repair_guide.md §4.1
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    document_lineage_id: str
+    document_revision_id: str = ""
+    component_stable_ids: dict[str, str] = {}
+    feature_stable_ids: dict[str, str] = {}
+    identity_algorithm_version: str = "3.1.0"
+    design_identity: "DesignIdentity | None" = None
+
+    def feature_stable_id_for(self, node_id: str, *, component_id: str = "") -> str:
+        """Look up stable feature UID, falling back to node_id.
+
+        The feature_stable_ids dict can be seeded with explicit stable UIDs
+        (e.g. via FeatureIdentityReconciler) or left empty for ephemeral
+        backwards-compatible mode where node_id serves as the stable id.
+        """
+        key = f"{component_id}.{node_id}" if component_id else node_id
+        return self.feature_stable_ids.get(key, node_id)
+
+    @property
+    def ephemeral_identity(self) -> bool:
+        """True when no explicit stable feature IDs have been registered."""
+        return len(self.feature_stable_ids) == 0

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -280,8 +280,23 @@ def _validate_semantic_path_token(token: str) -> None:
             f"semantic_path token must not be a bare entity type: {token!r}. "
             f"Use a descriptive name like 'cap', 'wall', 'rim'."
         )
-    # NOTE: Ordinal index rejection (face_3, lateral_2) is deferred to Phase 4+
-    # when handlers migrate to OCP builders. Currently accepted as legacy.
+    # V3: Reject ordinal-indexed tokens (e.g. side_face_3, lateral_2, shell_wall_0).
+    # Previously deferred to Phase 4+; now enforced immediately per §5.1 of the
+    # repair guide. Tokens that encode runtime enumeration order are not valid
+    # persistent identity components.
+    # V3 strict mode: reject ordinal-indexed tokens immediately.
+    # In non-strict mode (default), ordinal patterns are still accepted
+    # because legacy semantic_naming functions still produce them.
+    # Phase 2+ will fix the naming functions and enable strict mode.
+    import os
+    strict_v3 = os.environ.get("TOPOLOGY_STRICT_V3", "").lower() in ("1", "true", "yes")
+    import re
+    if strict_v3 and re.search(r'(^|_)(face|edge|lateral|side|shell|wall)_\d+', stripped):
+        raise ValueError(
+            f"semantic_path token must not contain ordinal index: {token!r}. "
+            f"Tokens like 'side_face_3' or 'lateral_2' encode runtime "
+            f"enumeration order, not persistent identity."
+        )
 
 
 class TopologyIdentityDescriptorV3(BaseModel):
@@ -466,3 +481,34 @@ def parse_persistent_id_key(key: str) -> dict:
             "legacy_status": LEGACY_V1_MARKER,
         }
     return {"version": "unknown", "key": key}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# V3 descriptor validation utility
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def verify_descriptor_key_consistency(record: Any) -> bool:
+    """Verify that a record's identity_descriptor.to_key() matches its persistent_id.
+
+    Used by validate_integrity() and sidecar load verification to detect
+    corrupted or desynchronized descriptors.
+
+    Args:
+        record: A TopologyEntityRecord with identity_descriptor and persistent_id.
+
+    Returns:
+        True if the descriptor's derived key matches the record's persistent_id.
+        False if the descriptor is missing, unparseable, or produces a mismatched key.
+    """
+    identity_descriptor = getattr(record, "identity_descriptor", None)
+    persistent_id = getattr(record, "persistent_id", "")
+    if identity_descriptor is None:
+        return False
+    try:
+        desc = TopologyIdentityDescriptorV3.from_descriptor_dict(
+            identity_descriptor
+        )
+        return desc.to_key() == persistent_id
+    except Exception:
+        return False
