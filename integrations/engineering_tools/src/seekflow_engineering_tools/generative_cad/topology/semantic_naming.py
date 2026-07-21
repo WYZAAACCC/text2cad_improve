@@ -231,6 +231,7 @@ def _reconstruct_descriptor(
     producer_node_id: str,
     entity_type: str,
     semantic_role: str,
+    feature_uid: str | None = None,
 ) -> dict | None:
     """Re-derive the V3 identity descriptor from the same inputs used by
     _make_compact_key().  Returns the descriptor dict, or None on failure.
@@ -238,6 +239,9 @@ def _reconstruct_descriptor(
     This is called by build_entity_records_from_delta() so that every
     gct3_ record gets its identity_descriptor populated without changing
     the 25 call sites of _make_compact_key().
+
+    When feature_uid is provided (§2.2), it replaces producer_node_id as
+    the feature_stable_id in the V3 PID key — consistent with _make_compact_key().
     """
     try:
         _key, desc = _make_compact_id(
@@ -246,15 +250,38 @@ def _reconstruct_descriptor(
             producer_node_id=producer_node_id,
             entity_type=entity_type,
             semantic_role=semantic_role,
+            feature_uid=feature_uid,
         )
         return desc
     except Exception:
         return None
 
 
+def _lookup_feature_uid(
+    node_id: str,
+    component_id: str,
+    feature_stable_ids: dict[str, str] | None,
+) -> str | None:
+    """Look up the stable feature_uid for a node from a feature_stable_ids dict.
+
+    Matches by composite key "{component_id}.{node_id}" (preferred) and
+    bare node_id (fallback).  Returns None when feature_stable_ids is empty.
+    """
+    if not feature_stable_ids:
+        return None
+    key = f"{component_id}.{node_id}" if component_id else node_id
+    if key in feature_stable_ids:
+        return feature_stable_ids[key]
+    if node_id in feature_stable_ids:
+        return feature_stable_ids[node_id]
+    return None
+
+
 def build_entity_records_from_delta(
     delta: TopologyDelta,
     document_id: str,
+    *,
+    feature_stable_ids: dict[str, str] | None = None,
 ) -> list[TopologyEntityRecord]:
     """Build TopologyEntityRecord list from a semantic naming TopologyDelta.
 
@@ -264,6 +291,9 @@ def build_entity_records_from_delta(
     Args:
         delta: The semantic naming delta from name_box_faces etc.
         document_id: Matches CanonicalGcadDocument.document_id.
+        feature_stable_ids: Optional dict mapping node_id → feature_uid for
+            V3 §2.2 stable feature identity.  When provided, the feature_uid
+            replaces producer_node_id as feature_stable_id in the descriptor.
 
     Returns:
         List of TopologyEntityRecord ready for registry.register_entity().
@@ -307,13 +337,16 @@ def build_entity_records_from_delta(
                 resolution_method="primitive_semantic",
                 confidence=1.0,
                 evidence=[relation.evidence] if relation.evidence else [],
-                # ── V3 fields (Phase 1) ──
+                # ── V3 fields (Phase 1+15a) ──
                 identity_descriptor=_reconstruct_descriptor(
                     document_id=document_id,
                     component_id=delta.component_id,
                     producer_node_id=delta.node_id,
                     entity_type=entity_type_str,
                     semantic_role=relation.semantic_role or "unknown",
+                    feature_uid=_lookup_feature_uid(
+                        delta.node_id, delta.component_id, feature_stable_ids,
+                    ),
                 ),
                 lifecycle=_status_to_lifecycle(entity_status),
                 binding_state=BindingState.BOUND if entity_status == "active" else BindingState.UNBOUND,
@@ -418,6 +451,7 @@ def name_extrude_faces(
     producer_node_id: str,
     extrude_plane: str = "XY",
     direction: str = "+",
+    feature_uid: str | None = None,
 ) -> TopologyDelta:
     """Semantically name faces of an extruded solid.
 
@@ -440,6 +474,7 @@ def name_extrude_faces(
         producer_node_id: Node that produced this solid.
         extrude_plane: "XY", "YZ", or "XZ" — the sketch plane.
         direction: "+" or "-" — the extrude direction relative to plane normal.
+        feature_uid: V3 stable feature UID for cross-rebuild PID stability.
 
     Returns:
         TopologyDelta with semantic face relations.
@@ -462,6 +497,7 @@ def name_extrude_faces(
         except Exception:
             relations.append(_make_fallback_relation(
                 document_id, component_id, producer_node_id, "face", f"extrude/fallback/{i}", i,
+                feature_uid=feature_uid,
             ))
             continue
 
@@ -490,7 +526,8 @@ def name_extrude_faces(
         relations.append(TopologyRelation(
             relation="primitive",
             result_entity_keys=[
-                _make_compact_key(document_id, component_id, producer_node_id, "face", role)
+                _make_compact_key(document_id, component_id, producer_node_id, "face", role,
+                                  feature_uid=feature_uid)
             ],
             semantic_role=role,
             evidence={
@@ -1126,6 +1163,7 @@ def name_boolean_faces(
     document_id: str,
     component_id: str,
     producer_node_id: str,
+    feature_uid: str | None = None,
 ) -> TopologyDelta:
     """Name faces of a boolean result solid by surface type.
 
@@ -1139,6 +1177,7 @@ def name_boolean_faces(
     Args:
         solid: CadQuery solid result from boolean operation.
         document_id, component_id, producer_node_id: Standard identifiers.
+        feature_uid: V3 §2.2 stable feature UID for cross-rebuild PID stability.
 
     Returns:
         TopologyDelta with boolean face relations.
@@ -1154,6 +1193,7 @@ def name_boolean_faces(
         except Exception:
             relations.append(_make_fallback_relation(
                 document_id, component_id, producer_node_id, "face", f"boolean/face_{i}", i,
+                feature_uid=feature_uid,
             ))
             continue
 
@@ -1164,7 +1204,8 @@ def name_boolean_faces(
         relations.append(TopologyRelation(
             relation="modified",
             result_entity_keys=[
-                _make_compact_key(document_id, component_id, producer_node_id, "face", role)
+                _make_compact_key(document_id, component_id, producer_node_id, "face", role,
+                                  feature_uid=feature_uid)
             ],
             semantic_role=role,
             evidence={"method": "boolean_face_classification", "surface_type": stype,
@@ -1185,12 +1226,15 @@ def _make_fallback_relation(
     entity_type: str,
     fallback_role: str,
     runtime_index: int,
+    *,
+    feature_uid: str | None = None,
 ) -> TopologyRelation:
     """Create a fallback topology relation when face inspection fails."""
     return TopologyRelation(
         relation="primitive",
         result_entity_keys=[
-            _make_compact_key(document_id, component_id, producer_node_id, entity_type, fallback_role)
+            _make_compact_key(document_id, component_id, producer_node_id, entity_type, fallback_role,
+                              feature_uid=feature_uid)
         ],
         semantic_role=fallback_role,
         evidence={"method": "fallback_enumerate", "index": runtime_index},

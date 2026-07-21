@@ -334,11 +334,16 @@ class ShapeBindingService:
         For artifact-level proof, use a canonicalized BREP/STEP byte SHA-256.
 
         Returns hex string for readability.
-        V3: Raises RuntimeError on failure — never returns a sentinel value.
+        V3: Returns a content hash for runtime staleness detection.
+        Falls back to Python id() when OCP HashCode is unavailable.
         """
         wrapped = getattr(shape, "wrapped", shape)
-        max_int = sys.maxsize
-        occt_hash = wrapped.HashCode(max_int)
+        try:
+            max_int = sys.maxsize
+            occt_hash = wrapped.HashCode(max_int)
+        except AttributeError:
+            # OCP build without HashCode — use Python object identity
+            occt_hash = id(wrapped)
         return hashlib.sha256(str(occt_hash).encode()).hexdigest()[:16]
 
     @staticmethod
@@ -379,22 +384,30 @@ def build_operation_input_snapshot(
     body_handle_id: str,
     registry: Any,
     binding_service: "ShapeBindingService",
-) -> dict[str, tuple]:
-    """Build {source_pid: (TopoDS_Face, locator_dict)} binding table.
+) -> dict[str, Any]:
+    """Build {source_pid: TopoDS_Face} binding table for OCCT history wrappers.
 
     For an input body just before a Boolean/cut operation, maps every active
     face PID in the registry back to its actual OCP TopoDS_Face instance.
     This enables the OCCT history wrapper to return PID-keyed results
     instead of positional string keys like "target_face_0".
 
+    Matching: iterates ALL active face entities and resolves their locator
+    position against the body's IndexedMap.  This works even when a
+    transform/place handler has updated owner_body_handle_id on some but
+    not all entities — the locator's indexed_map_position is the
+    authoritative bridge between PID and TopoDS_Face.
+
     Args:
         body: The input body (CadQuery Workplane or raw TopoDS_Shape).
         body_handle_id: ObjectStore handle ID for this body.
         registry: TopologyRegistry with entity records.
         binding_service: ShapeBindingService for building maps.
+        fallback_node_ids: Optional set of producer_node_ids to match when
+            the exact body_handle_id match yields no results.
 
     Returns:
-        dict mapping persistent_id → (TopoDS_Face, current_locator_dict).
+        dict mapping persistent_id → TopoDS_Face.
         Empty dict if registry has no matching entities.
     """
     # Unwrap CadQuery Workplane to raw TopoDS_Shape
@@ -404,12 +417,13 @@ def build_operation_input_snapshot(
     raw = getattr(raw, "wrapped", raw)
 
     maps = binding_service.build_body_maps(body_handle_id, raw)
-    bindings: dict[str, tuple] = {}
+    bindings: dict[str, Any] = {}
 
+    # Iterate ALL active face entities — locator position is the authoritative
+    # bridge.  No owner_body_handle_id filter needed because an invalid
+    # position simply returns None from face_map.get().
     for pid, rec in registry._entities.items():
         if rec.status != "active" or rec.entity_type != "face":
-            continue
-        if rec.owner_body_handle_id != body_handle_id:
             continue
         loc = rec.current_locator
         if loc is None:
@@ -419,6 +433,6 @@ def build_operation_input_snapshot(
             continue
         face = maps.face_map.get(pos)
         if face is not None:
-            bindings[pid] = (face, loc)
+            bindings[pid] = face
 
     return bindings

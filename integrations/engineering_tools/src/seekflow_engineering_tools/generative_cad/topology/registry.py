@@ -193,56 +193,54 @@ class TopologyRegistry:
                                 for e in decision.provenance_edges
                             ],
                         })
+                    # V3 Phase 15c: establish lineage — link result entities as descendants
+                    for result_key in decision.result_keys:
+                        if result_key in self._entities:
+                            if result_key not in rec.descendant_ids:
+                                rec.descendant_ids.append(result_key)
+                            if source_id not in self._entities[result_key].ancestor_ids:
+                                self._entities[result_key].ancestor_ids.append(source_id)
                     self._node_index[node_id]["modified"].append(source_id)
 
             elif rel == "generated_new_identity":
-                for key in decision.result_keys:
-                    if key not in self._entities:
-                        from seekflow_engineering_tools.generative_cad.topology.models import (
-                            TopologyEntityRecord,
-                        )
-                        rec = TopologyEntityRecord(
-                            persistent_id=key,
-                            entity_type="face",
-                            component_id=component_id,
-                            owner_body_handle_id=owner_body_handle_id or "",
-                            producer_node_id=node_id,
-                            semantic_role=key,
-                            resolution_method="kernel_generated",
-                            # ── V3 fields (Phase 1+11) ──
-                            lifecycle=EntityLifecycle.ACTIVE,
-                            binding_state=BindingState.BOUND,
-                            proof_class=ProofClass.EXACT_GENERATED_HISTORY,
-                        )
-                        self.register_entity(rec)
+                # V3 Phase 14: do NOT create records here — the delta path
+                # (build_entity_records_from_delta) already creates proper
+                # gct3_ PIDs.  Identity decisions update EXISTING records only.
+                for source_id in decision.source_pids:
+                    if source_id in self._entities:
+                        src_rec = self._entities[source_id]
+                        src_rec.evidence.append({
+                            "event": "identity_decision_generated",
+                            "relation": rel,
+                            "node_id": node_id,
+                            "result_keys": decision.result_keys,
+                        })
+                        # V3 Phase 16: establish lineage when result PIDs are known
+                        for result_key in decision.result_keys:
+                            if result_key in self._entities:
+                                if result_key not in src_rec.descendant_ids:
+                                    src_rec.descendant_ids.append(result_key)
+                                if source_id not in self._entities[result_key].ancestor_ids:
+                                    self._entities[result_key].ancestor_ids.append(source_id)
+                        self._node_index[node_id]["generated"].append(source_id)
 
             elif rel == "generated_from_tool":
-                for key in decision.result_keys:
-                    if key not in self._entities:
-                        from seekflow_engineering_tools.generative_cad.topology.models import (
-                            TopologyEntityRecord,
-                        )
-                        rec = TopologyEntityRecord(
-                            persistent_id=key,
-                            entity_type="face",
-                            component_id=component_id,
-                            owner_body_handle_id=owner_body_handle_id or "",
-                            producer_node_id=node_id,
-                            semantic_role=key,
-                            resolution_method="kernel_generated",
-                            # ── V3 fields (Phase 1+11) ──
-                            lifecycle=EntityLifecycle.ACTIVE,
-                            binding_state=BindingState.BOUND,
-                            proof_class=ProofClass.EXACT_GENERATED_HISTORY,
-                        )
-                        self.register_entity(rec)
+                # V3 Phase 14: record creation deferred to delta path
+                for source_id in decision.source_pids:
+                    if source_id in self._entities:
+                        self._entities[source_id].evidence.append({
+                            "event": "identity_decision_generated_from_tool",
+                            "relation": rel,
+                            "node_id": node_id,
+                            "result_keys": decision.result_keys,
+                        })
                     # Mark tool sources as consumed
                     for source_id in decision.source_pids:
                         if source_id in self._entities:
                             self._entities[source_id].evidence.append({
                                 "event": "tool_consumed",
                                 "node_id": node_id,
-                                "result_key": key,
+                                "result_keys": decision.result_keys,
                             })
 
             elif rel == "split":
@@ -268,30 +266,15 @@ class TopologyRegistry:
                         rec.current_locator = None
                         rec.resolution_method = "set_expansion"
                 for key in decision.result_keys:
-                    if key not in self._entities:
-                        from seekflow_engineering_tools.generative_cad.topology.models import (
-                            TopologyEntityRecord,
-                        )
-                        rec = TopologyEntityRecord(
-                            persistent_id=key,
-                            entity_type="face",
-                            component_id=component_id,
-                            owner_body_handle_id=owner_body_handle_id or "",
-                            producer_node_id=node_id,
-                            semantic_role=key,
-                            # ── V3 fields (Phase 1+11) ──
-                            lifecycle=EntityLifecycle.ACTIVE,
-                            binding_state=BindingState.BOUND,
-                            proof_class=ProofClass.EXACT_MODIFIED_HISTORY,
-                        )
-                        self.register_entity(rec)
-                    # Link ancestors
-                    for source_id in decision.source_pids:
-                        if source_id in self._entities:
-                            if source_id not in self._entities[key].ancestor_ids:
-                                self._entities[key].ancestor_ids.append(source_id)
-                            if key not in self._entities[source_id].descendant_ids:
-                                self._entities[source_id].descendant_ids.append(key)
+                    # V3 Phase 14: record creation deferred to delta path.
+                    # Only link lineage if result key already exists as proper PID.
+                    if key in self._entities:
+                        for source_id in decision.source_pids:
+                            if source_id in self._entities:
+                                if source_id not in self._entities[key].ancestor_ids:
+                                    self._entities[key].ancestor_ids.append(source_id)
+                                if key not in self._entities[source_id].descendant_ids:
+                                    self._entities[source_id].descendant_ids.append(key)
 
             elif rel == "consumed":
                 for source_id in decision.source_pids:

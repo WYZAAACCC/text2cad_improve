@@ -268,8 +268,10 @@ class TestRegistryApplyIdentityDecisions:
         updated = reg._entities["gct3_disk_hub"]
         assert updated.generation == 1
 
-    def test_generated_from_tool_registers_new_entity(self):
-        """Generated from tool → new entity registered, tool source consumed."""
+    def test_generated_from_tool_records_evidence_on_source(self):
+        """V3 Phase 14: apply_identity_decisions() no longer creates new records.
+        Instead it records evidence on the tool source and lets the delta path
+        (build_entity_records_from_delta) create proper gct3_ PIDs."""
         reg = TopologyRegistry()
         tool = TopologyEntityRecord(
             persistent_id="gct3_cutter_slot",
@@ -287,7 +289,9 @@ class TestRegistryApplyIdentityDecisions:
             identity_relation=IdentityRelation.GENERATED_FROM_TOOL,
         )
         reg.apply_identity_decisions([decision], node_id="boolean_cut", component_id="disk")
-        assert "gct3_disk_slot_wall" in reg._entities
+        # V3: no new records created; evidence is recorded on source
+        assert reg.get_entity("gct3_cutter_slot") is not None
+        assert "gct3_disk_slot_wall" not in reg._entities
 
     def test_consumed_marks_tool_as_deleted(self):
         """Consumed decision → tool entity marked as deleted."""

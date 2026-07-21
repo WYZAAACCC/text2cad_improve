@@ -231,9 +231,17 @@ class DesignIdentityContext(BaseModel):
         The feature_stable_ids dict can be seeded with explicit stable UIDs
         (e.g. via FeatureIdentityReconciler) or left empty for ephemeral
         backwards-compatible mode where node_id serves as the stable id.
+
+        Lookup order: composite key "{component_id}.{node_id}" first,
+        then bare node_id as fallback.
         """
-        key = f"{component_id}.{node_id}" if component_id else node_id
-        return self.feature_stable_ids.get(key, node_id)
+        if component_id:
+            key = f"{component_id}.{node_id}"
+            if key in self.feature_stable_ids:
+                return self.feature_stable_ids[key]
+        if node_id in self.feature_stable_ids:
+            return self.feature_stable_ids[node_id]
+        return node_id
 
     @property
     def ephemeral_identity(self) -> bool:

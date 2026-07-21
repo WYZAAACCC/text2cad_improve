@@ -157,6 +157,14 @@ def _try_produce_extrude_topology(
     try:
         doc_id = ctx.document_id or "unknown"
 
+        # ── V3 Phase 17b: stable feature identity from design identity context ──
+        feature_stable_ids = None
+        fuid = None
+        dctx = getattr(ctx, 'design_identity_context', None)
+        if dctx is not None:
+            feature_stable_ids = getattr(dctx, 'feature_stable_ids', None)
+            fuid = dctx.feature_stable_id_for(node.id, component_id=node.component or "")
+
         delta = name_extrude_faces(
             solid,
             document_id=doc_id,
@@ -164,6 +172,7 @@ def _try_produce_extrude_topology(
             producer_node_id=node.id,
             extrude_plane=plane,
             direction=direction,
+            feature_uid=fuid,
         )
 
         # Build topology maps + ShapeBindingService for the result body
@@ -171,7 +180,10 @@ def _try_produce_extrude_topology(
         service = ShapeBindingService(ctx.object_store)
         maps = service.build_body_maps(body_handle_id, solid)
 
-        records = build_entity_records_from_delta(delta, document_id=doc_id)
+        records = build_entity_records_from_delta(
+            delta, document_id=doc_id,
+            feature_stable_ids=feature_stable_ids,
+        )
 
         # Locate each face and attach RuntimeTopoLocator
         faces = list(solid.faces().vals())
@@ -263,7 +275,7 @@ def _try_produce_extrude_topology_v2(
     """
     try:
         from seekflow_engineering_tools.generative_cad.topology.semantic_naming import (
-            _make_compact_key,
+            _make_compact_key, _reconstruct_descriptor,
         )
         from seekflow_engineering_tools.generative_cad.topology.models import (
             BindingState, EntityLifecycle, ProofClass, TopologyEntityRecord,
@@ -308,6 +320,14 @@ def _try_produce_extrude_topology_v2(
                         lifecycle=EntityLifecycle.ACTIVE,
                         binding_state=BindingState.BOUND,
                         proof_class=ProofClass.EXACT_GENERATED_HISTORY,
+                        identity_descriptor=_reconstruct_descriptor(
+                            document_id=doc_id,
+                            component_id=node.component or "unknown",
+                            producer_node_id=node.id,
+                            entity_type="face",
+                            semantic_role=role,
+                            feature_uid=fuid,
+                        ),
                     )
                     tx.register_entity(rec)
 

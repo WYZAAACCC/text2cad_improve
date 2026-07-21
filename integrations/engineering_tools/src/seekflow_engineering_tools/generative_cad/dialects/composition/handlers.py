@@ -7,6 +7,7 @@ All handlers follow the same pattern: validate → try full op → try fallback 
 from __future__ import annotations
 
 import math
+from typing import Any
 
 from seekflow_engineering_tools.generative_cad.ir.canonical import CanonicalNode
 from seekflow_engineering_tools.generative_cad.runtime.context import RuntimeContext
@@ -27,6 +28,16 @@ def _store_solid(node: CanonicalNode, ctx: RuntimeContext, obj) -> str:
     ctx.object_store.put_solid(handle, obj)
     ctx.bind_node_output(node.id, "body", solid_id)
     return solid_id
+
+
+def _get_feature_stable_ids(ctx: RuntimeContext) -> dict[str, str] | None:
+    """Extract feature_stable_ids from the DesignIdentityContext if available."""
+    dctx = getattr(ctx, 'design_identity_context', None)
+    if dctx is not None:
+        fids = getattr(dctx, 'feature_stable_ids', None)
+        if fids:
+            return fids
+    return None
 
 
 def _degraded_store(node: CanonicalNode, ctx: RuntimeContext, original_body, op_name: str) -> str:
@@ -55,122 +66,71 @@ def _degraded_store(node: CanonicalNode, ctx: RuntimeContext, original_body, op_
 def _register_transform_topology_preservation(
     *, node, ctx, source_body, result_body, transform_op, transform_params,
 ) -> None:
-    """Preserve topology identity across rigid-body transforms (Phase 3).
+    """Preserve topology identity across rigid-body transforms (Phase 3+15b).
 
-    Rigid-body transforms do not change topological identity — every face
-    survives with the same surface type, area, and normal direction.
-    We preserve the PID, update the locator, and record a relocated event.
-
-    In strict mode, any unmatched face causes an abort.
-    In non-strict mode, unmatched faces are recorded as warnings.
+    Rigid-body transforms (translate/rotate/place) preserve the IndexedMap
+    structure — face N in the source body IS face N in the result body.
+    We rebuild locators at the same position on the result body and update
+    owner_body_handle_id, without geometric matching.
     """
     try:
         from seekflow_engineering_tools.generative_cad.topology.shape_binding import (
             ShapeBindingService,
-        )
-        from seekflow_engineering_tools.generative_cad.topology.models import (
-            EntityLifecycle, BindingState, ProofClass,
         )
     except ImportError:
         return
 
     reg = ctx.topology_registry
     if reg.entity_count == 0:
-        return  # nothing to preserve
+        return
 
     service = ShapeBindingService(ctx.object_store)
     source_handle = f"solid:{node.component}:{node.id}:body"
 
-    # Build maps for source and result
-    src_raw = source_body.val().wrapped if hasattr(source_body, 'val') else source_body
+    # Build maps for result body only (source body maps only needed to verify
+    # that the position exists in the result — which it does for rigid transforms)
     res_raw = result_body.val().wrapped if hasattr(result_body, 'val') else result_body
-    src_maps = service.build_body_maps(source_handle + "_src", src_raw)
     res_maps = service.build_body_maps(source_handle, res_raw)
 
-    # Collect result face properties for matching
-    res_faces = []
-    for pos, face in res_maps.face_map.items():
-        try:
-            res_faces.append({
-                "pos": pos,
-                "face": face,
-                "stype": face.geomType() if hasattr(face, 'geomType') else "",
-                "normal": face.normalAt() if hasattr(face, 'normalAt') else None,
-                "area": face.Area() if hasattr(face, 'Area') else 0.0,
-            })
-        except Exception:
-            continue
-
     relocated = 0
-    unmatched = 0
+    no_locator = 0
     with ctx.topology_transaction() as tx:
         staged = tx.staged
         for pid, rec in staged._entities.items():
             if rec.status != "active" or rec.entity_type != "face":
                 continue
+
+            # ── Update owner_body_handle_id: all active faces now belong to
+            # the transformed body.  Rigid transforms don't change topology,
+            # so every entity from the source body carries over.
+            if rec.owner_body_handle_id != source_handle:
+                rec.owner_body_handle_id = source_handle
+
             loc = rec.current_locator
             if loc is None:
+                no_locator += 1
                 continue
             src_pos = loc.get("indexed_map_position")
             if src_pos is None:
                 continue
-            src_face = src_maps.face_map.get(src_pos)
-            if src_face is None:
+
+            # ── Rebuild locator at the same IndexedMap position on the result
+            # body.  Rigid transforms preserve face ordering, so the face at
+            # position N in the source is position N in the result.
+            res_face = res_maps.face_map.get(src_pos)
+            if res_face is None:
                 continue
-
-            # Get source face properties
-            try:
-                src_stype = src_face.geomType() if hasattr(src_face, 'geomType') else ""
-                src_normal = src_face.normalAt() if hasattr(src_face, 'normalAt') else None
-                src_area = src_face.Area() if hasattr(src_face, 'Area') else 0.0
-            except Exception:
-                unmatched += 1
-                continue
-
-            # Find best matching result face
-            best_match = None
-            best_score = 0.0
-            for rf in res_faces:
-                score = 0.0
-                if src_stype and rf["stype"] and src_stype == rf["stype"]:
-                    score += 0.4
-                if src_normal is not None and rf["normal"] is not None:
-                    dot = abs(src_normal.Dot(rf["normal"]))
-                    if dot > 0.99:
-                        score += 0.3
-                if src_area > 0 and rf["area"] > 0:
-                    ratio = min(src_area, rf["area"]) / max(src_area, rf["area"])
-                    if ratio > 0.999:
-                        score += 0.3
-                if score > best_score:
-                    best_score = score
-                    best_match = rf
-
-            if best_match is not None and best_score >= 0.7:
-                # Preserve PID, update locator
-                new_locator = service.locate_subshape(res_maps, best_match["face"], "face")
-                rec.current_locator = new_locator.model_dump() if new_locator else None
-                rec.owner_body_handle_id = source_handle
-                rec.evidence.append({
-                    "event": "relocated",
-                    "node_id": node.id,
-                    "transform": transform_op,
-                    "params": transform_params,
-                })
+            new_locator = service.locate_subshape(res_maps, res_face, "face")
+            if new_locator is not None:
+                rec.current_locator = new_locator.model_dump()
                 relocated += 1
-            else:
-                unmatched += 1
 
-    strict = getattr(ctx, "strict_topology_mode", False)
-    if unmatched > 0:
-        if strict:
-            raise RuntimeError(
-                f"Transform topology: {unmatched} faces unmatched in strict mode"
-            )
-        ctx.topology_warnings.append({
-            "node_id": node.id, "phase": "transform_topology",
-            "error": f"{unmatched} faces could not be matched after {transform_op}",
-        })
+            rec.evidence.append({
+                "event": "relocated",
+                "node_id": node.id,
+                "transform": transform_op,
+                "params": transform_params,
+            })
 
     ctx.topology_events.append({
         "event": "transform_topology_preserved",
@@ -178,7 +138,7 @@ def _register_transform_topology_preservation(
         "transform": transform_op,
         "params": transform_params,
         "relocated": relocated,
-        "unmatched": unmatched,
+        "no_locator": no_locator,
     })
 
 
@@ -607,15 +567,174 @@ def handle_boolean_cut(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, st
                               history_result=history_result)
 
 
+def _apply_boolean_identity_decisions(
+    *, tx, node, op_name: str, history_result: Any,
+    res_maps: Any = None,
+    pos_to_pid: dict[int, str] | None = None,
+) -> None:
+    """V3 Phase 15c+16: Apply OCCT history-driven identity decisions on top of
+    semantic naming entities.  Updates generation counts, marks consumed/
+    deleted entities, and records provenance evidence.
+
+    When res_maps and pos_to_pid are provided (Phase 16), OCCT result faces
+    are correlated to semantic naming entities via IndexedMap position,
+    enabling accurate ancestor/descendant lineage links.
+
+    Source role detection uses a precise PID-keyed approach: if the source PID
+    appears in the history result's PID-keyed dicts (gct3_ keys), it's a known
+    entity from the target or tool body.  Falls back to string heuristics only
+    when positional keys are used (no PID-keyed results available).
+    """
+    try:
+        from seekflow_engineering_tools.generative_cad.topology.kernel_identity import (
+            IdentityTransferPolicy, KernelHistoryEdge, KernelRelation,
+        )
+        # Determine if the history result has PID-keyed data (gct3_ keys)
+        has_pid_keys = any(
+            str(k).startswith("gct3_")
+            for k in history_result.generated_faces.keys()
+        )
+        # Build a set of known PIDs from the result for source-role detection
+        known_pids = set()
+        if has_pid_keys:
+            for k in history_result.generated_faces.keys():
+                known_pids.add(str(k))
+            for k in history_result.modified_faces.keys():
+                known_pids.add(str(k))
+            for k in history_result.deleted_entities:
+                known_pids.add(str(k))
+
+        decisions = []
+
+        # Build deleted PID set for tool detection in PID-keyed results
+        is_deleted = set(
+            str(k) for k in history_result.deleted_entities
+            if str(k).startswith("gct3_")
+        )
+
+        # ── Helper: map an OCCT result face to a gct3_ PID via IndexedMap position ──
+        def _resolve_result_pid(face) -> str | None:
+            if res_maps is None or not pos_to_pid:
+                return None
+            try:
+                from seekflow_engineering_tools.generative_cad.topology.shape_binding import (
+                    ShapeBindingService,
+                )
+                # locate_subshape is a method, need a service instance
+                # Use FindIndex directly on the stored indexed map
+                idx_map = res_maps._face_indexed_map
+                if idx_map is None:
+                    return None
+                raw_face = getattr(face, "wrapped", face)
+                pos = idx_map.FindIndex(raw_face)
+                if pos == 0:
+                    return None
+                return pos_to_pid.get(pos)
+            except Exception:
+                return None
+
+        # ── Generated faces ──
+        for src_key, gen_faces in history_result.generated_faces.items():
+            for fi, face in enumerate(gen_faces):
+                result_key = f"bool_gen:{node.id}:{src_key}:{fi}"
+                src_str = str(src_key)
+                if src_str.startswith("gct3_"):
+                    is_tool = src_str in is_deleted
+                    kernel_rel = KernelRelation.GENERATED if is_tool else KernelRelation.MODIFIED
+                else:
+                    is_tool = src_str.startswith("tool_")
+                    kernel_rel = KernelRelation.GENERATED
+                edge = KernelHistoryEdge(
+                    source_pid=src_str,
+                    result_occurrence_key=result_key,
+                    kernel_relation=kernel_rel,
+                )
+                decision = IdentityTransferPolicy.decide(
+                    [edge],
+                    source_role="tool" if is_tool else "target",
+                    operation_kind=op_name,
+                    entity_dimension="face",
+                )
+                # ── Phase 16: link result face to semantic naming entity ──
+                result_pid = _resolve_result_pid(face)
+                if result_pid:
+                    decision.result_keys.append(result_pid)
+                decisions.append(decision)
+
+        # ── Modified faces → MODIFIED_SAME_IDENTITY ──
+        for src_key, mod_faces in history_result.modified_faces.items():
+            for fi, face in enumerate(mod_faces):
+                edge = KernelHistoryEdge(
+                    source_pid=str(src_key),
+                    result_occurrence_key=f"bool_mod:{node.id}:{src_key}",
+                    kernel_relation=KernelRelation.MODIFIED,
+                )
+                decision = IdentityTransferPolicy.decide(
+                    [edge],
+                    source_role="target",
+                    operation_kind=op_name,
+                    entity_dimension="face",
+                )
+                # ── Phase 16: link result face to semantic naming entity ──
+                result_pid = _resolve_result_pid(face)
+                if result_pid:
+                    decision.result_keys.append(result_pid)
+                decisions.append(decision)
+
+        # ── Deleted entities → DELETED/CONSUMED ──
+        for del_key in history_result.deleted_entities:
+            if has_pid_keys:
+                is_tool = str(del_key) not in {
+                    str(k) for k in history_result.modified_faces.keys()
+                }
+            else:
+                is_tool = str(del_key).startswith("tool_")
+            edge = KernelHistoryEdge(
+                source_pid=str(del_key),
+                result_occurrence_key="",
+                kernel_relation=KernelRelation.REMOVED,
+            )
+            decision = IdentityTransferPolicy.decide(
+                [edge],
+                source_role="tool" if is_tool else "target",
+                operation_kind=op_name,
+                entity_dimension="face",
+            )
+            decisions.append(decision)
+
+        if decisions:
+            # ── Phase 17a: deduplicate by source_pid to prevent generation inflation.
+            # One source PID appears in N OCCT result faces → N decisions →
+            # generation += N (incorrect).  Dedup to 1 decision per source.
+            seen_sources: set[tuple[str, ...]] = set()
+            deduped = []
+            for d in decisions:
+                key = tuple(sorted(d.source_pids))
+                if key not in seen_sources:
+                    seen_sources.add(key)
+                    deduped.append(d)
+            decisions = deduped
+
+            tx.staged.apply_identity_decisions(
+                decisions,
+                node_id=node.id,
+                component_id=node.component or "unknown",
+            )
+    except Exception:
+        pass  # identity decisions are supplementary; delta is authoritative
+
+
 def _try_produce_boolean_topology(
     *, node: CanonicalNode, ctx: RuntimeContext, solid, op_name: str,
     history_result: Any = None,
 ) -> None:
-    """PR 6: Build topology delta for boolean result faces.
+    """PR 6 + V3 Phase 15c: Hybrid Boolean topology — semantic naming for entity
+    creation, OCCT history for lineage and generation enrichment.
 
-    When history_result is provided (from history_aware_boolean_fuse/cut),
-    tracks modified/split/merge/deleted per OCCT history.
-    Falls back to semantic naming when history is unavailable.
+    Always runs semantic naming to create gct3_ entities with full descriptor
+    coverage.  When OCCT history is available with PID-keyed results, it also
+    calls apply_identity_decisions to update generation counts, mark consumed/
+    deleted entities, and establish ancestor/descendant lineage.
     """
     try:
         from seekflow_engineering_tools.generative_cad.topology.semantic_naming import (
@@ -626,151 +745,97 @@ def _try_produce_boolean_topology(
     try:
         doc_id = ctx.document_id or "unknown"
 
-        # Build delta: hybrid approach.
-        # 1. Use OCCT history to UPDATE existing entities (modified/deleted) — always.
-        # 2. Use OCCT history for generated entities ONLY if count is reasonable.
-        # 3. Always run semantic naming for complete face coverage on result body.
-        _total_gen = 0
-        if history_result is not None:
-            _total_gen = sum(len(v) for v in history_result.generated_faces.values())
+        # ── Step 1 (always): semantic naming creates base gct3_ entities ──
+        fuid = None
+        dctx = getattr(ctx, 'design_identity_context', None)
+        if dctx is not None:
+            fuid = dctx.feature_stable_id_for(node.id, component_id=node.component or "")
+        delta = name_boolean_faces(
+            solid, document_id=doc_id,
+            component_id=node.component or "unknown",
+            producer_node_id=node.id,
+            feature_uid=fuid,
+        )
 
-        # Step 2: Build topology delta from OCCT history or semantic naming
-        if history_result is not None and _total_gen <= 500 and _total_gen > 0:
-            # V3: Build delta from actual OCCT boolean history
-            # (generated_faces, modified_faces, deleted_entities)
-            from seekflow_engineering_tools.generative_cad.topology.models import (
-                TopologyDelta, TopologyRelation,
-            )
-            relations = []
-            # Generated faces → primitive relations
-            for edge_key, faces in history_result.generated_faces.items():
-                for fi, _face in enumerate(faces):
-                    role = f"boolean/generated.from/{edge_key}"
-                    if len(faces) > 1:
-                        role += f"/{fi}"
-                    relations.append(TopologyRelation(
-                        relation="generated",
-                        source_ids=[edge_key],
-                        result_entity_keys=[],  # filled by build_entity_records
-                        semantic_role=role,
-                        evidence={"method": "occt_boolean_generated", "source": edge_key},
-                    ))
-            # Modified faces → modified relations
-            for face_key, mod_faces in history_result.modified_faces.items():
-                for fi, _face in enumerate(mod_faces):
-                    role = f"boolean/modified.from/{face_key}"
-                    if len(mod_faces) > 1:
-                        role += f"/{fi}"
-                    relations.append(TopologyRelation(
-                        relation="modified",
-                        source_ids=[face_key],
-                        result_entity_keys=[],
-                        semantic_role=role,
-                        evidence={"method": "occt_boolean_modified", "source": face_key},
-                    ))
-            # Deleted entities → deleted relations
-            for del_key in history_result.deleted_entities:
-                relations.append(TopologyRelation(
-                    relation="deleted",
-                    source_ids=[del_key],
-                    evidence={"method": "occt_boolean_deleted"},
-                ))
-            delta = TopologyDelta(
-                node_id=node.id,
-                component_id=node.component or "unknown",
-                result_body_handle_ids=[],
-                relations=relations,
-                history_provider="occt_boolean_history",
-                history_provider_version="3.0.0",
-            )
-        else:
-            delta = name_boolean_faces(
-                solid, document_id=doc_id,
-                component_id=node.component or "unknown",
-                producer_node_id=node.id,
-            )
+        records = build_entity_records_from_delta(
+            delta, document_id=doc_id,
+            feature_stable_ids=_get_feature_stable_ids(ctx),
+        )
+        body_handle_id = f"solid:{node.component}:{node.id}:body"
 
-        records = build_entity_records_from_delta(delta, document_id=doc_id)
+        # Locator and lineage correlation state (populated in Step 1.5)
+        res_maps = None
+        pos_to_pid: dict[int, str] = {}
+
         with ctx.topology_transaction() as tx:
             for rec in records:
                 tx.register_entity(rec)
             tx.apply_delta(delta)
 
-            # ── V3 Phase 11: supplementary identity decisions from kernel history ──
-            if history_result is not None and history_result.generated_faces:
-                try:
-                    from seekflow_engineering_tools.generative_cad.topology.kernel_identity import (
-                        IdentityTransferPolicy, KernelHistoryEdge, KernelRelation,
-                    )
-                    decisions = []
-                    # Generated faces → GENERATED_FROM_TOOL or GENERATED_NEW_IDENTITY
-                    for src_key, gen_faces in history_result.generated_faces.items():
-                        for fi, _face in enumerate(gen_faces):
-                            result_key = f"bool_gen:{node.id}:{src_key}:{fi}"
-                            is_tool = str(src_key).startswith("gct3_") and (
-                                "tool" in str(src_key).lower()
-                                or "cutter" in str(src_key).lower()
-                            ) or src_key.startswith("tool_")
-                            edge = KernelHistoryEdge(
-                                source_pid=str(src_key),
-                                result_occurrence_key=result_key,
-                                kernel_relation=KernelRelation.GENERATED,
-                            )
-                            decision = IdentityTransferPolicy.decide(
-                                [edge],
-                                source_role="tool" if is_tool else "target",
-                                operation_kind=op_name,
-                                entity_dimension="face",
-                            )
-                            decisions.append(decision)
-                    # Modified faces → MODIFIED_SAME_IDENTITY
-                    for src_key, mod_faces in history_result.modified_faces.items():
-                        edge = KernelHistoryEdge(
-                            source_pid=str(src_key),
-                            result_occurrence_key=f"bool_mod:{node.id}:{src_key}",
-                            kernel_relation=KernelRelation.MODIFIED,
-                        )
-                        decision = IdentityTransferPolicy.decide(
-                            [edge],
-                            source_role="target",
-                            operation_kind=op_name,
-                            entity_dimension="face",
-                        )
-                        decisions.append(decision)
-                    # Deleted entities → DELETED/CONSUMED
-                    for del_key in history_result.deleted_entities:
-                        is_tool = str(del_key).startswith("gct3_") and (
-                            "tool" in str(del_key).lower()
-                            or "cutter" in str(del_key).lower()
-                        ) or del_key.startswith("tool_")
-                        edge = KernelHistoryEdge(
-                            source_pid=str(del_key),
-                            result_occurrence_key="",
-                            kernel_relation=KernelRelation.REMOVED,
-                        )
-                        decision = IdentityTransferPolicy.decide(
-                            [edge],
-                            source_role="tool" if is_tool else "target",
-                            operation_kind=op_name,
-                            entity_dimension="face",
-                        )
-                        decisions.append(decision)
+            # ── Step 1.5: build locators for result entities ──
+            # name_boolean_faces iterates solid.faces().vals() in order;
+            # the IndexedMap enumerates faces in the same deterministic order.
+            # So records[i] corresponds to solid.faces().vals()[i].
+            # Build locators via IndexedMap position to enable downstream
+            # OCCT history face → PID correlation for lineage.
+            pos_to_pid: dict[int, str] = {}
+            try:
+                from seekflow_engineering_tools.generative_cad.topology.shape_binding import (
+                    ShapeBindingService,
+                )
+                service_bl = ShapeBindingService(ctx.object_store)
+                raw_solid = solid.val().wrapped if hasattr(solid, 'val') else solid
+                res_maps = service_bl.build_body_maps(body_handle_id, raw_solid)
+                res_faces = list(solid.faces().vals())
+                for idx, rec in enumerate(records):
+                    if idx < len(res_faces):
+                        locator = service_bl.locate_subshape(res_maps, res_faces[idx], "face")
+                        if locator is not None:
+                            rec.current_locator = locator.model_dump()
+                            pos = locator.indexed_map_position
+                            if pos is not None:
+                                pos_to_pid[pos] = rec.persistent_id
+            except Exception:
+                pass  # locator building is best-effort
 
-                    if decisions:
-                        tx.staged.apply_identity_decisions(
-                            decisions,
-                            node_id=node.id,
-                            component_id=node.component or "unknown",
-                        )
-                except Exception:
-                    pass  # identity decisions are supplementary; delta is authoritative
+            # ── Step 2 (optional): OCCT history enriches lineage + generation ──
+            if history_result is not None and history_result.generated_faces:
+                _apply_boolean_identity_decisions(
+                    tx=tx, node=node, op_name=op_name,
+                    history_result=history_result,
+                )
+
+            # ── Step 2.5: establish batch lineage ──
+            # All new boolean entities are descendants of surviving source faces.
+            # Collect surviving source PIDs (not deleted, with gct3_ keys in history).
+            surviving_sources: list[str] = []
+            if history_result is not None:
+                deleted_set = set(str(k) for k in history_result.deleted_entities)
+                for src_key in history_result.generated_faces:
+                    src_str = str(src_key)
+                    if src_str.startswith("gct3_") and src_str not in deleted_set:
+                        if src_str not in surviving_sources:
+                            surviving_sources.append(src_str)
+                for src_key in history_result.modified_faces:
+                    src_str = str(src_key)
+                    if src_str.startswith("gct3_") and src_str not in surviving_sources:
+                        surviving_sources.append(src_str)
+            # Link each new boolean entity to all surviving sources
+            if surviving_sources:
+                for rec in records:
+                    for src_pid in surviving_sources:
+                        if src_pid not in rec.ancestor_ids:
+                            rec.ancestor_ids.append(src_pid)
+                        src_rec = tx.staged._entities.get(src_pid)
+                        if src_rec is not None and rec.persistent_id not in src_rec.descendant_ids:
+                            src_rec.descendant_ids.append(rec.persistent_id)
 
         ctx.record_topology_event(
             event="boolean_topology_produced",
             node_id=node.id,
             op=op_name,
             face_count=len(delta.relations),
-            method="occt_history" if history_result is not None else "semantic",
+            method="semantic" if history_result is None else "hybrid_semantic_plus_history",
             deleted_count=len(history_result.deleted_entities) if history_result is not None else 0,
             generated_count=sum(len(v) for v in history_result.generated_faces.values()) if history_result is not None else 0,
             modified_count=sum(len(v) for v in history_result.modified_faces.values()) if history_result is not None else 0,

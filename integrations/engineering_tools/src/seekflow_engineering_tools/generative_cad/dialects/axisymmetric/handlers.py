@@ -119,7 +119,7 @@ def _try_produce_axisymmetric_revolve_topology(
     """
     try:
         from seekflow_engineering_tools.generative_cad.topology.semantic_naming import (
-            _make_compact_key,
+            _make_compact_key, _reconstruct_descriptor,
         )
         from seekflow_engineering_tools.generative_cad.topology.models import (
             BindingState, EntityLifecycle, ProofClass, TopologyEntityRecord,
@@ -161,6 +161,14 @@ def _try_produce_axisymmetric_revolve_topology(
                             lifecycle=EntityLifecycle.ACTIVE,
                             binding_state=BindingState.BOUND,
                             proof_class=ProofClass.EXACT_GENERATED_HISTORY,
+                            identity_descriptor=_reconstruct_descriptor(
+                                document_id=doc_id,
+                                component_id=node.component or "unknown",
+                                producer_node_id=node.id,
+                                entity_type="face",
+                                semantic_role=role,
+                                feature_uid=fuid,
+                            ),
                         )
                         tx.register_entity(rec)
             ctx.topology_events.append({

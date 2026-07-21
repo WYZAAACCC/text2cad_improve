@@ -269,22 +269,67 @@ def handle_revolve_profile(node, ctx) -> dict:
 def _try_produce_extrude_profile_topology(
     *, node, ctx, solid,
 ) -> None:
-    """Phase 5: Build topology delta for sketch_profile extrude faces."""
+    """Phase 5+17b: Build topology delta for sketch_profile extrude faces.
+
+    V3 Phase 17b: creates ShapeBindingService locators for all result faces
+    and passes feature_stable_ids for stable feature identity.
+    """
     try:
         from seekflow_engineering_tools.generative_cad.topology.semantic_naming import (
             build_entity_records_from_delta, name_extrude_faces,
+        )
+        from seekflow_engineering_tools.generative_cad.topology.shape_binding import (
+            ShapeBindingService,
         )
     except ImportError:
         return
     try:
         doc_id = ctx.document_id or "unknown"
+
+        # ── V3 Phase 17b: stable feature identity from design identity context ──
+        feature_stable_ids = None
+        fuid = None
+        dctx = getattr(ctx, 'design_identity_context', None)
+        if dctx is not None:
+            feature_stable_ids = getattr(dctx, 'feature_stable_ids', None)
+            fuid = dctx.feature_stable_id_for(node.id, component_id=node.component or "")
+
         delta = name_extrude_faces(
             solid, document_id=doc_id,
             component_id=node.component or "unknown",
             producer_node_id=node.id,
             extrude_plane="XY", direction="+",
+            feature_uid=fuid,
         )
-        records = build_entity_records_from_delta(delta, document_id=doc_id)
+
+        # Build topology maps + ShapeBindingService for the result body
+        body_handle_id = f"solid:{node.component}:{node.id}:body"
+        service = ShapeBindingService(ctx.object_store)
+        maps = service.build_body_maps(body_handle_id, solid)
+
+        records = build_entity_records_from_delta(
+            delta, document_id=doc_id,
+            feature_stable_ids=feature_stable_ids,
+        )
+
+        # Locate each face and attach RuntimeTopoLocator
+        faces = list(solid.faces().vals())
+        located_count = 0
+        for rec in records:
+            if rec.entity_type == "face":
+                for relation in delta.relations:
+                    if rec.semantic_role == relation.semantic_role:
+                        ev = relation.evidence
+                        rt_idx = ev.get("runtime_index") if ev else None
+                        if rt_idx is not None and rt_idx < len(faces):
+                            locator = service.locate_subshape(
+                                maps, faces[rt_idx], "face",
+                            )
+                            if locator is not None:
+                                rec.current_locator = locator.model_dump()
+                                located_count += 1
+                                break
+
         with ctx.topology_transaction() as tx:
             for rec in records:
                 tx.register_entity(rec)
@@ -292,6 +337,7 @@ def _try_produce_extrude_profile_topology(
         ctx.topology_events.append({
             "event": "extrude_profile_topology_produced",
             "node_id": node.id, "face_count": len(delta.relations),
+            "located_count": located_count,
         })
     except Exception as exc:
         ctx.topology_warnings.append({
@@ -313,7 +359,7 @@ def _try_produce_revolve_profile_topology(
     """
     try:
         from seekflow_engineering_tools.generative_cad.topology.semantic_naming import (
-            _make_compact_key,
+            _make_compact_key, _reconstruct_descriptor,
         )
         from seekflow_engineering_tools.generative_cad.topology.models import (
             BindingState, EntityLifecycle, ProofClass, TopologyEntityRecord,
@@ -355,10 +401,18 @@ def _try_produce_revolve_profile_topology(
                             producer_node_id=node.id,
                             semantic_role=role,
                             current_locator=locator.model_dump() if locator else None,
-                            # ── V3 fields (Phase 1+2) ──
+                            # ── V3 fields (Phase 1+2+14) ──
                             lifecycle=EntityLifecycle.ACTIVE,
                             binding_state=BindingState.BOUND,
                             proof_class=ProofClass.EXACT_GENERATED_HISTORY,
+                            identity_descriptor=_reconstruct_descriptor(
+                                document_id=doc_id,
+                                component_id=node.component or "unknown",
+                                producer_node_id=node.id,
+                                entity_type="face",
+                                semantic_role=role,
+                                feature_uid=fuid,
+                            ),
                         )
                         tx.register_entity(rec)
             ctx.topology_events.append({
@@ -584,7 +638,7 @@ def _try_produce_extrude_profile_topology_v2(
     """
     try:
         from seekflow_engineering_tools.generative_cad.topology.semantic_naming import (
-            _make_compact_key,
+            _make_compact_key, _reconstruct_descriptor,
         )
         from seekflow_engineering_tools.generative_cad.topology.models import (
             BindingState, EntityLifecycle, ProofClass, TopologyEntityRecord,
@@ -627,6 +681,14 @@ def _try_produce_extrude_profile_topology_v2(
                         lifecycle=EntityLifecycle.ACTIVE,
                         binding_state=BindingState.BOUND,
                         proof_class=ProofClass.EXACT_GENERATED_HISTORY,
+                        identity_descriptor=_reconstruct_descriptor(
+                            document_id=doc_id,
+                            component_id=node.component or "unknown",
+                            producer_node_id=node.id,
+                            entity_type="face",
+                            semantic_role=role,
+                            feature_uid=fuid,
+                        ),
                     )
                     tx.register_entity(rec)
 
