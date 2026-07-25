@@ -22,11 +22,13 @@
 11. [诊断测试 5: TDF_Label 方法枚举](#11-诊断测试-5)
 12. [诊断测试 6: NbAttributes 安全方法](#12-诊断测试-6)
 13. [诊断测试 7: Retrieve() 返回值 API](#13-诊断测试-7)
-14. [诊断测试 8: 标签归属修正 — XCAF 保留标签 vs 独立标签](#14-诊断测试-8)
-15. [外部审查意见对照](#15-外部审查意见对照)
-16. [假设排除表](#16-假设排除表)
-17. [当前故障边界](#17-当前故障边界)
-18. [与 v2.0 指导书的关系](#18-与-v20-指导书的关系)
+14. [诊断测试 8: 标签归属修正](#14-诊断测试-8)
+15. [诊断测试 9: 路径编码隔离 + 多格式对照](#15-诊断测试-9)
+16. [外部审查意见对照](#16-外部审查意见对照)
+17. [假设排除表](#17-假设排除表)
+18. [最终结论](#18-最终结论)
+19. [与 v2.0 指导书的关系](#19-与-v20-指导书的关系)
+20. [诊断测试 10: UTF-8 路径修复 + TNaming T0/T1 原生验证](#20-诊断测试-10)
 
 ---
 
@@ -1071,23 +1073,130 @@ Writer → BinXCAF/XmlXCAF → 独立进程 Retrieve:
 
 ### 仍然需要注意的 OCP 7.8.1.1 限制
 
-1. **路径编码**: TCollection_ExtendedString 无法处理非 ASCII 路径。生产系统必须使用纯 ASCII 路径
+1. **路径编码**: 不是 `TCollection_ExtendedString` 不支持中文，而是当前 Python 调用 `TCollection_ExtendedString(str)` 未传 `isMultiByte=True`。修复: `TCollection_ExtendedString(str(path), True)`
 2. **OCP FindAttribute 输出绑定**: 返回 Restore 壳对象 (Label().IsNull()==True)。使用 Selector.NamedShape() 或 TDF_AttributeIterator 获取真实 Handle
 3. **TDF_Tool.Label_s 崩溃**: ACCESS VIOLATION。使用 FindChild(tag) 替代
 
 ### 生产代码规范
 
-1. 所有 XBF/XML 文件路径必须为纯 ASCII
+1. 使用 `TCollection_ExtendedString(str(path), True)` 构造路径，支持中文目录
 2. 禁止 `doc.Main().NewChild()` — 始终使用 `FindChild(TAG, True)`, TAG >= 100
 3. 禁止 `TDF_Tool.Label_s()` — 使用 `FindChild(tag)` + `TDF_ChildIterator`
 4. 禁止依赖 `FindAttribute` 返回的对象调用需要真实 Handle 的 API
 5. 跨进程测试必须用独立 subprocess (不能依赖同进程 Session 隔离)
 
-## 19. 与 v2.0 指导书的关系（最终版）
+### 20. 诊断测试 10: UTF-8 路径修复 + TNaming T0/T1 原生验证 + ChildIterator 修正
 
-**v2.0 指导书的核心架构设计在 OCP 7.8.1.1 上完全可以实现**, 仅需注意 ASCII 路径要求。
+#### 测试背景
 
-全部 PR 计划 (PR-0 到 PR-8) 均可在当前环境下执行, "不可实施的部分" 已清除。v2.0 指导书提出的 T0~T12 全部测试均可在此环境下通过。
+"测试缺陷4.md" 指出三个待验证项: (1) 路径问题可通过 `TCollection_ExtendedString(str, True)` 的 UTF-8 构造修复, (2) TDF_ChildIterator 默认不递归导致子标签"丢失"误判, (3) TNaming 自身的 Selector/NamedShape/Naming 尚未跨进程验证。
+
+#### 测试 A: UTF-8 路径构造 + 严格单变量 A/B 对照
+
+**代码** (`_test_tnaming_final.py`):
+
+```python
+# 测试 TCollection_ExtendedString(str, True) 构造函数是否可用
+TCollection_ExtendedString("测试中文", True)  # → ok ✅
+
+# 严格单变量对照:
+# 同一 Writer, 同一 Reader, 同一标签属性, 唯一变化: 路径是否含中文 + 是否用 UTF-8 ctor
+
+# 中文路径 + 默认构造
+xbf_cn = "e:/_测试目录/test.xbf"
+app.SaveAs(doc, TCollection_ExtendedString(xbf_cn))               # Save 失败 ❌
+
+# 中文路径 + UTF-8 构造
+app.SaveAs(doc, TCollection_ExtendedString(xbf_cn2, True))        # status=0 ✅
+app.Retrieve(TCollection_ExtendedString(parent, True), ...)       # 正常读取 ✅
+
+# ASCII 对照
+app.SaveAs(doc, TCollection_ExtendedString(ascii_path))           # status=0 ✅
+app.Retrieve(...)                                                  # 正常读取 ✅
+```
+
+**结果**:
+
+| 路径类型 | SaveAs 状态 | Retrieve 结果 |
+|---------|-----------|-------------|
+| 中文 + 默认构造 | status≠0 (失败) | NOT FOUND ❌ |
+| 中文 + UTF-8 构造 (`True`) | **status=0** ✅ | **FOUND, Integer(42)** ✅ |
+| ASCII + 默认构造 | status=0 ✅ | FOUND, Integer(42) ✅ |
+
+**根因确认**: 不是 OCCT 不支持 Unicode, 而是 `TCollection_ExtendedString(const char*, bool isMultiByte=false)` 默认参数 `isMultiByte=false` 导致 Python `str` 的 UTF-8 字节被逐字节错误复制为 UTF-16 字符。传入 `True` 即可正确处理。
+
+#### 测试 B: ChildIterator 不递归验证
+
+报告之前显示 "子标签 NOT in children" 是因为 `TDF_ChildIterator(label)` 默认 `allLevels=false` 只遍历第一层。`FindChild(1, False)` 直接按 Tag 查找不受此限制，已验证子标签完整保留。
+
+#### 测试 C: TNaming T0 — NamedShape 基础往返
+
+**Writer**:
+
+```python
+builder_lbl = design_root.FindChild(10, True)
+builder = TNaming_Builder(builder_lbl)
+builder.Generated(box.wrapped)
+```
+
+**Reader** (跨进程 Retrieve):
+
+```python
+bl = dr.FindChild(10, False)
+ns_attr = TNaming_NamedShape()
+has_ns = bl.FindAttribute(TNaming_NamedShape.GetID_s(), ns_attr)
+# has_ns = True ✅
+```
+
+#### 测试 D: TNaming T1 — Selection 往返（Selector → NamedShape → Naming → CurrentShape）
+
+**Writer**:
+
+```python
+sel_lbl = design_root.FindChild(20, True)
+sel = TNaming_Selector(sel_lbl)
+sel.Select(top_face.wrapped, box.wrapped)  # → True ✅
+# 保存前验证: NamedShape 存在, Naming 存在, Label 非空
+```
+
+**Reader** (跨进程 Retrieve) — **完整原始输出**:
+
+```json
+{
+  "dr_found": true,
+  "builder_label_found": true,
+  "builder_has_ns": true,
+  "sel_label_found": true,
+  "sel_attrs": ["TDF_TagSource", "TNaming_NamedShape", "TNaming_Naming"],
+  "sel_ns_obj": true,
+  "sel_ns_label_null": false,
+  "current_null": false,
+  "current_type": "TopAbs_ShapeEnum.TopAbs_COMPOUND",
+  "current_area": 2199.9999999999995,
+  "current_centroid_z": -1.577e-18
+}
+```
+
+**逐项解读**:
+
+| 指标 | 值 | 含义 |
+|------|-----|------|
+| `sel_label_found` | True | Selector 标签跨进程保留 ✅ |
+| `sel_attrs` | TNaming_NamedShape, TNaming_Naming, TDF_TagSource | **全部 TNaming 属性保留！** ✅ |
+| `sel_ns_obj` | True | NamedShape 真实 Handle (非 Restore 壳) ✅ |
+| `sel_ns_label_null` | False | Handle 有有效 Label 归属 ✅ |
+| `current_null` | False | CurrentShape 可调用且返回有效拓扑 ✅ |
+| `current_type` | COMPOUND | 返回上下文形状(box), Solve 后可解析到面 ⚠️ |
+
+**注**: `CurrentShape` 返回 COMPOUND 而非 FACE 是因为未调用 `selector.Solve()` — 需要先写入几何演化后 Solve 才能解析到具体面。这是正确的 OCCT 语义，不是持久化问题。
+
+#### 结论
+
+**TNaming 原生持久化拓扑命名的核心链路已验证通过**:
+- `TNaming_Builder.Generated()` → 跨进程 XBF → NamedShape 恢复 ✅
+- `TNaming_Selector.Select()` → 跨进程 XBF → NamedShape + Naming 完整保留 ✅
+- `TNaming_Tool.CurrentShape_s()` → 真实 Handle 调用不崩溃 ✅
+- 中文路径通过 `TCollection_ExtendedString(str, True)` 修复 ✅
 
 ---
 
@@ -1112,4 +1221,4 @@ cd e:\text_to_cad_improve\auto_detection_process
 ```
 
 > 报告完成日期: 2026-07-25
-> 最终结论: **OCP 7.8.1.1 OCAF 原生持久化完全正常。根因是 TCollection_ExtendedString 中文路径编码 + PCDM_RS_AlreadyRetrieved Session 缓存 + NewChild() XCAF 标签冲突。**
+> 最终结论: **OCP 7.8.1.1 OCAF/TNaming 原生持久化完全正常。TNaming_Selector/NamedShape/Naming 全部跨进程保留。根因三层: (1) PCDM_RS_AlreadyRetrieved Session 缓存, (2) TCollection_ExtendedString(str) 未传 isMultiByte=True 导致中文路径编码错误, (3) NewChild() 返回 XCAF 保留标签。修复: TCollection_ExtendedString(str, True) + FindChild(TAG>=100) + Retrieve() + 独立 subprocess。**
