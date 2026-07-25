@@ -1,5 +1,15 @@
 # OCAF/TNaming ABI 验证与实验发现报告
 
+> ⚠️ **重要更新 (2026-07-25)**: 本文档中关于"跨进程属性持久化不可用"的结论已被后续测试推翻。
+> **OCP 7.8.1.1 的 BinXCAF/XmlXCAF 原生持久化完全正常。** 之前测试失败的三层根因:
+> 1. `PCDM_RS_AlreadyRetrieved` (同进程 Session 缓存)
+> 2. `TCollection_ExtendedString` 中文路径编码 (tempfile.mkdtemp 含中文用户名)
+> 3. `NewChild()` 返回 XCAF 保留标签
+>
+> **完整诊断过程与最终验证见**: `OCAF_完整诊断测试报告_v3.0.md`
+>
+> ---
+>
 > 编制日期: 2026-07-25
 > 基线: 0b349da7b24b0f0f234c90b2ec5b6cc2c0129097
 > 环境: Python 3.11.9 · CadQuery 2.7.0 · OCP 7.8.1.1 · OCCT 7.8.1 · Windows 11
@@ -338,34 +348,33 @@ selector.NamedShape().Label().IsNull() = False (真实 Handle)
 | BinMNaming 由 C++ 内部注册 | ✅ 正确 |
 | 仓库代码本身严重问题 (RC-01~12) | ✅ 正确 |
 | "属性丢失可能是因为检查了空文档" | ⚠️ 部分 — 同进程测试确有缺陷，但修正后仍证实丢失 |
-| "真正的 OCAF 原生持久化拓扑命名是可以实现的 (不升级)" | ❌ 当前证据不支持 — 跨进程属性持久化仍未工作 |
+| "真正的 OCAF 原生持久化拓扑命名是可以实现的 (不升级)" | ✅ **最终证实正确** — ASCII 路径下 BinXCAF/XmlXCAF 均完全正常。详见 v3.0 报告 §15 |
 
 ---
 
-## 4. OCP 7.8.1.1 能力边界（修正后）
+## 4. OCP 7.8.1.1 能力边界（最终版, 经 9 项诊断测试确认）
 
 ```
 ✅ 可用的能力:
-  - TNaming_Builder 所有方法 (Generated/Modify/Delete) — 内存中
-  - TNaming_Selector.Select — 内存中, 写入真实 NamedShape/Naming
-  - TNaming_Selector.NamedShape — 返回真实 Handle (Label 非空) ✅
+  - TNaming_Builder 所有方法 (Generated/Modify/Delete)
+  - TNaming_Selector.Select — 写入真实 NamedShape/Naming
+  - TNaming_Selector.NamedShape — 返回真实 Handle (Label 非空)
   - TDF_Label.FindChild(tag) 导航 — 跨重开完全可靠
-  - TDF_AttributeIterator — 枚举真实属性 (保存前后均可用)
-  - ShapeUpgrade_UnifySameDomain.History — BRepTools_History ✅
+  - TDF_AttributeIterator — 枚举真实属性
+  - ShapeUpgrade_UnifySameDomain.History — BRepTools_History
   - BOPAlgo_BOP + SetToFillHistory
   - BRepPrimAPI_MakePrism/MakeRevol.Generated/Modified
   - BRepFilletAPI_MakeFillet.Generated/Modified
-  - XBF 保存/重开 — 标签树结构保留
-  - XBF 跨进程 Open — PCDM_RS_OK 可正常加载
+  - BinXCAF 跨进程完整持久化 — 标签树+全部用户属性 ✅ (ASCII路径)
+  - XmlXCAF 跨进程完整持久化 ✅ (ASCII路径)
+  - XBF 跨进程 Open/Retrieve — PCDM_RS_OK 正常
 
 ⚠️ 有限可用的能力:
   - TDF_Label.FindAttribute: 返回 Restore() 壳对象, Label().IsNull()==True
-    → 不能用其结果调用需要真实 Handle 的 API (如 TNaming_Tool.CurrentShape_s)
   - TDF_Tool.Label_s: 调用崩溃 → 用 FindChild(tag) 替代
+  - TCollection_ExtendedString: 不支持中文路径 → 须使用纯 ASCII 路径
 
-❌ 当前不可用的能力:
-  - 跨进程用户属性持久化 — TDataStd_Integer 和 TNaming_NamedShape 在 XBF 往返后丢失
-  - 跨进程 TNaming_Selector 数据 — Selector 标签子树不保留
+❌ 不可用的能力:
   - TNaming_Tool.CurrentShape_s(FindAttribute壳对象) — 因假Handle 的 Label 为空
 ```
 
@@ -407,20 +416,19 @@ selector.NamedShape().Label().IsNull() = False (真实 Handle)
 
 ---
 
-## 6. 建议的下一步（修正后）
+## 6. 最终结论与下一步（第三轮修正后）
 
-1. **Writer/Reader 分离诊断**: 用 C++ 写 XBF → Python 读 XBF 的四象限测试（见"可能的问题.md" §14），精确定位属性丢失发生在序列化、反序列化还是 Python 绑定层。
+> **本节的原始内容已被推翻。** 以下是最新结论：
 
-2. **OCP 返回值式安全绑定**: 由于 `FindAttribute`、`Open`、`NewDocument` 等输出参数 API 在 OCP 中存在已知问题，需要创建 C++ 适配函数返回真实 Handle：
-   - `find_named_shape(label) → Handle(TNaming_NamedShape)` 
-   - `open_xbf(path) → (status, Handle(TDocStd_Document))`
-   - `current_shape_at(label) → TopoDS_Shape`
+**OCP 7.8.1.1 的 OCAF 原生持久化完全正常。** 无需升级 OCP、无需 C++ sidecar、无需私有 wheel。
 
-3. **测试新版 OCP**: 在独立分支测试 cadquery-ocp 7.9.3.1，按 P-04 条件验证跨进程属性持久化是否修复。
+1. **立即开始 v2.0 指导书全部 PR 计划** (PR-0 ~ PR-8): 修复应用层问题（数据模型、Label 索引、Writer 语义、事务模型），实施完整跨进程 Selector 持久化、CAE Binding。
 
-4. **立即开始阶段 A** (PR-1 ~ PR-5): 修复应用层所有已知问题（数据模型、Label 索引、Writer 语义、事务模型），这些不依赖 OCP 升级且价值巨大。
+2. **遵守 ASCII 路径约束**: 所有 XBF/XML 文件路径使用纯 ASCII
 
-5. **评估 C++ Sidecar 方案**: 如果 OCP 升级和返回值式绑定都无法修复持久化，C++ sidecar 进程是最可靠的备选方案——Python 通过 JSON/IPC 通信，C++ 独占所有 OCAF Handle 操作。
+3. **遵守标签创建规范**: `FindChild(TAG, True)`, TAG >= 100，禁用 `doc.Main().NewChild()`
+
+详细诊断过程与验证数据见: `OCAF_完整诊断测试报告_v3.0.md`
 
 ---
 
