@@ -166,7 +166,33 @@ def handle_extrude_profile(node, ctx) -> dict:
     direction = params.get("direction", "+")
     taper = float(params.get("taper_deg", 0))
     try:
-        if direction == "both":
+        # v6.4: Tracked path for simple extrude (no taper, no "both")
+        can_track = (
+            abs(taper) <= 0.01
+            and direction != "both"
+            and getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        )
+        if can_track:
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+                tracked_extrude,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            import cadquery as cq
+
+            extrude_depth = depth if direction == "+" else -depth
+            profile = wp.val()
+            scope = TopologyCaptureScope(
+                node_id=node.id, component_id=cid,
+                dialect=node.dialect, operation=node.op,
+                operation_version=node.op_version,
+            )
+            tracked = tracked_extrude(profile, (0, 0, extrude_depth), scope=scope)
+            ctx.capture_session.stage(tracked)
+            solid = cq.Workplane("XY").newObject([tracked.result])
+        elif direction == "both":
             half = depth / 2.0
             if abs(taper) > 0.01:
                 solid = wp.taperedExtrude(half, taper, both=True)
@@ -209,21 +235,56 @@ def handle_revolve_profile(node, ctx) -> dict:
     # Extract wire and build face
     wire = wp.wire().val()
     face = BRepBuilderAPI_MakeFace(wire.wrapped, False).Face()
-
-    # Revolve around Z axis
-    z_axis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1))
     rev_angle = angle * math.pi / 180.0
-    revol = BRepPrimAPI_MakeRevol(face, z_axis, rev_angle)
-    revol.Build()
-    if not revol.IsDone():
-        raise RuntimeError("BRepPrimAPI_MakeRevol failed")
 
-    shape = revol.Shape()
-    # Fix minor BRep issues that OCCT MakeRevol sometimes produces
-    fixer = ShapeFix_Shape(shape)
-    fixer.Perform()
-    shape = fixer.Shape()
-    cad_solid = cq.Shape.cast(shape)
+    # v6.4: Tracked path for topology capture
+    if (
+        getattr(ctx, "enable_topology_capture", False)
+        and ctx.capture_session is not None
+    ):
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+            tracked_revolve,
+        )
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+            TopologyCaptureScope,
+        )
+
+        scope = TopologyCaptureScope(
+            node_id=node.id,
+            component_id=cid,
+            dialect=node.dialect,
+            operation=node.op,
+            operation_version=node.op_version,
+        )
+        tracked = tracked_revolve(
+            cq.Shape.cast(face), (0, 0, 0), (0, 0, 1), angle, scope=scope
+        )
+        ctx.capture_session.stage(tracked)
+        cad_solid = tracked.result
+        # Apply ShapeFix post-processing (same as original path)
+        try:
+            shape = cad_solid.wrapped
+            fixer = ShapeFix_Shape(shape)
+            fixer.Perform()
+            cad_solid = cq.Shape.cast(fixer.Shape())
+        except Exception:
+            pass  # ShapeFix is best-effort
+    else:
+        # ── Original path (unchanged) ──
+        # Revolve around Z axis
+        z_axis = gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1))
+        revol = BRepPrimAPI_MakeRevol(face, z_axis, rev_angle)
+        revol.Build()
+        if not revol.IsDone():
+            raise RuntimeError("BRepPrimAPI_MakeRevol failed")
+
+        shape = revol.Shape()
+        # Fix minor BRep issues that OCCT MakeRevol sometimes produces
+        fixer = ShapeFix_Shape(shape)
+        fixer.Perform()
+        shape = fixer.Shape()
+        cad_solid = cq.Shape.cast(shape)
+
     # Wrap as Workplane (standard CadQuery convention for solid handles)
     solid_wp = cq.Workplane("XY").newObject([cad_solid])
 

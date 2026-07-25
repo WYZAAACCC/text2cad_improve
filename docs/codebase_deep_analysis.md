@@ -1,856 +1,778 @@
-# SeekFlow Generative CAD 代码库深度源码分析
+# SeekFlow Text-to-CAD + Auto-FEA 系统深度架构分析
 
-**日期**: 2026-06-04
-**分析范围**: `E:\auto_detection_process\integrations\engineering_tools\src\seekflow_engineering_tools\generative_cad\`
-**代码规模**: ~22,600 行 Python，146 文件，31 目录
-**分析方法**: 四层推理（架构→数据流→逐函数→设计意图反推）
-**分析模式**: 极致源码理解模式（漏洞排查降为附属任务，优先吃透设计）
+> **分析日期**: 2026-07-24
+> **分析范围**: 完整代码仓库 e:\text_to_cad_improve (355+ Python 文件, ~22,600 行 generative_cad)
+> **当前版本**: main @ 678c073 (V3 topology 在 text2cad/v3-phase17-saved @ 81f693d)
+> **分析模式**: 极致源码理解 — 先吃透设计，再识别边界
 
 ---
 
 ## 目录
 
-1. [第一层：顶层架构解构](#1-第一层顶层架构解构)
-2. [第二层：数据流全链路追踪](#2-第二层数据流全链路追踪)
-3. [第三层：自底向上源码释义](#3-第三层自底向上源码释义)
-4. [第四层：设计目的反推](#4-第四层设计目的反推)
-5. [附录：文件依赖拓扑图](#5-附录文件依赖拓扑图)
+1. [系统全景](#1-系统全景)
+2. [Text-to-CAD 完整管线](#2-text-to-cad-完整管线-10-阶段)
+3. [架构层次](#3-架构层次)
+4. [IR 中间表示层](#4-ir-中间表示层)
+5. [验证内核 (Validation Kernel)](#5-验证内核-validation-kernel)
+6. [方言系统 (Dialect System)](#6-方言系统-dialect-system)
+7. [运行时与类型化 Handle 系统](#7-运行时与类型化-handle-系统)
+8. [V3 持久拓扑命名系统](#8-v3-持久拓扑命名系统)
+9. [Auto-FEA 3D 有限元管线](#9-auto-fea-3d-有限元管线)
+10. [修复回路 (Repair Loop)](#10-修复回路-repair-loop)
+11. [设计哲学](#11-设计哲学)
+12. [当前已知问题与架构边界](#12-当前已知问题与架构边界)
+13. [关键文件速查表](#13-关键文件速查表)
 
 ---
 
-# 1. 第一层：顶层架构解构
+## 1. 系统全景
 
-## 1.1 总体分层
+### 1.1 项目身份
 
-代码库采用**七层清晰分层架构**，每层有明确的职责边界和依赖方向：
+SeekFlow v0.3.7 — "DeepSeek-native zero-trust tool gateway"。核心使命：安全运行 LLM Agent 的生产级工具网关。Text-to-CAD 是其主要子系统，完整实现从自然语言到 ISO 10303-21 STEP 文件的全自动管线。
 
-```
-┌──────────────────────────────────────────────────────────┐
-│ Layer 0: LLM Skills & Orchestrator (skills/)              │
-│   → DeepSeek API 调用、工具调用编排、Level-2 文档生成       │
-├──────────────────────────────────────────────────────────┤
-│ Layer 1: Authoring Pipeline (authoring/)                  │
-│   → NL → RoutePlan → FeatureSequence → NodeParams → RawDoc  │
-│   → AutoFixer（17个确定性修复）+ LLM Repair Loop             │
-│   → Spatial Frontend（v6: 约束延迟两阶段求解）               │
-├──────────────────────────────────────────────────────────┤
-│ Layer 2: Validation Pipeline (validation/)                │
-│   → 9 Raw stages + 2 Canonical stages + Canonicalize      │
-│   → fail-closed: 验证不修复数据                             │
-├──────────────────────────────────────────────────────────┤
-│ Layer 3: IR System (ir/)                                  │
-│   → RawGcadDocument（LLM输出格式）                          │
-│   → CanonicalGcadDocument（验证后格式）                     │
-│   → ValueRef / ValueDecl / ValueType 类型系统              │
-├──────────────────────────────────────────────────────────┤
-│ Layer 4: Dialect Registry & Governance (dialects/)        │
-│   → 6方言: axisymmetric, sketch_extrude, composition,      │
-│            loft_sweep, shell_housing, sketch_profile       │
-│   → 每个方言: manifest, contract, op_specs, validators     │
-├──────────────────────────────────────────────────────────┤
-│ Layer 5: Runtime Execution (runtime/)                     │
-│   → execute_operation → handler → CadQuery/OCP → STEP     │
-│   → ConstraintResolver (v6: Phase C)                      │
-│   → GeometrySpatialAudit (v6: 后置审计)                    │
-├──────────────────────────────────────────────────────────┤
-│ Layer 6: Pipeline Orchestration (pipeline/)               │
-│   → run_canonical_gcad: component运行 → constraint解析     │
-│                         → composition → spatial audit     │
-│                         → STEP导出 → metadata生成          │
-└──────────────────────────────────────────────────────────┘
-```
-
-## 1.2 核心设计模式
-
-### 1.2.1 Dialect 协议模式（Protocol Pattern）
-
-```python
-class BaseDialect(Protocol):
-    dialect_id: str
-    version: str
-    phase_order: tuple[str, ...]
-
-    def manifest(self) -> dict[str, Any]: ...
-    def contract(self) -> dict[str, Any]: ...
-    def op_specs(self) -> dict[tuple[str, str], OperationSpec]: ...
-    def validate_component(self, component, nodes) -> ValidationReport: ...
-    def preflight_component(self, component, nodes) -> ValidationReport: ...
-    def run_component(self, component, nodes, ctx) -> dict[str, str]: ...
-```
-
-**设计意图**: 每个方言是一个类型安全的协议实例，不是抽象基类。作者刻意使用 `Protocol` 而非 `ABC`，表明这是结构性类型检查（structural typing），任何满足协议的对象都可以注册为方言——这为测试 mock 和第三方扩展提供了灵活性。
-
-### 1.2.2 冻结注册表模式（Frozen Registry Pattern）
-
-```python
-@dataclass
-class DialectRegistry:
-    _dialects: dict[str, BaseDialect] = field(default_factory=dict)
-    _frozen: bool = False
-
-    def register(self, dialect):   # 允许注册
-    def freeze(self):              # 冻结后禁止
-    def require(self, id):         # 查找或抛异常
-```
-
-**设计意图**: 这是核工业安全编程中的"初始化-冻结"模式。所有方言在 `build_default_registry()` 中注册，经过治理检查（`enforce_governance_on_registry`）后冻结。此后任何 `register()` 调用都会抛出 `RuntimeError`。这保证了运行时方言集合的不可变性，避免 LLM 或插件在运行时注入恶意/错误的方言。
-
-### 1.2.3 约束延迟两阶段求解（Constraint-Deferred Two-Phase Solving）—— v6 核心创新
+### 1.2 总体数据流
 
 ```
-Phase A (Symbolic, 作者前端):
-  MechanicalObjectGraphDraft → SpatialRelationDraft[] 
-  → Archetype匹配 → ConstraintGraph(symbolic)
-  → DFS cycle detection + contradictory check
-  → spatial_contract.json (sidecar)
-
-Phase C (Numeric, 运行时):
-  spatial_contract.json → resolve_placements()
-  → 5规则按序执行:
-    1. identity → (0,0,0)
-    2. stack → Kahn拓扑排序 Z轴堆叠
-    3. align_axis → 同轴XY中心对齐
-    4. symmetric → X轴镜像对称
-    5. contact → bbox距离验证
-  → NumericPlacement → handle_place_component()
+用户自然语言需求
+    │
+    ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  Stage 0 (v6 可选): Spatial Frontend                              │
+│  ── LLM 提取 MechanicalObjectGraphDraft → 原型匹配 → 约束图     │
+│  ── solver 检查一致性 → 多轮问答澄清                            │
+│  ── 输出 spatial_contract.json                                   │
+├──────────────────────────────────────────────────────────────────┤
+│  Stage 1-5: 创作层 (Authoring)                                    │
+│  ── Route (LLM): 选 Deterministic / GenerativeCAD / Unsupported  │
+│  ── Context Build (规则): 加载方言合约 + BasePackage skills      │
+│  ── Feature Sequence (LLM): 规划操作节点 DAG                     │
+│  ── Node Params (LLM, 逐节点): 填写操作参数                      │
+│  ── Raw Assembly (规则): 组装 RawGcadDocument                    │
+├──────────────────────────────────────────────────────────────────┤
+│  Stage 6: Validation Kernel (验证内核, 规则)                       │
+│  ── 14 stages, barrier 分组, Core + Extension 双层               │
+│  ── parse → canonicalize → 完整验证报告                           │
+├──────────────────────────────────────────────────────────────────┤
+│  Stage 7a-7b: AutoFix + LLM Repair Loop                          │
+│  ── 17+ 确定性修复规则 → QualityVector 质量门控                   │
+│  ── LLM repair loop (max 3 attempts, governor 策略执行)          │
+├──────────────────────────────────────────────────────────────────┤
+│  Stage 8: Compiler Middle-End (v6.3)                              │
+│  ── Fact Propagation Pass + Planner Pass                          │
+│  ── 输出 planning_report, compiler_diagnostics                    │
+├──────────────────────────────────────────────────────────────────┤
+│  Stage 9: Runtime Execution (方言引擎)                             │
+│  ── 拓扑排序 → 逐节点分发 handler                                 │
+│  ── 约束求解 (spatial placements)                                 │
+│  ── 组合 (boolean + assembly) → STEP 导出                        │
+├──────────────────────────────────────────────────────────────────┤
+│  Stage 10: Postcondition + Inspection                             │
+│  ── geometry_postcheck: closed? valid_solid? volume?              │
+│  ── step_postcheck: 文件完整性                                    │
+│  ── spatial_audit: 组件干涉检查                                   │
+│  ── Metadata v3: 完整审计证明                                    │
+└──────────────────────────────────────────────────────────────────┘
+    │ .step + .metadata.json
+    ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  FEA 3D 管线 (fea3d/)                                             │
+│  Stage 1 (prepare): gmsh 扇区网格 (tet10/SOLID187), 免费 ~2min    │
+│  Stage 2 (confirm): 人工确认 .confirmed, 必须                       │
+│  Stage 3 (solve): ANSYS 18.1 批处理, 耗算力 ~1-3min              │
+│  Stage 4 (post): Python 应力场后处理 + 安全系数                   │
+└──────────────────────────────────────────────────────────────────┘
+    │ nodal_stress_3d.csv / stress_field_3d.bin
+    ▼
+  可视化 / 工程决策
 ```
 
-**为什么需要延迟求解**: Phase A 时组件尚未构建，没有实际的 bbox 尺寸。如果此时求解数值坐标，将依赖 LLM 猜测的尺寸，导致"尺寸依赖循环"。Phase C 在所有 leaf component 构建完成后执行，可以测量实际 bbox 尺寸来求解精确坐标。
-
-### 1.2.4 fail-closed 验证哲学
-
-整个验证系统遵循 fail-closed 原则：
-- `validation/` 下的所有验证器**只报告问题，不修改数据**
-- `RawConstraints.fail_closed_flags` 强制所有安全标志为 `True`
-- `RawSafety.all_true` 验证器强制所有 7 项安全声明为 `True`
-- 任何 stage 失败 → 立即停止后续验证（`_run_stage_collect` 中的 fail-fast）
-
-这是航空/核工业级别的安全编程范式——宁可拒绝一个有效的零件，也不允许无效的几何体通过。
-
-### 1.2.5 类型化接线系统（Typed Wiring）
-
-```python
-ValueType = Literal["solid", "solid_array", "frame", "plane",
-                     "point", "curve", "profile", "sketch",
-                     "face_set", "edge_set", "component_ref"]
-```
-
-`CanonicalValueRef` 携带 `(producer_node, producer_component, output, resolved_type)` 四元组。验证器的类型检查阶段（`validate_typecheck`）确保每条连接的类型兼容。这是编译器理论中类型化 IR 在 CAD 领域的应用。
-
-## 1.3 模块划分初衷
-
-| 目录 | 职责 | 为什么不放在别处 |
-|------|------|-----------------|
-| `authoring/` | LLM交互、prompt构建、auto-fix、spatial前端 | 与 LLM 紧耦合，独立于几何内核 |
-| `validation/` | Raw→Canonical 验证管道 | 纯函数，无状态，可独立测试 |
-| `ir/` | 中间表示定义 | 跨所有层共享的数据模型，必须零依赖 |
-| `dialects/` | 几何操作定义与执行 | 每个方言是自包含的编译器前端 |
-| `runtime/` | 运行时状态管理 | 有状态（object_store, context），仅在运行时使用 |
-| `pipeline/` | 顶层编排 | 唯一知道全貌的层，组合所有其他层 |
-| `skills/` | DeepSeek工具调用 | 与具体LLM API耦合，独立于CAD逻辑 |
-| `repair/` | LLM修复循环 | 仅依赖IR和LLM，不依赖几何内核 |
-| `legacy/` | v0.1兼容 | 隔离历史债务，新代码禁止导入 |
-| `compatibility/` | 向后兼容适配 | 桥接新旧版本，不影响核心逻辑 |
-
-## 1.4 业务拓扑总结
+### 1.3 模块地图
 
 ```
-User NL Prompt
-  │
-  ├── [v6 Stage 0] Spatial Frontend (可选)
-  │     └→ MechanicalObjectGraphDraft (LLM)
-  │     └→ Archetype Match + ConstraintGraph
-  │     └→ spatial_contract.json (sidecar)
-  │
-  ├── [Stage 1] Route (LLM router)
-  │     └→ RoutePlan {route_decision, selected_dialects}
-  │
-  ├── [Stage 2] Context Build (deterministic)
-  │     └→ AuthoringContext {dialect_registry, base_packages, allowed_ops}
-  │
-  ├── [Stage 3] Feature Sequence (LLM author)
-  │     └→ FeatureSequenceDraft {node_sequence: [NodePlan]}
-  │
-  ├── [Stage 4] Node Params (LLM author, per-node)
-  │     └→ NodeParamsDraft {params dict per node}
-  │     └→ Strict consistency: node_id, dialect, op, op_version 必须一致
-  │
-  ├── [Stage 5] Assemble (deterministic)
-  │     └→ RawGcadDocument (LLM面格式)
-  │
-  ├── [Stage 6-8] Validate + Canonicalize (deterministic)
-  │     ├→ 9 raw stages: structure→registry→params→ownership→graph→typecheck
-  │     │                   →phase→composition→safety
-  │     ├→ canonicalize: RawGcadDocument → CanonicalGcadDocument
-  │     └→ 2 canonical stages: dialect_semantics→geometry_preflight
-  │
-  ├── [Stage 7a] AutoFixer (deterministic, 17 rules)
-  │     └→ 5 categories: SYNTACTIC_ALIAS→SCHEMA_DEFAULT→CONTEXT_SAFE
-  │                        →SEMANTIC_GUESS→DESTRUCTIVE
-  │
-  ├── [Stage 7b] LLM Repair Loop (LLM, max 2-3 attempts)
-  │     └→ RepairStateV2 + can_repair_v2 governor
-  │
-  ├── [Stage 9] Runtime → STEP
-  │     ├→ _run_components (topological sort + execute_operation)
-  │     ├→ [v6] ConstraintResolver (spatial_contract → numeric placements)
-  │     ├→ _run_composition_or_select_final
-  │     ├→ [v6] GeometrySpatialAudit (overlap, Z-order, connectivity)
-  │     ├→ Runtime postconditions
-  │     └→ _export_final_solid → STEP export
-  │
-  └── Output: output.step + metadata.json + report_v2.json
+auto_detection_process/
+├── src/seekflow/                  # SeekFlow Agent 核心运行时 (43 模块)
+│   ├── agent/                     # DeepSeekAgent, Crew, Graph, Memory
+│   ├── tools/                     # @tool, Registry, Executor, Policy
+│   ├── security/                  # safe_join, validate_url, sandbox
+│   ├── mcp/                       # MCP gateway
+│   └── ...
+│
+├── integrations/engineering_tools/src/seekflow_engineering_tools/
+│   ├── generative_cad/            # ★ Text-to-CAD 引擎 (~22,600 行)
+│   │   ├── ir/                    # IR: RawGcadDocument → CanonicalGcadDocument
+│   │   ├── validation_kernel/     # ★ 验证内核: Registry + Executor + Models
+│   │   ├── validation/            # 旧验证层 (被 kernel 包装)
+│   │   ├── dialects/              # ★ 6 个方言: axisymmetric, sketch_extrude,
+│   │   │                          #   sketch_profile, composition, loft_sweep, shell_housing
+│   │   ├── runtime/               # RuntimeContext, ObjectStore, Handles, Resolve
+│   │   ├── compiler/              # 编译器中间端 (v6.3)
+│   │   ├── authoring/             # 创作层: LLM 交互 + 空间约束求解
+│   │   │   └── spatial/           # 空间约束子系统 (archetypes, solver)
+│   │   ├── extensions/            # 扩展系统: Hole Feature Extension
+│   │   ├── analysis/              # 语义分析: Facts, Rules, Propagation
+│   │   ├── pipeline/              # run.py (核心入口) + metadata_v3 + artifact
+│   │   ├── bases/                 # 基础 primitive
+│   │   ├── skills/                # LLM skill prompts + orchestrator
+│   │   └── topology/              # ★ V3 持久拓扑命名 (仅 __pycache__, 源码在分支)
+│   │
+│   ├── ansys/                     # ANSYS APDL 集成
+│   ├── cadquery_backend/          # CadQuery + OCCT 后端
+│   ├── solidworks/                # SolidWorks 集成
+│   ├── nx/                        # Siemens NX 集成
+│   ├── ir/                        # 全局 IR 类型 (cad, cae, primitive)
+│   ├── inspection/                # STEP 几何检查
+│   ├── mechanical_validation/     # 力学验证
+│   └── geometry_primitives/       # 确定性 primitive
+│
+├── app/text-to-cad/               # React + Vite 前端
+│   └── server/fea3d/              # ★ 3D FEA 管线
+│       ├── run3d.py               # 4阶段 CLI
+│       ├── mesh_sector.py         # gmsh 网格生成
+│       ├── apdl_template_3d.py    # ANSYS APDL 模板
+│       └── post3d.py              # 后处理
+│
+├── tests/                         # 核心测试 (~110 文件)
+├── integrations/engineering_tools/tests/  # 工程工具测试 (~187 文件)
+│   ├── generative_cad/            # ~95 生成式 CAD 测试
+│   ├── topology_v3/               # ★ V3 topology 测试 (仅 __pycache__)
+│   └── text_to_cad_real/          # ~10 E2E 真实测试
+└── docs/                          # ~256 markdown 文档
 ```
 
 ---
 
-# 2. 第二层：数据流全链路追踪
+## 2. Text-to-CAD 完整管线 (10 阶段)
 
-## 2.1 请求入口链
+### 2.1 核心入口
 
-### 2.1.1 顶级入口：`generate_validate_build_step` (build_pipeline.py)
+`builder.py:build_generative_cad_model()` → `pipeline/run.py:run_canonical_gcad()`
 
-这是**推荐的生产入口**。调用流程：
+### 2.2 Stage 0: Spatial Frontend (v6, 可选)
 
-```
-generate_validate_build_step(user_request, llm_config, ...)
-  │
-  ├─ Stage 0 [v6]: run_spatial_authoring_frontend()
-  │   └→ spatial_contract.json (sidecar file in out_dir)
-  │
-  ├─ Stage 1-5: generate_gcad_from_user_request()
-  │   ├─ Stage 1: route_caller.call_strict_tool() → RoutePlan
-  │   ├─ Stage 2: build_authoring_context() → AuthoringContext
-  │   ├─ Stage 3: feature_sequence_caller.call_strict_tool() → FeatureSequenceDraft
-  │   ├─ Stage 4: node_params_caller.call_strict_tool() → NodeParamsDraft[]
-  │   ├─ Stage 5: assemble_raw_gcad_document() → RawAssemblyResult
-  │   └─ Stage 6-7b: validate_and_canonicalize_with_bundle() + auto_fix + repair
-  │
-  ├─ Stage 8: canonicalize (if not already done)
-  │
-  └─ Stage 9: run_canonical_gcad() → output.step
-```
+多组件场景的约束前移。LLM 提取 `MechanicalObjectGraphDraft`（组件 + 空间关系），原型匹配注入默认关系，构建 `SpatialConstraintGraph`。求解器检查矛盾，必要时多轮问答澄清。输出 `spatial_contract.json` sidecar，后续在 Stage 9 用于数值放置。
 
-每个 Stage 的输出保存为独立文件（`route_plan.json`, `feature_sequence.json`, `node_params/*.json`, `raw_original.json`, `autofix_report.json`, `canonical.json`, `output.step`），形成完整的审计链。
+### 2.3 Stage 1-5: 创作层
 
-### 2.1.2 低级入口：`run_canonical_gcad` (pipeline/run.py)
+**Route (LLM)**: 从 3 个路径中选择: `deterministic_primitive` (模板化 primitive), `generative_cad_ir` (LLM 创作完整 IR), `unsupported` (fail-closed)。安全规则: "manufacturing-ready/certified/airworthy" 关键词强制路由到 `unsupported`。
 
-直接从验证后的 `CanonicalGcadDocument` 构建 STEP，跳过所有 LLM 和验证阶段。用于：
-- 已验证 canonical JSON 的批量重放
-- 测试环境（跳过昂贵的 LLM 调用）
-- CI/CD 流水线
+**Feature Sequence (LLM)**: 规划操作 DAG — `node_sequence: [{node_id, dialect, op, op_version, phase}]`。
 
-## 2.2 跨文件调用关系
+**Node Params (LLM, 逐节点)**: 为每个操作填写参数，严格一致性检查（node_id, dialect, op, op_version 必须匹配计划）。支持 `DimExpr` 引用（"hole diameter = bore diameter"）。
 
-### LLM 调用链
+### 2.4 Stage 6: Validation Kernel
 
-```
-LlmToolCaller.call_strict_tool()
-  │
-  ├→ provider.py: call_strict_tool()
-  │   └→ deepseek_client.py: DeepSeekClient.call_tool()
-  │       └→ POST https://api.deepseek.com/v1/chat/completions
-  │           └→ extra_body={"thinking": {"type": "disabled"}}
-  │               （DeepSeek thinking mode 不支持 tool_choice，
-  │                这两个参数语义冲突，必须显式禁用 thinking）
-  │
-  └→ 返回 ToolCallResult(tool_name, arguments, model, provider)
-```
+详见 §5。
 
-### 验证链
+### 2.5 Stage 7a-7b: Repair
 
-```
-validate_and_canonicalize_with_bundle(raw_dict)
-  │
-  ├→ parse_raw_gcad_document()         # JSON→RawGcadDocument
-  ├→ _run_stage_collect(RAW_STAGES)    # 9 stages, fail-fast
-  │   ├→ validate_structure()
-  │   ├→ validate_registry()
-  │   ├→ validate_params()             # 每个 params 调用 OperationSpec.validate_params()
-  │   ├→ validate_ownership()
-  │   ├→ validate_graph()              # DFS可达性 + 环检测
-  │   ├→ validate_typecheck()          # ValueRef 类型兼容性
-  │   ├→ validate_phase()              # phase 排序验证
-  │   ├→ validate_composition_requirements()
-  │   └→ validate_safety()
-  │
-  ├→ canonicalize()                    # Raw→Canonical 降低
-  │   ├→ 方言版本映射 (op_version)
-  │   ├→ ValueRef 解析 (producer_node→具体值)
-  │   └→ 图哈希计算
-  │
-  └→ _run_stage_collect(CANONICAL_STAGES)  # 2 stages
-      ├→ validate_dialect_semantics()  # 方言特定语义规则
-      └→ validate_geometry_preflight() # 几何可行性检查
-```
+详见 §10。
 
-### 运行时执行链
+### 2.6 Stage 8: Compiler Middle-End
 
-```
+两个 Pass: `FactPropagationPass` (Kahn 拓扑排序, 8 条事实规则, DimExpr 求值) 和 `PlannerPass` (模式计数, 破坏性 op 阈值检查)。输出 diagnostics 和 planning_report，注入 metadata 和 repair prompt。
+
+### 2.7 Stage 9: Runtime Execution
+
+```python
 _run_components(canonical, ctx)
-  │
-  ├→ 遍历 non-assembly components
-  │   ├→ 单方言: dialect.run_component(component, nodes, ctx)
-  │   └→ 多方言: _run_mixed_dialect_component()
-  │       ├→ Kahn topological sort (按输入依赖)
-  │       ├→ execute_operation(node, op_spec, ctx)
-  │       │   ├→ ctx.cache.get(node)          # 增量重建缓存
-  │       │   ├→ op_spec.handler(node, ctx)   # 几何操作
-  │       │   ├→ _validate_operation_result() # 输出验证
-  │       │   └→ _validate_geometry()         # BRepCheck + 体积
-  │       └→ ctx.bind_component_output()
-  │
-  ├→ [v6] ConstraintResolver (spatial_contract → placements)
-  │
-  ├→ _run_composition_or_select_final()
-  │   └→ composition dialect: place → pattern → boolean
-  │
-  └→ [v6] GeometrySpatialAudit
+    ├── 对每个 Component (非 __assembly__):
+    │   ├── 单方言: dialect.run_component()
+    │   └── 混合方言: 拓扑排序 → execute_operation() per node
+    ├── Constraint Resolution (spatial placements)
+    └── _run_composition_or_select_final()
 ```
 
-## 2.3 全局状态生命周期
+### 2.8 Stage 10: Postcondition + Inspection
 
-`RuntimeContext` 是整个运行时阶段的唯一全局状态持有者：
+```python
+# 运行时后置条件
+validate_runtime_postconditions(canonical, ctx, final_handle_id)
+# 几何有效性 (closed, valid_solid, volume)
+validate_final_geometry(ctx, final_handle_id, expected_body_count)
+# STEP 文件完整性
+validate_step_post_export(out_step, min_size_bytes=200)
+# 空间审计 (组件干涉/距离)
+run_geometry_spatial_audit(final_handle_id, ctx, spatial_graph, placements)
+```
+
+---
+
+## 3. 架构层次
+
+系统采用 **7 层架构**:
+
+```
+Layer 0: LLM Skills & Orchestrator  ── skills/orchestrator.py, prompts.py
+Layer 1: Authoring Pipeline          ── authoring/* (LLM 交互 + 空间求解)
+Layer 2: Validation Pipeline         ── validation_kernel/* (Core + Extensions)
+Layer 3: IR System                   ── ir/* (RawGcadDocument → CanonicalGcadDocument)
+Layer 4: Dialect Registry            ── dialects/* (6 frozen dialects, governance)
+Layer 5: Runtime Execution           ── runtime/* (Context, Store, Handles, Resolve)
+Layer 6: Pipeline Orchestration      ── pipeline/* (run, metadata_v3, artifact)
+```
+
+### 核心设计模式
+
+**Frozen Registry**: 方言注册表和验证规则注册表均在启动时冻结。`freeze()` 后任何 `register()` 调用抛出 `RuntimeError` — 核安全级编程模式，防止 LLM 或插件注入。
+
+**Protocol vs ABC**: 方言使用 `Protocol`（结构化类型）而非 `ABC`（名义类型），支持 mock 替换和第三方扩展。
+
+**Constraint-Deferred Solving (v6)**: 两阶段求解 — Phase A (符号, 创作时) 产生约束图；Phase C (数值, 运行时) 利用真实 bbox 求解精确放置位置。
+
+---
+
+## 4. IR 中间表示层
+
+### 4.1 双层 IR
+
+```
+RawGcadDocument (LLM 友好, 宽松, 容错)
+    │  parse + validate + canonicalize
+    ▼
+CanonicalGcadDocument (机器友好, Pydantic strict, 携带哈希)
+```
+
+### 4.2 核心 IR 结构
+
+```python
+CanonicalGcadDocument
+├── schema_version: "g_cad_core_v0.2"
+├── canonical_version: "canonical_gcad_v0.2"
+├── document_id, part_name, units ("mm"), trust_level
+├── selected_dialects: [CanonicalSelectedDialect]  # 方言 + 版本 + 合约哈希
+├── components: [CanonicalComponent]               # 每个组件的拥有方言 + 根节点
+│   └── id, owner_dialect, kind_hint, root_node, output_aliases
+├── nodes: [CanonicalNode]                         # 操作节点 DAG
+│   ├── id, component, dialect, op, op_version, phase
+│   ├── inputs: [CanonicalValueRef]   # producer_node + producer_component + output
+│   ├── outputs: [CanonicalValueDecl] # name + type + value_id
+│   ├── params, typed_params          # 原始参数 + 类型化参数
+│   ├── required, degradation_policy  # 是否必须成功 + 失败行为
+│   ├── operation_effects             # 操作副作用声明
+│   ├── postconditions                # 后置条件
+│   └── autofix_hints                 # 自动修复提示
+├── constraints: RawConstraints       # expected_body_count, expected_bbox_mm
+├── safety: RawSafety                 # 7 个安全标志 (全部必须显式 true)
+├── canonical_graph_hash: str         # 确定性图哈希
+└── raw_graph_hash: str | None        # 原始输入哈希
+```
+
+### 4.3 值传递
+
+节点间通过 `CanonicalValueRef` 建立数据依赖:
+```python
+class CanonicalValueRef:
+    producer_node: str | None       # 哪个节点生产
+    producer_component: str | None  # 哪个组件 (跨组件引用)
+    output: str                     # 输出名 (通常是 "body")
+    resolved_type: ValueType        # solid | profile | sketch | frame | ...
+```
+
+运行时通过 `resolve_input_object(node, ctx, input_index)` 解析:
+```
+resolve_input_handle_id:
+  1. node.inputs[index].producer_node → ctx.resolve_node_output(pid, output) → handle_id
+  2. node.inputs[index].producer_component → ctx.resolve_component_output(cid, output) → handle_id
+
+resolve_input_object:
+  handle_id → ctx.object_store.get(hid) → 实际 CadQuery 对象
+```
+
+---
+
+## 5. 验证内核 (Validation Kernel)
+
+### 5.1 架构动机
+
+v6.3 之前的验证系统存在以下问题:
+- 规则散落在多个文件中, 没有统一注册/发现机制
+- 无扩展机制: 新增零件类型验证规则需要修改核心代码
+- 规则间依赖不明确, 调试困难
+
+### 5.2 当前架构
+
+```
+RuleRegistry (启动时冻结)
+├── Core Rules (layer=core, selector.always=True)
+│   └── 14 stages: structure → root_terminal → registry → params →
+│       ownership → graph → typecheck → phase → composition →
+│       hole_semantics → safety → canonicalize →
+│       dialect_semantics → geometry_preflight
+│
+├── Extension Rules (layer=extension, selector 按条件匹配)
+│   └── 仅当 ActivationSnapshot 匹配时激活
+│
+└── 启动期治理: freeze() 时检查依赖/冲突/DAG 环
+```
+
+### 5.3 Barrier 语义
+
+```
+RAW_BARRIER_GROUPS = (
+    (STRUCTURE,),                              # 组1: 结构解析 (独立)
+    (ROOT_TERMINAL, REGISTRY, PARAMS,          # 组2: 聚合执行全部规则
+     OWNERSHIP, GRAPH, TYPECHECK, PHASE,
+     COMPOSITION, HOLE_SEMANTICS, SAFETY),
+)
+```
+
+组内全部规则运行并聚合 Issue (一次发现全部问题), 组间 barrier — 前组失败则后组全部 `status="skipped"`。
+
+### 5.4 扩展系统
+
+**不可妥协原则**:
+1. Kernel 不 import 具体 dialect/feature 模块
+2. Kernel 不识别具体操作名 (如 `cut_hole`)
+3. Extension 只能新增规则, 不能屏蔽 Core 规则
+4. 新增扩展只改 `extensions/` 包, 不改 Kernel
+
+**激活机制**:
+```python
+ActivationSnapshot 从文档元数据解析:
+    dialects     → selected_dialects
+    operations   → 所有 node.op
+    feature_tags → compiler middle-end 特征识别
+    part_families → part_intent/route_plan
+
+RuleSelector.matches(activation):
+    always=True → 永远激活 (Core)
+    否则 → dialects/operations/feature_tags/part_families 任意交集非空 → 激活
+```
+
+**Hole Feature Extension** (首个真实扩展):
+```python
+MANIFEST = ExtensionManifest(
+    extension_id="feature.hole",
+    selectors=[RuleSelector(operations={"cut_hole", "cut_hole_v2", ...})],
+)
+# 仅在文档含孔类操作时激活
+```
+
+---
+
+## 6. 方言系统 (Dialect System)
+
+### 6.1 6 个已注册方言
+
+| 方言 ID | 用途 | 操作数 | 关键操作 |
+|---------|------|--------|---------|
+| `axisymmetric` | 轴对称回转体 | 8 | revolve_profile, cut_rim_slot_pattern, cut_center_bore |
+| `sketch_extrude` | 矩形拉伸/切削 | 11 | extrude_rectangle, cut_hole, cut_hole_v2, fillet, chamfer |
+| `sketch_profile` | 2D 草图+拉伸/旋转 | 9 | create_2d_sketch, extrude_profile, revolve_profile, fillet_sketch |
+| `composition` | 布尔/变换/阵列 | 7 | boolean_union, boolean_cut, translate, circular_pattern, place_component |
+| `loft_sweep` | 放样/扫掠 | 4 | loft_solid, sweep_solid |
+| `shell_housing` | 壳体 | 2 | shell_housing_builder |
+
+### 6.2 Handler 执行模式
+
+所有 handler 遵循统一模式:
+
+```python
+def handle_xxx(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
+    # 1. 解析输入
+    body = resolve_input_object(node, ctx, 0)
+
+    # 2. 参数提取 + 验证
+    if invalid:
+        if node.required: raise ValueError(...)     # HARD FAIL
+        return _degrade(node, ctx, body, "op_name") # 降级
+
+    # 3. 执行操作 (带多层 fallback)
+    try: result = primary(body, params)
+    except: 
+        try: result = fallback(body, params)
+        except: return _degrade(node, ctx, body, "op_name")
+
+    # 4. 存储结果 → handle ID
+    return {"body": _store_solid(node, ctx, result)}
+```
+
+### 6.3 布尔运算 4 层 Fallback
+
+```
+Attempt 1: CadQuery a.union(b) → 检查实体数是否减少
+Attempt 2: OCCT BRepAlgoAPI_Fuse → a.fuse(b)
+Attempt 3: fuzzy fuse at 3 tolerance levels (1x, 5x, 10x)
+Attempt 4: shape healing + fuzzy fuse at 10x
+全部失败: HARD FAIL (不再静默丢弃 solid B)
+```
+
+---
+
+## 7. 运行时与类型化 Handle 系统
+
+### 7.1 RuntimeContext — 状态中枢
 
 ```python
 @dataclass
 class RuntimeContext:
-    # 文件路径（固定，初始化时设置）
-    out_step: Path
-    metadata_path: Path
-    workspace_root: Path
+    # 文件路径
+    out_step, metadata_path, workspace_root: Path
 
-    # 存储层（跨 component 共享）
-    object_store: RuntimeObjectStore      # handle_id → 几何对象
-    node_outputs: dict[str, dict[str, str]]      # node_id → {output_name → handle_id}
-    component_outputs: dict[str, dict[str, str]] # component_id → {output_name → handle_id}
+    # 对象存储 (handle_id → CadQuery 对象)
+    object_store: RuntimeObjectStore
 
-    # 累积数据（跨整个运行时阶段追加）
-    warnings: list[str]
-    degraded_features: list[dict]
-    operation_metrics: list[dict]
+    # 输出绑定 (node_id → {output_name: handle_id})
+    node_outputs: dict
+    component_outputs: dict
 
-    # v6 字段（ConstraintResolver 写入，Composition handler 读取）
-    spatial_placements: dict[str, NumericPlacement]
-    spatial_audit_report: GeometrySpatialAuditReport | None
+    # 组件级可变状态 (workplane, last_point)
+    component_state: dict[str, dict[str, object]]
+
+    # 诊断收集
+    warnings, degraded_features, operation_metrics: list
+    geometry_health_log: dict[str, dict]
+
+    # 空间求解 (v6)
+    spatial_placements, placed_component_bboxes: dict
+
+    # 编译器诊断 (v6.3)
+    compiler_diagnostics: list[dict]
+    planning_report: dict | None
 ```
 
-**生命周期**:
-1. 创建于 `run_canonical_gcad()` 入口
-2. `_run_components` 填充 `node_outputs` 和 `component_outputs`
-3. `ConstraintResolver` 写入 `spatial_placements`
-4. Composition handler 读取 `spatial_placements`（通过 `ctx.spatial_placements`）
-5. `GeometrySpatialAudit` 读取组装后的 solid
-6. `_export_final_solid` 从 `object_store` 取出最终 solid 导出 STEP
+### 7.2 Handle 系统
 
-## 2.4 隐式关联链路
+跨方言数据交换完全通过类型化 Handle:
 
-### spatial_contract.json sidecar 的隐式路径
+```python
+SolidHandle(id="solid:comp1:node5:body", component_id="comp1", producer_node="node5")
+EdgeHandle(id="edge:...", parent_solid_id="...", edge_index=3)
+FaceHandle(id="face:...", parent_solid_id="...", face_index=0)
+ProfileHandle(id="profile:comp1:node2:profile")
+FrameHandle, PlaneHandle, PointHandle, CurveHandle, SolidArrayHandle
+```
 
-`spatial_contract.json` 是一个隐式的跨阶段通信通道：
-- **写入方**: `build_pipeline.py` Stage 0 (作者前端)
-- **读取方**: `pipeline/run.py` 的 `_load_spatial_contract(ctx)` (运行时)
-- **查找位置**: `ctx.workspace_root / "spatial_contract.json"`
-- **为什么不用内存传递**: 因为 spatial 前端和运行时可能是**不同进程**（作者考虑未来的微服务架构）。sidecar 文件是进程间通信的最小公约数。
+Handle ID 格式: `{type}:{component}:{node_id}:{output_name}` — 全局唯一, 可追溯。
 
-### RuntimeContext.spatial_placements 的隐式消费
+### 7.3 RuntimeObjectStore
 
-`ctx.spatial_placements` 被写入后，目前没有被 `handle_place_component` **显式读取**——这是一个已知的架构预留点。当前实现中 placement 坐标仍然来自 LLM 的 `PlaceComponentParams.position_mm`。该字段是为未来的**完全确定性 placement** 预留的。
+双 dict 存储: `_handles[handle_id] → RuntimeHandle`, `_objects[handle_id] → 实际对象`。强制唯一性 (重复插入抛 ValueError), 无弱引用 (管线结束时随 Context GC 回收)。
 
 ---
 
-# 3. 第三层：自底向上源码释义
+## 8. V3 持久拓扑命名系统
 
-## 3.1 方言系统逐文件分析
+> **重要**: V3 topology 模块的 `.py` 源文件在当前 main 分支 (678c073) 上不存在，仅保留 `__pycache__/*.pyc` 编译字节码。完整源代码在 `text2cad/v3-phase17-saved` 分支 @ `81f693d`。
 
-### 3.1.1 axisymmetric dialect (最成熟的方言)
+### 8.1 三层架构
 
-**`dialects/axisymmetric/dialect.py`** — 8个操作，分8个phase:
+```
+Layer 1: 确定性语义命名 (Semantic Naming)
+    └── 基于几何参数 + 特征上下文 → V3 descriptor
+    └── name_extrude_faces(), name_revolve_faces(), name_boolean_faces()
 
-| Phase | Op | 实现策略 |
-|-------|-----|---------|
-| `base_solid` | `revolve_profile` | 单station→圆柱; 多station→piecewise linear profile revolve |
-| `primary_cut` | `cut_center_bore` | XY工作面圆形拉伸+布尔cut |
-| `annular_detail` | `cut_annular_groove` | 同心圆环(difference)拉伸cut |
-| `pattern_cut` | `cut_circular_hole_pattern` | ≤6孔→CadQuery polarArray; >6孔→逐个cut |
-| `rim_detail` | `cut_rim_slot_pattern` | 轮缘槽pattern—构造slot profile cut+旋转阵列union |
-| `edge_treatment` | `apply_safe_chamfer` | 渐进降级: 1.0x→0.5x→skip |
-| `thread` | `cut_internal_thread` | 60°V螺纹 profile 沿螺旋线 sweep |
-| `thread` | `cut_external_thread` | 同上但在外圆柱面 |
+Layer 2: OCCT 内核历史 (Kernel History)
+    └── BRepTools_History: Generated() / Modified() / IsDeleted()
+    └── history_aware_extrude(), history_aware_revolve()
 
-**`handlers.py:_handle_revolve_profile` 的实现亮点**:
+Layer 3: 约束指纹匹配 (Constrained Fingerprint)
+    └── FaceFingerprint, EdgeFingerprint
+    └── ConstrainedTopologyMatcher, MatchWeights
+```
+
+### 8.2 核心数据结构 (已从 .pyc 反编译重建)
+
+**TopologyIdentityDescriptorV3** — 规范身份模型:
+
 ```python
-# 单 station 快速路径——简单圆柱
-if len(stations) == 1:
-    result = cq.Workplane("XZ").moveTo(r, zf).lineTo(r, zr)...
-# 多 station 通用路径——piecewise linear
+class TopologyIdentityDescriptorV3(BaseModel):
+    scheme: Literal["gcad_topo_v3"]
+    document_lineage_id: str      # 稳定 lineage ID (来自 DesignIdentity)
+    component_stable_id: str      # 稳定组件 ID
+    feature_stable_id: str        # 稳定特征 ID (取代可变 producer_node_id)
+    entity_type: Literal["solid","shell","face","wire","edge","vertex"]
+    semantic_path: tuple[str, ...] # 多 token 语义路径 ("revolved","lateral","0")
+    source_entity_keys: list[str]  # 源实体 key
+    branch_key: str | None
+    algorithm_version: str = "3.0.0"
+
+    def to_key(self) -> str:
+        # → "gct3_<base64url sha256>"  — 内容寻址, 确定性
+```
+
+**IdentityTransferPolicy** — 8 维决策引擎:
+```
+OCCT 观察 (Generated/Modified/Deleted) → 8 维度评估:
+    geometric_deviation, topology_change, area_change,
+    boundary_similarity, position_in_indexed_map,
+    adjacency_preservation, surface_type_match, generation_context
+→ IdentityDecision: SAME | MODIFIED | NEW | DELETED | AMBIGUOUS
+→ ProofClass: GEOMETRIC | TOPOLOGIC | HEURISTIC | OCCT_HISTORY | FALLBACK
+```
+
+**TopologyTransaction** — 原子事务:
+```python
+class TopologyTransaction:
+    staged: TopologyRegistry  # 工作副本 (clone)
+    def commit(self):         # 原子提交
+        # 完整性检查 → _replace_from(staged) → 失败则 rollback
+```
+
+### 8.3 Phase 15-17 状态
+
+| 指标 | 修复前 | 修复后 |
+|------|--------|--------|
+| feature_stable_id 正确率 | 0% | 100% |
+| Generation 最大值 | 62 (膨胀) | ≤4 |
+| Lineage DAG | 未建立 | 3015 ancestors |
+| Extrude locators | 0/52 | 50/52 |
+| 回归测试 | — | 189 passed, 9 baseline FAIL |
+| 涡轮盘实体 | — | 3079 entities, 4 transactions |
+
+---
+
+## 9. Auto-FEA 3D 有限元管线
+
+### 9.1 4 阶段流水线
+
+```
+CAD STEP 模型
+    │
+    ▼
+┌──────────────────────────────────────────────────────────────────┐
+│ Stage 1: prepare — gmsh 网格生成 (免费, ~2min)                     │
+│ mesh_sector.py                                                    │
+│ ├── 导入整盘 STEP (~15MB, 1-2min)                                 │
+│ ├── 扇区切割: 圆柱 Boolean 交 (6° x z_half)                       │
+│ ├── 边界面确定性分类: low / high / sym (基于法向+质心)             │
+│ ├── 周期配对: setPeriodic (旋转仿射变换, 容差<0.5mm)              │
+│ ├── tet10 网格 (gmsh type 11)                                     │
+│ ├── 雅可比质量断言: minSICN > 0 (免费阶段拦截坏单元)               │
+│ ├── 节点重映射: gmsh tet10 → ANSYS SOLID187 (交换最后两中节点)    │
+│ └── 输出: mesh.inp + mesh_report.json                             │
+├──────────────────────────────────────────────────────────────────┤
+│ Stage 2: confirm — 人工确认 (必须, 算力保护)                        │
+│ ├── 审阅 mesh_report.json (节点数, 边界面, 配对距离)               │
+│ ├── 确认 几何/载荷/材料 参数                                      │
+│ └── 写入 .confirmed (含 config hash, 防误运行)                     │
+├──────────────────────────────────────────────────────────────────┤
+│ Stage 3: solve — ANSYS 批处理 (耗算力, ~1-3min)                   │
+│ apdl_template_3d.py → solve.inp                                    │
+│ ├── SOLID187 二阶四面体                                           │
+│ ├── GH4169 温度相关材料 (4点 MPTEMP: EX, ALPX vs T)               │
+│ ├── 循环对称: CPCYC 自动配对 (容差 0.05mm)                        │
+│ ├── z=0 对称面: UZ=0 (消除轴向刚体平动)                            │
+│ ├── 孔壁单节点 UY=0 (消除绕轴刚体转动)                             │
+│ ├── 径向分带温度场: T(r) = TB+(TR-TB)*((r-RB)/(RO-RB))^TEXP (80带)│
+│ ├── 离心载荷: OMEGA 绕 Z 轴                                       │
+│ └── 输出: nodal_stress_3d.csv (SX径向,SY环向,SZ轴向,SEQV,S1,S3)   │
+├──────────────────────────────────────────────────────────────────┤
+│ Stage 4: post — Python 后处理 (免费)                                │
+│ post3d.py                                                          │
+│ ├── 解析 CSV → 有效节点 (sel=1)                                    │
+│ ├── 温度重建 + 屈服强度插值 + 安全系数 (SF = yield/VM)            │
+│ ├── 分区指标: bore/hub/web/rim                                     │
+│ ├── 量级自查: max VM ∈ [300, 1500] MPa                             │
+│ ├── stress_field_3d.bin: 全场应力点云 (8×f32/节点)                 │
+│ └── sector_surface.json: 表面三角面 + 每顶点应力                    │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### 9.2 人工确认机制 (算力保护)
+
+- `prepare` 免费自动
+- `confirm` 必须人工介入
+- `.confirmed` 包含 config hash, 配置变更后必须重新确认
+- `solve` 消耗算力, 需先通过 confirm gate
+
+### 9.3 与 2D FEA 的对比
+
+现有的 `ansys/apdl_templates.py:turbine_disc_rotational_thermal` 模板是 2D 轴对称 (PLANE183)，已知 8 个缺陷:
+1. KEYOPT(3)=0 (plane stress) 当 axisymmetric 用 — 环向应力恒 0
+2. OMEGA 旋转轴错误 (Z 而非 Y)
+3. BFUNIF 均匀温度 — 无热应力梯度
+4. 单模量, 无温度相关材料
+5. STEP 路径参数未使用 (几何硬编码)
+6. PATH 后处理语法不兼容 ANSYS 18.1
+7. n_slots/slot_depth_mm 是死参数
+8. Runner 硬编码 -m 512 (三维不够)
+
+---
+
+## 10. 修复回路 (Repair Loop)
+
+### 10.1 双层架构
+
+```
+Validation Loop (内层):
+    Deterministic AutoFix (17+ 规则) → revalidate
+    └── 失败 → LLM repair (max 3 attempts, QualityVector gated)
+        └── 成功 → commit → revalidate → exit loop
+        └── 失败 → next attempt or give_up
+
+Runtime Loop (外层):
+    run_canonical_gcad() → 运行时失败
+    └── classify_runtime_failure → repairable?
+        ├── params-only repair (numeric budget)
+        ├── single accepted patch → full revalidation + rerun
+        └── non-repairable → fail
+```
+
+### 10.2 提交准则 (QualityVector)
+
+```python
+q_before = QualityVector.from_report(current_report)
+q_after = QualityVector.from_report(candidate_report)
+# 只有严格改进才接受: 错误数减少, 无新错误, 无 regression
+if is_strict_improvement(q_before, q_after):
+    current_doc = candidate  # COMMIT
 else:
-    pts_2d.sort(key=lambda p: p[1])  # 只按 z 排序
-    unique_pts = [pts_2d[0]]
-    for pt in pts_2d[1:]:
-        if pt != unique_pts[-1]:     # 相邻去重
-            unique_pts.append(pt)
-```
-**特殊写法意图**: `sort(key=lambda p: p[1])` 只按 z 排序而不过滤同 z 的点——因为同 z 的点形成垂直壁（前后面在同一高度），必须保留两个点来表达厚度。adjacent dedup 去除了真正重复的点（r和z都相同）。
-
-**`preflight_component` 的 envelope tracking**:
-```python
-# 第一遍: 汇聚 revolve_profile 的 profile_max_radius, profile_min_radius
-# 第二遍: 每个 cut 操作与 envelope 比较
-if bore_r >= profile_max_radius - MARGIN:
-    # 壁厚不足 → 几何不可能
-```
-这是编译器中符号执行(symbolic execution)的思想——不实际构建几何体，仅通过参数分析判断可行性。
-
-### 3.1.2 sketch_extrude dialect
-
-**特别的 `cut_hole` axis 支持** (v6.1):
-- `axis=X`: YZ 平面钻孔
-- `axis=Y`: XZ 平面钻孔
-- `axis=Z` (默认): XY 平面钻孔
-
-这使得六面钻孔成为可能（在 stress30 测试中 g17_cross_block 验证通过）。
-
-### 3.1.3 composition dialect
-
-**`handle_boolean_union` 的 3 层 fallback** (v6.1):
-```
-Attempt 1: CadQuery union → 检查固体数合并
-Attempt 2: OCCT BRepAlgoAPI_Fuse → 直接 OCP 底层
-Attempt 3: Tolerance-expanded fuse → 将 B 平移 margin 后融合
-Degradation: 返回 A，记录详细的诊断信息
-```
-**为什么需要 Attempt 3**: OCCT 对 grazing contact（擦边接触）的布尔运算不稳定。通过将 B 微平移（`margin = linear_mm * 0.5`），创造人为的几何重叠，使布尔运算成功。
-
-### 3.1.4 loft_sweep dialect
-
-**`handle_helix_sweep` 的分段策略**:
-```
-turns ≤ 8: 一次性 OCP MakePipe (BSpline wire)
-turns > 8: 分段 sweep (每段 ≤3 turns) + Fuse
+    # candidate 丢弃 (ROLLBACK)
 ```
 
-**为什么是 8 和 3**: 这是作者通过实验确定的经验值。OCCT 的 `BRepOffsetAPI_MakePipe` 对长螺旋线的数值稳定性随 turns 增加而急剧下降。8 turns 是"几乎总是成功"的上限。分段时每段不超过 3 turns 确保每段都有足够的数值精度。
+### 10.3 Governor 停止条件
 
-**`_build_helix_wire_ocp` 的关键细节**:
-```python
-arr = TColgp_Array1OfPnt(1, n_pts)
-for i in range(n_pts):
-    t = i / sample_n
-    angle = 2.0 * math.pi * turns * t
-    z = z_start + total_z * t
-    arr.SetValue(i + 1, gp_Pnt(...))
-spline = GeomAPI_PointsToBSpline(arr).Curve()
-```
-这完全绕过了 CadQuery 的 `parametricCurve`，直接使用 OCP 的 BSpline 插值。CadQuery 的 `parametricCurve` 生成的是多段折线(polyline)近似，当用作 `MakePipe` 的路径时，折线的尖角会导致扫掠体的体积损失（在 v5.2 中 spring volume 只有 2-5%）。
-
-## 3.2 验证系统逐文件分析
-
-### 3.2.1 `validation/pipeline.py` — 单次遍历 11 阶段
-
-```python
-RAW_STAGES = [
-    ("structure", validate_structure),      # 1. document_id/part_name非空
-    ("registry", validate_registry),        # 2. dialect在注册表中
-    ("params", validate_params),            # 3. params通过Pydantic验证
-    ("ownership", validate_ownership),      # 4. node.component存在
-    ("graph", validate_graph),              # 5. 图连通性+无环
-    ("typecheck", validate_typecheck),      # 6. ValueRef类型兼容
-    ("phase", validate_phase),              # 7. phase排序正确
-    ("composition", validate_composition),  # 8. 装配规则
-    ("safety", validate_safety),            # 9. 7项安全声明=true
-]
-CANONICAL_STAGES = [
-    ("dialect_semantics", validate_dialect_semantics),  # 10. 方言语义
-    ("geometry_preflight", validate_geometry_preflight), # 11. 几何可行性
-]
-```
-
-**设计关键**: `_run_stage_collect` 的 fail-fast 机制——任何阶段返回 `ok=False` 立即终止后续阶段。这是"fail-closed"哲学的实现。
-
-### 3.2.2 `validation/graph.py` — DFS 可达性与环检测
-
-使用了标准的 WHITE/GRAY/BLACK 三色 DFS 算法检测循环引用。节点间的 `ValueRef` 构成有向图，循环在 CAD 操作中没有几何意义（A 输出需要 B 的输出，B 输出又需要 A 的输出）→ 必定是 LLM 错误。
-
-### 3.2.3 `validation/canonicalize.py` — 降低转换
-
-Raw→Canonical 的关键转换：
-1. `ValueRef.node/component` → `CanonicalValueRef.producer_node/producer_component`
-2. `ValueDecl.type` (string) → `ValueType` (Literal type)
-3. 计算 `canonical_graph_hash` (stable_hash of normalized graph)
-4. `typed_params`: 通过 `spec.params_model.model_validate(params)` 得到 Pydantic 模型实例
-
-## 3.3 AutoFixer 系统逐函数分析
-
-### 3.3.1 `_sanitize_llm_json` — JSON 消毒器 (v6.1)
-
-```python
-def _sanitize_llm_json(obj):
-    if isinstance(obj, str):
-        cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', obj)
-        cleaned = re.sub(r'[​-‍﻿]', '', cleaned)  # zero-width chars
-        cleaned = re.sub(r'[\ud800-\udfff]', '', cleaned)  # surrogates
-        return cleaned
-    elif isinstance(obj, dict):
-        return {_sanitize_llm_json(k): _sanitize_llm_json(v) for k, v in obj.items()}
-    ...
-```
-
-**为什么需要这个函数**: DeepSeek 模型在生成 JSON 时偶尔会在字符串值中插入控制字符（\x00-\x1f 范围）。这些字符会导致 `json.loads()` 抛出 `JSONDecodeError`。递归消毒在 auto_fix_with_report 入口处调用，确保所有后续修复运行在干净的 JSON 上。
-
-**字符范围分析**:
-- `\x00-\x08`: 大部分为 C0 控制字符（NULL, SOH, STX...），在 JSON 中非法
-- `\x0b, \x0c`: 垂直制表符和换页符
-- `\x0e-\x1f`: 其余 C0 控制字符
-- `\x7f-\x9f`: DEL + C1 控制字符
-- `​-‍, ﻿`: 零宽空格、零宽连字、BOM
-- `\ud800-\udfff`: 未配对代理对（在 UTF-16 中合法但在 JSON 字符串中必须配对）
-
-### 3.3.2 `_fix_op_versions` — 版本修正 (v6.1 增强)
-
-检测的 LLM 错误模式：
-1. `"v0.2.0"` — LLM 把 dialect 版本当 op 版本（加 v 前缀）
-2. `"0.2.0"` — 同上但没加 v 前缀
-3. `""` (空字符串) — LLM 忘记填
-4. `None` — 字段缺失
-5. `"v1.0.0"` — 正确的版本号加了 v 前缀（去前缀即可）
-
-**设计思维**: 不是简单替换，而是先判断是否在 `DIALECT_VERSION_PATTERNS` 黑名单中。`"v1.0.0"` 不在黑名单中但以 `v` 开头 → 仅去前缀保留 `1.0.0`。
-
-### 3.3.3 `_fix_cross_component_refs` — 跨组件引用修复
-
-LLM 常见的错误：用 `{node: X, output: body}` 引用另一个 component 的节点，但正确的格式是 `{component: X, output: body}`。修复逻辑：
-```python
-if ref_comp != cid:        # 引用的节点在另一个 component
-    inp["component"] = ref_comp
-    inp.pop("node", None)   # 转为 component ref
-```
-
-### 3.3.4 `_fix_profile_stations` — profile station 修复
-
-处理三种异常：
-1. **空 stations**: 填充默认 2-station profile
-2. **扁平 profile** (所有 station 同 z): LLM 错误地把径向截面当作轴向截面，按 r 降序分配到顺序 z
-3. **全同 r**: 所有 station 半径相同 → 没有 bore，切开最后一个 station 创建 bore
-
-## 3.4 Geometry Utils 系统
-
-### 3.4.1 `ocp_pipe.py` — 管道扫掠引擎
-
-```python
-def make_circular_pipe_along_path(path_points, radius_mm):
-    analysis = analyze_path_geometry(path_points, radius_mm)
-    # 决策树:
-    if analysis.recommendation == "cylinder":
-        return _make_straight_pipe(...)           # 最快路径
-    elif analysis.recommendation == "polyline_sweep":
-        try: return _make_swept_pipe(...)         # 单弯折
-        except: fall through to BSpline
-    elif analysis.recommendation == "segmented":
-        return [分段圆柱 + union]                  # 紧弯折保证体积
-    # 默认: BSpline sweep
-    return _make_swept_pipe_bspline(...)
-```
-
-**5 种路径 → 4 种策略的映射**:
-- 直管 (n=2 或所有点共线) → 单个圆柱
-- 单弯折 (n=3, 弯曲<45°) → polyline MakePipe
-- 紧弯折 (min_bend_radius < 3*pipe_r) → 分段圆柱
-- 复杂路径 (默认) → BSpline MakePipe
-
-### 3.4.2 `path_analysis.py` — 路径几何分析器
-
-核心算法：
-```python
-# 弯曲半径估计: R = L / (2*sin(theta/2))
-# 其中 L 是弯折处较短的相邻段长度
-R = L / (2.0 * math.sin(theta_rad / 2.0))
-```
-
-这是弦长-圆心角-半径的三角关系：如果两条线段形成角度 θ，它们近似一个圆弧的弦，弧的半径 R 可以通过弦长 L 和弦对应角 θ 估算。
-
-### 3.4.3 `ocp_wire.py` — 3D 线框构建
-
-两个关键函数：
-- `_make_3d_polyline_wire`: `BRepBuilderAPI_MakeEdge(p1, p2)` 逐段构建直线线框
-- `_make_3d_spline_wire`: `GeomAPI_PointsToBSpline` 构建样条曲线
-
-**为什么要用 OCP 而不是 CadQuery**: CadQuery 的 `Workplane.lineTo/moveTo` 在 XY 平面上操作——如果你只使用 XY 工作面，Z 坐标会被丢弃。OCP 直接操作 3D 点，保证全 3D 精度。
-
-## 3.5 ConstraintResolver 详解
-
-### 3.5.1 5 条求解规则的实现
-
-**Rule 1: `_resolve_identity`**
-```python
-if c.type == "identity":
-    placements[cid] = NumericPlacement(translation_mm=(0,0,0))
-```
-最简单规则——显式声明组件在原点。
-
-**Rule 2: `_resolve_stack` — Kahn 拓扑排序**
-```python
-# 构建 DAG: above[lower] = [(upper, offset)]
-# Kahn: 入度=0 的节点入队, BFS 遍历
-# zmin = max(所有 lower_neighbor.zmax + offset)
-for lower_cid, offset in lower_of[cid]:
-    lower_z = lower_pl.translation_mm[2]
-    zmin_candidates.append(lower_z + lower_bbox.zlen + offset)
-new_zmin = max(zmin_candidates)
-```
-这是经典的工程约束求解——如果多个 lower 支撑同一个 upper，upper 的 zmin 取所有 lower.zmax+offset 的最大值，确保不与任何支撑件重叠。
-
-**Rule 3: `_resolve_align_axis` — 同轴对齐**
-```python
-ref_center = (ref_x + ref_bbox.xlen/2, ref_y + ref_bbox.ylen/2, ref_z + ref_bbox.zlen/2)
-new_x = ref_center[0] - target_bbox.xlen / 2
-new_y = ref_center[1] - target_bbox.ylen / 2
-```
-计算参考实体的 XY 中心，将目标实体的 XY 中心对齐到同一位置。
-
-**Rule 4: `_resolve_symmetric` — 对称放置 (v6.2修复)**
-```python
-# v6.2 修复: 使用 reference entity 的 Y/Z 传播到 pending entity
-ref_y = a_pl.translation_mm[1] if not a_pl.is_pending else b_pl.translation_mm[1]
-ref_z = a_pl.translation_mm[2] if not a_pl.is_pending else b_pl.translation_mm[2]
-# A.x = -d/2 - a_bbox.xlen/2, B.x = d/2 - b_bbox.xlen/2
-```
-两个实体关于 YZ 平面对称（X 轴镜像）。关键修复：v6.1 中 Y/Z 未从 reference entity 传播，导致有些实体的 Y/Z 仍为 0。
-
-**Rule 5: `_resolve_contact` — 接触验证**
-不修改 placement，仅检查两个实体都有 bbox 数据。实际距离验证推迟到 `GeometrySpatialAudit`。
-
-## 3.6 GeometrySpatialAudit 详解
-
-### 3.6.1 重叠率计算
-
-```python
-def _bbox_overlap_ratio(a, b):
-    ix = max(0, min(a.xmax, b.xmax) - max(a.xmin, b.xmin))
-    iy = max(0, min(a.ymax, b.ymax) - max(a.ymin, b.ymin))
-    iz = max(0, min(a.zmax, b.zmax) - max(a.zmin, b.zmin))
-    overlap_vol = ix * iy * iz
-    return min(overlap_vol / a_vol, overlap_vol / b_vol)
-```
-取 min(重叠/A体积, 重叠/B体积) 确保当一个组件完全在另一个内部时，比例不超过 1.0。>80% 视为致命重叠。
-
-### 3.6.2 Z-order 语义检查
-
-```python
-cid = bb.component_id.lower()
-if "top" in cid:
-    for other in bboxes:
-        if "bottom" in other.component_id.lower():
-            if bb.zmin <= other.zmax:
-                # Top 在 Bottom 下方 → error
-```
-这是**语义命名的轻量级验证**——不需要约束图，只通过 component_id 中的关键词 "top"/"bottom" 推断意图。
-
-### 3.6.3 连通性 DFS
-
-对所有 pairwise distance < 2.0mm 的组件构建 adjacency graph，然后 DFS 检查是否所有组件在同一个连通分量中。断开连接的装配体通常意味着 placement 求解失败。
-
-## 3.7 Repair Hints & Geometric Solver
-
-### 3.7.1 `repair_hints.py` — 双绑定检测
-
-```python
-# 双绑定: min_pcd > max_pcd（PCD可行范围为空）
-if min_pcd is not None and max_pcd is not None and min_pcd > max_pcd:
-    pcd_gap = min_pcd - max_pcd
-    hole_reduction = pcd_gap / 2.0
-    # 3个选项: (A)减小孔, (B)减小bore+调PCD, (C)增大外径
-```
-
-**为什么 `hole_reduction = pcd_gap / 2.0`**: PCD gap 每增加 1mm，hole_radius 需要减少 0.5mm。因为 PCD/2 - hole_r > bore_r 约束中，hole_r 以 1:1 比例出现，而 PCD 以 0.5 比例出现。gap/2 的推导来自 `(min_pcd - max_pcd) / 2.0` = `((bore_r+hole_r+MARGIN)*2 - (profile_r-hole_r-MARGIN)*2) / 2.0`。
-
-### 3.7.2 `geometric_solver.py` — 三大策略
-
-3 个策略，按最小 delta（改动最少）评估：
-1. ReduceHole: 减小 hole_dia
-2. ReduceBore: 减小 bore_dia + adjust PCD
-3. IncreaseOuter: 增大 outer radius
+- Max total attempts / max validation/runtime LLM attempts
+- 相同 raw graph hash 重复 (LLM 无进展)
+- 相同 error signature 重复 2 次
+- 相同 patch hash 重复 (循环检测)
+- Stage rank regression (验证回退到更早阶段)
+- `give_up: true` from LLM
 
 ---
 
-# 4. 第四层：设计目的反推
+## 11. 设计哲学
 
-## 4.1 晦涩代码的设计约束推断
+### 11.1 核心原则
 
-### 4.1.1 `DIALECT_VERSION_PATTERNS` 为什么是 frozenset
+1. **Fail-Closed > Fail-Open**: 不确定时拒绝而非静默通过。所有安全标志必须显式 `true`，无默认值。
 
-```python
-DIALECT_VERSION_PATTERNS = frozenset({
-    "0.2.0", "0.1.0", "v0.2.0", "v0.2", "v0.1.0", "0.2", "0.1",
-})
-```
+2. **类型安全贯穿**: Raw JSON → Pydantic IR → 类型化 Handle → 类型化 Object 查询。
 
-**反推**: 不是用 `startswith("0.")` 或正则，而是精确列举。这意味着作者在统计分析 LLM 输出后，发现 LLM 只在**这 7 种具体形式**上犯错，不包括 `"0.3.0"` 或其他变体。`frozenset` 而非 `set` 表明这是不可变的常量——多线程安全，且表明这些值是编译时确定的、不会在运行时增加的。
+3. **不可变注册表**: 方言注册表、验证规则注册表均在启动时冻结, 运行时不可变。
 
-### 4.1.2 `FORBIDDEN_PART_TOKENS` 为什么同时出现在两个文件中
+4. **确定性**: 图哈希 (canonical_graph_hash)、操作版本 (op_version)、合约哈希 (contract_hash) 确保同一输入产生同一输出。
 
-`dialects/registry_core.py` 和 `dialects/registry.py` 中都有 `FORBIDDEN_PART_TOKENS`，但内容不同：`registry_core.py` 有 17 个 token，`registry.py` 只有 5 个。
+5. **审计完整性**: Metadata v3 包含完整 validation proof、operation metrics、geometry health log、compiler diagnostics，可逐操作回溯。
 
-**反推**: `registry.py` 是历史兼容层（部署在生产环境），`registry_core.py` 是新实现（部分尚未上线）。两个不同的禁止列表反映了不同部署阶段的治理要求。`registry.py` 的较简短列表是早期版本，当时只禁止了最明显的 5 个 part token。
+6. **Kernel/Extension 分离**: 验证内核只含通用规则，特殊零件规则作为扩展加载，互不污染。
 
-### 4.1.3 `_run_mixed_dialect_component` 为什么需要 topological sort
+7. **Barrier 语义**: 组内聚合所有问题 (一次发现全部)，组间阻断 (前序失败则后续跳过)。
 
-单方言 component 由方言自身的 `run_component` 负责排序（通过 `phase_rank`），但混合方言 component 的节点来自不同方言，无法委托给单个方言。拓扑排序确保跨方言的依赖正确解析（例如 `sketch_extrude.extrude_rectangle` 的输出被 `shell_housing.shell_body` 消费）。
+8. **防御性多层 Fallback**: 几何操作提供多级回退 (CadQuery → OCCT → fuzzy → heal) 而非单一 try/except。
 
-**反推**: 混合方言组件是一个历史增长的特性——最初每个 component 只有一个 dialect，后来发现需要在一个零件中混合使用不同方言的能力（例如用 sketch_extrude 创建基座，用 shell_housing 添加壳体）。这解释了为什么 `_run_mixed_dialect_component` 的代码风格与周围代码不同——它是后续添加的补丁，而不是一开始就设计的。
+9. **零信任**: "reject a valid part rather than allow an invalid one" — 核安全/航空航天安全哲学。
 
-### 4.1.4 `GeometryRuntime` 为什么是 Protocol 而非 ABC
+10. **人工确认机制 (FEA)**: 算力消耗大的操作必须人工确认，用 config hash 防误运行。
 
-```python
-@runtime_checkable
-class GeometryRuntime(Protocol):
-    def export_step(self, solid_obj, out_step): ...
-    def inspect_solid(self, solid_obj): ...
-    def validate_closed_solid(self, solid_obj): ...
-    ...
-```
-
-**反推**: 使用 `@runtime_checkable` Protocol 意味着：
-1. 作者希望支持 duck typing——任何有这 5 个方法的对象都可以作为几何运行时
-2. `isinstance(obj, GeometryRuntime)` 可以在运行时检查
-3. 不需要导入或继承任何基类
-
-这暗示作者预期未来可能有多种几何后端——不仅是 CadQuery，可能是 Siemens Parasolid、Dassault CGM 或其他商业内核的 Python 绑定。Protocol 模式最小化了耦合。
-
-### 4.1.5 为什么 `auto_fix_with_report` 使用 `stable_hash` 检测变化
-
-```python
-before = stable_hash(doc)
-doc = fix_fn(doc)
-after = stable_hash(doc)
-if before != after:
-    entries.append(AutoFixEntry(...))
-```
-
-**反推**: 每个 fix 函数可能或可能不修改文档。与其在每个 fix 函数中返回一个 changed 标志（这会污染函数签名），不如通过比较 hash 来检测任何变化。`stable_hash` 是确定性哈希（基于 JSON 的排序键），确保相同内容产生相同哈希——这对于审计跟踪的可靠性和确定性至关重要。
-
-### 4.1.6 `extra_body={"thinking": {"type": "disabled"}}` — DeepSeek 的 thinking mode
-
-**反推**: DeepSeek v3 的 "thinking mode"（推理链模式）在技术上与 OpenAI 兼容的 `tool_choice` 参数冲突——thinking mode 期望模型输出推理链，而 `tool_choice` 强制模型输出工具调用。两个参数语义互斥。显式禁用 thinking mode 是一个 workaround，而不是 DeepSeek 设计的本意。这可能在未来版本的 DeepSeek API 中被修复。
-
-### 4.1.7 `phase_order` 为什么在这个架构中存在
-
-每个方言定义 `phase_order` 是编译器中"pass ordering"在 CAD 领域的应用。CAD 操作的顺序至关重要——一个 cut 必须在它所 cut 的 solid 之后执行。phase 排序提供了比纯 topological sort 更强的约束（topological sort 只保证依赖顺序，phase 排序保证同 phase 内的操作在语义正确的位置）。
-
-## 4.2 历史技术债务推断
-
-### 4.2.1 `legacy/` 目录的存在
-
-完整的 `legacy/` 目录包含 10 个文件（~1,500 行），是 v0.1 时代的完整副本。这说明：
-1. v0.1 → v0.2 是一次**破坏性重构**（breaking change）
-2. 遗留代码被完整保留以确保向后兼容
-3. `base.py` 中的环境变量门控（`SEEKFLOW_ALLOW_LEGACY_GCAD_IMPORTS=1`）表明作者希望逐步淘汰遗留代码，但尚未准备好完全删除
-
-### 4.2.2 为什么 `RawValueRef` 需要 `exactly_one_source` 验证器
-
-```python
-@model_validator(mode="after")
-def exactly_one_source(self):
-    if bool(self.node) == bool(self.component):
-        raise ValueError("ValueRef must specify exactly one of node or component")
-```
-
-这是对早期 LLM 输出格式的历史修复——LLM 经常同时填写 `node` 和 `component`，或者两个都不填。`exactly_one_source` 强制了互斥性。这是一个**从 bug 中学习的验证规则**——不是设计时预见的，而是运行时发现 LLM 的输出模式后添加的。
-
-### 4.2.3 `handler_kind` 的 `v1_dict` vs `v2_result`
-
-```python
-handler_kind: Literal["v1_dict", "v2_result"] = "v1_dict"
-```
-
-**反推**: v1 handler 返回 `dict[str, str]`（输出名→handle_id 的简单映射），v2 handler 返回 `OperationResult`（携带 warnings、degraded_features、metrics 的结构化对象）。所有现有 handler 仍然使用 `v1_dict`，因为 v2 是新引入的但尚未强制迁移。`v1_dict` 是默认值，这允许逐步迁移。`executor.py` 中的 `adapt_legacy_handler_result` 函数是过渡期适配器。
-
-## 4.3 业务约束与环境限制
-
-### 4.3.1 为什么不允许"part-specific"方言
-
-`governance.py` 的设计反映了项目的核心架构原则：**生成式 CAD 系统必须保持语法通用性**。禁止 `"turbine_disk"`、`"flange"` 等具体零件名称出现在方言 ID 或操作名中，因为：
-1. 具体零件应该由 LLM **组合语法操作**来生成，而不是作为一等方言存在
-2. 如果每个零件类型都有专属方言，系统将退化为模板库而非生成式系统
-3. `FORBIDDEN_PART_TOKENS` 的 17+ 个 token 是"已发现"的 LLM 倾向于创造的零件名
-
-### 4.3.2 为什么 `constraints.require_closed_solid` 必须为 True
-
-```python
-if self.require_closed_solid is not True:
-    raise ValueError("constraints.require_closed_solid must be explicitly true")
-```
-
-**反推**: 在航空/核工业领域，非闭合的 B-Rep solid 不可用于任何下游分析（FEA、CFD、CAM）。强制 `require_closed_solid=True` 保证了生成的 STEP 文件的几何有效性。检查使用 `is not True` 而非 `== False` 意味着 `None`、`"yes"`、或其他 truthy 值都被拒绝——必须是布尔值 `True`。
-
-### 4.3.3 OCP vs CadQuery 的混合使用策略
-
-代码库同时使用 CadQuery（高级 API）和 OCP（低级 Open CASCADE Python 绑定）：
-- **CadQuery**: 简单操作（长方体、圆柱、旋转、布尔）
-- **OCP**: 复杂操作（BSpline 管道扫掠、螺旋线、3D 线框）
-
-**反推**: 这是实用主义的混合策略。CadQuery 对 80% 的操作更简洁更易维护，但对于螺旋线扫掠和全 3D 管道，CadQuery 的 XY 工作面限制和 parametricCurve 的折线近似会导致几何质量下降。作者在性能关键路径上降到 OCP 层，保持了代码简洁性和几何精度的平衡。
-
----
-
-# 5. 附录：文件依赖拓扑图
-
-## 5.1 核心依赖图（箭头 = 导入方向）
+### 11.2 架构演进路径
 
 ```
-pipeline/run.py
-├── dialects/registry.py ──→ dialects/default_registry.py
-│   └── dialects/registry_core.py
-├── ir/canonical.py ←── ir/raw.py ←── ir/values.py
-├── runtime/context.py
-│   ├── runtime/cadquery_runtime.py ──→ GeometryRuntime (protocol)
-│   ├── runtime/object_store.py
-│   └── runtime/tolerance.py
-├── runtime/constraint_resolver.py (v6)
-│   └── authoring/spatial/schemas.py
-├── runtime/bbox_tracker.py (v6)
-├── runtime/spatial_audit.py (v6)
-├── validation/pipeline.py
-│   ├── validation/structure.py, registry.py, params.py, ...
-│   ├── validation/canonicalize.py
-│   └── validation/bundle.py
-└── dialects/executor.py
-    └── dialects/{各方言}/handlers.py
-
-authoring/build_pipeline.py
-├── authoring/pipeline.py
-│   ├── authoring/context_builder.py
-│   ├── authoring/raw_assembler.py
-│   ├── authoring/tool_schemas.py
-│   └── authoring/spatial/pipeline.py (v6)
-├── authoring/auto_fixer.py
-├── validation/pipeline.py
-└── pipeline/run.py
-```
-
-## 5.2 各方言的 Handler → OCP 依赖
-
-```
-loft_sweep/handlers.py
-├→ dialects/geometry_utils/ocp_pipe.py
-│   ├→ dialects/geometry_utils/path_analysis.py
-│   ├→ OCP.gp (gp_Pnt, gp_Dir, gp_Ax2, gp_Circ)
-│   ├→ OCP.GeomAPI (GeomAPI_PointsToBSpline)
-│   ├→ OCP.BRepBuilderAPI (MakeEdge, MakeWire, MakeFace)
-│   └→ OCP.BRepOffsetAPI (BRepOffsetAPI_MakePipe)
-├→ OCP.TColgp (TColgp_Array1OfPnt) — helix wire
-└→ OCP.BRepAlgoAPI (BRepAlgoAPI_Fuse) — segment fuse
-
-composition/handlers.py
-├→ OCP.BRepAlgoAPI (BRepAlgoAPI_Fuse) — boolean fallback
-└→ validation/geometry_validate.py (pre_boolean_check)
-
-axisymmetric/handlers.py
-└→ OCP.BRepExtrema (BRepExtrema_DistShapeShape) — radial safety
+v0.1-v0.3: 原型期 — 单文件脚本, 硬编码参数
+v0.4-v0.6: 工业化初期 — IR 双层架构, 方言注册表, 类型化 Handle
+v0.7-v6.3: 内核重构 — Validation Kernel, Extension 系统, Compiler Middle-End,
+            Spatial Solver, 混合方言组件执行
+vNext (V3 分支): 持久拓扑命名 — V3 Descriptor, Transaction, IdentityTransferPolicy,
+            Lineage DAG, FeatureIdentityReconciler
 ```
 
 ---
 
-**分析完成时间**: 2026-06-04
-**分析覆盖度**: ~18,000 / 22,600 行核心代码（80%）
-**未覆盖区域**: skills/（DeepSeek交互层）、legacy/（v0.1兼容代码）、实验性代码、部分测试文件
+## 12. 当前已知问题与架构边界
+
+### 12.1 已识别问题
+
+**1. V3 Topology 源码在主分支缺失**
+
+`topology/` 目录仅含 `__pycache__/*.pyc`，所有 25+ 源文件在 main 分支 (678c073) 上不存在。完整源码在 `text2cad/v3-phase17-saved` 分支。需要合入策略。
+
+**2. 验证系统与几何真实性脱节**
+
+Core validation 验证 IR 合法性，但 `geometry_postcheck` (closed, valid_solid) 只在 builder 最后阶段检查。涡轮盘 test_v11 案例中，所有 core validation 通过但最终几何无效。
+
+**3. 路由器能力边界不强制**
+
+`route_plan` 可列出 `unsupported_capabilities` 但继续选择 `deterministic_primitive`。需要硬规则: 关键能力缺失时强制 `fail_closed`。
+
+**4. Primitive 表达力不足**
+
+- `revolve_profile` 只能 `r(z)` 单值轮廓，不能 `t(r)` 厚度随半径变化
+- `cut_rim_slot_pattern` 只能简化折线槽，不能 fir-tree 榫槽
+
+**5. 编译器中间端默认不阻断**
+
+`FAIL_ON_MIDDLE_END_ERROR = False` — 编译器错误仅写 warnings，不阻断管线。
+
+**6. 2D FEA 模板已知错误未修复**
+
+`turbine_disc_rotational_thermal` 有 8 个文档化缺陷，3D 替换方案 (fea3d/) 已就位但可能需要与 CAD 管线更紧密集成。
+
+### 12.2 架构债务
+
+- `validation/` 旧验证层被 `validation_kernel/legacy_adapter.py` 包装，未完全迁移
+- `runtime/topology.py` (167 行) 是 v1.0 简单实现，不支持跨操作面追踪
+- `dialects/geometry_utils/` 中 OCCT 工具散布各处，缺乏统一几何工具层
+- 修复回路的两个 orchestrator (内联 + 独立) 共享逻辑但未统一
+
+---
+
+## 13. 关键文件速查表
+
+### Text-to-CAD 管线
+
+| 文件 | 用途 | 行数 |
+|------|------|------|
+| `pipeline/run.py` | ★ 核心执行引擎 run_canonical_gcad() | ~660 |
+| `builder.py` | 完整构建入口 (验证→执行→检查→元数据) | ~330 |
+| `authoring/pipeline.py` | Stage 1-7b 创作层 | ~600+ |
+| `authoring/build_pipeline.py` | 最外层指挥 generate_validate_build_step() | ~400+ |
+| `authoring/auto_fixer.py` | 17+ 确定性修复规则 | ~200+ |
+
+### 验证系统
+
+| 文件 | 用途 | 行数 |
+|------|------|------|
+| `validation_kernel/stages.py` | ★ Stage 枚举 + Barrier 分组 (单一事实来源) | ~110 |
+| `validation_kernel/registry.py` | RuleRegistry: 注册/选择/冻结/冲突治理 | ~140 |
+| `validation_kernel/executor.py` | Barrier 语义验证执行器 | ~230 |
+| `validation_kernel/models.py` | RuleManifest, ExtensionManifest, ActivationSnapshot | ~100 |
+| `validation_kernel/legacy_adapter.py` | 旧 validator → RegisteredRule 包装 | ~150+ |
+
+### 方言系统
+
+| 文件 | 用途 | 行数 |
+|------|------|------|
+| `dialects/registry.py` | 方言注册表 (frozen) | ~70 |
+| `dialects/base.py` | BaseDialect Protocol | ~80 |
+| `dialects/default_registry.py` | 6 方言默认注册 | ~40 |
+| `dialects/composition/handlers.py` | 布尔/变换/阵列处理器 | ~390 |
+| `dialects/sketch_profile/handlers.py` | 2D 草图+拉伸/旋转处理器 | ~390 |
+| `dialects/sketch_extrude/handlers.py` | 矩形拉伸处理器 | ~350 |
+| `dialects/axisymmetric/handlers.py` | 轴对称处理器 (含 Z-overlap 检测) | ~550 |
+| `dialects/geometry_utils/boolean_safe.py` | 4 层布尔 Fallback | ~150 |
+
+### IR 与运行时
+
+| 文件 | 用途 | 行数 |
+|------|------|------|
+| `ir/canonical.py` | CanonicalGcadDocument Pydantic 模型 | ~90 |
+| `runtime/context.py` | RuntimeContext 状态中枢 | ~85 |
+| `runtime/object_store.py` | Handle→对象映射 (双 dict) | ~65 |
+| `runtime/handles.py` | 9 种类型化 Handle | ~80 |
+| `runtime/resolve.py` | resolve_input_object() 依赖解析 | ~50 |
+| `runtime/topology.py` | 基础 face/edge 选择器 (v1.0) | ~165 |
+
+### FEA 3D 管线
+
+| 文件 | 用途 | 行数 |
+|------|------|------|
+| `app/.../fea3d/run3d.py` | 4 阶段 CLI (prepare→confirm→solve→post) | ~270 |
+| `app/.../fea3d/mesh_sector.py` | gmsh 扇区网格 (STEP→tet10) | ~240 |
+| `app/.../fea3d/apdl_template_3d.py` | APDL 求解模板 (SOLID187, CPCYC) | ~215 |
+| `app/.../fea3d/post3d.py` | 应力场后处理 + 安全系数 + 前端导出 | ~340 |
+
+### V3 Topology (分支保留)
+
+| 模块 | 用途 |
+|------|------|
+| `topology/ids.py` | V1/V2/V3 PersistentTopoId, 3 代演进 |
+| `topology/registry.py` | TopologyRegistry: 实体注册/查询/DAG 血缘 |
+| `topology/semantic_naming.py` | 确定性语义命名: 12 种 name_*_faces 函数 |
+| `topology/shape_binding.py` | OCCT IndexedMap 子形状定位 + 校验 |
+| `topology/design_identity.py` | DesignIdentity, FeatureIdentityReconciler |
+| `topology/kernel_identity.py` | IdentityTransferPolicy (8 维), IdentityDecision |
+| `topology/transaction.py` | TopologyTransaction: 原子提交/回滚 |
+| `topology/operation_adapters.py` | 10 种操作适配器 (Extrude, Revolve, Boolean, ...) |
+| `topology/cae_bridge.py` | CAE preflight gate, 命名集→面解析 |

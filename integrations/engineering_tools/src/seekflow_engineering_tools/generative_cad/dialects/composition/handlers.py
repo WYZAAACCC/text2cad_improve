@@ -275,7 +275,10 @@ def handle_boolean_union(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, 
 
     # ── Attempt 1: CadQuery union ──
     try:
-        result = a.union(b)
+        if _use_tracked(ctx):
+            result = _tracked_boolean_fuse(a, b, node, ctx)
+        else:
+            result = a.union(b)
         # Verify: check if result is still multi-solid
         if hasattr(result, 'Solids'):
             n_result = len(list(result.Solids()))
@@ -294,7 +297,10 @@ def handle_boolean_union(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, 
 
     # ── Attempt 2: OCCT BRepAlgoAPI_Fuse ──
     try:
-        result = a.fuse(b)
+        if _use_tracked(ctx):
+            result = _tracked_boolean_fuse(a, b, node, ctx)
+        else:
+            result = a.fuse(b)
         if hasattr(result, 'Solids'):
             n_result = len(list(result.Solids()))
             n_a = len(list(a.Solids())) if hasattr(a, 'Solids') else 1
@@ -360,10 +366,16 @@ def handle_boolean_cut(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, st
     pre = pre_boolean_check(target, tool, ctx.tolerance)
 
     try:
-        result = target.cut(tool)
+        if _use_tracked(ctx):
+            result = _tracked_boolean_cut(target, tool, node, ctx)
+        else:
+            result = target.cut(tool)
     except Exception:
         try:
-            result = target.cut(tool, ctx.tolerance.boolean_fallback_tolerance)
+            if _use_tracked(ctx):
+                result = _tracked_boolean_cut(target, tool, node, ctx)
+            else:
+                result = target.cut(tool, ctx.tolerance.boolean_fallback_tolerance)
         except Exception:
             ctx.degraded_features.append({
                 "node_id": node.id, "op": "boolean_cut",
@@ -380,6 +392,61 @@ def handle_boolean_cut(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, st
                 f"Clearance={_fmt_clr(pre.clearance_mm)}."
             )
     return {"body": _store_solid(node, ctx, result)}
+
+
+# ── Topology capture helpers (v6.4 PR-2) ────────────────────────────────────────
+
+
+def _use_tracked(ctx) -> bool:
+    """Return True when topology capture is enabled and a session is attached."""
+    return (
+        getattr(ctx, "enable_topology_capture", False)
+        and ctx.capture_session is not None
+    )
+
+
+def _tracked_boolean_fuse(a, b, node, ctx):
+    """Execute fuse via tracked_fuse and stage history to capture session."""
+    import cadquery as cq
+    from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+        tracked_fuse,
+    )
+    from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+        TopologyCaptureScope,
+    )
+
+    scope = TopologyCaptureScope(
+        node_id=node.id,
+        component_id=node.component,
+        dialect=node.dialect,
+        operation=node.op,
+        operation_version=node.op_version,
+    )
+    tracked = tracked_fuse(a.val(), b.val(), scope=scope)
+    ctx.capture_session.stage(tracked)
+    return cq.Workplane("XY").newObject([tracked.result])
+
+
+def _tracked_boolean_cut(target, tool, node, ctx):
+    """Execute cut via tracked_cut and stage history to capture session."""
+    import cadquery as cq
+    from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+        tracked_cut,
+    )
+    from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+        TopologyCaptureScope,
+    )
+
+    scope = TopologyCaptureScope(
+        node_id=node.id,
+        component_id=node.component,
+        dialect=node.dialect,
+        operation=node.op,
+        operation_version=node.op_version,
+    )
+    tracked = tracked_cut(target.val(), tool.val(), scope=scope)
+    ctx.capture_session.stage(tracked)
+    return cq.Workplane("XY").newObject([tracked.result])
 
 
 # ── Formatting helpers ────────────────────────────────────────────────────────

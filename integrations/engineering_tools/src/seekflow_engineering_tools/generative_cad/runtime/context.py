@@ -50,6 +50,11 @@ class RuntimeContext:
     # Per-component mutable state (workplane, last_point, etc.)
     # Key: component_id → {field_name: value}
     component_state: dict[str, dict[str, object]] = field(default_factory=dict)
+    # v6.4: Topology capture (OCAF/TNaming)
+    # When False (default), all handlers use original CadQuery paths unchanged.
+    # When True, handlers use tracked operations + stage history to capture_session.
+    enable_topology_capture: bool = False
+    capture_session: Any = None
 
     @property
     def geometry_runtime_name(self) -> str:

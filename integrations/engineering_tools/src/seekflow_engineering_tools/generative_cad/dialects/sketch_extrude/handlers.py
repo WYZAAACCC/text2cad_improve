@@ -65,7 +65,32 @@ def handle_extrude_rectangle(node: CanonicalNode, ctx: RuntimeContext) -> dict[s
             wp = wp.center(0, 0)
         if direction == "-":
             d = -d
-        if abs(draft) > 0.01:
+
+        # v6.4: Tracked path for topology capture (no draft only)
+        if (
+            abs(draft) <= 0.01
+            and getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        ):
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+                tracked_extrude,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+
+            profile = wp.rect(w, h).val()
+            scope = TopologyCaptureScope(
+                node_id=node.id,
+                component_id=node.component,
+                dialect=node.dialect,
+                operation=node.op,
+                operation_version=node.op_version,
+            )
+            tracked = tracked_extrude(profile, (0, 0, d), scope=scope)
+            ctx.capture_session.stage(tracked)
+            solid = cq.Workplane(plane).newObject([tracked.result])
+        elif abs(draft) > 0.01:
             solid = wp.rect(w, h).taperedExtrude(d, draft)
         else:
             solid = wp.rect(w, h).extrude(d)
@@ -94,7 +119,27 @@ def handle_cut_rectangular_pocket(node: CanonicalNode, ctx: RuntimeContext) -> d
             cutter = cq.Workplane(plane).rect(w, h).taperedExtrude(-d, draft)
         else:
             cutter = cq.Workplane(plane).rect(w, h).extrude(-d)
-        result = body.cut(cutter)
+        # v6.4: Tracked path
+        if (
+            getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        ):
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+                tracked_cut,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            scope = TopologyCaptureScope(
+                node_id=node.id, component_id=node.component,
+                dialect=node.dialect, operation=node.op,
+                operation_version=node.op_version,
+            )
+            tracked = tracked_cut(body.val(), cutter.val(), scope=scope)
+            ctx.capture_session.stage(tracked)
+            result = cq.Workplane(plane).newObject([tracked.result])
+        else:
+            result = body.cut(cutter)
     except Exception:
         return {"body": _degrade(node, ctx, body, "cut_rectangular_pocket")}
     return {"body": _store_solid(node, ctx, result)}
@@ -143,7 +188,27 @@ def handle_cut_hole(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
             depth = bb.zlen + 10
             cutter = (cq.Workplane("XY").center(x, y)
                       .circle(dia / 2.0).extrude(depth, both=True))
-        result = body.cut(cutter)
+        # v6.4: Tracked path
+        if (
+            getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        ):
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+                tracked_cut,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            scope = TopologyCaptureScope(
+                node_id=node.id, component_id=node.component,
+                dialect=node.dialect, operation=node.op,
+                operation_version=node.op_version,
+            )
+            tracked = tracked_cut(body.val(), cutter.val(), scope=scope)
+            ctx.capture_session.stage(tracked)
+            result = cq.Workplane("XY").newObject([tracked.result])
+        else:
+            result = body.cut(cutter)
     except Exception:
         return {"body": _degrade(node, ctx, body, "cut_hole")}
     return {"body": _store_solid(node, ctx, result)}

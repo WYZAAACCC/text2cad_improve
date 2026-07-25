@@ -161,6 +161,7 @@ def run_canonical_gcad(
     canonical_ir_path: str | Path | None = None,
     validation_seed_path: str | Path | None = None,
     require_full_validation_seed: bool = True,
+    ocaf_path: str | Path | None = None,  # v6.4: optional OCAF/XBF output
 ) -> GcadRunResult:
     if require_full_validation_seed and not validation_seed:
         return GcadRunResult(
@@ -179,6 +180,19 @@ def run_canonical_gcad(
         metadata_path=metadata_path,
         workspace_root=out_step.parent,
     )
+
+    # v6.4: OCAF topology capture (optional)
+    _ocaf_session = None
+    if ocaf_path is not None:
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.capture_session import (
+            CaptureSession,
+        )
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.document import (
+            OcafDocumentSession,
+        )
+        ctx.enable_topology_capture = True
+        ctx.capture_session = CaptureSession()
+        _ocaf_session = OcafDocumentSession()
 
     try:
         # ════════════════════════════════════════════════════════════
@@ -350,6 +364,19 @@ def run_canonical_gcad(
             )
 
         _export_final_solid(final_handle_id, ctx)
+
+        # v6.4: OCAF topology capture — write batches and save XBF
+        if _ocaf_session is not None and ctx.capture_session is not None:
+            try:
+                from seekflow_engineering_tools.generative_cad.topology.ocaf.writer import (
+                    write_batch,
+                )
+                for batch in ctx.capture_session.iter_batches():
+                    write_batch(_ocaf_session, batch)
+                ocaf_target = Path(ocaf_path)  # type: ignore[arg-type]
+                _ocaf_session.save(ocaf_target)
+            except Exception as exc:
+                ctx.warnings.append(f"OCAF save failed: {exc}")
 
         # ════════════════════════════════════════════════════════════
         # v6.3: Geometry postcondition gate (post-STEP export)
