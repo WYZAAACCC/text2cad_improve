@@ -116,47 +116,43 @@ ok = TDF_Tool.Label_s(doc.GetData(), TCollection_AsciiString(entry_str), label, 
 
 ---
 
-### 2.4 FindAttribute 重开后崩溃 (关键阻塞)
+### 2.4 同进程 Open 的实验缺陷与修正
 
-**测试目标**: 验证 TNaming 属性（NamedShape/Naming）在 XBF 保存/重开后是否可恢复。
-
-**测试流程**:
+**初始实验记录**（现已确认存在缺陷）:
 
 ```
-1. 创建 Doc → TNaming_Builder.Generated(shape) → 验证 FindAttribute 成功 ✅
-2. SaveAs(XBF) → 文件 4870 bytes ✅
-3. Open(XBF) → 状态 PCDM_RS_AlreadyRetrieved, Main().HasChild()=True ✅
-4. FindChild(1) → 返回有效 Label ✅
-5. HasChild() → 返回 False ✅ (子标签树正常)
-6. FindAttribute(TNaming_NamedShape) → ACCESS VIOLATION ❌
+1. SaveAs(XBF) → 文件 4870 bytes ✅
+2. 同一进程 Open(XBF) → PCDM_RS_AlreadyRetrieved
+3. FindAttribute → ACCESS VIOLATION ❌
 ```
 
-**崩溃特征**:
+**缺陷根源**: 
 
-| 指标 | 值 |
-|------|-----|
-| 崩溃时机 | `label.FindAttribute(TNaming_NamedShape.GetID_s(), attr)` |
-| 保存前相同的调用 | ✅ 正常返回 `True` |
-| 进程退出码 | `-1073741819` (0xC0000005) |
-| 崩溃类型 | 原生 C++ ACCESS VIOLATION |
-| 文件大小 | 4870 bytes（含 TNaming 数据的 XBF） |
-| 对比：无 TNaming 的 XBF | 1277 bytes，重开后 FindChild 正常 |
+经对照 OCCT 7.8.1 `TDocStd_Application.cxx` 源码确认：
+- `SaveAs()` 内部会调用 `theDoc->Open(this)` 将文档注册到 Application Session
+- 同一 `XCAFApp_Application` 实例再次 `Open()` 同一路径时，`IsInSession()` 返回 true
+- 此时 `Retrieve()` 不会执行，`Open()` 返回 `PCDM_RS_AlreadyRetrieved`
+- Python 侧的 `doc2` 仍然是空白文档
 
-**对比实验**:
+即之前实验观察到的"重开后的属性丢失和崩溃"是因为**文件根本没有被重新加载**。
 
-| 场景 | 结果 |
-|------|------|
-| 保存前 FindAttribute | ✅ 正常 |
-| 无 TNaming 数据的 XBF 重开后 FindChild/HasChild | ✅ 正常 |
-| 含 TNaming 数据的 XBF 重开后 FindChild/HasChild | ✅ 正常 |
-| 含 TNaming 数据的 XBF 重开后 FindAttribute | ❌ **崩溃** |
+**修正后的跨进程测试**:
 
-**根因分析**: 此崩溃表明 OCP 7.8.1.1 的 `BinMNaming` 驱动（负责 TNaming_NamedShape 和 TNaming_Naming 的二进制序列化/反序列化）存在 bug：
-1. 序列化阶段（SaveAs）: TNaming 数据被写入 XBF，文件大小增长表明数据已包含在内
-2. 反序列化阶段（Open）: 二进制数据被读回，但内部数据结构（Handle to Naming/NamedShape）未能正确重建
-3. 当 Python 层通过 `FindAttribute` 访问这些属性时，OCCT 内部的空指针/野指针导致 ACCESS VIOLATION
+使用 `subprocess` 启动独立 Python 进程进行读取，确保 `Open()` 真正从磁盘加载文件：
 
-此 bug 位于 OCP 的 C++ 绑定层（pybind11 生成代码），无法通过修改 Python 代码解决。
+| 项目 | Writer 进程 | Reader 进程 |
+|------|-----------|-----------|
+| TDataStd_Integer (42) | ✅ 存在 | ❌ 不存在 |
+| TNaming_NamedShape | ✅ 存在 | ❌ 不存在 |
+| Selector 子标签 | ✅ `0:1:1:1` | ❌ `FindChild(1) → null` |
+| Open 状态 | `PCDM_SS_OK` | **`PCDM_RS_OK`** |
+| 文件大小 | 9751 bytes | — |
+| 标签树 (Main.FindChild(1)) | ✅ | ✅ 存在但仅含 2 个框架属性 |
+
+**关键结论**:
+- 同进程 `Open` 返回 `PCDM_RS_AlreadyRetrieved` 确实意味着文件未加载，之前据此得出的"崩溃"结论存在实验缺陷
+- 但跨进程测试（真正 `PCDM_RS_OK` + 新进程）**仍然证实**：用户添加的属性在 XBF 序列化/反序列化后丢失
+- 丢失的属性包括 `TDataStd_Integer`（非 TNaming）和 `TNaming_NamedShape`，说明问题不限于 TNaming
 
 ---
 
@@ -198,11 +194,11 @@ sel_lbl = result_lbl.FindChild(2, False)        # ✅ 找到 (但 TNaming 属性
 
 ---
 
-### 2.7 TNaming_Tool.CurrentShape_s 崩溃
+### 2.7 OCP FindAttribute 输出参数绑定缺陷
 
-**测试目标**: 验证能否通过 `TNaming_Tool.CurrentShape_s()` 从 NamedShape 恢复当前形状。
+**测试目标**: 验证 `TNaming_Tool.CurrentShape_s()` 是否可用。
 
-**测试代码**:
+**原始测试**（存在问题）:
 
 ```python
 ns = TNaming_NamedShape()
@@ -210,171 +206,191 @@ has_ns = lbl.FindAttribute(TNaming_NamedShape.GetID_s(), ns)  # True
 current = TNaming_Tool.CurrentShape_s(ns)  # Standard_NullObject ❌
 ```
 
-**异常信息**:
-```
-OCP.OCP.Standard.Standard_NullObject: A null Label has no attribute.
+**根因分析**: 
+
+OCP 存在已知的 `TDF_Label.FindAttribute` 输出参数绑定缺陷 (参考 OCP issue #55, PR #57)。C++ 签名：
+
+```cpp
+bool FindAttribute(const Standard_GUID& id, Handle(TDF_Attribute)& attribute);
 ```
 
-此异常在**保存前**就出现，说明即使 `FindAttribute` 确认属性存在，`TNaming_Tool.CurrentShape_s` 在 OCP 7.8.1.1 中也不可正常工作。这与 v1.1 状态报告中的发现一致。
+OCP 的修补方式是通过 `Restore()` 将真实属性内容复制到用户传入的空对象：
 
-**替代方案**: 使用 `TNaming_Selector.NamedShape()` 直接获取 NamedShape 对象（返回非 None 对象）。如需实际 TopoDS_Shape，考虑直接从 TNaming_NamedShape 的 Evolution 中提取，而非通过 TNaming_Tool。
+```cpp
+Handle(TDF_Attribute) dummy_attr;
+auto rv = self.FindAttribute(anID, dummy_attr);
+anAttribute.Restore(dummy_attr);
+return rv;
+```
+
+`Restore()` 设计用于事务回滚，不是用于建立完整的 Handle 关系。结果：
+- `FindAttribute` 返回 True ✅
+- 但 Python 中的 `ns` 是"壳对象"：**`ns.Label().IsNull() == True`**
+- `TNaming_Tool.CurrentShape_s(ns)` 内部调用 `ns.Label().FindAttribute(...)`，Label 为空导致 `Standard_NullObject`
+
+**验证**:
+
+| 获取方式 | Label().IsNull() | 结论 |
+|---------|-----------------|------|
+| `lbl.FindAttribute(GUID, ns)` → `ns` | **True** ← 假 Handle | OCP 补丁返回的是内容复制体 |
+| `selector.NamedShape()` → `ns` | **False** ← 真 Handle | 直接返回文档中的真实 Handle |
+
+**修正后的用法**:
+- 使用 `TNaming_Selector.NamedShape()` 获取真实 NamedShape Handle（绕过 FindAttribute 的 Restore 问题）
+- 使用 `TNaming_Selector` 上的 `Solve()` 方法
+- 未来需要返回值式 C++ API 替代所有输出参数式调用
+
+**对 P-02 的修正**: `TNaming_Tool.CurrentShape_s` 本身并非不可用——当传入真实 Handle（如 `selector.NamedShape()` 返回值）时应该可以正常工作。之前观察到的异常根因是 OCP 的 `FindAttribute` 输出绑定缺陷。
 
 ---
 
-### 2.8 根因定位: TNaming 属性序列化/反序列化断裂
+### 2.8 跨进程属性持久化验证（修正后）
 
-**实验方案**: 在 XCAF 文档中同时插入 `TDataStd_Integer`（非 TNaming）和 `TNaming_NamedShape` 两种属性，保存为 XBF，重开后对比属性列表。
+**实验方案**: Writer 进程写入 XBF（含 TDataStd_Integer + TNaming_NamedShape + TNaming_Selector），Reader 进程（独立 `subprocess`）重开并验证。
 
-**实验代码**:
+**方法要点**:
+- 使用 `subprocess` 启动独立 Python 进程，确保 OCCT Application Session 隔离
+- 使用 `TDF_AttributeIterator` 枚举真实属性（不依赖存在缺陷的 `FindAttribute` 输出绑定）
+- 使用 `TNaming_Selector.NamedShape()` 获取真实 Handle（非 Restore 壳对象）
 
-```python
-import cadquery as cq
-from OCP.XCAFApp import XCAFApp_Application
-from OCP.BinXCAFDrivers import BinXCAFDrivers
-from OCP.TNaming import TNaming_Builder, TNaming_NamedShape
-from OCP.TDataStd import TDataStd_Integer
-from OCP.TDF import TDF_AttributeIterator
+**Writer 进程结果**:
 
-app = XCAFApp_Application.GetApplication_s()
-BinXCAFDrivers.DefineFormat_s(app)
-doc = TDocStd_Document(TCollection_ExtendedString('BinXCAF'))
-app.InitDocument(doc)
-
-# 使用 OCAF 事务
-doc.NewCommand()
-box = cq.Workplane('XY').box(20, 30, 10).val()
-lbl = doc.Main().NewChild()
-TNaming_Builder(lbl).Generated(box.wrapped)
-iattr = TDataStd_Integer()
-iattr.Set(99)
-lbl.AddAttribute(iattr)
-doc.CommitCommand()
-
-# 保存前枚举属性: TDataStd_Name, XCAFDoc_ShapeTool, TNaming_NamedShape, TDataStd_Integer
-ait = TDF_AttributeIterator(lbl)
-# → 4 个属性 ✅
-# 文件大小: 1360 bytes
-
-# 保存 → 重开
-app.SaveAs(doc, TCollection_ExtendedString(xbf_path))
-app.Open(TCollection_ExtendedString(xbf_path), doc2)
-
-# 重开后枚举属性: TDataStd_Name, XCAFDoc_ShapeTool ← 仅 2 个属性
-ait2 = TDF_AttributeIterator(child_label)
-# → 只有 2 个属性 ❌
+```
+文件: 9751 bytes
+保存前属性: TDataStd_Name, XCAFDoc_ShapeTool, TNaming_NamedShape, TDataStd_Integer (42)
+Selector 标签: 0:1:1:1
+selector.NamedShape().Label().IsNull() = False (真实 Handle)
 ```
 
-**关键数据对比**:
+**Reader 进程结果** (独立 subprocess):
 
-| 项目 | 保存前 | 重开后 |
-|------|--------|--------|
-| 属性列表 | `TDataStd_Name`, `XCAFDoc_ShapeTool`, `TNaming_NamedShape`, `TDataStd_Integer` | `TDataStd_Name`, `XCAFDoc_ShapeTool` |
-| 属性数量 | 4 | 2 |
-| TNaming_NamedShape | ✅ 可通过 FindAttribute 读取 | ❌ 完全缺失 |
-| TDataStd_Integer (99) | ✅ 存在 | ❌ 也缺失 |
-| 文件大小 | 1360 bytes | — |
-| Label 树结构 | `Main → [child(1)]` | `Main → [child(1)]` ✅ 标签树正常 |
+| 项目 | 结果 |
+|------|------|
+| `Open()` 状态 | **`PCDM_RS_OK`** ✅ |
+| `Main.HasChild()` | True ✅ |
+| `Main.FindChild(1)` | 有效标签 ✅ |
+| `TDF_AttributeIterator` 枚举 | **仅 TDataStd_Name, XCAFDoc_ShapeTool** ❌ |
+| TDataStd_Integer (42) | **丢失** ❌ |
+| TNaming_NamedShape | **丢失** ❌ |
+| Selector 子标签 (tag 1) | **不存在（IsNull）** ❌ |
 
-**不带事务时的对比**:
+**关键结论**:
 
-| 项目 | 保存前 | 重开后 |
-|------|--------|--------|
-| 属性列表 | `TDataStd_Name`, `XCAFDoc_ShapeTool`, `TNaming_NamedShape` | `TDataStd_Name`, `XCAFDoc_ShapeTool` |
-| 文件大小 | 1328 bytes | — |
-| FindAttribute 行为 | ✅ 返回 True | ❌ **ACCESS VIOLATION 崩溃** |
+1. **跨进程 XBF 持久化确实存在问题**——即使使用正确的 `PCDM_RS_OK` + 新进程，用户添加的所有属性（TNaming 和 TDataStd）在重开后均丢失
+2. **但之前的同进程测试因 `PCDM_RS_AlreadyRetrieved` 导致文件未被加载**，使得 ACCESS VIOLATION 崩溃现象产生误导——原以为是反序列化内存损坏，实为对空文档访问不存在的属性
+3. **BinMNaming 驱动注册问题已被排除**——OCCT 7.8.1 源码显示 `BinXCAFDrivers::DefineFormat()` 内部会调用 `BinMNaming::AddDrivers()`，这些注册是 C++ 原生完成的
+4. **根因需要进一步的 Writer-vs-Reader 分离测试**——当前无法判断属性是在序列化（写 XBF）还是反序列化（读 XBF）阶段丢失的
 
-**核心发现**:
+**与"可能的问题.md"文档的对照**:
 
-1. **TNaming_NamedShape 和自定义 TDataStd_Integer 在重开后都丢失了**，说明问题是 **OCP 7.8.1.1 的 OCAF 属性持久化层存在问题**，并非仅针对 TNaming。
-2. **文件大小差异**: 带事务保存 1360 bytes vs 不带事务保存 1328 bytes vs 之前的 4870 bytes。不带事务时文件更大但数据损坏（`FindAttribute` 崩溃），带事务时文件更小但数据被静默丢弃。
-3. **XCAF 结构属性正常**: `TDataStd_Name`（标签命名）和 `XCAFDoc_ShapeTool`（形状工具指针）在重开后完全保留，说明基本的 XCAF 持久化是正常的。
-4. **用户添加的属性不被持久化**: 任何在 XCAF 文档中用户创建的额外属性（无论是 TNaming 还是 TDataStd），在 XBF 序列化/反序列化过程中都会丢失或损坏。
+| 文档主张 | 验证结果 |
+|---------|---------|
+| §1: 同进程 Open 返回 AlreadyRetrieved 意味着文件未加载 | ✅ **完全正确**——已验证 |
+| §1: 属性丢失结论可能是因为检查了空文档 | ⚠️ **部分正确**——同进程测试确实有缺陷，但修正后的跨进程测试仍证实属性丢失 |
+| §2: InitDocument 自动添加 XCAF 框架属性解释了为何只剩 2 个 | ✅ **正确** |
+| §3: OCP FindAttribute 使用 Restore() 产生假 Handle | ✅ **完全正确**——实验验证了 `Label().IsNull()` 差异 |
+| §4: BinMNaming 驱动由 C++ 内部注册，不需要 Python 手动注册 | ✅ **正确**——与 OCCT 源码一致 |
+| §5-6: 仓库代码本身有严重问题 | ✅ **正确**——RC-01~RC-12 全部确认 |
 
-**根因判断**:
-
-问题出在 OCP 7.8.1.1 的 **pybind11 绑定层**对 OCAF 属性序列化驱动的处理。具体来说：
-
-- OCCT 7.8.1 的 C++ 层面，`BinMNaming_NamedShapeDriver`、`BinMNaming_NamingDriver` 以及 `BinMDataStd` 等驱动是完整的且功能正常
-- OCP 7.8.1.1 的 `ocp.toml` 构建配置包含了 `BinMNaming`、`BinMDataStd`、`BinMDataXtd` 等模块
-- 编译后的 `.pyd` 文件存在且包含 `Paste()`/`NewEmpty()` 等方法
-- 但在 pybind11 生成的绑定代码中，这些驱动的**注册和调用链断裂**：
-  - `BinXCAFDrivers.DefineFormat_s()` 注册了 XCAF 框架驱动，但子驱动（BinMNaming、BinMDataStd）的注册可能不完整
-  - 反序列化时，自定义属性的 `Paste()` 方法未被正确调用
-  - 未使用事务时，未提交的数据以半写状态进入序列化流，反序列化时导致内存损坏（ACCESS VIOLATION）
-
-**为什么 OCCT 7.8.1 C++ 本身是好的**: 上游 OCCT 7.8.1 的 OCAF 持久化框架经过充分测试，`BinXCAF` + `BinMNaming` 的组合是标准配置。问题出在 **pybind11 自动生成代码对 OCAF driver 系统的封装**。OCAF 的 driver 注册使用了复杂的 C++ 模板和宏机制（`IMPLEMENT_DERIVED_ATTRIBUTE_WITH_TYPE` 等），pybind11 的代码生成器（`pywrap`）可能无法正确处理这些宏展开的虚函数表。
-
-**修复可行性**:
-
-| 方案 | 可行性 | 工作量 | 风险 |
-|------|--------|--------|------|
-| **A. OCP 升级** | ⚠️ 不确定 | 中 | OCP 7.8.2+ 可能仍未修复此问题，需要逐个版本测试 |
-| **B. 手动修补 OCP wheel** | ⚠️ 高难度 | 极高 | 需要理解 OCP 构建工具链和 pybind11 代码生成器，并手动修复生成的 C++ 代码 |
-| **C. C++ 桥接层** | ✅ 可行 | 高 | 用 pybind11 手动绑定 OCCT 7.8.1 的 BinMNaming 驱动，绕过 OCP 的自动绑定 |
-| **D. 使用 XML 格式替代二进制** | ❌ 不可行 | — | 实验证明 XmlXCAF 有相同的问题（驱动注册断裂） |
-
-**推荐路线**: 优先尝试方案 A（OCP 升级），在独立分支中测试 OCP 7.8.2、7.9.x 等版本。如果升级路径不可行，方案 C（C++ 桥接）是唯一可靠的备选。
-
----
-
-## 3. 问题汇总
-
-| ID | 问题 | 严重程度 | 是否阻塞 v2.0 完整实现 |
-|----|------|---------|---------------------|
-| P-01 | `TDF_Tool.Label_s` 调用崩溃 | 中 | 否 — 可用 `FindChild(tag)` 替代 |
-| P-02 | `TNaming_Tool.CurrentShape_s` 调用异常 | 中 | 否 — 可用 `Selector.NamedShape()` 替代 |
-| P-03 | 重开后 `FindAttribute` 访问 TNaming 属性崩溃 | **致命** | **是 — 阻塞跨进程 Selector 持久化** |
-| **P-03A** | **重开后所有用户添加属性（TNaming + TDataStd）均丢失** | **致命** | **是 — 根因在 OCP 属性持久化层** |
-| P-04 | `TNaming_Selector.Select()` 内存中不可靠 (间歇性 `Standard_NullObject`) | 低 | 待进一步验证 (仅在某些代码路径中复现) |
-
----
-
-## 4. OCP 7.8.1.1 能力边界
+**当前 OCP 7.8.1.1 的准确能力边界**:
 
 ```
 ✅ 可用的能力:
-  - TNaming_Builder 所有方法 (Generated/Modify/Delete)
+  - TNaming_Builder.Generated/Modify/Delete (内存中)
   - TNaming_Selector.Select (内存中)
-  - TNaming_Selector.NamedShape (内存中)
-  - TDF_Label.FindChild(tag) 导航
-  - TDF_Tool.Entry_s (获取 entry 字符串)
-  - TDF_ChildIterator (遍历子标签)
-  - ShapeUpgrade_UnifySameDomain.History (BRepTools_History)
-  - BOPAlgo_BOP + SetToFillHistory
-  - BRepPrimAPI_MakePrism/MakeRevol.Generated/Modified
-  - BRepFilletAPI_MakeFillet.Generated/Modified
-  - XBF 保存/重开 (标签树结构)
-  - XBF 重开后 Tag 导航 (FindChild)
+  - TNaming_Selector.NamedShape (返回真实 Handle, Label 非空)
+  - TDF_Label.FindChild(tag) 导航 (跨重开可靠)
+  - ShapeUpgrade_UnifySameDomain.History()
+  - XBF 保存/重开 (标签树结构保留)
+  - XBF 重开后 TDF_AttributeIterator (枚举真实属性)
 
 ⚠️ 有限可用的能力:
-  - TDF_Label.FindAttribute: 保存前可用, 重开后访问 TNaming 属性崩溃
+  - TDF_Label.FindAttribute: 返回 Restore 壳对象, Label 为空 (OCP 已知问题)
   - TDF_Tool.Label_s: 调用崩溃
+  - XBF 跨进程: PCDM_RS_OK 可正常打开, 但用户属性丢失
 
 ❌ 不可用的能力:
-  - 跨进程 TNaming 属性持久化 (BinMNaming 序列化 bug)
-  - TNaming_Tool.CurrentShape_s (内存中也异常)
+  - 跨进程 TNaming/TDataStd 属性持久化 (属性在 XBF 往返后丢失)
+  - 跨进程 Selector 数据持久化 (Selector 标签子树不保留)
 ```
 
 ---
 
-## 5. 对 v2.0 指导书的影响
+## 3. 问题汇总（修正后）
 
-### 5.1 可实施的部分 (阶段 A)
+| ID | 问题 | 严重程度 | 修正后状态 |
+|----|------|---------|-----------|
+| P-01 | `TDF_Tool.Label_s` 调用崩溃 | 中 | 未变 — 可用 `FindChild(tag)` 替代 |
+| P-02 | `TNaming_Tool.CurrentShape_s` 异常 | **已降级** | **根因不是 CurrentShape_s，而是 OCP FindAttribute 输出绑定缺陷**。使用 `selector.NamedShape()` 返回的真实 Handle 应可正常工作 |
+| P-03 | 同进程 Open 后 `FindAttribute` 崩溃 | **已重新定性** | **根因是 PCDM_RS_AlreadyRetrieved 导致文件未加载**（同进程测试缺陷）。跨进程测试中 `FindAttribute` 行为待验证 |
+| P-04 | 跨进程 XBF 往返后用户属性丢失 | **致命** | **新的核心阻塞问题** — 真正的跨进程测试（PCDM_RS_OK）证实 TDataStd_Integer 和 TNaming_NamedShape 均丢失 |
+| P-05 | OCP `FindAttribute` 输出参数绑定缺陷 | 中 | **新发现** — `Restore()` 补丁产生的壳对象 `Label().IsNull()==True`，不能用于需要真实 Handle 的 API |
+
+**"可能的问题.md"文档的贡献**:
+
+该文档对之前实验的批判中有 **4 项完全正确、1 项部分正确、1 项错误**：
+
+| 判断 | 验证 |
+|------|------|
+| PCDM_RS_AlreadyRetrieved 意味着文件未加载 | ✅ 正确 |
+| InitDocument 自动添加的框架属性解释了"只剩2属性" | ✅ 正确 |
+| OCP FindAttribute 输出绑定有 Restore 壳问题 | ✅ 正确 |
+| BinMNaming 由 C++ 内部注册 | ✅ 正确 |
+| 仓库代码本身严重问题 (RC-01~12) | ✅ 正确 |
+| "属性丢失可能是因为检查了空文档" | ⚠️ 部分 — 同进程测试确有缺陷，但修正后仍证实丢失 |
+| "真正的 OCAF 原生持久化拓扑命名是可以实现的 (不升级)" | ❌ 当前证据不支持 — 跨进程属性持久化仍未工作 |
+
+---
+
+## 4. OCP 7.8.1.1 能力边界（修正后）
+
+```
+✅ 可用的能力:
+  - TNaming_Builder 所有方法 (Generated/Modify/Delete) — 内存中
+  - TNaming_Selector.Select — 内存中, 写入真实 NamedShape/Naming
+  - TNaming_Selector.NamedShape — 返回真实 Handle (Label 非空) ✅
+  - TDF_Label.FindChild(tag) 导航 — 跨重开完全可靠
+  - TDF_AttributeIterator — 枚举真实属性 (保存前后均可用)
+  - ShapeUpgrade_UnifySameDomain.History — BRepTools_History ✅
+  - BOPAlgo_BOP + SetToFillHistory
+  - BRepPrimAPI_MakePrism/MakeRevol.Generated/Modified
+  - BRepFilletAPI_MakeFillet.Generated/Modified
+  - XBF 保存/重开 — 标签树结构保留
+  - XBF 跨进程 Open — PCDM_RS_OK 可正常加载
+
+⚠️ 有限可用的能力:
+  - TDF_Label.FindAttribute: 返回 Restore() 壳对象, Label().IsNull()==True
+    → 不能用其结果调用需要真实 Handle 的 API (如 TNaming_Tool.CurrentShape_s)
+  - TDF_Tool.Label_s: 调用崩溃 → 用 FindChild(tag) 替代
+
+❌ 当前不可用的能力:
+  - 跨进程用户属性持久化 — TDataStd_Integer 和 TNaming_NamedShape 在 XBF 往返后丢失
+  - 跨进程 TNaming_Selector 数据 — Selector 标签子树不保留
+  - TNaming_Tool.CurrentShape_s(FindAttribute壳对象) — 因假Handle 的 Label 为空
+```
+
+---
+
+## 5. 对 v2.0 指导书的影响（修正后）
+
+### 5.1 可实施的部分 (阶段 A — 不需要升级 OCP)
 
 以下 v2.0 指导书内容**可以在 OCP 7.8.1.1 上直接实施**：
 
-- §6 数据模型重构 (LiveEvolutionRelation + Audit projection)
-- §7 History 捕获与操作覆盖 (含 tracked_clean，因 UnifySameDomain.History() 可用)
-- §8 TNaming Writer 正确实现 (内存中)
-- §10 Revision 生命周期与事务（不依赖跨进程 Selector 的部分）
+- §6 数据模型重构 (LiveEvolutionRelation + Audit projection) — 需要保存真实 TopoDS_Shape
+- §7 History 捕获与操作覆盖 — 含 tracked_clean (UnifySameDomain.History() 可用)
+- §8 TNaming Writer 正确实现 — 内存中正确调用 Generated/Modify/Delete
+- §10 Revision 生命周期与事务 — 不依赖跨进程 Selector 的部分
 - §12 错误模型、证据与可观测性
 - RC-01 ~ RC-12 的全部修复
+- StableLabelIndex (Tag-based FindChild 导航)
+- Lineage Document 架构 (新建/重开统一 DesignRoot)
 
-### 5.2 不可实施的部分 (需要 P-03 解决后)
+### 5.2 不可实施的部分 (需要 P-04 解决后)
 
-以下 v2.0 指导书内容**依赖 P-03 的解决**（BinMNaming 序列化修复）：
+以下 v2.0 指导书内容**依赖跨进程属性持久化修复**：
 
-- §5 OCAF 文档树方案的**重开后属性恢复**
+- §5 OCAF 文档树的**重开后属性恢复**
 - §9 Selector 持久化与求解服务 (跨进程部分)
 - §11 CAD-to-CAE 绑定策略 (跨 Revision 部分)
 - T0, T2, T3, T7, T10, T12 测试 (跨进程测试)
@@ -385,35 +401,26 @@ ait2 = TDF_AttributeIterator(child_label)
 |------------|------|---------|
 | `TDF_Tool.Label_s` 恢复 Label | 调用崩溃 | 使用 `FindChild(tag)` + StableLabelIndex |
 | `label_from_entry()` 函数 | 依赖崩溃 API | 改为 `label_from_tag_path()` |
-| `FindAttribute` 重开后验证属性 | 访问崩溃 | 暂不可用，需 OCP 升级后启用 |
-| "不升级优先"策略 | P-03 是 OCP bug | PR-0 确认需升级才能实现跨进程持久化 |
+| `FindAttribute` 读取属性 | 返回 Restore 壳对象 | 使用 `TNaming_Selector.NamedShape()` 或 C++ 返回值式 API |
+| 不升级 OCP 完成跨进程持久化 | P-04 当前未解决 | 需要进一步 Writer/Reader 分离测试定位确切断裂点 |
+| `TNaming_Tool.CurrentShape_s` 不可用 | 实际是 FindAttribute 假 Handle 问题 | 用 `selector.NamedShape()` 获取真实 Handle 后再调用 |
 
 ---
 
-## 6. 建议的下一步
+## 6. 建议的下一步（修正后）
 
-1. **立即开始阶段 A** (PR-1 ~ PR-5): 在 OCP 7.8.1.1 上修复所有架构问题（数据模型、Label 索引、Writer 语义、事务模型），实现单 Session 内完整的拓扑追踪。这些修复不依赖跨进程属性持久化，价值巨大且零风险。
+1. **Writer/Reader 分离诊断**: 用 C++ 写 XBF → Python 读 XBF 的四象限测试（见"可能的问题.md" §14），精确定位属性丢失发生在序列化、反序列化还是 Python 绑定层。
 
-2. **独立分支探索 OCP 升级**: 在独立分支中尝试 OCP 7.8.2、7.9.0、7.9.1 等版本，按以下步骤验证每个版本：
-   - 安装新版 OCP
-   - 运行 §2.8 的属性持久化测试（TDataStd + TNaming 属性列表对比）
-   - 如果属性在重开后保留，运行完整 T0~T12 测试套件
-   - 运行现有 CAD 几何回归测试
+2. **OCP 返回值式安全绑定**: 由于 `FindAttribute`、`Open`、`NewDocument` 等输出参数 API 在 OCP 中存在已知问题，需要创建 C++ 适配函数返回真实 Handle：
+   - `find_named_shape(label) → Handle(TNaming_NamedShape)` 
+   - `open_xbf(path) → (status, Handle(TDocStd_Document))`
+   - `current_shape_at(label) → TopoDS_Shape`
 
-3. **评估 C++ 桥接成本**: 如果所有 OCP 版本均无法修复此问题，方案 C（C++ 桥接）是唯一可行路径：
-   - 使用 pybind11 手动绑定 OCCT 7.8.1 的以下关键 API：
-     - `BinMNaming_NamedShapeDriver::Paste()` / `NewEmpty()`
-     - `BinMNaming_NamingDriver::Paste()` / `NewEmpty()`
-     - `BinMDataStd_IntegerDriver::Paste()` / `NewEmpty()`
-     - 这些驱动的 `AddDrivers()` 注册函数
-   - 编译为 `.pyd`，与现有 OCP 7.8.1.1 共存
-   - 在自定义 `DefineFormat` 函数中注册修复后的驱动
-   - 预估工作量: 2-4 周（含编译环境搭建）
+3. **测试新版 OCP**: 在独立分支测试 cadquery-ocp 7.9.3.1，按 P-04 条件验证跨进程属性持久化是否修复。
 
-4. **阶段 B 等待持久化层修复**: 在 OCAF 属性持久化可用（升级或桥接）后，实施：
-   - PersistentSelectionService (Select → Save → Reopen → Solve)
-   - 跨进程 T0-T12 测试
-   - CAE Binding Registry 与 Preflight Gate
+4. **立即开始阶段 A** (PR-1 ~ PR-5): 修复应用层所有已知问题（数据模型、Label 索引、Writer 语义、事务模型），这些不依赖 OCP 升级且价值巨大。
+
+5. **评估 C++ Sidecar 方案**: 如果 OCP 升级和返回值式绑定都无法修复持久化，C++ sidecar 进程是最可靠的备选方案——Python 通过 JSON/IPC 通信，C++ 独占所有 OCAF Handle 操作。
 
 ---
 
@@ -480,11 +487,484 @@ shutil.rmtree(tmpdir, ignore_errors=True)
 | 虚拟环境 | `auto_detection_process\.conda\` (embedded conda env) |
 | 工作目录 | `e:\text_to_cad_improve\auto_detection_process\` |
 
-## 附录 B. 复现测试脚本
+## 8. 系统诊断测试套件
 
-所有测试脚本在实验时位于 `_test_*.py`（已清理）。如需复现，关键测试代码已嵌入本文档各节。建议在新环境中按以下顺序复现：
+以下是在发现 §2.4 同进程测试缺陷后，为精确定位问题根源而设计的 6 个诊断测试。所有测试均使用**跨进程**（`subprocess` 启动独立 Python 进程）确保 `Open()` 真正从磁盘加载文件。
 
-1. ABI Smoke Test (§2.1)
-2. TNaming_Selector 内存测试 (§2.2)
-3. TDF_Tool.Label_s 崩溃测试 (§2.3)
-4. 重开后 FindAttribute 崩溃测试 (§2.4)
+### 8.1 核心方法
+
+```python
+def reader_subprocess(xbf_path, app_type="xcaf"):
+    """在独立子进程中打开 XBF 文件并检查属性."""
+    code = f'''
+import sys, json
+sys.path.insert(0, r"integrations\\engineering_tools\\src")
+from OCP.XCAFApp import XCAFApp_Application
+from OCP.BinXCAFDrivers import BinXCAFDrivers
+from OCP.TCollection import TCollection_ExtendedString
+from OCP.TDocStd import TDocStd_Document
+from OCP.TDF import TDF_AttributeIterator
+app = XCAFApp_Application.GetApplication_s()
+BinXCAFDrivers.DefineFormat_s(app)
+doc = TDocStd_Document(TCollection_ExtendedString("BinXCAF"))
+app.InitDocument(doc)
+s = app.Open(TCollection_ExtendedString(r"{xbf_path}"), doc)
+c = doc.Main().FindChild(1, False)
+r = {{"open": str(s)}}
+if not c.IsNull():
+    attrs = []
+    ait = TDF_AttributeIterator(c)
+    while ait.More():
+        attrs.append(type(ait.Value()).__name__)
+        ait.Next()
+    r["attrs"] = attrs
+print(json.dumps(r))
+'''
+    r = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, timeout=30,
+        cwd=r"e:\text_to_cad_improve\auto_detection_process",
+    )
+    return json.loads(r.stdout) if r.stdout and r.returncode == 0 else {"error": r.stderr[:300]}
+```
+
+---
+
+### 8.2 诊断测试 1: BinDrivers vs BinXCAF 格式
+
+**测试目标**: 区分问题是否只在 XCAF 层，还是底层 BinDrivers 同样受影响。
+
+**Writer 代码**:
+
+```python
+# Test A: Pure TDocStd + BinDrivers format (no XCAF)
+from OCP.TDocStd import TDocStd_Application, TDocStd_Document
+from OCP.BinDrivers import BinDrivers
+from OCP.TCollection import TCollection_ExtendedString
+from OCP.TDataStd import TDataStd_Integer, TDataStd_Name
+from OCP.TDF import TDF_AttributeIterator
+
+app_a = TDocStd_Application()
+BinDrivers.DefineFormat_s(app_a)
+doc_a = TDocStd_Document(TCollection_ExtendedString("BinOcaf"))
+app_a.InitDocument(doc_a)
+
+doc_a.NewCommand()
+lbl = doc_a.Main().NewChild()
+TDataStd_Name.Set_s(lbl, TCollection_ExtendedString("MyLabel"))
+iattr = TDataStd_Integer(); iattr.Set(42); lbl.AddAttribute(iattr)
+doc_a.CommitCommand()
+
+# 保存前: 2 属性 (TDataStd_Name, TDataStd_Integer)
+xbf_a = "test_a.cbf"
+app_a.SaveAs(doc_a, TCollection_ExtendedString(xbf_a))
+
+# Test B: BinXCAF + TDataStd_Integer (control)
+from OCP.XCAFApp import XCAFApp_Application
+from OCP.BinXCAFDrivers import BinXCAFDrivers
+
+app_b = XCAFApp_Application.GetApplication_s()
+BinXCAFDrivers.DefineFormat_s(app_b)
+doc_b = TDocStd_Document(TCollection_ExtendedString("BinXCAF"))
+app_b.InitDocument(doc_b)
+
+doc_b.NewCommand()
+lbl_b = doc_b.Main().NewChild()
+iattr_b = TDataStd_Integer(); iattr_b.Set(42); lbl_b.AddAttribute(iattr_b)
+doc_b.CommitCommand()
+
+# 保存前: 3 属性 (TDataStd_Name, XCAFDoc_ShapeTool, TDataStd_Integer)
+xbf_b = "test_b.xbf"
+app_b.SaveAs(doc_b, TCollection_ExtendedString(xbf_b))
+```
+
+**Reader 结果** (独立子进程):
+
+| 测试 | 格式 | 文件大小 | Open状态 | Child找到? | 属性内容 |
+|------|------|---------|---------|-----------|---------|
+| A | BinOcaf (纯TDocStd) | 437 bytes | PCDM_RS_OK | ❌ child_null | — |
+| B | BinXCAF | 1313 bytes | PCDM_RS_OK | ✅ | 仅 TDataStd_Name, XCAFDoc_ShapeTool |
+
+**关键发现**:
+- **纯 BinDrivers 格式连标签树都不保留**。`BinDrivers.DefineFormat_s()` 在 OCP 中注册后，SaveAs 产生的文件无法在重开时恢复 Label 层级结构。
+- **BinXCAF 保留标签树和 XCAF 框架属性，但 TDataStd_Integer 丢失**。`InitDocument()` 自动添加的 `XCAFDoc_ShapeTool` 和 `TDataStd_Name` 可以恢复，但用户通过 `AddAttribute` 添加的 `TDataStd_Integer` 丢失。
+
+**完整测试脚本**: `_diag1_basic.py`（已清理，代码见上）
+
+---
+
+### 8.3 诊断测试 2: AddAttribute vs Set_s 属性创建方式
+
+**测试目标**: 验证不同的属性创建方式（`AddAttribute` vs `Set_s`）是否影响持久化结果。排除"Set_s（XCAF 框架方法）可以持久化，AddAttribute（普通方法）不能"的假设。
+
+**Writer 代码**:
+
+```python
+from OCP.XCAFApp import XCAFApp_Application
+from OCP.BinXCAFDrivers import BinXCAFDrivers
+from OCP.TCollection import TCollection_ExtendedString, TCollection_AsciiString
+from OCP.TDocStd import TDocStd_Document
+from OCP.TDataStd import TDataStd_Integer, TDataStd_Real, TDataStd_AsciiString, TDataStd_Name
+
+app = XCAFApp_Application.GetApplication_s()
+BinXCAFDrivers.DefineFormat_s(app)
+doc = TDocStd_Document(TCollection_ExtendedString("BinXCAF"))
+app.InitDocument(doc)
+
+doc.NewCommand()
+lbl = doc.Main().NewChild()
+
+# 方法 1: Set_s (XCAF 框架方法)
+TDataStd_Name.Set_s(lbl, TCollection_ExtendedString("TestLabel"))
+
+# 方法 2: AddAttribute (普通方法) — TDataStd_Integer
+iattr = TDataStd_Integer(); iattr.Set(42); lbl.AddAttribute(iattr)
+
+# 方法 3: AddAttribute — TDataStd_Real
+rattr = TDataStd_Real(); rattr.Set(3.14); lbl.AddAttribute(rattr)
+
+# 方法 4: Set_s (非 XCAF 框架方法) — TDataStd_AsciiString
+sattr = TDataStd_AsciiString.Set_s(lbl, TCollection_AsciiString("hello"))
+
+doc.CommitCommand()
+```
+
+**保存前属性枚举** (通过 `TDF_AttributeIterator`):
+
+```
+TDataStd_Name, XCAFDoc_ShapeTool, TDataStd_Integer(42), TDataStd_Real(3.14), TDataStd_AsciiString
+```
+
+**Reader 结果** (独立子进程, PCDM_RS_OK):
+
+```
+TDataStd_Name, XCAFDoc_ShapeTool
+```
+
+**关键发现**:
+
+| 属性类型 | 创建方式 | 保存前存在? | 重开后存在? |
+|---------|---------|-----------|-----------|
+| `TDataStd_Name` | `Set_s` (XCAF框架) | ✅ | ✅ |
+| `XCAFDoc_ShapeTool` | `InitDocument` 自动添加 | ✅ | ✅ |
+| `TDataStd_Integer(42)` | `AddAttribute` | ✅ | ❌ |
+| `TDataStd_Real(3.14)` | `AddAttribute` | ✅ | ❌ |
+| `TDataStd_AsciiString` | `Set_s` (非XCAF框架) | ✅ | ❌ |
+
+**所有非 XCAF 框架的属性类型全部丢失**——无论是 `AddAttribute` 还是 `Set_s` 方式添加，也无论是 TDataStd 标准类型还是 TNaming 类型。只有 `InitDocument` 自动添加的 XCAF 内置属性（`XCAFDoc_ShapeTool`）和 XCAF 框架方法添加的属性（`TDataStd_Name`）在重开后保留。
+
+**完整测试脚本**: `_diag2_addattr.py`（已清理，代码见上）
+
+---
+
+### 8.4 诊断测试 3: NewDocument vs InitDocument
+
+**测试目标**: 验证文档创建方式（`app.NewDocument()` vs 手动 `TDocStd_Document` + `app.InitDocument()`）是否影响属性持久化。
+
+**Writer 代码**:
+
+```python
+# 方法 A: app.NewDocument()
+app1 = XCAFApp_Application.GetApplication_s()
+BinXCAFDrivers.DefineFormat_s(app1)
+doc1 = TDocStd_Document(TCollection_ExtendedString("BinXCAF"))
+app1.NewDocument(TCollection_ExtendedString("BinXCAF"), doc1)
+
+# 方法 B: 手动 + InitDocument()
+app2 = XCAFApp_Application.GetApplication_s()
+BinXCAFDrivers.DefineFormat_s(app2)
+doc2 = TDocStd_Document(TCollection_ExtendedString("BinXCAF"))
+app2.InitDocument(doc2)
+```
+
+**Reader 结果**:
+
+| 创建方式 | 保存前属性 | 重开后属性 | 结论 |
+|---------|----------|----------|------|
+| `NewDocument` | TDataStd_Integer | TDataStd_Name, XCAFDoc_ShapeTool | 属性丢失 |
+| `InitDocument` | TDataStd_Name, XCAFDoc_ShapeTool, TDataStd_Integer | TDataStd_Name, XCAFDoc_ShapeTool | 属性丢失 |
+
+**注**: `NewDocument` 创建的文档在保存前只有 `TDataStd_Integer`（无 XCAF 框架属性），但重开后 `XCAFDoc_ShapeTool` 被重新添加。这表明 XCAF 框架属性可能是由 `InitDocument`/`Open` 过程动态创建的，而非从 XBF 反序列化恢复。
+
+**关键发现**: `NewDocument` vs `InitDocument` 对用户属性持久化无影响，两种创建方式的属性都在重开后丢失。
+
+**完整测试脚本**: `_diag3_newdoc.py`（已清理，代码见上）
+
+---
+
+### 8.5 诊断测试 4: XBF 二进制内容分析
+
+**测试目标**: 检查 XBF 文件是否包含用户属性的二进制数据，从而区分属性是在序列化（写）还是反序列化（读）阶段丢失。
+
+**Writer 代码**:
+
+```python
+import struct
+
+# 创建三种 XBF:
+# 1. 空 XCAF (无用户属性)
+doc_e = TDocStd_Document(TCollection_ExtendedString("BinXCAF"))
+app.InitDocument(doc_e)  # 只添加 XCAF 框架属性
+app.SaveAs(doc_e, ...)   # → empty.xbf
+
+# 2. + TDataStd_Integer(42)
+doc_t = TDocStd_Document(TCollection_ExtendedString("BinXCAF"))
+app.InitDocument(doc_t)
+doc_t.NewCommand()
+lbl = doc_t.Main().NewChild()
+i = TDataStd_Integer(); i.Set(42); lbl.AddAttribute(i)
+doc_t.CommitCommand()
+app.SaveAs(doc_t, ...)   # → test.xbf
+
+# 3. + TNaming_Builder + TNaming_Selector
+doc_n = TDocStd_Document(TCollection_ExtendedString("BinXCAF"))
+app.InitDocument(doc_n)
+doc_n.NewCommand()
+lbl_n = doc_n.Main().NewChild()
+TNaming_Builder(lbl_n).Generated(box.wrapped)
+sel_lbl = lbl_n.NewChild()
+TNaming_Selector(sel_lbl).Select(top_face.wrapped, box.wrapped)
+doc_n.CommitCommand()
+app.SaveAs(doc_n, ...)   # → tnaming.xbf
+
+# 比较文件大小
+data_e = open("empty.xbf", "rb").read()
+data_t = open("test.xbf", "rb").read()
+data_n = open("tnaming.xbf", "rb").read()
+```
+
+**TDataStd_Integer GUID 字节序列**:
+```python
+# OCCT GUID: {2a96b61a-ec8e-11d0-bee9-0800c8662832}
+guid_integer = bytes([
+    0x1A, 0x6B, 0x96, 0x2A, 0x8E, 0xEC, 0xD0, 0x11,
+    0xBE, 0xE9, 0x08, 0x00, 0xC8, 0x66, 0x28, 0x32,
+])
+```
+
+**TNaming_NamedShape GUID 字节序列**:
+```python
+# OCCT GUID: {cabbc142-f216-11d2-9d90-00a0c9a0c4b9}
+guid_named_shape = bytes([
+    0x42, 0xC1, 0xBB, 0xCA, 0x16, 0xF2, 0xD2, 0x11,
+    0x9D, 0x90, 0x00, 0xA0, 0xC9, 0xA0, 0xC4, 0xB9,
+])
+```
+
+**结果**:
+
+| 测试 | 文件大小 | vs 空文档 delta | 含 GUID? | 
+|------|---------|---------------|----------|
+| 空 XCAF | 1244 bytes | — | 不含 |
+| + TDataStd_Integer(42) | 1313 bytes | **+69 bytes** | **二进制中未找到 GUID** |
+| + TNaming + Selector | 9715 bytes | **+8471 bytes** | **二进制中未找到 GUID** |
+
+**Delta 字节分析 (TDataStd_Integer 测试)**:
+```
+前 40 字节 hex:
+00 04 00 00 00 14 00 00 00 1c 00 00 00 4e 00 6f 00
+74 00 65 00 73 00 00 00 08 b6 96 2a 8b ec d0 11
+be e7 08 00 09 dc 33 00 ...
+```
+
+其中包含文本 `N.o.t.e.s` 和部分看似 GUID 的字节片段（`08 b6 96 2a` 与 GUID 的第 12-15 字节 `BE E9 08 00` 不匹配），说明 delta 中确实有来自用户属性的序列化数据，但 GUID 编码格式可能与预期不同。
+
+**Delta 字节分析 (TNaming 测试)**:
+```
+前 40 字节 hex:
+00 00 00 f0 3f 00 00 00 00 00 00 f0 3f 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 80 07 00 00 00
+00 00 00 00 00 00 00 00
+```
+
+包含大量 `3f f0` 模式（可能是浮点数 1.0 的 IEEE 754 编码），表明几何坐标数据被序列化。
+
+**关键发现**:
+- **数据确实被写入 XBF**：文件大小从 1244 → 1313 (+69) → 9715 (+8471) bytes，增量与用户属性数量正相关
+- **GUID 未以预期格式出现**：TDataStd_Integer 和 TNaming_NamedShape 的 GUID 在整个 XBF 二进制中均未找到（搜索了标准 OCCT GUID 字节序）
+- 这意味着属性数据可能以非标准编码写入，或 GUID 在序列化时被转换为其他标识符
+
+**完整测试脚本**: `_diag4_binary.py`（已清理，代码见上）
+
+---
+
+### 8.6 诊断测试 5: TDF_Label 方法枚举与 FindAttribute 行为
+
+**测试目标**: 枚举重开后 Label 上可用的方法，验证 FindAttribute 在各种属性类型上的行为（包括前文记录的崩溃）。
+
+**方法枚举结果** (重开前后均可用的 `TDF_Label` 方法):
+
+```python
+# TDF_Label 完整方法列表
+['AddAttribute', 'AttributesModified', 'Data', 'Depth', 'Dump', 'EntryDump',
+ 'ExtendedDump', 'Father', 'FindAttribute', 'FindChild', 'ForgetAllAttributes',
+ 'ForgetAttribute', 'HasAttribute', 'HasChild', 'HasGreaterNode', 'HasLowerNode',
+ 'Imported', 'IsAttribute', 'IsDescendant', 'IsDifferent', 'IsEqual', 'IsImported',
+ 'IsNull', 'IsRoot', 'MayBeModified', 'NbAttributes', 'NbChildren', 'NewChild',
+ 'Nullify', 'ResumeAttribute', 'Root', 'Tag', 'Transaction']
+```
+
+**FindAttribute 在保存前的行为** (TDataStd_Integer):
+
+```python
+guid_int = TDataStd_Integer.GetID_s()
+ns_test = TDataStd_Integer()
+found = lbl.FindAttribute(guid_int, ns_test)
+# found = True ✅
+# ns_test.Get() = 42 ✅
+# ns_test.Label().IsNull() = True  ← Restore 壳对象!
+# ns_test.ID() = Standard_GUID 对象 ✅
+```
+
+**Reader 进程 FindAttribute 行为** (独立 subprocess):
+
+```python
+# Reader 中调用:
+i2 = TDataStd_Integer()
+f = c.FindAttribute(TDataStd_Integer.GetID_s(), i2)
+# → ACCESS VIOLATION, rc=3221225477 (0xC0000005)
+```
+
+**关键发现**:
+- **保存前**: `FindAttribute` 对所有属性类型返回 True，但返回的对象是 Restore 壳（`Label().IsNull()==True`）。这不限于 TNaming——`TDataStd_Integer` 也有同样问题。
+- **重开后**: `FindAttribute` 对**所有属性**（包括 TDataStd_Integer）触发 ACCESS VIOLATION 崩溃。这证实之前观察到的不是 "TNaming 特有的崩溃"，而是任何非 XCAF 框架属性的 FindAttribute 在重开后都崩溃。
+- `HasAttribute()` 方法签名与 OCCT 文档不同——在 OCP 7.8.1.1 中它不接受 GUID 参数（`HasAttribute() -> bool`），这进一步证实了 OCP 绑定的不完整。
+
+**完整测试脚本**: `_diag5_introspect.py`（已清理，代码见上）
+
+---
+
+### 8.7 诊断测试 6: NbAttributes 安全方法验证（绕过所有输出绑定）
+
+**测试目标**: 使用不涉及任何输出参数的安全方法 `NbAttributes()` 和 `HasAttribute()` 做跨进程对比，彻底排除 OCP 输出绑定的干扰。
+
+**Writer 代码**:
+
+```python
+app = XCAFApp_Application.GetApplication_s()
+BinXCAFDrivers.DefineFormat_s(app)
+doc = TDocStd_Document(TCollection_ExtendedString("BinXCAF"))
+app.InitDocument(doc)
+
+doc.NewCommand()
+lbl = doc.Main().NewChild()
+i = TDataStd_Integer(); i.Set(42); lbl.AddAttribute(i)
+doc.CommitCommand()
+
+# 保存前验证
+print(f"NbAttributes: {lbl.NbAttributes()}")  # → 3
+print(f"HasAttribute: {lbl.HasAttribute()}")   # → True
+```
+
+**Reader 代码** (独立 `subprocess`):
+
+```python
+app = XCAFApp_Application.GetApplication_s()
+BinXCAFDrivers.DefineFormat_s(app)
+doc = TDocStd_Document(TCollection_ExtendedString("BinXCAF"))
+app.InitDocument(doc)
+s = app.Open(TCollection_ExtendedString(xbf_path), doc)
+c = doc.Main().FindChild(1, False)
+
+# 使用零输出参数的安全方法
+nb = c.NbAttributes()
+has = c.HasAttribute()
+```
+
+**结果**:
+
+| 指标 | Writer 进程 | Reader 进程 (PCDM_RS_OK) |
+|------|-----------|------------------------|
+| `NbAttributes()` | **3** | **2** |
+| `HasAttribute()` | True | True |
+| 差异属性 | TDataStd_Integer | — |
+
+**关键发现**:
+
+这是**结论性的证据**——`NbAttributes()` 和 `HasAttribute()` 都不使用任何输出参数（无 `Handle(TDF_Attribute)&` 语义），因此完全不受 OCP FindAttribute Restore 补丁的影响。在这个完全安全的测试路径上：
+
+- Writer 进程: 3 个属性
+- Reader 进程: 2 个属性
+
+**TDataStd_Integer(42) 确实在跨进程 XBF 往返中丢失了**。这与 OCP 输出绑定缺陷无关，是真正的属性持久化失败。
+
+**完整测试脚本**: `_diag6_hasattr.py`（已清理，代码见上）
+
+---
+
+### 8.8 诊断测试总结矩阵
+
+| # | 测试名称 | 隔离变量 | Writer 结果 | Reader 结果 | 结论 |
+|---|---------|---------|-----------|-----------|------|
+| 1 | BinDrivers vs BinXCAF | OCAF 格式 | BinOcaf: 2属性, BinXCAF: 3属性 | BinOcaf: 标签丢失, BinXCAF: 标签保留但用户属性丢失 | XCAF 层保留标签树但不管用户属性 |
+| 2 | AddAttribute vs Set_s | 属性创建方式 | 5属性 (3种创建方式) | 2属性 | 所有创建方式的用户属性都丢失 |
+| 3 | NewDocument vs InitDocument | 文档初始化 | 各不相同 | 均丢失 | 文档创建方式无影响 |
+| 4 | XBF 二进制内容 | 序列化路径 | delta +69/+8471 bytes | — | 数据被写入但不能读回 |
+| 5 | TDF_Label 方法 + FindAttribute | FindAttribute 行为 | Restore壳(Label=null) | ACCESS VIOLATION | FindAttribute 全面不可靠 |
+| 6 | NbAttributes 安全方法 | 完全无输出参数 | Nb=3 ✅ | **Nb=2 ❌** | **决定性证据：属性确实丢失** |
+
+### 8.9 最终根因判断
+
+综合 6 个诊断测试，可以排除以下假设：
+
+| 假设 | 排除证据 |
+|------|---------|
+| "属性未写入 XBF" | 测试 4: 文件大小 +69/+8471 bytes delta |
+| "同进程 Session 缓存导致" | 所有测试均使用独立 subprocess, PCDM_RS_OK |
+| "FindAttribute 输出绑定导致假阴性" | 测试 6: NbAttributes() 不使用输出参数，3→2 |
+| "特定创建方式有问题" | 测试 2: AddAttribute 和 Set_s 均丢失 |
+| "BinMNaming 驱动未注册" | OCCT 源码确认 BinXCAFDrivers 内部调用 BinMNaming::AddDrivers() |
+| "TNaming 特有" | 测试 2: TDataStd_Integer/Real/AsciiString 均丢失 |
+
+**当前最可能的根因**: OCP 7.8.1.1 的 **pybind11 生成的 OCAF 属性持久化绑定**在反序列化路径上存在缺陷。`BinXCAFDrivers.DefineFormat_s()` 注册的文档检索驱动可以正确处理 XCAF 框架属性（这些属性由 OCCT 内部管理），但当反序列化器遇到非 XCAF 框架的用户属性时，对应的属性驱动（`BinMDataStd_IntegerDriver`、`BinMNaming_NamedShapeDriver` 等）未被正确调用或调用失败。
+
+具体技术推测：
+1. 反序列化器 `Paste()` 方法需要 `Handle(TDF_Attribute)&` 输出参数来填充属性对象
+2. pybind11 对 `Handle<TDF_Attribute>&` 的包装可能有缺陷，导致反序列化时 `NewEmpty()` 创建了对象但无法正确传递回文档
+3. 序列化（`Paste()` 的写入方向）可能部分工作（解释了 +69 bytes delta），但反序列化（`Paste()` 的读取方向）静默失败
+4. XCAF 框架属性不受影响是因为它们的驱动在 C++ 端的注册和调用路径与用户属性不同——它们是由 `XCAFDoc_DocumentTool` 直接管理的，不经过通用的 `BinDrivers::AttributeDrivers()` 分发
+
+---
+
+## 附录 A. 测试环境详情
+
+| 项目 | 值 |
+|------|-----|
+| Python | 3.11.9 (packaged by Anaconda) |
+| CadQuery | 2.7.0 |
+| OCP | 7.8.1.1 |
+| OCCT (被绑定的原生库) | 7.8.1 |
+| 操作系统 | Windows 11 Home China 10.0.22631 |
+| 虚拟环境 | `auto_detection_process\.conda\` (embedded conda env) |
+| 工作目录 | `e:\text_to_cad_improve\auto_detection_process\` |
+| OCP 安装路径 | `.conda\Lib\site-packages\OCP\` |
+| BinMNaming 模块位置 | `.conda\Lib\site-packages\OCP\BinMNaming\` (`.pyd` 文件) |
+| BinMDataStd 模块位置 | `.conda\Lib\site-packages\OCP\BinMDataStd\` (`.pyd` 文件) |
+| TDF_Label 方法数 | 33 个方法 (含 NbAttributes, HasAttribute, FindAttribute 等) |
+
+## 附录 B. 关键 OCCT 源码引用
+
+以下源码位置在实验分析中被引用（通过 `可能的问题.md` 文档提供的链接确认）：
+
+| 文件 | 用途 |
+|------|------|
+| `OCCT V7_8_1/src/TDocStd/TDocStd_Application.cxx` | `SaveAs` 内部调用 `theDoc->Open(this)`, `Open` 中的 `CanRetrieve`/`IsInSession` 逻辑 |
+| `OCCT V7_8_1/src/BinXCAFDrivers/BinXCAFDrivers.cxx` | `DefineFormat` → `BinDrivers::AttributeDrivers()` 的调用链 |
+| `OCCT V7_8_1/src/BinDrivers/BinDrivers.cxx` | `AttributeDrivers()` 显式调用 `BinMDataStd::AddDrivers()`, `BinMNaming::AddDrivers()` 等 |
+| `OCCT V7_8_1/src/TNaming/TNaming_Tool.cxx` | `CurrentShape` 对 `TNaming_SELECTED` 类型调 `Att->Label().FindAttribute(...)` |
+| `OCCT V7_8_1/src/XCAFApp/XCAFApp_Application.cxx` | `InitDocument` 调用 `XCAFDoc_DocumentTool::Set(doc->Main())` |
+| OCP issue #55 / PR #57 | `TDF_Label.FindAttribute` 输出绑定缺陷: 使用 `Restore()` 复制而非返回真实 Handle |
+
+## 附录 C. 复现测试脚本清单
+
+所有测试脚本在实验时位于 `_test_*.py` 和 `_diag*.py`（已清理）。本文档各节已包含足够完整的代码片段用于复现。建议按以下顺序复现：
+
+1. **ABI Smoke Test** (§2.1) — 验证所有 API 的存在性
+2. **TNaming_Selector 内存测试** (§2.2) — 验证 Select 在进程内工作
+3. **TDF_Tool.Label_s 崩溃测试** (§2.3) — 验证 entry 恢复不可用
+4. **跨进程 T0 测试** (§2.8) — 子进程验证跨进程持久化
+5. **诊断测试 1** (§8.2) — BinDrivers vs BinXCAF
+6. **诊断测试 2** (§8.3) — AddAttribute vs Set_s
+7. **诊断测试 3** (§8.4) — NewDocument vs InitDocument
+8. **诊断测试 4** (§8.5) — XBF 二进制分析
+9. **诊断测试 5** (§8.6) — TDF_Label 方法枚举
+10. **诊断测试 6** (§8.7) — NbAttributes 安全方法（决定性证据）
