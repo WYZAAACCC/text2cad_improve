@@ -1,0 +1,828 @@
+# 核查结论
+
+我核对了 main 分支当前 905 行的新版 `docs/OCAF_完整诊断测试报告_v3.0.md`。这次新增的 **Test 8：Tag 100 独立标签树测试**，确实把诊断推进了一大步。([GitHub][1])
+
+现在可以确认：
+
+> 在当前环境 `Python 3.11.9 + OCP 7.8.1.1 + OCCT 7.8.1 + Windows 11` 下，通过现有 Python/OCP 路径创建的普通 OCAF 属性，没有被当前 BinXCAF 保存流程识别并写入；其所在的 Tag 100 子树因此被当成“空标签树”整体跳过。
+
+但还**不能**得出：
+
+> OCCT 7.8.1 的 OCAF、BinMDataStd 或 BinMNaming 原生持久化本身坏了。
+
+更准确的故障边界是：
+
+```text
+当前 OCP 7.8.1.1 Python Writer
+        ↓
+BinXCAF Storage Driver 运行时属性驱动匹配
+        ↓
+普通属性没有被识别为可写属性
+        ↓
+标签被判定为空
+        ↓
+整个 Tag 100 子树没有进入 XBF
+```
+
+这已经不是 Reader、`FindAttribute` 或标签选错的问题了，问题高度集中在**保存端的 Attribute Driver 查找**。
+
+---
+
+# 一、新测试中正确的部分
+
+## 1. Tag 100 测试是有效的
+
+Writer 中确实建立了：
+
+```text
+0:1:100
+└── 0:1:100:1
+    ├── TDataStd_Integer
+    ├── TDataStd_Real
+    └── TDataStd_AsciiString
+```
+
+而跨进程使用 `Retrieve()` 后，Tag 100 完全不存在。由于 `Retrieve()` 直接返回读取后的文档对象，不再经过 `Open(..., Handle<Document>&)` 输出参数，所以前一轮的 Document Handle 质疑已经被排除。([GitHub][1])
+
+因此这次可以确认：
+
+* 不只是属性读取失败；
+* 不只是 `FindAttribute` 产生假阴性；
+* 不只是写在 XCAF Shapes 标签上；
+* 用户标签本身没有进入最终文档。
+
+这一点是新报告最重要、也最可信的结果。
+
+## 2. `Main().NewChild()` 与 XCAF 标签冲突的结论正确
+
+测试实际观察到：
+
+```text
+第一次 NewChild() → Tag 1 Shapes
+第二次 NewChild() → Tag 2 Colors
+```
+
+说明正式仓库中用：
+
+```python
+doc.Main().NewChild()
+```
+
+创建 Text2CAD DesignRoot 的逻辑确实是错误的。([GitHub][1])
+
+## 3. `FindAttribute` Restore 壳问题仍然成立
+
+通过 `FindAttribute` 获取的属性只是内容被 `Restore()` 复制后的 Python 壳对象，不具有原始 Label 归属；`TNaming_Selector.NamedShape()` 返回的才是真实挂接 Handle。报告对此的解释是正确的。([GitHub][1])
+
+## 4. 跨进程 `Retrieve()` 的使用正确
+
+新版 Reader 不再：
+
+```python
+doc = TDocStd_Document(...)
+app.Open(path, doc)
+```
+
+而是：
+
+```python
+doc = app.Retrieve(folder, filename, True)
+```
+
+所以这次检查的确实是 OCCT 返回的文档对象。([GitHub][1])
+
+---
+
+# 二、报告中仍需修正的结论
+
+## 1. Tag 10 不是独立用户标签
+
+报告称：
+
+```text
+Tag 10：紧接 XCAF 保留区 1–9 的独立标签
+```
+
+这是错误的。
+
+在 OCCT 7.8.1 中，Tag 10 是 XCAF 的：
+
+```text
+VisMaterials
+```
+
+`XCAFDoc_DocumentTool::CheckVisMaterialTool()` 明确查找 `FindChild(10)`。([GitHub][2])
+
+所以 Test 8 中：
+
+* Tag 1、2：XCAF 保留标签；
+* Tag 10：也是 XCAF 保留标签；
+* **只有 Tag 100 才是有效的应用独立标签测试。**
+
+这不影响 Tag 100 的决定性结果，但报告应删除“Tag 10 独立标签”的表述。
+
+---
+
+## 2. “XBF 保存/重开保留标签树结构”与实验结果矛盾
+
+报告第 17 节写道：
+
+> XBF 保存/重开保留了标签树结构。
+
+但 Test 8 明确显示：
+
+```text
+0:1:100 整个子树消失
+0:1:10 整个标签消失
+```
+
+因此正确表述应是：
+
+> 重开后可以看到 XCAF 系统服务标签树，但没有证据表明用户创建的标签树被保存；Tag 100 的实验反而证明用户子树未被写入。
+
+报告当前看到的 Tag 1～9，很可能是 XCAF 文档初始化过程中重新建立的系统服务结构，不能直接作为“这些标签确实从 XBF 恢复”的证据。([GitHub][1])
+
+---
+
+## 3. “没有任何路径能持久化任何用户数据”过度推广
+
+当前测试只能证明：
+
+> 在这套 OCP 7.8.1.1 Python 调用路径、BinXCAF Writer 路径和当前文档创建方式下，测试中的普通用户属性没有被持久化。
+
+它还没有测试：
+
+* 原生 C++ Writer；
+* 正确匹配的纯 BinOcaf Writer/Reader；
+* XmlXCAF；
+* 由 C++ 包装创建的文档；
+* 由 C++ 内部创建并挂接的属性；
+* 升级后的 OCP；
+* 官方 XCAF ShapeTool 创建的实际 Shape 是否往返成功。
+
+所以不能由此断言：
+
+> OCCT 7.8.1 原生 OCAF 无法持久化用户属性。
+
+新报告第 15 节对“不升级 OCP 可实现原生持久化”直接判错，目前证据还不够。([GitHub][1])
+
+---
+
+## 4. “NewDocument vs InitDocument 已排除”不正确
+
+报告自己的 Test 3 已观察到：
+
+```text
+app.NewDocument(...) 后的 Python doc
+没有任何 XCAF 初始化属性
+```
+
+但真正的 `XCAFApp_Application::NewDocument()` 应调用 `InitDocument()`。
+
+这强烈说明：
+
+```cpp
+NewDocument(format, Handle<TDocStd_Document>&)
+```
+
+的输出 Document Handle 没有正确回写 Python 变量。
+
+`Retrieve()` 只解决了 Reader，不会自动修复 Writer 端 `NewDocument()` 的输出参数问题。因此假设表中：
+
+```text
+特定文档创建方式：已排除
+```
+
+应改为：
+
+```text
+尚未排除，需要返回值式 C++ NewXcafDocument() 验证
+```
+
+报告自己在 Test 3 中也承认了这个异常。([GitHub][1])
+
+---
+
+## 5. `CommitCommand` 可以基本排除，不必继续作为主要候选
+
+OCCT 的二进制保存流程并不读取“脏属性列表”。
+
+保存时，它会从文档根标签开始递归遍历所有当前 Attribute：
+
+```cpp
+TDF_AttributeIterator itAtt(label);
+type = attribute->DynamicType();
+driverTable->GetDriver(type, driver);
+```
+
+只要 Attribute 当前挂在 Label 上且有对应 Driver，它就会被写入；是否存在 Undo Delta、是否被 `CommitCommand()` 标记为修改，并不是保存阶段决定是否序列化的条件。([GitHub][3])
+
+因此报告中的候选：
+
+> `CommitCommand` 没有将属性标脏。
+
+从 OCCT 保存源码看，基本可以删除。
+
+---
+
+# 三、Tag 100 消失实际说明了什么
+
+OCCT 的 BinLDrivers 保存过程分两遍。
+
+## 第一遍：判断哪些标签有可写属性
+
+核心逻辑是：
+
+```cpp
+for each attribute:
+    type = attribute.DynamicType()
+    driver = driverTable.GetDriver(type)
+
+    if driver exists:
+        hasAttr = true
+    else:
+        attribute is unsupported
+
+if label and all descendants have no supported attributes:
+    mark entire subtree empty
+```
+
+([GitHub][3])
+
+## 第二遍：跳过空标签树
+
+保存时：
+
+```cpp
+if label is in myEmptyLabels:
+    return; // 整个子树不写
+```
+
+([GitHub][3])
+
+因此 Test 8 的：
+
+```text
+Tag 100 Writer 中存在
+Tag 100 Reader 中完全不存在
+```
+
+几乎精确对应：
+
+```text
+Tag 100 上的 TDataStd_Name 未匹配到 Driver
+Tag 100:1 上的 Integer/Real/AsciiString 也未匹配到 Driver
+整个 Tag 100 树被 FirstPass 判为空
+最终 WriteSubTree 跳过
+```
+
+所以当前故障不太像：
+
+* Reader Paste 失败；
+* Attribute 读回来后被删除；
+* GUID 解析失败；
+* Selector 读取失败。
+
+而更像是：
+
+> **Writer 在 `GetDriver(attribute.DynamicType())` 这一步没有找到对应 Driver。**
+
+---
+
+# 四、但源码明明注册了这些 Driver
+
+BinXCAF 的标准实现确实包含所有需要的驱动。
+
+调用链是：
+
+```text
+BinXCAFDrivers::AttributeDrivers()
+        ↓
+BinDrivers::AttributeDrivers()
+        ↓
+BinMDF
+BinMDataStd
+BinMDataXtd
+BinMNaming
+BinMDocStd
+BinMFunction
+        ↓
+BinMXCAFDoc
+```
+
+([GitHub][4])
+
+而 `BinMDataStd::AddDrivers()` 明确加入了：
+
+* `BinMDataStd_IntegerDriver`
+* `BinMDataStd_RealDriver`
+* `BinMDataStd_AsciiStringDriver`
+* Integer/Real/List/Array 等标准属性驱动。([GitHub][5])
+
+`TDataStd_Integer` 默认构造函数也会自动使用正确的默认 GUID，手工创建：
+
+```python
+i = TDataStd_Integer()
+label.AddAttribute(i)
+i.Set(42)
+```
+
+本身是合法的 OCAF 用法。([GitHub][6])
+
+因此问题不是：
+
+> OCCT 源码没有实现 Integer Driver。
+
+而是：
+
+> 当前运行时的 Driver Table 没有成功匹配测试属性的 `DynamicType()`。
+
+---
+
+# 五、目前最可能的根因
+
+## 第一候选：运行时 `Standard_Type` 身份不一致
+
+`BinMDF_ADriverTable` 不是按字符串类型名查 Driver，而是以：
+
+```cpp
+Handle(Standard_Type)
+```
+
+作为 Map Key：
+
+```cpp
+type = driver->SourceType();
+myMap.Bind(type, driver);
+```
+
+保存 Attribute 时又使用：
+
+```cpp
+attribute->DynamicType()
+```
+
+去查这个 Map。([GitHub][7])
+
+因此即使两边都打印：
+
+```text
+TDataStd_Integer
+```
+
+只要它们来自不同的 OCCT DLL 实例、不同静态 RTTI 实例或不同绑定模块加载副本，它们对应的 `Standard_Type` Handle 就可能不相等。
+
+于是出现：
+
+```text
+Driver SourceType 名称 = TDataStd_Integer
+Attribute DynamicType 名称 = TDataStd_Integer
+
+但 SourceType Handle != DynamicType Handle
+        ↓
+GetDriver() 返回空
+```
+
+这是结合当前测试和 OCCT 源码后，**最值得优先验证的假设**，但目前仍是推断，不应直接写成最终根因。
+
+Windows 上尤其要检查：
+
+* OCP 各 `.pyd` 实际加载的是哪一份 `TKLCAF.dll`；
+* 是否同时存在 conda、CadQuery、系统 PATH 中的多套 OCCT DLL；
+* `TDataStd.pyd` 与 `BinXCAFDrivers.pyd` 是否解析到同一绝对路径的 OCCT DLL；
+* 是否有静态链接导致每个扩展模块拥有独立 RTTI 单例。
+
+OCP 自身定位是由生成器构建的 OCCT 薄绑定，复杂的 Handle 和输出参数接口并没有额外高级封装。([GitHub][8])
+
+---
+
+## 第二候选：实际使用的 Storage Driver Table 不是预期的 BinXCAF 表
+
+源码中的 BinXCAF Storage Driver 会调用完整的：
+
+```cpp
+BinXCAFDrivers::AttributeDrivers()
+```
+
+([GitHub][9])
+
+但仍需在运行时确认：
+
+* `SaveAs()` 选中的到底是不是 `BinXCAFDrivers_DocumentStorageDriver`；
+* `myDrivers` 中到底有哪些 SourceType；
+* `GetDriver(TDataStd_Integer.DynamicType())` 是否成功；
+* 是否存在缓存了错误 Driver Table 的 Storage Driver 实例。
+
+“源码包含驱动”与“运行时当前表里匹配成功”不是一回事。
+
+---
+
+## 第三候选：Writer 文档没有通过正确的 Application 创建
+
+现有测试使用：
+
+```python
+doc = TDocStd_Document("BinXCAF")
+app.InitDocument(doc)
+```
+
+而不是通过可靠的原生返回值 API：
+
+```cpp
+app->NewDocument("BinXCAF", doc)
+```
+
+手工构造理论上可以工作，但鉴于 OCP 的 `NewDocument` 输出 Handle 已出现异常，仍应做一个 C++ 返回值式文档工厂，彻底隔离这一变量。
+
+---
+
+# 六、下一步最有价值的决定性测试
+
+## 测试 1：强制保存空标签
+
+在 Writer 中加入：
+
+```python
+doc.SetEmptyLabelsSavingMode(True)
+```
+
+OCCT 源码表明，开启该选项后会清除 `myEmptyLabels`，即便标签没有可写 Attribute，也会保存标签结构。([GitHub][3])
+
+预期判断：
+
+### Tag 100 重开后存在，但为空
+
+```text
+Tag 100: 存在
+Tag 100:1: 存在
+属性: 全部消失
+```
+
+这几乎可以确定：
+
+> 属性 Driver 查找失败，导致原来标签被判空；强制保存空标签后，标签结构得以保留。
+
+### Tag 100 仍不存在
+
+说明问题不只在 Attribute Driver，可能是：
+
+* Writer 根本没有遍历该分支；
+* 文档对象不是实际被保存的对象；
+* 保存/读取的是错误文件；
+* TDF Child 结构没有进入保存过程。
+
+这是成本最低、信息量极高的测试。
+
+---
+
+## 测试 2：读取 XBF 的 `START_TYPES` 类型表
+
+OCCT 保存时会将所有成功匹配 Driver 的类型名写入 XBF 信息区：
+
+```text
+START_TYPES
+TDataStd_Name
+TDataStd_Integer
+TDataStd_Real
+...
+END_TYPES
+```
+
+([GitHub][3])
+
+必须直接确认测试 XBF 中是否包含：
+
+```text
+TDataStd_Name
+TDataStd_Integer
+TDataStd_Real
+TDataStd_AsciiString
+TNaming_NamedShape
+TNaming_Naming
+```
+
+判断：
+
+| 类型表结果                     | 结论                                   |
+| ------------------------- | ------------------------------------ |
+| 类型名不存在                    | Writer 的 `GetDriver(DynamicType)` 失败 |
+| 类型名存在但 Reader 无属性         | 转向 Retrieval/Paste 问题                |
+| 只有 XCAFDoc 类型             | 标准 Driver Table 没有运行时匹配              |
+| TNaming 类型存在、TDataStd 不存在 | 部分 Toolkit 或 RTTI 映射异常               |
+
+这比搜索 GUID 可靠得多，因为默认 GUID 本来就不一定写入 payload。
+
+---
+
+## 测试 3：直接探测 Driver Table
+
+建议增加一个最小 C++ 诊断函数：
+
+```cpp
+struct DriverProbe
+{
+    std::string dynamicTypeName;
+    std::string sourceTypeName;
+    std::uintptr_t dynamicTypeAddress;
+    std::uintptr_t sourceTypeAddress;
+    bool driverFound;
+};
+
+DriverProbe ProbeIntegerDriver(
+    const Handle(TDF_Attribute)& attr,
+    const Handle(Message_Messenger)& messenger)
+{
+    Handle(BinMDF_ADriverTable) table =
+        BinXCAFDrivers::AttributeDrivers(messenger);
+
+    Handle(BinMDF_ADriver) driver;
+    table->GetDriver(attr->DynamicType(), driver);
+
+    DriverProbe out;
+    out.dynamicTypeName = attr->DynamicType()->Name();
+    out.dynamicTypeAddress =
+        reinterpret_cast<std::uintptr_t>(attr->DynamicType().get());
+    out.driverFound = !driver.IsNull();
+
+    if (!driver.IsNull())
+    {
+        out.sourceTypeName = driver->SourceType()->Name();
+        out.sourceTypeAddress =
+            reinterpret_cast<std::uintptr_t>(driver->SourceType().get());
+    }
+
+    return out;
+}
+```
+
+最关键的输出是：
+
+```text
+dynamicTypeName == sourceTypeName
+dynamicTypeAddress 是否等于 sourceTypeAddress
+driverFound 是否为 true
+```
+
+若名称相同但地址不同，基本坐实 RTTI/动态库身份分裂。
+
+---
+
+## 测试 4：官方 XCAF ShapeTool 控制组
+
+使用官方 API：
+
+```python
+shape_tool = XCAFDoc_DocumentTool.ShapeTool_s(doc.Main())
+shape_tool.AddShape(box.wrapped, False)
+```
+
+保存、跨进程 Retrieve，再检查 ShapeTool 中是否真的有该 Box。
+
+结果意义：
+
+* Box 能保存：XCAF 专用驱动正常，普通 TDataStd/TNaming Driver 匹配异常；
+* Box 也消失：整个 Storage Driver 或文档创建路径都不可靠；
+* Box 和 TNaming 保存、Integer 不保存：锁定 BinMDataStd；
+* Box 保存但自定义 Tag 仍消失：进一步支持标准 Driver Type 映射失败。
+
+---
+
+## 测试 5：重新做匹配的纯 BinOcaf 测试
+
+旧 Test 1 的 Reader 格式不匹配，报告也已承认该结论无效。([GitHub][1])
+
+应严格使用：
+
+```text
+Writer:
+TDocStd_Application
+BinDrivers
+BinOcaf
+
+Reader:
+TDocStd_Application
+BinDrivers
+BinOcaf
+Retrieve
+```
+
+并使用 Tag 100。
+
+如果纯 BinOcaf 正常、BinXCAF 异常，问题集中于 BinXCAF Storage Driver 路径；如果两者都失败，问题更接近 OCP 构建、DLL 或 Standard_Type 身份。
+
+---
+
+## 测试 6：XmlXCAF 对照
+
+OCCT 7.8.1 同时提供原生：
+
+```text
+XmlXCAF
+XmlMDataStd
+XmlMNaming
+```
+
+驱动。([GitHub][10])
+
+使用完全相同的 Tag 100 和 TNaming 测试，只把格式改为：
+
+```python
+XmlXCAFDrivers.DefineFormat_s(app)
+doc = TDocStd_Document("XmlXCAF")
+```
+
+判断：
+
+* XmlXCAF 正常、BinXCAF 失败：二进制 Driver Table/构建问题；
+* 两者都失败：更可能是 OCP 类型身份或文档创建问题；
+* XmlXCAF 正常：可以立即把它作为真实 OCAF 原生持久化方案。
+
+**XmlXCAF 仍然是原生 OCAF/TNaming，不是 JSON 模拟层。** 文件会更大、速度可能较慢，但语义上完全符合“原生持久化拓扑命名”。
+
+---
+
+# 七、推荐的解决路径
+
+## 路线 A：先尝试 XmlXCAF，最快实现原生闭环
+
+如果 XmlXCAF 测试通过，可以直接实现：
+
+```text
+TNaming_Builder
+→ TNaming_Selector
+→ XmlMNaming
+→ XmlXCAF 文件
+→ 独立进程 Retrieve
+→ Selector.Solve
+```
+
+这能立即验证：
+
+```text
+Select → Save → Close → Open → Modify → Solve
+```
+
+是否成立。
+
+之后再单独修复 XBF。对系统架构来说，OCAF 文档才是核心，二进制还是 XML 是第二层选择。
+
+---
+
+## 路线 B：建立 C++ OCAF Sidecar
+
+这是当前最稳妥的生产方案：
+
+```text
+Python Text-to-CAD
+        ↓ JSON / IPC / BREP
+C++ ocaf_service.exe
+        ↓
+TDocStd_Document
+TDF_Label
+TDataStd_*
+TNaming_Builder
+TNaming_Selector
+BinXCAF / XmlXCAF
+```
+
+所有以下操作都在一个 C++ 二进制、同一套 OCCT DLL 中完成：
+
+* NewDocument；
+* Attribute 创建；
+* Stable Label；
+* History 写入；
+* Selector；
+* Save；
+* Retrieve；
+* Solve。
+
+这样可以彻底避开：
+
+* OCP 输出 Handle；
+* `FindAttribute` Restore 壳；
+* 多 `.pyd` RTTI 身份；
+* Python 模块间 DLL 装载差异。
+
+它仍然是完全原生的 OCAF/TNaming，Python 只是调用者。
+
+---
+
+## 路线 C：私有 OCP Fork
+
+在 OCP 中增加一个面向 OCAF 的安全模块：
+
+```text
+new_xcaf_document()
+open_xbf()
+save_xbf()
+set_integer(label, value)
+set_ascii_string(label, value)
+write_generated(label, old, new)
+write_modified(label, old, new)
+write_deleted(label, old)
+create_selector(label, selected, context)
+solve_selector(label)
+current_shape(label)
+probe_driver(attribute)
+```
+
+这些函数应：
+
+* 直接返回 Handle；
+* 不使用 Python 输出参数；
+* 在同一 native 扩展中完成 Attribute 创建和 Driver 查找；
+* 与 OCP 使用完全相同的 OCCT DLL。
+
+---
+
+## 路线 D：重建/升级 OCP，但必须先做四象限测试
+
+升级不是没有价值，但不能“升级完能跑就算定位完成”。
+
+必须比较：
+
+| Writer | Reader |
+| ------ | ------ |
+| C++    | C++    |
+| Python | C++    |
+| C++    | Python |
+| Python | Python |
+
+如果：
+
+```text
+C++→C++ 成功
+Python→C++ 失败
+```
+
+就是 Python Writer/OCP 运行时类型问题。
+
+如果：
+
+```text
+C++→Python 成功
+```
+
+说明 Retrieve 和 Python Reader 基本正常。
+
+如果：
+
+```text
+C++→C++ 也失败
+```
+
+才应该调查 OCCT 编译、BinM 驱动或环境部署。
+
+---
+
+# 八、即使持久化修好，仓库代码仍必须继续重构
+
+持久化问题只是第一道门。要真正实现可用于 CAD-to-CAE 的拓扑命名，还必须修复：
+
+1. `Main().NewChild()` 改为固定 Tag 100 DesignRoot；
+2. `EvolutionRelation` 保存真实 `old_shape/new_shapes`；
+3. `Modify` 必须调用 `TNaming_Builder.Modify()`；
+4. `Delete` 必须传被删除的旧 Shape；
+5. 一个 split 保存一个 old 对多个 new；
+6. Selection Label 与业务 metadata Label 分离；
+7. 不使用数组面号、边号作为持久身份；
+8. 保存临时文件后，独立进程重新打开验证；
+9. 验证成功后原子替换正式 XBF/XML；
+10. CAE 绑定必须经过唯一性、拓扑类型和语义区域后验检查。
+
+---
+
+# 最终定性
+
+新版 Test 8 的最重要贡献是：
+
+> **它已经真正证明了当前 OCP Python→BinXCAF Writer 路径存在保存端问题。**
+
+但报告仍需把最终结论从：
+
+> “OCAF 原生持久化无法实现，所有用户数据都无法保存。”
+
+修正为：
+
+> “在当前 OCP 7.8.1.1 Python Writer 路径中，普通用户属性在 BinXCAF 保存阶段未被识别为可写属性，导致其标签树被当作空树跳过；尚需通过 XBF 类型表、Driver Table 探针、XmlXCAF 对照和 C++/Python 四象限测试，确认是运行时类型身份、OCP 构建还是 Storage Driver 实例问题。”
+
+现在最优先的三个动作是：
+
+```text
+1. SetEmptyLabelsSavingMode(True) 重测 Tag 100
+2. 读取 XBF START_TYPES 类型表
+3. C++ Probe GetDriver(attribute.DynamicType())
+```
+
+这三步完成后，根因基本就藏不住了。
+
+[1]: https://raw.githubusercontent.com/WYZAAACCC/text2cad_improve/main/docs/OCAF_%E5%AE%8C%E6%95%B4%E8%AF%8A%E6%96%AD%E6%B5%8B%E8%AF%95%E6%8A%A5%E5%91%8A_v3.0.md "https://raw.githubusercontent.com/WYZAAACCC/text2cad_improve/main/docs/OCAF_%E5%AE%8C%E6%95%B4%E8%AF%8A%E6%96%AD%E6%B5%8B%E8%AF%95%E6%8A%A5%E5%91%8A_v3.0.md"
+[2]: https://raw.githubusercontent.com/Open-Cascade-SAS/OCCT/V7_8_1/src/XCAFDoc/XCAFDoc_DocumentTool.cxx "https://raw.githubusercontent.com/Open-Cascade-SAS/OCCT/V7_8_1/src/XCAFDoc/XCAFDoc_DocumentTool.cxx"
+[3]: https://raw.githubusercontent.com/Open-Cascade-SAS/OCCT/V7_8_1/src/BinLDrivers/BinLDrivers_DocumentStorageDriver.cxx "https://raw.githubusercontent.com/Open-Cascade-SAS/OCCT/V7_8_1/src/BinLDrivers/BinLDrivers_DocumentStorageDriver.cxx"
+[4]: https://raw.githubusercontent.com/Open-Cascade-SAS/OCCT/V7_8_1/src/BinXCAFDrivers/BinXCAFDrivers.cxx "https://raw.githubusercontent.com/Open-Cascade-SAS/OCCT/V7_8_1/src/BinXCAFDrivers/BinXCAFDrivers.cxx"
+[5]: https://raw.githubusercontent.com/Open-Cascade-SAS/OCCT/V7_8_1/src/BinMDataStd/BinMDataStd.cxx "https://raw.githubusercontent.com/Open-Cascade-SAS/OCCT/V7_8_1/src/BinMDataStd/BinMDataStd.cxx"
+[6]: https://raw.githubusercontent.com/Open-Cascade-SAS/OCCT/V7_8_1/src/TDataStd/TDataStd_Integer.cxx "https://raw.githubusercontent.com/Open-Cascade-SAS/OCCT/V7_8_1/src/TDataStd/TDataStd_Integer.cxx"
+[7]: https://raw.githubusercontent.com/Open-Cascade-SAS/OCCT/V7_8_1/src/BinMDF/BinMDF_ADriverTable.cxx "https://raw.githubusercontent.com/Open-Cascade-SAS/OCCT/V7_8_1/src/BinMDF/BinMDF_ADriverTable.cxx"
+[8]: https://github.com/CadQuery/OCP "https://github.com/CadQuery/OCP"
+[9]: https://raw.githubusercontent.com/Open-Cascade-SAS/OCCT/V7_8_1/src/BinXCAFDrivers/BinXCAFDrivers_DocumentStorageDriver.cxx "https://raw.githubusercontent.com/Open-Cascade-SAS/OCCT/V7_8_1/src/BinXCAFDrivers/BinXCAFDrivers_DocumentStorageDriver.cxx"
+[10]: https://raw.githubusercontent.com/Open-Cascade-SAS/OCCT/V7_8_1/src/XmlXCAFDrivers/XmlXCAFDrivers.cxx "https://raw.githubusercontent.com/Open-Cascade-SAS/OCCT/V7_8_1/src/XmlXCAFDrivers/XmlXCAFDrivers.cxx"
