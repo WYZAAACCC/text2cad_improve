@@ -891,37 +891,139 @@ has = c.HasAttribute()
 
 ---
 
-### 8.8 诊断测试总结矩阵
+### 8.8 诊断测试 7 (决定性): Retrieve() 返回值绕过 Open 输出参数
+
+**测试目标**: "测试缺陷.md" 文档指出 `app.Open(path, doc)` 的 C++ 签名是 `Handle(TDocStd_Document)&`（输出引用），pybind11 可能无法将 C++ 新 Handle 回写到 Python 变量。本文档此前所有跨进程测试都使用了 `app.Open(path, pre_created_doc)` 模式，确实存在此风险。
+
+`CDF_Application::Retrieve(folder, name)` 的返回值是 `Handle(CDM_Document)`（直接返回，不是输出参数），如果属性在 Retrieve() 返回的文档中存在，就证明问题仅在 Open 输出绑定。
+
+**OCP 7.8.1.1 中 Retrieve() 的有效签名**:
+
+```python
+# 经过实验验证的签名:
+doc = app.Retrieve(
+    TCollection_ExtendedString(folder_path),
+    TCollection_ExtendedString(file_name),
+    True,   # UseStorageConfiguration
+)
+# 返回 TDocStd_Document 直接对象（非 Handle），无需 DownCast
+```
+
+**Reader 代码** (`_reader_retrieve.py`, 作为独立 subprocess 运行):
+
+```python
+import sys, json
+from pathlib import Path
+sys.path.insert(0, r"integrations\engineering_tools\src")
+from OCP.XCAFApp import XCAFApp_Application
+from OCP.BinXCAFDrivers import BinXCAFDrivers
+from OCP.TCollection import TCollection_ExtendedString
+from OCP.TDF import TDF_AttributeIterator
+
+xbf_path = sys.argv[1]
+app = XCAFApp_Application.GetApplication_s()
+BinXCAFDrivers.DefineFormat_s(app)
+
+p = Path(xbf_path).resolve()
+folder = TCollection_ExtendedString(str(p.parent))
+name = TCollection_ExtendedString(p.name)
+
+# 关键: NO InitDocument(), NO pre-created doc, 使用返回值直接获取文档
+doc = app.Retrieve(folder, name, True)
+print("type=" + type(doc).__name__)           # TDocStd_Document ✅
+print("children=" + str(doc.Main().HasChild()))  # True ✅
+
+c = doc.Main().FindChild(1, False)
+print("child_null=" + str(c.IsNull()))        # False ✅
+print("nb=" + str(c.NbAttributes()))           # 2 ❌ (expected 3)
+
+ait = TDF_AttributeIterator(c)
+# → ["TDataStd_Name", "XCAFDoc_ShapeTool"]    # TDataStd_Integer(42) LOST
+
+# FindAttribute 仍然崩溃:
+from OCP.TDataStd import TDataStd_Integer
+i2 = TDataStd_Integer()
+c.FindAttribute(TDataStd_Integer.GetID_s(), i2)  # ACCESS VIOLATION
+```
+
+**结果**:
+
+| 步骤 | 结果 |
+|------|------|
+| `Retrieve()` 返回类型 | `TDocStd_Document` ✅ |
+| `Main().HasChild()` | `True` ✅ |
+| `FindChild(1).IsNull()` | `False` ✅ |
+| `NbAttributes()` | **2** ❌ (应为 3) |
+| `TDF_AttributeIterator` | `["TDataStd_Name", "XCAFDoc_ShapeTool"]` ❌ |
+| `FindAttribute(TDataStd_Integer)` | **ACCESS VIOLATION** ❌ (rc=3221225477) |
+
+**结论**: 
+
+`Retrieve()` 绕过了所有输出参数绑定的潜在问题——它返回的 `TDocStd_Document` 是一个真实的、被 XBF 数据填充的文档对象（标签树正确重建就是证明）。但 `TDataStd_Integer(42)` 仍然丢失，`FindAttribute` 仍然崩溃。
+
+**"测试缺陷.md" 的 "Open 输出 Handle 未回写" 假设在此被证伪**。问题确实在属性持久化本身——要么属性未被正确序列化到 XBF，要么反序列化时属性驱动无法从二进制数据重建属性。
+
+**但"测试缺陷.md"的其他判断仍然有重要价值**：
+- Paste() 不使用输出参数（`const Handle<TDF_Attribute>&` 是输入引用）——正确
+- 反序列化循环在 C++ 内部运行，pybind11 不参与每个属性的 Paste —— 正确
+- 需要打开 OCCT 原生日志来定位确切故障点 —— 正确的下一步
+
+### 8.9 测试缺陷文档中确认的先前测试错误
+
+以下在"测试缺陷.md"中指出的先前测试缺陷已经过验证：
+
+| 缺陷 | 状态 | 验证 |
+|------|------|------|
+| BinDrivers 测试 Reader 不匹配 Writer 格式 | **确认有效** | `reader_subprocess` 忽略了 `app_type` 参数 |
+| NewDocument 反常结果暗示输出 Handle 未回写 | **确认但非根因** | Retrieve() 排除了此假设 |
+| Paste 不使用输出参数 | **技术正确** | 上游源码证实 `const Handle&` 是输入 |
+| 搜不到 GUID 是正常行为 | **技术正确** | 默认 GUID 的属性不写入 GUID 到 payload |
+| NbAttributes 不能证明"属性真正丢失" | **被 Retrieve() 反驳** | NbAttributes 在 Retrieve 返回的真实文档上仍为 2 |
+
+### 8.10 诊断测试总结矩阵
 
 | # | 测试名称 | 隔离变量 | Writer 结果 | Reader 结果 | 结论 |
 |---|---------|---------|-----------|-----------|------|
-| 1 | BinDrivers vs BinXCAF | OCAF 格式 | BinOcaf: 2属性, BinXCAF: 3属性 | BinOcaf: 标签丢失, BinXCAF: 标签保留但用户属性丢失 | XCAF 层保留标签树但不管用户属性 |
-| 2 | AddAttribute vs Set_s | 属性创建方式 | 5属性 (3种创建方式) | 2属性 | 所有创建方式的用户属性都丢失 |
-| 3 | NewDocument vs InitDocument | 文档初始化 | 各不相同 | 均丢失 | 文档创建方式无影响 |
-| 4 | XBF 二进制内容 | 序列化路径 | delta +69/+8471 bytes | — | 数据被写入但不能读回 |
-| 5 | TDF_Label 方法 + FindAttribute | FindAttribute 行为 | Restore壳(Label=null) | ACCESS VIOLATION | FindAttribute 全面不可靠 |
-| 6 | NbAttributes 安全方法 | 完全无输出参数 | Nb=3 ✅ | **Nb=2 ❌** | **决定性证据：属性确实丢失** |
+| 1 | BinDrivers vs BinXCAF | OCAF 格式 | — | — | **测试无效** — Reader 不匹配 Writer 格式 |
+| 2 | AddAttribute vs Set_s | 属性创建方式 | 5属性 | 2属性 | 所有创建方式均丢失 |
+| 3 | NewDocument vs InitDocument | 文档初始化 | 各不相同 | 均丢失 | NewDocument 反常, 但非根因 |
+| 4 | XBF 二进制内容 | 序列化路径 | delta +69/+8471 bytes | — | 弱证据, 默认GUID不写入 |
+| 5 | TDF_Label 方法 + FindAttribute | FindAttribute 行为 | Restore壳 | ACCESS VIOLATION | 不存在的属性 + 无 null guard |
+| 6 | NbAttributes 安全方法 | 无输出参数 | Nb=3 | Nb=2 | 属性确实丢失, 但检查的可能是旧文档 |
+| **7** | **Retrieve() 返回值** | **排除 Open 输出Handle** | Nb=3 | **Nb=2** ✅ | **决定性: 即使直接用返回值, 属性仍丢失** |
 
-### 8.9 最终根因判断
+### 8.11 最终根因判断（第三轮修正）
 
-综合 6 个诊断测试，可以排除以下假设：
+综合 7 个诊断测试，可以排除以下假设：
 
 | 假设 | 排除证据 |
 |------|---------|
-| "属性未写入 XBF" | 测试 4: 文件大小 +69/+8471 bytes delta |
-| "同进程 Session 缓存导致" | 所有测试均使用独立 subprocess, PCDM_RS_OK |
-| "FindAttribute 输出绑定导致假阴性" | 测试 6: NbAttributes() 不使用输出参数，3→2 |
+| "属性未写入 XBF" | 测试 4: 文件大小 +69/+8471 bytes delta（弱证据） |
+| "同进程 Session 缓存导致" | 所有测试均使用独立 subprocess |
+| "Open 输出 Handle 未回写 Python" | 测试 7: Retrieve() 直接返回文档，仍丢失 |
+| "FindAttribute 输出绑定导致假阴性" | 测试 6: NbAttributes() 不使用输出参数 |
 | "特定创建方式有问题" | 测试 2: AddAttribute 和 Set_s 均丢失 |
-| "BinMNaming 驱动未注册" | OCCT 源码确认 BinXCAFDrivers 内部调用 BinMNaming::AddDrivers() |
-| "TNaming 特有" | 测试 2: TDataStd_Integer/Real/AsciiString 均丢失 |
+| "BinMNaming 驱动未注册" | OCCT 源码确认 C++ 注册链完整 |
+| "pybind11 破坏单个 Attribute 的 Paste()" | OCCT 源码确认 Paste 全程在 C++ 内部, pybind11 不参与 |
 
-**当前最可能的根因**: OCP 7.8.1.1 的 **pybind11 生成的 OCAF 属性持久化绑定**在反序列化路径上存在缺陷。`BinXCAFDrivers.DefineFormat_s()` 注册的文档检索驱动可以正确处理 XCAF 框架属性（这些属性由 OCCT 内部管理），但当反序列化器遇到非 XCAF 框架的用户属性时，对应的属性驱动（`BinMDataStd_IntegerDriver`、`BinMNaming_NamedShapeDriver` 等）未被正确调用或调用失败。
+**已修正的先前错误结论**:
 
-具体技术推测：
-1. 反序列化器 `Paste()` 方法需要 `Handle(TDF_Attribute)&` 输出参数来填充属性对象
-2. pybind11 对 `Handle<TDF_Attribute>&` 的包装可能有缺陷，导致反序列化时 `NewEmpty()` 创建了对象但无法正确传递回文档
-3. 序列化（`Paste()` 的写入方向）可能部分工作（解释了 +69 bytes delta），但反序列化（`Paste()` 的读取方向）静默失败
-4. XCAF 框架属性不受影响是因为它们的驱动在 C++ 端的注册和调用路径与用户属性不同——它们是由 `XCAFDoc_DocumentTool` 直接管理的，不经过通用的 `BinDrivers::AttributeDrivers()` 分发
+1. ❌ "BinDrivers 连标签树都无法持久化" → **测试无效**（Reader 不匹配 Writer 格式）
+2. ❌ "pybind11 破坏 BinMDataStd/BinMNaming 的 Paste 反序列化" → **机制上错误**（Paste 是 C++ 虚函数，pybind11 不介入）
+3. ❌ "搜不到 GUID 说明使用了非标准编码" → **正常行为**（默认 GUID 的属性不写入 payload）
+4. ❌ "NewDocument 与 InitDocument 对持久化无影响" → **测试揭示了输出Handle问题但非根因**
+
+**当前最可能的根因**: 
+
+在排除了 Open 输出绑定、单个属性 Paste binding、驱动注册缺失之后，剩余可能性集中在：
+
+1. **序列化侧的属性类型 ID 映射问题**: BinXCAF 的文档检索驱动在序列化时需要为每个属性分配一个类型 ID，反序列化时通过类型 ID 查找对应的驱动。如果 OCP 的构建中类型 ID 映射表不完整（仅包含 XCAF 框架属性类型），用户属性在序列化时会被分配无效的类型 ID，或反序列化时无法找到对应驱动。
+
+2. **OCP 构建配置缺失属性驱动注册**: 虽然原生 OCCT C++ 在 `BinDrivers::AttributeDrivers()` 中注册了所有驱动，但 OCP 的 pybind11 构建配置（`ocp.toml`）可能有条件编译选项排除了非 XCAF 属性驱动的 Python-facing 部分。即使 `.pyd` 文件存在，其内部的 C++ 注册可能未被触发。
+
+3. **序列化时 CommitCommand 未完整提交属性变更**: OCP 的 `CommitCommand` 绑定可能有缺陷，导致用户添加的属性变更未被标记为需要序列化的"脏"数据。XCAF 框架属性由 `InitDocument` 自动创建并在 OCCT 内部管理修改状态，因此不受影响。
+
+**区分这些假设需要**: OCCT 原生日志（`Message_PrinterOStream`）来确认 Reader 侧是否有 "type ID not registered" 或 "failure reading attribute" 告警。
 
 ---
 
