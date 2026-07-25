@@ -21,11 +21,12 @@
 10. [诊断测试 4: XBF 二进制内容分析](#10-诊断测试-4)
 11. [诊断测试 5: TDF_Label 方法枚举](#11-诊断测试-5)
 12. [诊断测试 6: NbAttributes 安全方法](#12-诊断测试-6)
-13. [诊断测试 7: Retrieve() 返回值 API (决定性)](#13-诊断测试-7)
-14. [外部审查意见对照](#14-外部审查意见对照)
-15. [假设排除表](#15-假设排除表)
-16. [当前故障边界](#16-当前故障边界)
-17. [与 v2.0 指导书的关系](#17-与-v20-指导书的关系)
+13. [诊断测试 7: Retrieve() 返回值 API](#13-诊断测试-7)
+14. [诊断测试 8: 标签归属修正 — XCAF 保留标签 vs 独立标签](#14-诊断测试-8)
+15. [外部审查意见对照](#15-外部审查意见对照)
+16. [假设排除表](#16-假设排除表)
+17. [当前故障边界](#17-当前故障边界)
+18. [与 v2.0 指导书的关系](#18-与-v20-指导书的关系)
 
 ---
 
@@ -707,9 +708,151 @@ FINATTR_START
 
 ---
 
-## 14. 外部审查意见对照
+## 14. 诊断测试 8: 标签归属修正 — XCAF 保留标签 vs 独立标签
 
-本报告经历了两轮外部审查。以下是审查意见与实际验证结果的对照。
+### 测试背景
+
+"测试缺陷2.md" 文档指出: `XCAFDoc_DocumentTool` 在 `InitDocument()` 时通过 `FindChild(1..10)` 占用了 Main 下的前 10 个 Tag 作为系统服务标签 (Shapes, Colors, Layers 等)。`TDF_Label.NewChild()` 使用 `TDF_TagSource` 从 0 开始计数, 第一次调用返回的 Tag 1 恰好是已被 XCAF 占用的 Shapes 标签。
+
+这意味着**此前所有测试都把用户属性添加到了 XCAF 的系统保留标签上**, 而非独立的用户标签。必须修正后用显式 Tag (≥10, 远离 XCAF 保留区) 创建独立标签重新测试。
+
+### 测试代码
+
+**Writer** (`_test_tag10.py`):
+
+```python
+import sys, os, tempfile, shutil, subprocess
+sys.path.insert(0, r"integrations\engineering_tools\src")
+from OCP.XCAFApp import XCAFApp_Application
+from OCP.BinXCAFDrivers import BinXCAFDrivers
+from OCP.TCollection import TCollection_ExtendedString, TCollection_AsciiString
+from OCP.TDocStd import TDocStd_Document
+from OCP.TDataStd import TDataStd_Integer
+from OCP.TDF import TDF_AttributeIterator, TDF_ChildIterator, TDF_Tool
+
+app = XCAFApp_Application.GetApplication_s()
+BinXCAFDrivers.DefineFormat_s(app)
+doc = TDocStd_Document(TCollection_ExtendedString("BinXCAF"))
+app.InitDocument(doc)
+doc.NewCommand()
+
+# Test A: FindChild at tag 10 (独立标签, 紧接 XCAF 保留区 1-9)
+label_10 = doc.Main().FindChild(10, True)
+i10 = TDataStd_Integer()
+label_10.AddAttribute(i10)
+i10.Set(1010)
+
+# Test B: NewChild() — 验证它实际返回哪个 Tag
+label_nc = doc.Main().NewChild()
+inc = TDataStd_Integer()
+label_nc.AddAttribute(inc)
+inc.Set(777)
+actual_nc_tag = label_nc.Tag()
+
+# Test C: Second NewChild()
+label_nc2 = doc.Main().NewChild()
+inc2 = TDataStd_Integer()
+label_nc2.AddAttribute(inc2)
+inc2.Set(888)
+actual_nc2_tag = label_nc2.Tag()
+
+doc.CommitCommand()
+```
+
+**同时测试 Tag 100 (远离 XCAF 保留区)** (`_test_tag_fix.py`):
+
+```python
+DESIGN_ROOT_TAG = 100
+TEST_LABEL_TAG = 1
+
+design_root = doc.Main().FindChild(DESIGN_ROOT_TAG, True)
+TDataStd_Name.Set_s(design_root, TCollection_ExtendedString("Text2CAD DesignRoot"))
+test_label = design_root.FindChild(TEST_LABEL_TAG, True)
+
+iattr = TDataStd_Integer(); test_label.AddAttribute(iattr); iattr.Set(42)
+rattr = TDataStd_Real(); test_label.AddAttribute(rattr); rattr.Set(3.14)
+sattr = TDataStd_AsciiString(); test_label.AddAttribute(sattr)
+sattr.Set(TCollection_AsciiString("hello"))
+doc.CommitCommand()
+```
+
+**Reader** (`_reader_tag10.py`): 使用 `Retrieve()` 返回值 API, 递归转储完整标签树, 扫描 Tag 1-15。
+
+### 执行命令与原始输出
+
+```powershell
+.\.conda\python.exe _test_tag10.py
+```
+
+**Writer 完整标签树**:
+
+```
+NewChild #1 actual tag: 1     ← 返回 XCAF Shapes 标签!
+NewChild #2 actual tag: 2     ← 返回 XCAF Colors 标签!
+
+0:1 [t=1] ['XCAFDoc_DocumentTool', 'TDataStd_TreeNode', 'TDF_TagSource'] ch=True
+  0:1:1 [t=1] ['TDataStd_Name', 'XCAFDoc_ShapeTool', 'TDataStd_Integer(777)'] ch=False
+  0:1:2 [t=2] ['TDataStd_Name', 'XCAFDoc_ColorTool', 'TDataStd_Integer(888)'] ch=False
+  0:1:3 [t=3] ['TDataStd_Name', 'XCAFDoc_LayerTool'] ch=False
+  0:1:4 [t=4] ['TDataStd_Name', 'XCAFDoc_DimTolTool'] ch=False
+  0:1:5 [t=5] ['TDataStd_Name', 'XCAFDoc_MaterialTool'] ch=False
+  0:1:7 [t=7] ['TDataStd_Name', 'XCAFDoc_ViewTool'] ch=False
+  0:1:8 [t=8] ['TDataStd_Name', 'XCAFDoc_ClippingPlaneTool'] ch=False
+  0:1:9 [t=9] ['TDataStd_Name', 'XCAFDoc_NotesTool'] ch=False
+  0:1:10 [t=10] ['TDataStd_Integer(1010)'] ch=False
+```
+
+**Reader 完整标签树** (跨进程 Retrieve):
+
+```
+R 0:1 [t=1] ['XCAFDoc_DocumentTool', 'TDataStd_TreeNode'] ch=True
+R   0:1:1 [t=1] ['TDataStd_Name', 'XCAFDoc_ShapeTool'] ch=False
+R   0:1:2 [t=2] ['TDataStd_Name', 'XCAFDoc_ColorTool'] ch=False
+R   0:1:3 [t=3] ['TDataStd_Name', 'XCAFDoc_LayerTool'] ch=False
+R   0:1:4 [t=4] ['TDataStd_Name', 'XCAFDoc_DimTolTool'] ch=False
+R   0:1:5 [t=5] ['TDataStd_Name', 'XCAFDoc_MaterialTool'] ch=False
+R   0:1:7 [t=7] ['TDataStd_Name', 'XCAFDoc_ViewTool'] ch=False
+R   0:1:8 [t=8] ['TDataStd_Name', 'XCAFDoc_ClippingPlaneTool'] ch=False
+R   0:1:9 [t=9] ['TDataStd_Name', 'XCAFDoc_NotesTool'] ch=False
+
+Tag 扫描 (1-15):
+  tag 1:   ['TDataStd_Name', 'XCAFDoc_ShapeTool']         ← Integer(777) 丢失!
+  tag 2:   ['TDataStd_Name', 'XCAFDoc_ColorTool']          ← Integer(888) 丢失!
+  tag 3-9: 正常 (XCAF 框架属性)
+  tag 10:  NULL                                             ← 整个标签消失!
+  tag 11-15: NULL
+```
+
+**Tag 100 测试原始输出**:
+
+```
+Writer tree:
+  0:1:100 [tag=100] ['TDataStd_Name'] ch=True
+    0:1:100:1 [tag=1] ['TDataStd_Integer(42)', 'TDataStd_Real(3.14)', 'TDataStd_AsciiString'] ch=False
+
+Reader (Retrieve):
+  Tag 100: NOT FOUND  ← 整个子树消失!
+```
+
+### 结论
+
+**"测试缺陷2.md" 关于标签归属的分析完全正确**:
+- `doc.Main().NewChild()` 确实返回已被 XCAF 占用的 Tag 1 (Shapes)、Tag 2 (Colors)
+- 之前所有测试都错误地在 XCAF 系统保留标签上操作
+
+**但其"属性可能正常持久化"的预测被证伪**:
+- XCAF 保留标签上的用户属性 (Integer(777), Integer(888)) **确实丢失**
+- 独立标签 Tag 10 (FindChild 创建, 紧接 XCAF 保留区) **整个标签消失**
+- 独立标签 Tag 100 (FindChild 创建, 远离 XCAF) **整个子树消失**
+- **没有任何路径能持久化用户在 XCAF 文档中添加的任何数据**
+
+修正标签后的测试反而证明了**比之前以为的更严重的问题**: 不仅用户属性丢失, 连用户创建的标签结构本身也无法保留。只有 `XCAFDoc_DocumentTool` 在 `InitDocument`/`Open` 期间重新创建的系统服务标签 (Tag 1-9) 能在重开后出现。
+
+---
+
+## 15. 外部审查意见对照
+
+本报告经历了三轮外部审查。以下是审查意见与实际验证结果的对照。
 
 ### 第一轮审查 ("可能的问题.md")
 
@@ -735,9 +878,20 @@ FINATTR_START
 | NbAttributes 不能作为"决定性证据" (可能检查旧文档) | ✅ 警告合理, Retrieve() 排除后确认 |
 | 需打开 OCCT 原生日志定位确切故障点 | ✅ 正确的下一步 |
 
+### 第三轮审查 ("测试缺陷2.md") — 标签归属修正
+
+| 审查判断 | 验证结果 |
+|---------|---------|
+| `doc.Main().NewChild()` 返回 XCAF Shapes 标签 (Tag 1) | ✅ **完全正确** — `NewChild()` 真实返回 Tag=1, Tag=2 |
+| `XCAFDoc_DocumentTool` 占用 Tag 1-10 作为系统服务标签 | ✅ **完全正确** — TDF_TagSource 从 0 开始, 与 XCAF 冲突 |
+| 之前所有测试写在 XCAF 保留标签上 | ✅ **完全正确** — 此为 P0 级实验设计错误 |
+| "极大概率 XBF 持久化正常, 旧测试污染 XCAF 工具标签" | ❌ **预测错误** — 修正标签后仍全部丢失 |
+| Tag 100 独立标签上属性可能保留 | ❌ **预测错误** — Tag 10 和 Tag 100 独立标签均消失 |
+| "把实验台搬到自己的房间"即可验证 | ✅ 执行了正确对照测试, 但结果不支持预期 |
+
 ---
 
-## 15. 假设排除表
+## 16. 假设排除表
 
 | # | 假设 | 排除测试 | 状态 |
 |---|------|---------|------|
@@ -752,10 +906,11 @@ FINATTR_START
 | 9 | CommitCommand 未标记修改 | 待测试 | ❓ 未排除 |
 | 10 | 属性类型 ID 映射表不完整 | 需 OCCT 日志 | ❓ 未排除 |
 | 11 | OCP 构建中驱动注册触发条件未满足 | 需 OCCT 日志 | ❓ 未排除 |
+| 12 | 测试写在 XCAF 保留标签上导致误判 | §14 Tag 10 独立标签对照 | ✅ 已排除 — 独立标签也丢失 |
 
 ---
 
-## 16. 当前故障边界
+## 17. 当前故障边界
 
 ### 已确认的事实
 
@@ -783,7 +938,7 @@ FINATTR_START
 
 ---
 
-## 17. 与 v2.0 指导书的关系
+## 18. 与 v2.0 指导书的关系
 
 ### 可在当前 OCP 7.8.1.1 立即实施
 
