@@ -12,6 +12,7 @@ from __future__ import annotations
 import copy
 import json
 from pathlib import Path
+from typing import Any
 
 from seekflow_engineering_tools.generative_cad.dialects.registry import require_dialect
 from seekflow_engineering_tools.generative_cad.ir.canonical import CanonicalGcadDocument
@@ -125,10 +126,12 @@ def _run_ocaf_write_and_save(
     ctx: RuntimeContext,
     ocaf_session: Any,
     ocaf_path: Path,
+    *,
+    topology_config: Any = None,
 ) -> bool:
-    """Write captured topology batches to OCAF, persist index, and save.
+    """Write captured topology batches to OCAF, persist index, verify, and save.
 
-    v4.0 P0-02/03: saves StableLabelIndex to OCAF, uses staging + atomic publish.
+    v5.0 §6.3: correct order — begin → write → index → commit → save → verify → publish.
     Returns True on success.
     """
     try:
@@ -149,10 +152,67 @@ def _run_ocaf_write_and_save(
         # 4. Commit
         ocaf_session.commit_write()
 
-        # 5. Save temp + publish (not direct overwrite)
+        # 5. Save to temp
         temp = ocaf_session.save_temp()
-        ocaf_session.publish(temp, ocaf_path)
+
+        # 6. CAE preflight gate (v5.0 §10.4)
+        cae_ok = True
+        if topology_config is not None and getattr(topology_config, 'required_cae_binding_ids', ()):
+            try:
+                from seekflow_engineering_tools.generative_cad.topology.ocaf.cae_preflight import (
+                    run_cae_preflight,
+                )
+                from seekflow_engineering_tools.generative_cad.topology.ocaf.selection_service import (
+                    PersistentSelectionService,
+                )
+                svc = PersistentSelectionService(ocaf_session)
+                # Build bindings from config
+                bindings = []
+                for bid in topology_config.required_cae_binding_ids:
+                    from seekflow_engineering_tools.generative_cad.topology.ocaf.models import CaeBinding
+                    bindings.append(CaeBinding(
+                        binding_id=bid, selection_id=bid, analysis_role="load",
+                        required=True,
+                    ))
+                if bindings:
+                    from seekflow_engineering_tools.generative_cad.topology.ocaf.compat import (
+                        collect_tnaming_labels,
+                    )
+                    label_map = collect_tnaming_labels(ocaf_session.design_root_label)
+                    preflight = run_cae_preflight(bindings, svc, label_map)
+                    if not preflight.ok:
+                        cae_ok = False
+                        for err in preflight.errors:
+                            ctx.warnings.append(f"CAE preflight: {err}")
+            except Exception as exc:
+                ctx.warnings.append(f"CAE preflight error: {exc}")
+                cae_ok = False
+
+        # 7. Verify in subprocess (v5.0 §6.6)
+        verify_ok = True
+        if topology_config is not None and getattr(topology_config, "verify_in_subprocess", False):
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.verify_worker import (
+                verify_xbf,
+            )
+            vresult = verify_xbf(temp)
+            if not vresult.ok:
+                verify_ok = False
+                if vresult.native_crash:
+                    ctx.warnings.append(f"OCAF verify: native crash detected in {temp}")
+                for err in vresult.errors:
+                    ctx.warnings.append(f"OCAF verify: {err}")
+
+        # 8. Publish (on verify + CAE success or skipped)
+        all_ok = verify_ok and cae_ok
+        if all_ok:
+            ocaf_session.publish(temp, ocaf_path)
+        else:
+            ctx.warnings.append(f"OCAF gates failed for {temp}, XBF not published")
+
         ocaf_session.close()
+
+        if not all_ok and ctx.topology_mode == "enforce":
+            return False
         return True
     except Exception as exc:
         msg = f"OCAF write/save failed: {exc}"
@@ -202,7 +262,8 @@ def run_canonical_gcad(
     canonical_ir_path: str | Path | None = None,
     validation_seed_path: str | Path | None = None,
     require_full_validation_seed: bool = True,
-    ocaf_path: str | Path | None = None,  # v6.4: optional OCAF/XBF output
+    ocaf_path: str | Path | None = None,  # deprecated — use topology=TopologyRunConfig(...)
+    topology: Any = None,  # TopologyRunConfig | None — v5.0 §6.2 formal config
 ) -> GcadRunResult:
     if require_full_validation_seed and not validation_seed:
         return GcadRunResult(
@@ -222,27 +283,35 @@ def run_canonical_gcad(
         workspace_root=out_step.parent,
     )
 
-    # v6.5 (PR-6): OCAF topology integration
-    # ocaf_path presence activates topology_mode="audit" by default.
-    # Set ctx.topology_mode explicitly for "enforce" behavior.
-    _ocaf_session = None
-    if ocaf_path is not None:
+    # ── v5.0 §6.2: TopologyRunConfig — formal pipeline config ──
+    _topology_config = topology  # TopologyRunConfig | None
+    _ocaf_target: Path | None = None
+
+    # Backwards-compat: deprecated ocaf_path → auto-create TopologyRunConfig
+    if _topology_config is None and ocaf_path is not None:
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+            TopologyRunConfig,
+        )
+        _topology_config = TopologyRunConfig(
+            mode="audit",
+            verify_in_subprocess=False,
+        )
+        _ocaf_target = Path(ocaf_path)
+
+    if _topology_config is not None and _topology_config.mode != "off":
+        if _ocaf_target is None:
+            _ocaf_target = _topology_config.ocaf_path
+        if _ocaf_target is None and ocaf_path is not None:
+            _ocaf_target = Path(ocaf_path)
+
         if ctx.topology_mode == "off":
-            ctx.topology_mode = "audit"
+            ctx.topology_mode = _topology_config.mode
         from seekflow_engineering_tools.generative_cad.topology.ocaf.capture_session import (
             CaptureSession,
         )
-        from seekflow_engineering_tools.generative_cad.topology.ocaf.document import (
-            OcafDocumentSession,
-        )
         ctx.enable_topology_capture = True
         ctx.capture_session = CaptureSession()
-        # P0-01 fix: use create() or open(), NOT empty constructor
-        ocaf_target = Path(ocaf_path)
-        if ocaf_target.exists():
-            _ocaf_session = OcafDocumentSession.open(ocaf_target)
-        else:
-            _ocaf_session = OcafDocumentSession.create()
+        # ★ OcafDocumentSession creation deferred to AFTER postcheck (v5.0 §6.3)
 
     try:
         # ════════════════════════════════════════════════════════════
@@ -413,29 +482,11 @@ def run_canonical_gcad(
                 runtime_postconditions=runtime_pc,
             )
 
-        # v6.5 (PR-6): OCAF topology capture — write BEFORE STEP export
-        if _ocaf_session is not None and ctx.capture_session is not None:
-            ocaf_ok = _run_ocaf_write_and_save(
-                ctx, _ocaf_session, Path(ocaf_path)  # type: ignore[arg-type]
-            )
-            if not ocaf_ok and ctx.topology_mode == "enforce":
-                return _fail_result(
-                    ctx,
-                    stage="ocaf_write",
-                    error="OCAF write/save failed in enforce mode",
-                    issues=[RuntimeIssue(
-                        stage="ocaf_write",
-                        code="ocaf_write_failed",
-                        message="OCAF topology write or save failed",
-                        repairability="conditionally_repairable",
-                    )],
-                )
-
+        # ════════════════════════════════════════════════════════════
+        # v6.3: STEP export + geometry postcheck (BEFORE OCAF — v5.0 §6.3)
+        # ════════════════════════════════════════════════════════════
         _export_final_solid(final_handle_id, ctx)
 
-        # ════════════════════════════════════════════════════════════
-        # v6.3: Geometry postcondition gate (post-STEP export)
-        # ════════════════════════════════════════════════════════════
         from seekflow_engineering_tools.generative_cad.runtime.geometry_postcheck import (
             validate_final_geometry,
             validate_step_post_export,
@@ -477,9 +528,39 @@ def run_canonical_gcad(
                     stage="step_postcheck",
                     code="step_post_export_failed",
                     message=msg,
-                    repairability="non_repairable",   # 导出器/文件级, 非 IR 参数 (§6.3)
+                    repairability="non_repairable",
                 ) for msg in step_postcheck.errors],
             )
+
+        # ════════════════════════════════════════════════════════════
+        # v5.0 §6.3: OCAF topology — AFTER STEP/postcheck gates pass
+        # ════════════════════════════════════════════════════════════
+        if _topology_config is not None and _topology_config.mode != "off" and ctx.capture_session is not None:
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.document import (
+                OcafDocumentSession,
+            )
+            # Create/open OCAF session at the RIGHT time
+            if _ocaf_target is not None and _ocaf_target.exists():
+                _ocaf_session = OcafDocumentSession.open(_ocaf_target)
+            else:
+                _ocaf_session = OcafDocumentSession.create()
+
+            ocaf_ok = _run_ocaf_write_and_save(
+                ctx, _ocaf_session, _ocaf_target or Path("design.xbf"),
+                topology_config=_topology_config,
+            )
+            if not ocaf_ok and ctx.topology_mode == "enforce":
+                return _fail_result(
+                    ctx,
+                    stage="ocaf_write",
+                    error="OCAF write/save failed in enforce mode",
+                    issues=[RuntimeIssue(
+                        stage="ocaf_write",
+                        code="ocaf_write_failed",
+                        message="OCAF topology write or save failed",
+                        repairability="conditionally_repairable",
+                    )],
+                )
         # ════════════════════════════════════════════════════════════
 
         validation = copy.deepcopy(validation_seed)

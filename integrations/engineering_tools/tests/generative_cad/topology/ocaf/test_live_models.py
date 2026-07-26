@@ -8,6 +8,9 @@ Verifies §5.1 of the v3.0 implementation guide:
 
 import pytest
 
+from seekflow_engineering_tools.generative_cad.topology.ocaf.errors import (
+    InvalidEvolutionRelationError,
+)
 from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     EvolutionKind,
     TopologyEntityKind,
@@ -52,13 +55,13 @@ class TestLiveEvolutionRelationContract:
     def test_primitive_with_old_raises(self):
         """PRIMITIVE with old_shape must raise."""
         rel = self.make_rel(EvolutionKind.PRIMITIVE, old_shape=MockShape("old"), new_shapes=(MockShape("new"),))
-        with pytest.raises(AssertionError):
+        with pytest.raises(InvalidEvolutionRelationError):
             rel.validate()
 
     def test_primitive_no_new_raises(self):
         """PRIMITIVE with 0 new_shapes must raise."""
         rel = self.make_rel(EvolutionKind.PRIMITIVE, old_shape=None, new_shapes=())
-        with pytest.raises(AssertionError):
+        with pytest.raises(InvalidEvolutionRelationError):
             rel.validate()
 
     def test_generated_valid(self):
@@ -69,13 +72,13 @@ class TestLiveEvolutionRelationContract:
     def test_generated_no_old_raises(self):
         """GENERATED without old_shape must raise."""
         rel = self.make_rel(EvolutionKind.GENERATED, old_shape=None, new_shapes=(MockShape("new"),))
-        with pytest.raises(AssertionError):
+        with pytest.raises(InvalidEvolutionRelationError):
             rel.validate()
 
     def test_generated_no_new_raises(self):
         """GENERATED with 0 new_shapes must raise."""
         rel = self.make_rel(EvolutionKind.GENERATED, old_shape=MockShape("old"), new_shapes=())
-        with pytest.raises(AssertionError):
+        with pytest.raises(InvalidEvolutionRelationError):
             rel.validate()
 
     def test_modified_valid(self):
@@ -86,7 +89,7 @@ class TestLiveEvolutionRelationContract:
     def test_modified_no_old_raises(self):
         """MODIFIED without old_shape must raise."""
         rel = self.make_rel(EvolutionKind.MODIFIED, old_shape=None, new_shapes=(MockShape("new"),))
-        with pytest.raises(AssertionError):
+        with pytest.raises(InvalidEvolutionRelationError):
             rel.validate()
 
     def test_deleted_valid(self):
@@ -97,13 +100,13 @@ class TestLiveEvolutionRelationContract:
     def test_deleted_no_old_raises(self):
         """DELETED without old_shape must raise."""
         rel = self.make_rel(EvolutionKind.DELETED, old_shape=None, new_shapes=())
-        with pytest.raises(AssertionError):
+        with pytest.raises(InvalidEvolutionRelationError):
             rel.validate()
 
     def test_deleted_with_new_raises(self):
         """DELETED with new_shapes must raise."""
         rel = self.make_rel(EvolutionKind.DELETED, old_shape=MockShape("old"), new_shapes=(MockShape("new"),))
-        with pytest.raises(AssertionError):
+        with pytest.raises(InvalidEvolutionRelationError):
             rel.validate()
 
 

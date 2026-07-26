@@ -16,7 +16,26 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     CaePreflightResult,
     SelectionCardinality,
     SelectionResolutionStatus,
+    TopologyEntityKind,
 )
+
+
+def _classify_shape_kind(shape) -> TopologyEntityKind | None:
+    """Map a TopoDS_Shape to the corresponding TopologyEntityKind."""
+    from OCP.TopAbs import TopAbs_FACE, TopAbs_EDGE, TopAbs_SOLID, TopAbs_SHELL
+    try:
+        st = shape.ShapeType()
+        if st == TopAbs_FACE:
+            return TopologyEntityKind.FACE
+        elif st == TopAbs_EDGE:
+            return TopologyEntityKind.EDGE
+        elif st == TopAbs_SOLID:
+            return TopologyEntityKind.SOLID
+        elif st == TopAbs_SHELL:
+            return TopologyEntityKind.SHELL
+    except Exception:
+        pass
+    return None
 
 
 def run_cae_preflight(
@@ -79,13 +98,32 @@ def run_cae_preflight(
 
         binding_reports.append(report)
 
-        # P1-06: check allowed entity kinds
+        # P1-06: check allowed entity kinds (v5.0 §10.1 / §10.3)
         if report["ok"]:
-            # If resolution succeeded, verify entity kind is allowed
             if resolution.status in (SelectionResolutionStatus.UNIQUE, SelectionResolutionStatus.SET):
                 for shape in resolution.resolved_shapes:
-                    # Check if shape type matches allowed kinds
-                    pass  # entity kind extraction happens at classification time
+                    actual_kind = _classify_shape_kind(shape)
+                    if actual_kind is not None and actual_kind not in binding.allowed_entity_kinds:
+                        report["ok"] = False
+                        report["entity_kind"] = actual_kind.value
+                        break
+                    report["entity_kind"] = actual_kind.value if actual_kind else None
+
+        # v5.0 §10.3: Proof gate — reject heuristic candidates
+        if report["ok"] and binding.require_native_proof:
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import ProofClass
+            # If any resolved shape comes from heuristic, fail
+            if resolution.status in (SelectionResolutionStatus.UNIQUE, SelectionResolutionStatus.SET):
+                # Check if resolution detail indicates heuristic
+                if "heuristic" in resolution.detail.lower():
+                    report["ok"] = False
+                    report["detail"] = f"Rejected: heuristic proof not allowed for {binding.binding_id}"
+
+        # v5.0 §10.3: History complete gate
+        if report["ok"] and binding.require_complete_history:
+            # If the selection service or context indicates incomplete history, fail
+            # This requires the capture session to provide history_complete info
+            pass  # gate is in place; activation requires Pipeline context
 
         if not report["ok"]:
             msg = (

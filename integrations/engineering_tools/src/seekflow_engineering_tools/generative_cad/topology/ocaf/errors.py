@@ -106,3 +106,11 @@ class CaeBindingPreflightError(OcafError):
 
 class RevisionConflictError(OcafError):
     """Base revision mismatch or lineage conflict detected."""
+
+
+class InvalidEvolutionRelationError(OcafError):
+    """A LiveEvolutionRelation violates its EvolutionKind shape contract."""
+
+
+class CorruptStableIndexError(OcafError):
+    """StableLabelIndex load failed schema validation (duplicate key, bad counter, etc.)."""

@@ -236,3 +236,103 @@ def iter_list_of_shape(lst: TopTools_ListOfShape):
     OCP 7.8.1.1 TopTools_ListOfShape supports Python __iter__ natively.
     """
     return iter(lst)
+
+
+# ---------------------------------------------------------------------------
+# Safe attribute readers — v5.0 §5.2, verified OCP 7.8.1.1
+#
+# Key finding: TDataStd_*.Get_s(label) does NOT exist as a static method,
+# but attr.Get() as an INSTANCE method on the downcasted attribute handle
+# DOES work and survives SaveAs→Retrieve round-trip.
+#
+# - TDataStd_Integer.Get() → int
+# - TDataStd_AsciiString.Get() → TCollection_AsciiString (use .ToCString())
+#
+# We use TDF_AttributeIterator to find real (non-Restore-shell) attributes,
+# then call the instance Get() method. This is the ONLY safe read path in
+# OCP 7.8.1.1.
+# ---------------------------------------------------------------------------
+
+
+def read_ascii_string(label, guid=None) -> str | None:
+    """Read a TDataStd_AsciiString from a label using safe instance Get().
+
+    Uses TDF_AttributeIterator to find the REAL attribute (not a Restore shell).
+    Returns the string value, or None if no matching attribute is found.
+    Returns None for Null labels (safety guard against ACCESS VIOLATION).
+
+    Args:
+        label: TDF_Label to read from.
+        guid: Optional Standard_GUID — if provided, only matches the exact GUID.
+    """
+    if label.IsNull():
+        return None
+    from OCP.TDF import TDF_AttributeIterator
+    from OCP.TCollection import TCollection_AsciiString as TCAscii
+
+    it = TDF_AttributeIterator(label)
+    while it.More():
+        attr = it.Value()
+        if attr.DynamicType().Name() == "TDataStd_AsciiString":
+            if guid is None or attr.ID() == guid:
+                val = attr.Get()
+                return str(TCAscii(val).ToCString())
+        it.Next()
+    return None
+
+
+def read_integer(label, guid=None) -> int | None:
+    """Read a TDataStd_Integer from a label using safe instance Get().
+
+    Uses TDF_AttributeIterator to find the REAL attribute.
+    Returns the int value, or None if no matching attribute is found.
+    Returns None for Null labels (safety guard against ACCESS VIOLATION).
+    """
+    if label.IsNull():
+        return None
+    from OCP.TDF import TDF_AttributeIterator
+
+    it = TDF_AttributeIterator(label)
+    while it.More():
+        attr = it.Value()
+        if attr.DynamicType().Name() == "TDataStd_Integer":
+            if guid is None or attr.ID() == guid:
+                return int(attr.Get())
+        it.Next()
+    return None
+
+
+def read_ascii_string_required(label, guid=None) -> str:
+    """Read a TDataStd_AsciiString — fail-closed if missing.
+
+    Raises OcafSchemaError if the attribute is not found.
+    Use this for required schema fields (e.g. index entries, schema_version).
+    """
+    value = read_ascii_string(label, guid=guid)
+    if value is None:
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.errors import (
+            OcafSchemaError,
+        )
+        raise OcafSchemaError(
+            f"Required TDataStd_AsciiString not found on label tag={label.Tag()}",
+            label_tag=label.Tag(),
+        )
+    return value
+
+
+def read_integer_required(label, guid=None) -> int:
+    """Read a TDataStd_Integer — fail-closed if missing.
+
+    Raises OcafSchemaError if the attribute is not found.
+    Use this for required counters.
+    """
+    value = read_integer(label, guid=guid)
+    if value is None:
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.errors import (
+            OcafSchemaError,
+        )
+        raise OcafSchemaError(
+            f"Required TDataStd_Integer not found on label tag={label.Tag()}",
+            label_tag=label.Tag(),
+        )
+    return value

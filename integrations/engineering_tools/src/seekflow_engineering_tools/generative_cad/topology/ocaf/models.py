@@ -21,7 +21,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from pathlib import Path
+from typing import Any, Literal
 
 
 # ---------------------------------------------------------------------------
@@ -106,22 +107,53 @@ class LiveEvolutionRelation:
     diagnostics: tuple[str, ...] = ()
 
     def validate(self) -> None:
-        """Enforce the shape contract. Raises AssertionError on mismatch."""
+        """Enforce the shape contract. Raises InvalidEvolutionRelationError.
+
+        Uses explicit raise — NOT bare assert — so that validation survives
+        ``python -O`` (which strips assert statements).  v5.0 §8.5.
+        """
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.errors import (
+            InvalidEvolutionRelationError,
+        )
         if self.kind is EvolutionKind.PRIMITIVE:
-            assert self.old_shape is None, \
-                f"PRIMITIVE relation {self.relation_id} must have old_shape=None"
-            assert len(self.new_shapes) >= 1, \
-                f"PRIMITIVE relation {self.relation_id} must have >=1 new_shapes"
+            if self.old_shape is not None:
+                raise InvalidEvolutionRelationError(
+                    f"PRIMITIVE relation {self.relation_id} must have old_shape=None",
+                    relation_id=self.relation_id,
+                    kind=self.kind.value,
+                )
+            if len(self.new_shapes) < 1:
+                raise InvalidEvolutionRelationError(
+                    f"PRIMITIVE relation {self.relation_id} must have >=1 new_shapes",
+                    relation_id=self.relation_id,
+                    kind=self.kind.value,
+                )
         elif self.kind in (EvolutionKind.GENERATED, EvolutionKind.MODIFIED):
-            assert self.old_shape is not None, \
-                f"{self.kind.value} relation {self.relation_id} must have old_shape"
-            assert len(self.new_shapes) >= 1, \
-                f"{self.kind.value} relation {self.relation_id} must have >=1 new_shapes"
+            if self.old_shape is None:
+                raise InvalidEvolutionRelationError(
+                    f"{self.kind.value} relation {self.relation_id} must have old_shape",
+                    relation_id=self.relation_id,
+                    kind=self.kind.value,
+                )
+            if len(self.new_shapes) < 1:
+                raise InvalidEvolutionRelationError(
+                    f"{self.kind.value} relation {self.relation_id} must have >=1 new_shapes",
+                    relation_id=self.relation_id,
+                    kind=self.kind.value,
+                )
         elif self.kind is EvolutionKind.DELETED:
-            assert self.old_shape is not None, \
-                f"DELETED relation {self.relation_id} must have old_shape"
-            assert len(self.new_shapes) == 0, \
-                f"DELETED relation {self.relation_id} must have 0 new_shapes"
+            if self.old_shape is None:
+                raise InvalidEvolutionRelationError(
+                    f"DELETED relation {self.relation_id} must have old_shape",
+                    relation_id=self.relation_id,
+                    kind=self.kind.value,
+                )
+            if len(self.new_shapes) != 0:
+                raise InvalidEvolutionRelationError(
+                    f"DELETED relation {self.relation_id} must have 0 new_shapes",
+                    relation_id=self.relation_id,
+                    kind=self.kind.value,
+                )
 
 
 @dataclass
@@ -259,6 +291,8 @@ class SelectionResolutionStatus(str, Enum):
     AMBIGUOUS = "ambiguous"         # Multiple candidates but policy requires EXACT_ONE
     UNRESOLVED = "unresolved"       # Cannot resolve at all
     INVALID_SEMANTICS = "invalid_semantics"  # Resolved but fails semantic contract
+    INVALID_POLICY = "invalid_policy"        # Policy cannot be read from OCAF (v5.0 §9.2)
+    INVALID_CONTRACT = "invalid_contract"    # Contract cannot be read from OCAF (v5.0 §9.2)
 
 
 @dataclass(frozen=True)
@@ -289,6 +323,7 @@ class SemanticContract:
     expected_axis: tuple[float, float, float] | None = None
     expected_normal: tuple[float, float, float] | None = None
     radius_range: tuple[float, float] | None = None
+    area_range: tuple[float, float] | None = None     # (min_area, max_area) — v5.0 §9.5
     zone_id: str | None = None
     orientation: str | None = None
     connectivity_role: str | None = None
@@ -339,13 +374,26 @@ class RelationKey:
 class StableObjectKey:
     """Composite key for stable label identity across revisions.
 
-    object_kind: "component" | "feature" | "selection" | "relation"
+    object_kind: "component" | "feature" | "selection" | "relation" | "revision" | "cae_binding"
     namespace:   scoping context (e.g. "lineage", "component:disk", "feature:cut_1")
     object_id:   business identifier within the namespace
     """
     object_kind: str
     namespace: str
     object_id: str
+
+    # v5.0 §5.3: expanded kind set for full index coverage
+    _VALID_KINDS = frozenset({
+        "component", "feature", "selection",
+        "relation", "revision", "cae_binding",
+    })
+
+    def __post_init__(self):
+        if self.object_kind not in self._VALID_KINDS:
+            raise ValueError(
+                f"Invalid object_kind: {self.object_kind!r}. "
+                f"Must be one of: {', '.join(sorted(self._VALID_KINDS))}"
+            )
 
     def __str__(self) -> str:
         return f"{self.object_kind}:{self.namespace}:{self.object_id}"
@@ -368,6 +416,8 @@ class CaeBinding:
     required: bool = True
     allowed_entity_kinds: tuple[TopologyEntityKind, ...] = (TopologyEntityKind.FACE,)
     cardinality: SelectionCardinality = SelectionCardinality.EXACT_ONE
+    require_native_proof: bool = True      # reject HEURISTIC_CANDIDATE (v5.0 §10.3)
+    require_complete_history: bool = True  # require history_complete=True (v5.0 §10.3)
 
 
 @dataclass(frozen=True)
@@ -380,3 +430,89 @@ class CaePreflightResult:
     bindings: list[dict] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Pipeline configuration — v5.0 §6.2
+# ---------------------------------------------------------------------------
+
+TopologyMode = Literal["off", "audit", "enforce"]
+
+
+@dataclass(frozen=True, slots=True)
+class TopologyRunConfig:
+    """Formal topology capture configuration for the G-CAD pipeline.
+
+    v5.0 §6.2: replaces the ad-hoc ``ocaf_path`` + ``ctx.topology_mode`` pattern.
+
+    Usage:
+        config = TopologyRunConfig(mode="enforce", lineage_id="dl-1", revision_id="rev-1")
+        result = run_canonical_gcad(canonical, ..., topology=config)
+    """
+    mode: TopologyMode = "off"
+    lineage_id: str = ""
+    revision_id: str = ""
+    parent_revision_id: str | None = None
+    output_root: Path | None = None
+    required_selection_ids: tuple[str, ...] = ()
+    required_cae_binding_ids: tuple[str, ...] = ()
+    verify_in_subprocess: bool = True
+
+    @property
+    def ocaf_path(self) -> Path | None:
+        """Derive the OCAF XBF path from output_root + lineage_id."""
+        if self.output_root is None or not self.lineage_id:
+            return None
+        return self.output_root / "lineage" / self.lineage_id / "design.xbf"
+
+
+# ---------------------------------------------------------------------------
+# Revision model — v5.0 §7.2
+# ---------------------------------------------------------------------------
+
+RevisionState = Literal["staging", "validated", "published", "aborted"]
+
+
+@dataclass(frozen=True, slots=True)
+class RevisionRecord:
+    """Immutable record of one revision in a design lineage.
+
+    v5.0 §7.2: stored at Tag 100:6 in the OCAF document.
+    Each Revision links to its parent for conflict-free lineage tracking.
+    """
+    lineage_id: str
+    revision_id: str
+    revision_number: int
+    parent_revision_id: str | None = None
+    canonical_ir_hash: str = ""
+    operation_graph_hash: str = ""
+    geometry_hash: str = ""
+    xbf_hash: str | None = None
+    state: RevisionState = "staging"
+
+    def to_dict(self) -> dict:
+        return {
+            "lineage_id": self.lineage_id,
+            "revision_id": self.revision_id,
+            "revision_number": self.revision_number,
+            "parent_revision_id": self.parent_revision_id,
+            "canonical_ir_hash": self.canonical_ir_hash,
+            "operation_graph_hash": self.operation_graph_hash,
+            "geometry_hash": self.geometry_hash,
+            "xbf_hash": self.xbf_hash,
+            "state": self.state,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> RevisionRecord:
+        return cls(
+            lineage_id=data["lineage_id"],
+            revision_id=data["revision_id"],
+            revision_number=data["revision_number"],
+            parent_revision_id=data.get("parent_revision_id"),
+            canonical_ir_hash=data.get("canonical_ir_hash", ""),
+            operation_graph_hash=data.get("operation_graph_hash", ""),
+            geometry_hash=data.get("geometry_hash", ""),
+            xbf_hash=data.get("xbf_hash"),
+            state=data.get("state", "staging"),
+        )

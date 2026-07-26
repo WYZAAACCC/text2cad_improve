@@ -59,7 +59,7 @@ class RuntimeContext:
     # "off": no OCAF capture (default, zero behavior change)
     # "audit": capture + write + solve; failures → warnings, pipeline continues
     # "enforce": like audit but any OCAF failure → pipeline error
-    topology_mode: str = "off"
+    topology_mode: str = "off"  # type: Literal["off", "audit", "enforce"] — v5.0 §6.2
     design_lineage_id: str = ""
     revision_id: str = ""
     ocaf_repository: Any = None           # OcafRepository instance

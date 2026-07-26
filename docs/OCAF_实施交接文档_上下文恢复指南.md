@@ -1,23 +1,20 @@
-# OCAF 原生持久化拓扑命名 — 实施交接文档 v2.0
+# OCAF 原生持久化拓扑命名 — 实施交接文档 v3.0
 
 > 日期: 2026-07-26
 > 用途: 上下文重置后恢复工作状态
-> 当前进度: v4.0 Step 1-4 + T2 + PR-13 完成，131 测试通过
+> 当前进度: v5.0 PR-A~PR-G 全部完成，198 tests 全通过
 
 ---
 
 ## 1. 你必须首先读取的文件
 
-按优先级排列：
-
 | 顺序 | 文件 | 用途 |
 |------|------|------|
-| 1 | `docs/Text-to-CAD_OCAF原生持久化拓扑命名_下一阶段实施指导书_v4.0.md` | **当前实施规范**——所有工作的唯一执行依据 |
-| 2 | `docs/OCAF_完整诊断测试报告_v4.0.md` | 当前系统完整测试状态 |
-| 3 | `docs/OCAF_项目状态与审查文档_v1.md` | 项目状态概览，供专家审查 |
+| 1 | `docs/Text-to-CAD_OCAF原生持久化拓扑命名_下一阶段实施指导书_v5.0.md` | 实施规范——所有工作的执行依据 |
+| 2 | `docs/OCAF_完整诊断测试报告_v5.0.md` | **最新** 198 tests 完整状态 |
+| 3 | `docs/OCAF_OCP_API限制与已知问题_v1.md` | 13 个 OCP 7.8.1.1 API 限制（部分已解除） |
 | 4 | `docs/OCAF_DoD_审计报告_v1.md` | Definition of Done 逐条对照 |
-| 5 | `docs/OCAF_OCP_API限制与已知问题_v1.md` | 13 个 OCP 7.8.1.1 API 限制 |
-| 6 | `docs/OCAF_原生拓扑命名_implementation_status.md` | 实施进度追踪 |
+| 5 | `docs/OCAF_项目状态与审查文档_v1.md` | 项目状态概览 |
 
 ---
 
@@ -40,59 +37,66 @@ Git Remote:  text2cad → https://github.com/WYZAAACCC/text2cad_improve.git
 
 ## 3. 当前完成状态
 
-### v4.0 步骤完成情况
+### v5.0 7 PR 全部完成
 
-| 步骤 | 内容 | 状态 |
-|------|------|------|
-| Step 1 | P0-01: Pipeline create()/open() 替代空构造 | ✅ |
-| Step 2 | P0-02: StableLabelIndex 复合Key + OCAF持久化 | ✅ |
-| Step 3 | P0-03/04: 事务 + staging + publish + 正确顺序 | ✅ |
-| Step 4 | P0-05: Pipeline Solve/Preflight 集成 | ⚠️ 基础设施就绪 |
-| T2 | 三进程跨 Revision | ✅ |
-| P1-04 | explode_entities | ✅ |
-| P1-08 | IsSame() 替代 `is` | ✅ |
-| P1-01/02 | RelationKey + SourceEntityRef 模型 | ✅ |
-| P1-03 | Pattern Fuse history 完整化 | ✅ |
-| PR-13 | 删除 selectors.py + 几何A/B + 多组件 | ✅ |
+| PR | 内容 | 状态 | 测试数 |
+|----|------|------|--------|
+| PR-A | Index v2 + safe reader + validate exception | ✅ | +16 |
+| PR-B | Pipeline order + TopologyRunConfig + verify worker | ✅ | +13 |
+| PR-C | RevisionCore + Modify T2 + lineage metadata | ✅ | +4 |
+| PR-D | Policy/Contract read + CAE kind + Pattern Fuse history | ✅ | +7 |
+| PR-E | Entity dedup + semantics + Solve Worker | ✅ | +6 |
+| PR-F | CAE Gate + Pipeline wiring | ✅ | +5 |
+| PR-G | T3/T5/T6/T7/T8 scenarios | ✅ | +16 |
 
 ### 测试状态
 
 ```
-131 passed (excluding 2 known-fragile tnaming_roundtrip)
+198 passed, 0 failed (excluding 2 known-fragile tnaming_roundtrip)
 ```
 
 ---
 
-## 4. OCP API 限制（不可绕过）
+## 4. OCP API 限制
 
-以下限制来自 OCP 7.8.1.1，**不要花时间尝试修复**：
+### 已解除的误判
 
-1. `TDataStd_AsciiString.Get_s()` 不存在 → Policy/Contract 无法可靠恢复
-2. `TDataStd_Integer.Get_s()` 不存在 → 计数器无法恢复
-3. `TNaming_Selector.Solve()` 在面删除后 ACCESS VIOLATES → T4 Delete Solve 不可行
-4. `app.Retrieve()` 在垃圾数据上 ACCESS VIOLATES → 已加 min_size guard
-5. `TNaming_Selector.Select()` 在空文档上 ACCESS VIOLATES → 需先写 Builder
-6. `IsKind(GetID_s())` 返回 Standard_GUID 而非 Standard_Type → 用 DynamicType().Name()
+- ~~`TDataStd_AsciiString.Get_s()` 不存在~~ → `attr.Get()` 实例方法可用 (PR-A 验证)
+- ~~Policy/Contract 读取永久受阻~~ → `compat.read_ascii_string()` 可用 (PR-D)
+- ~~CAE entity kind 无法检查~~ → `_classify_shape_kind(ShapeType())` (PR-D)
+- ~~Pattern Fuse history 缺失~~ → 已补全 Modified/IsRemoved (PR-D)
+
+### 真正的永久限制
+
+1. `TNaming_Selector.Solve()` 在面删除后 ACCESS VIOLATION
+2. TNaming destructor crash (子进程退出)
+3. `app.Retrieve()` 在垃圾数据上 ACCESS VIOLATION
+4. `TNaming_Selector.Select()` 空文档 ACCESS VIOLATION
+5. Face 级 UNIQUE Solve 不精确 (body 级 Modify 返回 Compound)
+6. `TopoDS_Shape.HashCode` 可能崩溃
+7. Windows OCAF 文件句柄阻止 `os.replace`
 
 ---
 
 ## 5. 未完成的受阻项目
 
-这些项目**不要实施**，因为被 OCP 限制阻塞：
-
-- P0-06: Delete Solve 崩溃隔离
-- P1-05: Policy/Contract fail-closed (需要 Get_s())
-- P1-06: CAE preflight entity kind 完整检查 (需要 Get_s())
+| 项目 | 阻塞原因 |
+|------|---------|
+| T4 Delete Solve | OCP ACCESS VIOLATION — 无法修复 |
+| T12 E2E G-CAD Pipeline | 需要完整 IR 管线 |
+| Face 级 UNIQUE Solve | OCP body 级 Modify 限制 |
+| Immutable Revision Bundle | 需要 HEAD.json (设计完成，未实施) |
+| Atomic publish | Windows OCAF 文件句柄 |
+| 乐观并发控制 | 需要 HEAD.json |
 
 ---
 
-## 6. 下一步工作（不受阻）
+## 6. 下一步建议
 
-按 v4.0 指南 §8 的 PR 顺序，**跳过受阻项目**：
-
-1. **PR-13 剩余**: T6 construction role 稳定性, T7 pattern instance identity, T8 EDGE selection
-2. **PR-12**: CAE Gate Pipeline 调用（在不受阻范围内）
-3. **T12**: E2E G-CAD Pipeline（如 IR 管线可用）
+1. **OCP 升级后**: 重试 T4 Delete Solve、Face 级 UNIQUE
+2. **IR 管线就绪后**: T12 E2E G-CAD Pipeline
+3. **可立即做**: Immutable Revision Bundle 目录结构 (无阻塞)
+4. **可立即做**: 乐观并发控制 (HEAD.json + parent conflict)
 
 ---
 
@@ -100,40 +104,42 @@ Git Remote:  text2cad → https://github.com/WYZAAACCC/text2cad_improve.git
 
 | 文件 | 关键内容 |
 |------|---------|
-| `topology/ocaf/compat.py` | ext_utf8(), retrieve_xcaf_document(), collect_tnaming_labels() |
-| `topology/ocaf/models.py` | LiveEvolutionRelation, SelectionPolicy, CaeBinding, StableObjectKey, RelationKey |
-| `topology/ocaf/schema.py` | DESIGN_ROOT_TAG=100, TagPath, make_component_tagpath() |
-| `topology/ocaf/label_index.py` | StableLabelIndex + save_to_ocaf/load_from_ocaf |
-| `topology/ocaf/repository.py` | OcafRepository.create/open/save_to/save_temp/publish |
-| `topology/ocaf/document.py` | OcafDocumentSession.create/open, ensure_component/feature/selection |
-| `topology/ocaf/writer.py` | TopologyNamingWriter + TAG_CURRENT_RESULT=2, TAG_EVOLUTION_RELATIONS=3 |
-| `topology/ocaf/selection_service.py` | PersistentSelectionService.create/solve, explode_entities() |
-| `topology/ocaf/cae_preflight.py` | run_cae_preflight() |
-| `topology/ocaf/capture_session.py` | CaptureSession.stage/iter_batches/clear |
-| `pipeline/run.py` | _run_ocaf_write_and_save(), run_canonical_gcad() |
+| `topology/ocaf/compat.py` | `read_ascii_string`, `read_integer` (safe attr readers, Null guard) |
+| `topology/ocaf/models.py` | LiveEvolutionRelation, TopologyRunConfig, RevisionRecord, SemanticContract.area_range |
+| `topology/ocaf/schema.py` | DESIGN_ROOT_TAG=100, TagPath, Index v2 子标签, Metadata 常量 |
+| `topology/ocaf/label_index.py` | StableLabelIndex v2 (fail-closed, 6 counters, get_existing, allocate_relation) |
+| `topology/ocaf/repository.py` | OcafRepository.create/open/save_temp/publish |
+| `topology/ocaf/document.py` | OcafDocumentSession, set/get_lineage_metadata, write_revision_record, get_current_result_shape |
+| `topology/ocaf/writer.py` | write_feature_result (Generated/Modify), write_batch(previous_result=), _relation_tag (Index first) |
+| `topology/ocaf/selection_service.py` | explode_entities (IsSame dedup), validate_semantics (area_range), _read_policy/_read_contract (real) |
+| `topology/ocaf/cae_preflight.py` | _classify_shape_kind, proof gate, entity kind gate |
+| `topology/ocaf/verify_worker.py` | verify_xbf() → VerifyResult (subprocess crash isolation) |
+| `topology/ocaf/solve_worker.py` | solve_in_subprocess() → SolveWorkerResult |
+| `pipeline/run.py` | _run_ocaf_write_and_save (correct order + CAE preflight) |
 | `runtime/context.py` | topology_mode, enable_topology_capture, capture_session |
 
 ---
 
-## 8. 核心设计约束（不可违反）
+## 8. 核心设计约束
 
 1. ❌ 不使用 `doc.Main().NewChild()` — 使用 `FindChild(TAG, True)`
 2. ❌ 不使用 `app.Open(path, doc)` — 使用 `app.Retrieve(folder, name, True)`
-3. ❌ 不传 `TCollection_ExtendedString(str)` 无第二个参数 — 使用 `ext_utf8()`
+3. ❌ 使用不存在 `Get_s()` — 使用 `compat.read_ascii_string/read_integer` (attr.Get())
 4. ❌ 不使用 face/edge index 作为持久身份
-5. ❌ 不使用几何指纹作为权威身份
-6. ❌ Writer 不管理事务 — 纯写入
-7. ✅ 空标签必须附加属性才能持久化
-8. ✅ Solve 前必须调用 collect_tnaming_labels() 收集所有 TNaming 标签
+5. ❌ Writer 不管理事务 — 纯写入
+6. ✅ 空标签必须附加属性 (TDataStd_Name) 才能持久化
+7. ✅ Solve 前必须调用 `collect_tnaming_labels()`
+8. ✅ safe reader 必须检查 `label.IsNull()` (防 ACCESS VIOLATION)
+9. ✅ validate() 用 `raise` 不用 `assert`
+10. ✅ `load_from_ocaf()` 必须 fail-closed (不吞异常)
 
 ---
 
 ## 9. 开始工作的检查清单
 
-1. 读取 `Text-to-CAD_OCAF原生持久化拓扑命名_下一阶段实施指导书_v4.0.md` (必读 #1)
-2. 读取 `OCAF_完整诊断测试报告_v4.0.md` 了解测试状态
-3. 读取 `OCAF_OCP_API限制与已知问题_v1.md` 了解不可绕过限制
-4. 确认环境: `.\.conda\python.exe -c "import cadquery; print('ok')"`
-5. 运行测试: `pytest tests/generative_cad/topology/ocaf/ --ignore=...test_tnaming_roundtrip.py -v`
-6. 确认 131 测试全部通过
-7. 继续不受 OCP 限制阻塞的工作
+1. 读取 `OCAF_完整诊断测试报告_v5.0.md` 了解最新状态
+2. 读取 `Text-to-CAD_OCAF原生持久化拓扑命名_下一阶段实施指导书_v5.0.md`
+3. 确认环境: `..\..\.conda\python.exe -c "import cadquery; print('ok')"`
+4. 运行测试: `pytest tests/generative_cad/topology/ocaf/ --ignore=...test_tnaming_roundtrip.py -v`
+5. 确认 198 tests 全部通过
+6. 查看 §5 了解阻塞项, §6 选择下一步工作

@@ -17,6 +17,9 @@ from pathlib import Path
 import cadquery as cq
 import pytest
 
+from seekflow_engineering_tools.generative_cad.topology.ocaf.errors import (
+    InvalidEvolutionRelationError,
+)
 from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     EvolutionKind,
     TopologyEntityKind,
@@ -278,7 +281,7 @@ class TestWriterFailClosed:
         session = OcafDocumentSession.create()
         writer = TopologyNamingWriter(session)
 
-        with pytest.raises(AssertionError, match="DELETED"):
+        with pytest.raises(InvalidEvolutionRelationError, match="DELETED"):
             writer.write_batch(batch)
 
 

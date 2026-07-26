@@ -322,14 +322,64 @@ class PersistentSelectionService:
         TDataStd_AsciiString.Set_s(contract_label, TCAscii(data))
 
     def _read_policy(self, sel_label) -> SelectionPolicy | None:
-        """Read SelectionPolicy from Tag 2."""
-        # OCP 7.8.1.1 limitation: TDataStd_AsciiString has no safe Get_s().
-        # Policy reading is best-effort; default policy applies if unreadable.
-        return None
+        """Read SelectionPolicy from Tag 2 using safe attr.Get() (v5.0 §9.2).
+
+        PR-A verified: attr.Get() instance method works in OCP 7.8.1.1.
+        The old comment about "Get_s() unavailable" is obsolete.
+        """
+        import json
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.compat import (
+            read_ascii_string,
+        )
+
+        meta_label = sel_label.FindChild(SELECTION_TAG_METADATA, False)
+        if meta_label.IsNull():
+            return None
+
+        raw = read_ascii_string(meta_label)
+        if raw is None:
+            return None
+
+        try:
+            data = json.loads(raw)
+            return SelectionPolicy(
+                entity_kind=TopologyEntityKind(data.get("entity_kind", "face")),
+                cardinality=SelectionCardinality(data.get("cardinality", "exact_one")),
+                allow_deleted=data.get("allow_deleted", False),
+                required_for_cae=data.get("required_for_cae", False),
+            )
+        except (json.JSONDecodeError, ValueError, KeyError):
+            return None
 
     def _read_contract(self, sel_label) -> SemanticContract | None:
-        """Read SemanticContract from Tag 3."""
-        return None
+        """Read SemanticContract from Tag 3 using safe attr.Get() (v5.0 §9.2)."""
+        import json
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.compat import (
+            read_ascii_string,
+        )
+
+        contract_label = sel_label.FindChild(SELECTION_TAG_SEMANTIC_CONTRACT, False)
+        if contract_label.IsNull():
+            return None
+
+        raw = read_ascii_string(contract_label)
+        if raw is None:
+            return None
+
+        try:
+            data = json.loads(raw)
+            return SemanticContract(
+                surface_type=data.get("surface_type"),
+                curve_type=data.get("curve_type"),
+                expected_axis=tuple(data["expected_axis"]) if "expected_axis" in data else None,
+                expected_normal=tuple(data["expected_normal"]) if "expected_normal" in data else None,
+                radius_range=tuple(data["radius_range"]) if "radius_range" in data else None,
+                zone_id=data.get("zone_id"),
+                orientation=data.get("orientation"),
+                connectivity_role=data.get("connectivity_role"),
+            )
+        except (json.JSONDecodeError, ValueError, KeyError):
+            return None
 
 
 # ---------------------------------------------------------------------------
@@ -370,6 +420,22 @@ def validate_semantics(
                         f"{prefix}: normal mismatch (dot={dot:.4f})"
                     )
 
+        # Area range check (v5.0 §9.5)
+        if contract.area_range is not None:
+            lo, hi = contract.area_range
+            props = _get_shape_props(shape)
+            if props is not None:
+                actual_area = props.get("area", 0.0)
+                if actual_area < lo or actual_area > hi:
+                    errors.append(
+                        f"{prefix}: area {actual_area:.2f} not in [{lo}, {hi}]"
+                    )
+
+        # Centroid zone check (v5.0 §9.5)
+        if contract.zone_id is not None:
+            # zone_id is a semantic label — validated heuristically
+            pass  # placeholder for future spatial zone validation
+
     return errors
 
 
@@ -389,16 +455,37 @@ def _get_surface_type(shape: Any) -> str | None:
         return None
 
 
-def _get_normal(shape: Any) -> tuple[float, float, float] | None:
-    """Get approximate normal for a planar face."""
+def _get_shape_props(shape: Any) -> dict | None:
+    """Extract area and centroid from a TopoDS_Shape."""
     from OCP.BRepGProp import BRepGProp
     from OCP.GProp import GProp_GProps
     try:
         props = GProp_GProps()
         BRepGProp.SurfaceProperties_s(shape, props)
-        return None  # Simplified: skip normal extraction for now
+        c = props.CentreOfMass()
+        return {
+            "area": props.Mass(),
+            "centroid": (c.X(), c.Y(), c.Z()),
+        }
     except Exception:
         return None
+
+
+def _get_normal(shape: Any) -> tuple[float, float, float] | None:
+    """Get approximate normal for a planar face using BRepAdaptor_Surface."""
+    from OCP.BRepAdaptor import BRepAdaptor_Surface
+    from OCP.gp import gp_Dir
+    try:
+        adaptor = BRepAdaptor_Surface(shape)
+        if adaptor.GetType() == 0:  # Plane
+            # For a Plane, the normal is the axis of the plane
+            plane = adaptor.Plane()
+            ax3 = plane.Position()
+            d = ax3.Direction()
+            return (d.X(), d.Y(), d.Z())
+    except Exception:
+        pass
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -431,4 +518,10 @@ def explode_entities(shape: Any, entity_kind) -> tuple[Any, ...]:
         # Shape might be the entity itself
         entities.append(shape)
 
-    return tuple(entities)
+    # Dedup via IsSame() — HashCode may crash in OCP 7.8.1.1 (v5.0 §9.3)
+    unique: list[Any] = []
+    for e in entities:
+        if not any(e.IsSame(u) for u in unique):
+            unique.append(e)
+
+    return tuple(unique)

@@ -104,13 +104,17 @@ def tracked_linear_pattern(
             fuser.AddTool(s)
             fuser.Perform()
             fused = fuser.Shape()
-            # Capture Fuse history for this step
+            # Capture Fuse history for this step (v5.0 §8.6: full history)
             fhist = fuser.History()
             if fhist is not None:
+                has_gen = False
+                has_mod = False
                 for fi, face in enumerate(cq.Shape.cast(fused).Faces()):
+                    # Generated
                     gen_list = fhist.Generated(face.wrapped)
                     gen_shapes = tuple(gen_list)
                     if gen_shapes:
+                        has_gen = True
                         relations.append(LiveEvolutionRelation(
                             relation_id=f"{scope.node_id}/pattern/fuse_{si}/face_{fi}",
                             operation_id=scope.node_id,
@@ -121,6 +125,36 @@ def tracked_linear_pattern(
                             new_shapes=gen_shapes,
                             proof=ProofClass.EXACT_KERNEL_HISTORY,
                         ))
+                    # Modified
+                    mod_list = fhist.Modified(face.wrapped)
+                    mod_shapes = tuple(mod_list)
+                    if mod_shapes:
+                        has_mod = True
+                        relations.append(LiveEvolutionRelation(
+                            relation_id=f"{scope.node_id}/pattern/fuse_{si}/mod_{fi}",
+                            operation_id=scope.node_id,
+                            kind=EvolutionKind.MODIFIED,
+                            entity_kind=TopologyEntityKind.FACE,
+                            source_key=f"fuse_{si}_face_{fi}",
+                            old_shape=face.wrapped,
+                            new_shapes=mod_shapes,
+                            proof=ProofClass.EXACT_KERNEL_HISTORY,
+                        ))
+                    # IsRemoved
+                    if fhist.IsRemoved(face.wrapped):
+                        relations.append(LiveEvolutionRelation(
+                            relation_id=f"{scope.node_id}/pattern/fuse_{si}/del_{fi}",
+                            operation_id=scope.node_id,
+                            kind=EvolutionKind.DELETED,
+                            entity_kind=TopologyEntityKind.FACE,
+                            source_key=f"fuse_{si}_face_{fi}",
+                            old_shape=face.wrapped,
+                            new_shapes=(),
+                            proof=ProofClass.EXACT_KERNEL_HISTORY,
+                        ))
+                if not has_gen and not has_mod:
+                    history_complete = False
+                    missing_phases.append(f"fuse_step_{si}_no_history")
             else:
                 history_complete = False
                 missing_phases.append(f"fuse_step_{si}")

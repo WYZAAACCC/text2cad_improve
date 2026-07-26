@@ -93,6 +93,6 @@ class CaptureSession:
             for rel in batch.relations:
                 try:
                     rel.validate()
-                except AssertionError as e:
+                except (AssertionError, Exception) as e:
                     errors.append(str(e))
         return errors

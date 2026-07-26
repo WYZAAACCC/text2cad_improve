@@ -184,6 +184,17 @@ class OcafDocumentSession:
     # Component and Feature management
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _attach_name(label, name: str) -> None:
+        """Attach a TDataStd_Name to a label so OCAF persists it.
+
+        Empty labels (no attributes) are silently dropped by SaveAs→Retrieve.
+        Every dynamically-allocated label MUST have at least one attribute.
+        """
+        from OCP.TDataStd import TDataStd_Name
+        from OCP.TCollection import TCollection_ExtendedString as TCE
+        TDataStd_Name.Set_s(label, TCE(name))
+
     def ensure_component(self, component_id: str):
         """Get or create a component label with stable tag allocation.
 
@@ -192,12 +203,17 @@ class OcafDocumentSession:
         """
         existing = self._label_index.resolve_key("component", "lineage", component_id)
         if existing is not None:
-            return existing.resolve_or_create(self.main_label)
+            label = existing.resolve_or_create(self.main_label)
+            # Ensure the label persists (may have been dropped if empty)
+            self._attach_name(label, f"Component:{component_id}")
+            return label
 
         entry = self._label_index.allocate(
             "component", "lineage", component_id, self._revision_number
         )
-        return entry.tag_path.resolve_or_create(self.main_label)
+        label = entry.tag_path.resolve_or_create(self.main_label)
+        self._attach_name(label, f"Component:{component_id}")
+        return label
 
     def ensure_feature(self, component_label, feature_id: str):
         """Get or create a feature label within a component.
@@ -209,12 +225,16 @@ class OcafDocumentSession:
         namespace = f"component:{component_tag}"
         existing = self._label_index.resolve_key("feature", namespace, feature_id)
         if existing is not None:
-            return existing.resolve_or_create(self.main_label)
+            label = existing.resolve_or_create(self.main_label)
+            self._attach_name(label, f"Feature:{feature_id}")
+            return label
 
         entry = self._label_index.allocate_feature(
             component_tag, namespace, feature_id, self._revision_number
         )
-        return entry.tag_path.resolve_or_create(self.main_label)
+        label = entry.tag_path.resolve_or_create(self.main_label)
+        self._attach_name(label, f"Feature:{feature_id}")
+        return label
 
     # ------------------------------------------------------------------
     # Selection management
@@ -224,12 +244,97 @@ class OcafDocumentSession:
         """Get or create a selection label with stable tag allocation."""
         existing = self._label_index.resolve_key("selection", "lineage", selection_id)
         if existing is not None:
-            return existing.resolve_or_create(self.main_label)
+            label = existing.resolve_or_create(self.main_label)
+            self._attach_name(label, f"Selection:{selection_id}")
+            return label
 
         entry = self._label_index.allocate(
             "selection", "lineage", selection_id, self._revision_number
         )
-        return entry.tag_path.resolve_or_create(self.main_label)
+        label = entry.tag_path.resolve_or_create(self.main_label)
+        self._attach_name(label, f"Selection:{selection_id}")
+        return label
+
+    # ------------------------------------------------------------------
+    # DesignRoot Metadata — v5.0 §7.2
+    # ------------------------------------------------------------------
+
+    def set_lineage_metadata(self, lineage_id: str, schema_version: str = "gcad_topo_v4@ocaf_v2") -> None:
+        """Write lineage identity to DesignRoot Metadata (Tag 100:1)."""
+        from OCP.TDataStd import TDataStd_AsciiString, TDataStd_Integer
+        from OCP.TCollection import TCollection_AsciiString as TCAscii
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.schema import (
+            META_TAG_SCHEMA_VERSION, META_TAG_LINEAGE_ID,
+            META_TAG_HEAD_REVISION_ID, META_TAG_HEAD_REVISION_NUMBER,
+        )
+
+        meta = self.get_metadata_label()
+        TDataStd_AsciiString.Set_s(
+            meta.FindChild(META_TAG_SCHEMA_VERSION, True), TCAscii(schema_version))
+        TDataStd_AsciiString.Set_s(
+            meta.FindChild(META_TAG_LINEAGE_ID, True), TCAscii(lineage_id))
+        TDataStd_Integer.Set_s(
+            meta.FindChild(META_TAG_HEAD_REVISION_NUMBER, True), self._revision_number)
+
+    def get_lineage_metadata(self) -> dict:
+        """Read lineage identity from DesignRoot Metadata. Returns {} if unreadable."""
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.compat import (
+            read_ascii_string, read_integer,
+        )
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.schema import (
+            META_TAG_SCHEMA_VERSION, META_TAG_LINEAGE_ID,
+            META_TAG_HEAD_REVISION_ID, META_TAG_HEAD_REVISION_NUMBER,
+        )
+
+        meta = self.get_metadata_label()
+        return {
+            "schema_version": read_ascii_string(meta.FindChild(META_TAG_SCHEMA_VERSION, False)),
+            "lineage_id": read_ascii_string(meta.FindChild(META_TAG_LINEAGE_ID, False)),
+            "head_revision_id": read_ascii_string(meta.FindChild(META_TAG_HEAD_REVISION_ID, False)),
+            "head_revision_number": read_integer(meta.FindChild(META_TAG_HEAD_REVISION_NUMBER, False)),
+        }
+
+    def write_revision_record(self, record) -> None:
+        """Persist a RevisionRecord to Tag 100:6 (Revisions)."""
+        import json
+        from OCP.TDataStd import TDataStd_AsciiString
+        from OCP.TCollection import TCollection_AsciiString as TCAscii
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.schema import (
+            REVISION_TAG_ENTRY_BASE, TAG_REVISIONS,
+        )
+
+        revisions_label = self.design_root_label.FindChild(TAG_REVISIONS, True)
+        entry_tag = REVISION_TAG_ENTRY_BASE + record.revision_number
+        rev_label = revisions_label.FindChild(entry_tag, True)
+        TDataStd_AsciiString.Set_s(rev_label, TCAscii(json.dumps(record.to_dict())))
+
+    # ------------------------------------------------------------------
+    # Cross-revision shape retrieval — v5.0 §7.4
+    # ------------------------------------------------------------------
+
+    def get_current_result_shape(self, feature_label):
+        """Read the CurrentResult TNaming_NamedShape from a feature label.
+
+        Returns the TopoDS_Shape stored at Tag 2 (CurrentResult), or None.
+        Used to retrieve the previous revision's result for Modify(old,new).
+        """
+        from OCP.TNaming import TNaming_Tool
+        from OCP.TDF import TDF_AttributeIterator
+
+        result_label = feature_label.FindChild(2, False)  # TAG_CURRENT_RESULT
+        if result_label.IsNull():
+            return None
+
+        # Find TNaming_NamedShape via iterator (safe path)
+        it = TDF_AttributeIterator(result_label)
+        while it.More():
+            attr = it.Value()
+            if attr.DynamicType().Name() == "TNaming_NamedShape":
+                current = TNaming_Tool.CurrentShape_s(attr)
+                if current is not None:
+                    return current
+            it.Next()
+        return None
 
     # ------------------------------------------------------------------
     # Transaction helpers

@@ -1,0 +1,51 @@
+{
+  "schema": "ocaf_status_manifest_v1",
+  "generated_at": "2026-07-26T10:09:10Z",
+  "git_sha": "740c11bcc17aaeb5d9fff738995542fa9dda11a1",
+  "python": "3.11.9",
+  "ocp": "7.8.1.1",
+  "occt": "unknown",
+  "cadquery": "2.7.0",
+  "platform": "Windows-10-10.0.22631-SP0",
+  "architecture": "AMD64",
+  "tests": {
+    "command": "pytest tests/generative_cad/topology/ocaf/ --ignore=...test_tnaming_roundtrip.py -v",
+    "test_files": [
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/smoke/test_atomic_publish.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/smoke/test_tag100_schema.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/smoke/test_tnaming_roundtrip.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/smoke/test_utf8_path.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_cae_binding.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_cae_gate.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_capture_session.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_failure_injection.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_geometry_ab.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_hardening.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_live_models.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_multi_component_same_name.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_operation_coverage.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_pipeline_topology_modes.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_relation_identity.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_scenario_t3_split.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_scenario_t5_unify.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_scenario_t6_roles.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_scenario_t7_pattern.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_scenario_t8_edge.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_selection_integration.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_selection_service.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_selection_v3.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_stable_label_index_v2.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_t2_cross_revision.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_true_t2_modify.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_writer_correctness.py"
+    ],
+    "ignored_tests": [
+      "smoke/test_tnaming_roundtrip.py (2 tests, known-fragile: TNaming destructor crash)"
+    ],
+    "skipped_tests": 0,
+    "passed": 198,
+    "failed": 0,
+    "duration_seconds": 61.46,
+    "report_sha256": "c01c35b7387780231d95de3c4a8bd80552585a970ad0e47176a31420f46d3191"
+  }
+}

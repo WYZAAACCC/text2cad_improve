@@ -74,8 +74,16 @@ class TopologyNamingWriter:
 
     # ── Public API ──────────────────────────────────────────────────────
 
-    def write_batch(self, batch: LiveEvolutionBatch) -> int:
+    def write_batch(
+        self, batch: LiveEvolutionBatch, *, previous_result: Any = None,
+    ) -> int:
         """Write all relations from one LiveEvolutionBatch.
+
+        Args:
+            batch: LiveEvolutionBatch with scope, relations, etc.
+            previous_result: TopoDS_Shape | None — previous revision's
+                CurrentResult. If None (initial revision), writes Generated(new).
+                If provided (subsequent revision), writes Modify(old,new).
 
         Returns the total number of TNaming calls written (one per shape).
 
@@ -86,9 +94,11 @@ class TopologyNamingWriter:
 
         written = 0
 
-        # 1. Write result shape to Tag 2
+        # 1. Write result shape to Tag 2 (Generated or Modify)
         if batch.result_shape is not None:
-            self._write_result_shape(feat_label, batch.result_shape)
+            self.write_feature_result(
+                feat_label, batch.result_shape, previous_result=previous_result,
+            )
             written += 1
 
         # 2. Write each evolution relation under Tag 3
@@ -112,11 +122,31 @@ class TopologyNamingWriter:
 
     # ── Result shape ────────────────────────────────────────────────────
 
-    def _write_result_shape(self, feat_label, result_shape: Any) -> None:
-        """Write batch.result_shape as TNaming_NamedShape at Tag 2."""
+    def write_feature_result(
+        self, feat_label, new_result: Any, *, previous_result: Any = None,
+    ) -> None:
+        """Write CurrentResult: Generated(initial) or Modify(prev,new) for revisions.
+
+        v5.0 §7.4: subsequent revisions MUST call Modify(old,new) on the same
+        CurrentResult label — NOT write a new Generated(). This is the
+        fundamental mechanism that makes TNaming Solve work across revisions.
+
+        Args:
+            feat_label: The feature's TDF_Label.
+            new_result: The new TopoDS_Shape for this revision.
+            previous_result: The previous revision's CurrentResult shape.
+                             None for initial revision → Generated(new).
+        """
         label = feat_label.FindChild(TAG_CURRENT_RESULT, True)
         builder = TNaming_Builder(label)
-        builder.Generated(result_shape)
+        if previous_result is None:
+            builder.Generated(new_result)
+        else:
+            builder.Modify(previous_result, new_result)
+
+    def _write_result_shape(self, feat_label, result_shape: Any) -> None:
+        """Deprecated — use write_feature_result() instead."""
+        self.write_feature_result(feat_label, result_shape)
 
     # ── Relations ───────────────────────────────────────────────────────
 
@@ -153,9 +183,10 @@ class TopologyNamingWriter:
 
     def _write_primitive(self, container, idx: int, rel: LiveEvolutionRelation) -> int:
         """PRIMITIVE: Generated(new_shape) — one call per new_shape."""
+        tag = self._relation_tag(rel, idx)
         written = 0
         for si, new_shape in enumerate(rel.new_shapes):
-            label = self._relation_label(container, idx, si)
+            label = self._relation_label(container, tag, si)
             TNaming_Builder(label).Generated(new_shape)
             written += 1
         return written
@@ -165,25 +196,28 @@ class TopologyNamingWriter:
 
         Supports 1→N split: one Generated call per element in new_shapes.
         """
+        tag = self._relation_tag(rel, idx)
         written = 0
         for si, new_shape in enumerate(rel.new_shapes):
-            label = self._relation_label(container, idx, si)
+            label = self._relation_label(container, tag, si)
             TNaming_Builder(label).Generated(rel.old_shape, new_shape)
             written += 1
         return written
 
     def _write_modified(self, container, idx: int, rel: LiveEvolutionRelation) -> int:
         """MODIFIED: Modify(old_shape, new_shape) — one call per new_shape."""
+        tag = self._relation_tag(rel, idx)
         written = 0
         for si, new_shape in enumerate(rel.new_shapes):
-            label = self._relation_label(container, idx, si)
+            label = self._relation_label(container, tag, si)
             TNaming_Builder(label).Modify(rel.old_shape, new_shape)
             written += 1
         return written
 
     def _write_deleted(self, container, idx: int, rel: LiveEvolutionRelation) -> int:
         """DELETED: Delete(old_shape) — single call."""
-        label = self._relation_label(container, idx, 0)
+        tag = self._relation_tag(rel, idx)
+        label = self._relation_label(container, tag, 0)
         TNaming_Builder(label).Delete(rel.old_shape)
         return 1
 
@@ -209,15 +243,35 @@ class TopologyNamingWriter:
 
     # ── Label helpers ───────────────────────────────────────────────────
 
+    def _relation_tag(self, rel: LiveEvolutionRelation, rel_idx: int) -> int:
+        """Get a stable tag for a relation.
+
+        v5.0 §8.3: When Index allocation is explicitly enabled (via session
+        flag or RelationKey), uses the StableLabelIndex. Otherwise falls back
+        to position-based tag (1001 + idx) for backward compatibility.
+        """
+        # Index-based path: only when explicitly requested
+        if self._session is not None and hasattr(self._session, 'label_index'):
+            index = self._session.label_index
+            # Check if already in index (recovery), but don't auto-allocate
+            existing = index.resolve_key(
+                "relation", f"feature:{rel.operation_id}", rel.relation_id,
+            )
+            if existing is not None:
+                return existing.tags[-1]
+        # Default: position-based (backward compatible)
+        return _RELATION_TAG_BASE + rel_idx
+
     @staticmethod
-    def _relation_label(container, rel_idx: int, sub_idx: int = 0):
+    def _relation_label(container, rel_tag: int, sub_idx: int = 0):
         """Get or create a stable label for a relation sub-shape.
 
-        Schema: container / Tag (1001 + rel_idx) / Tag (1 + sub_idx)
-        This ensures 1→N relations can write multiple TNaming attributes
+        Schema: container / Tag (rel_tag) / Tag (1 + sub_idx)
+        Uses a stable tag (from Index or position) to ensure
+        1→N relations can write multiple TNaming attributes
         on separate child labels within the relation's label tree.
         """
-        rel_label = container.FindChild(_RELATION_TAG_BASE + rel_idx, True)
+        rel_label = container.FindChild(rel_tag, True)
         return rel_label.FindChild(1 + sub_idx, True)
 
 

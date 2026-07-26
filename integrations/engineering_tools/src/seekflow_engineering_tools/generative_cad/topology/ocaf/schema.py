@@ -104,6 +104,43 @@ SELECTION_TAG_SEMANTIC_CONTRACT = 3
 SELECTION_TAG_AUDIT = 4
 
 # ---------------------------------------------------------------------------
+# StableIdIndex sub-tags (v5.0 §5.4)
+# ---------------------------------------------------------------------------
+
+INDEX_TAG_METADATA = 1
+INDEX_TAG_COUNTERS = 2
+INDEX_TAG_ENTRIES = 3
+
+# Metadata
+INDEX_META_SCHEMA_VERSION = 1
+INDEX_META_INDEX_REVISION = 2
+
+# Counter kinds (v5.0 §5.4: separate counter per object kind)
+INDEX_COUNTER_KINDS = [
+    "component",       # tag 1
+    "feature",         # tag 2
+    "selection",       # tag 3
+    "relation",        # tag 4
+    "revision",        # tag 5
+    "cae_binding",     # tag 6
+]
+
+# ---------------------------------------------------------------------------
+# DesignRoot Metadata sub-tags (Tag 100:1) — v5.0 §7.2
+# ---------------------------------------------------------------------------
+
+META_TAG_SCHEMA_VERSION = 1
+META_TAG_LINEAGE_ID = 2
+META_TAG_HEAD_REVISION_ID = 3
+META_TAG_HEAD_REVISION_NUMBER = 4
+
+# ---------------------------------------------------------------------------
+# Revisions sub-tags (Tag 100:6)
+# ---------------------------------------------------------------------------
+
+REVISION_TAG_ENTRY_BASE = 1001  # first revision entry tag under 100:6
+
+# ---------------------------------------------------------------------------
 # Object tag range
 # ---------------------------------------------------------------------------
 
