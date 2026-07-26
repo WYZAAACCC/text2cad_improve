@@ -146,8 +146,14 @@ class PersistentSelectionService:
             SelectionSolveError,
         )
 
-        # Get native label
-        native_label = self._get_native_label(selection_id)
+        # Get native label — read-only (v6.0 §9.1: no auto-create)
+        native_label = self._get_native_label(selection_id, create=False)
+        if native_label.IsNull():
+            return SelectionResolution(
+                status=SelectionResolutionStatus.INVALID_SELECTION_ID,
+                selection_id=selection_id,
+                detail=f"Selection {selection_id!r} not found in index",
+            )
         sel_label = self._session.ensure_selection(selection_id)
 
         # Recover policy
@@ -175,23 +181,23 @@ class PersistentSelectionService:
                 detail="TNaming_Selector.Solve returned False",
             )
 
-        # Get resolved NamedShape
+        # Get resolved NamedShape (v6.0 §9.2: OCP may return Null, not None)
         named_shape = selector.NamedShape()
         if named_shape is None:
             return SelectionResolution(
                 status=SelectionResolutionStatus.UNRESOLVED,
                 selection_id=selection_id,
-                detail="NamedShape is None after Solve",
+                detail="NamedShape is None or Null after Solve",
             )
 
         # Get current TopoDS_Shape
         current = TNaming_Tool.CurrentShape_s(named_shape)
-        if current is None:
+        if current is None or current.IsNull():
             return SelectionResolution(
                 status=SelectionResolutionStatus.DELETED if (policy and policy.allow_deleted)
                 else SelectionResolutionStatus.UNRESOLVED,
                 selection_id=selection_id,
-                detail="CurrentShape is None",
+                detail="CurrentShape is None or Null",
             )
 
         # Analyze result
@@ -209,32 +215,28 @@ class PersistentSelectionService:
         sel_label: Any,
     ) -> SelectionResolution:
         """Classify the resolved shape against policy and semantic contract."""
-        # Count entities
-        entity_count = self._count_entities(current_shape)
+        # v6.0 §9.4: explode BEFORE semantics — validate each real FACE/EDGE
+        exploded = explode_entities(current_shape,
+            policy.entity_kind if policy else TopologyEntityKind.FACE)
+        entity_count = len(exploded)
 
         # Read semantic contract
         contract = self._read_contract(sel_label)
 
-        # Check semantics
+        # Check semantics on each exploded entity
         semantic_errors: list[str] = []
         if contract is not None:
-            semantic_errors = validate_semantics([current_shape], contract)
+            semantic_errors = validate_semantics(list(exploded), contract)
 
-        base = dict(selection_id=selection_id, resolved_shapes=(current_shape,))
+        base = dict(selection_id=selection_id, resolved_shapes=exploded)
 
+        # v6.0 §9.5: semantic errors must NOT be silently ignored
         if semantic_errors:
             return SelectionResolution(
                 status=SelectionResolutionStatus.INVALID_SEMANTICS,
                 detail="; ".join(semantic_errors),
                 **base,
             )
-
-        # P1-04: explode compound into individual entities
-        exploded = explode_entities(current_shape,
-            policy.entity_kind if policy else TopologyEntityKind.FACE)
-        entity_count = len(exploded)
-
-        base = dict(selection_id=selection_id, resolved_shapes=exploded)
 
         if entity_count == 0:
             if policy is not None and policy.allow_deleted:
@@ -285,9 +287,22 @@ class PersistentSelectionService:
     # Label helpers
     # ------------------------------------------------------------------
 
-    def _get_native_label(self, selection_id: str):
-        """Get the NativeNaming label (Tag 1) for a selection."""
-        sel_label = self._session.ensure_selection(selection_id)
+    def _get_native_label(self, selection_id: str, create: bool = False):
+        """Get the NativeNaming label (Tag 1) for a selection.
+
+        v6.0 §9.1: Solve should use create=False (read-only). If the selection
+        doesn't exist, returns Null label → caller returns INVALID_SELECTION_ID.
+        """
+        if create:
+            sel_label = self._session.ensure_selection(selection_id)
+        else:
+            entry = self._session.label_index.get_existing(
+                "selection", "lineage", selection_id,
+            )
+            if entry is None:
+                from OCP.TDF import TDF_Label
+                return TDF_Label()  # Null → INVALID_SELECTION_ID
+            sel_label = entry.tag_path.resolve(self._session.main_label)
         return sel_label.FindChild(SELECTION_TAG_NATIVE_NAMING, False)
 
     # ------------------------------------------------------------------

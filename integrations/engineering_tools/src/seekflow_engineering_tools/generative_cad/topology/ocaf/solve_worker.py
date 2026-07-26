@@ -1,10 +1,7 @@
-"""Subprocess Selection Solve — v5.0 §9.6.
+"""Subprocess Selection Solve — v6.0 §9.7.
 
-Runs TNaming_Selector.Solve() in an isolated subprocess so that OCP native
-crashes (ACCESS VIOLATION on deleted-face Solve) do not bring down the
-main pipeline process.
-
-Pattern: same as verify_worker.py — template script → subprocess.run → JSON parse.
+Runs TNaming_Selector.Solve() in an isolated subprocess with enhanced output
+including entity properties (area, centroid, surface_type, normal).
 """
 
 from __future__ import annotations
@@ -30,6 +27,7 @@ result = {{
     "selection_id": selection_id,
     "status": "unresolved",
     "resolved_count": 0,
+    "entities": [],
     "native_crash": False,
     "errors": [],
 }}
@@ -44,6 +42,10 @@ try:
     from seekflow_engineering_tools.generative_cad.topology.ocaf.compat import (
         collect_tnaming_labels,
     )
+    from OCP.BRepGProp import BRepGProp
+    from OCP.GProp import GProp_GProps
+    from OCP.BRepAdaptor import BRepAdaptor_Surface
+    from OCP.TopoDS import TopoDS
 
     session = OcafDocumentSession.open(xbf_path)
     label_map = collect_tnaming_labels(session.design_root_label)
@@ -52,6 +54,31 @@ try:
 
     result["status"] = resolution.status.value
     result["resolved_count"] = len(resolution.resolved_shapes)
+
+    # v6.0 §9.7: extract entity properties for each resolved shape
+    _SURFACE_NAMES = {{0:"Plane",1:"Cylinder",2:"Cone",3:"Sphere",4:"Torus",
+                       5:"Bezier",6:"BSpline",7:"Revolution",8:"Extrusion",9:"Offset",10:"Other"}}
+    for shape in resolution.resolved_shapes:
+        entity = {{"shape_type":None,"area":0.0,"centroid":[0,0,0],"surface_type":None,"normal":None}}
+        try:
+            face = TopoDS.Face_s(shape)
+            props = GProp_GProps()
+            BRepGProp.SurfaceProperties_s(face, props)
+            entity["area"] = round(props.Mass(), 4)
+            c = props.CentreOfMass()
+            entity["centroid"] = [round(c.X(),4), round(c.Y(),4), round(c.Z(),4)]
+            adaptor = BRepAdaptor_Surface(face)
+            stype = adaptor.GetType()
+            entity["surface_type"] = _SURFACE_NAMES.get(stype, "Other")
+            entity["shape_type"] = "FACE"
+            if stype == 0:  # Plane
+                plane = adaptor.Plane()
+                d = plane.Position().Direction()
+                entity["normal"] = [round(d.X(),4), round(d.Y(),4), round(d.Z(),4)]
+        except Exception:
+            pass
+        result["entities"].append(entity)
+
     result["ok"] = True
     session.close()
 
@@ -65,11 +92,12 @@ print(json.dumps(result), flush=True)
 
 @dataclass(frozen=True)
 class SolveWorkerResult:
-    """Structured result of subprocess Selection Solve."""
+    """Structured result of subprocess Selection Solve with entity details."""
     ok: bool
     selection_id: str
     status: str = "unresolved"
     resolved_count: int = 0
+    entities: list[dict] = field(default_factory=list)
     native_crash: bool = False
     errors: list[str] = field(default_factory=list)
     raw_stdout: str = ""
@@ -81,13 +109,7 @@ def solve_in_subprocess(
 ) -> SolveWorkerResult:
     """Execute TNaming_Selector.Solve() in an isolated subprocess.
 
-    Args:
-        xbf_path: Path to the XBF file.
-        selection_id: Stable selection identifier to solve.
-        timeout: Subprocess timeout in seconds.
-
-    Returns:
-        SolveWorkerResult — native_crash=True if ACCESS VIOLATION.
+    Returns enhanced SolveWorkerResult with entity properties (v6.0 §9.7).
     """
     p = Path(xbf_path).resolve()
     if not p.exists():
@@ -104,10 +126,8 @@ def solve_in_subprocess(
             capture_output=True, text=True, timeout=timeout,
         )
     except subprocess.TimeoutExpired:
-        return SolveWorkerResult(
-            ok=False, selection_id=selection_id,
-            errors=["Subprocess timed out"],
-        )
+        return SolveWorkerResult(ok=False, selection_id=selection_id,
+                                 errors=["Subprocess timed out"])
 
     raw_stdout = proc.stdout.strip()
     raw_stderr = proc.stderr.strip()
@@ -119,8 +139,7 @@ def solve_in_subprocess(
             ok=False, selection_id=selection_id,
             errors=[f"No valid JSON (returncode={proc.returncode})"],
             native_crash=proc.returncode != 0,
-            raw_stdout=raw_stdout[:500],
-            raw_stderr=raw_stderr[:500],
+            raw_stdout=raw_stdout[:500], raw_stderr=raw_stderr[:500],
         )
 
     return SolveWorkerResult(
@@ -128,8 +147,8 @@ def solve_in_subprocess(
         selection_id=data.get("selection_id", selection_id),
         status=data.get("status", "unresolved"),
         resolved_count=data.get("resolved_count", 0),
+        entities=data.get("entities", []),
         native_crash=data.get("native_crash", False),
         errors=data.get("errors", []),
-        raw_stdout=raw_stdout,
-        raw_stderr=raw_stderr,
+        raw_stdout=raw_stdout, raw_stderr=raw_stderr,
     )

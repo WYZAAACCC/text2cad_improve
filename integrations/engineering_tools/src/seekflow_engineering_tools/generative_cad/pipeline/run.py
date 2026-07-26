@@ -141,10 +141,14 @@ def _run_ocaf_write_and_save(
         # 1. Begin transaction
         ocaf_session.begin_write()
 
-        # 2. Write history
+        # 2. Write history with previous_result for non-initial revisions
         writer = TopologyNamingWriter(ocaf_session)
         for batch in ctx.capture_session.iter_batches():
-            writer.write_batch(batch)
+            # v6.0 §8.1: inject previous_result for existing features
+            scope = batch.scope
+            feat_label = writer._ensure_feature_label(scope.component_id, scope.node_id)
+            prev = ocaf_session.get_current_result_shape(feat_label)
+            writer.write_batch(batch, previous_result=prev)
 
         # 3. Persist StableLabelIndex to OCAF (P0-02)
         ocaf_session.label_index.save_to_ocaf(ocaf_session.main_label)
@@ -202,14 +206,15 @@ def _run_ocaf_write_and_save(
                 for err in vresult.errors:
                     ctx.warnings.append(f"OCAF verify: {err}")
 
-        # 8. Publish (on verify + CAE success or skipped)
+        # 8. Close session FIRST to release file handles (v6.0 §7.3)
+        ocaf_session.close()
+
+        # 9. Publish (on verify + CAE success or skipped)
         all_ok = verify_ok and cae_ok
         if all_ok:
             ocaf_session.publish(temp, ocaf_path)
         else:
             ctx.warnings.append(f"OCAF gates failed for {temp}, XBF not published")
-
-        ocaf_session.close()
 
         if not all_ok and ctx.topology_mode == "enforce":
             return False

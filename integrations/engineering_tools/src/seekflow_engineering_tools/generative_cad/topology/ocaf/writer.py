@@ -43,13 +43,23 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
 # Fixed tag layout under a feature label
 # ---------------------------------------------------------------------------
 
-TAG_CURRENT_RESULT = 2
-TAG_EVOLUTION_RELATIONS = 3
-TAG_CONSTRUCTION_ROLES = 4
-TAG_REVISION_AUDIT = 5
+# Import from schema for consistency (v6.0 §3.2)
+from seekflow_engineering_tools.generative_cad.topology.ocaf.schema import (
+    FEATURE_TAG_RESULT_ROOT,
+    FEATURE_TAG_RELATION_METADATA,
+    FEATURE_TAG_CONSTRUCTION_ROLES,
+    FEATURE_TAG_REVISION_AUDIT,
+    ROLE_TAG_BASE,
+)
 
-# Relation labels start at 1001 under TAG_EVOLUTION_RELATIONS
-_RELATION_TAG_BASE = 1001
+# Backward-compat aliases
+TAG_CURRENT_RESULT = FEATURE_TAG_RESULT_ROOT
+TAG_EVOLUTION_RELATIONS = FEATURE_TAG_RELATION_METADATA
+TAG_CONSTRUCTION_ROLES = FEATURE_TAG_CONSTRUCTION_ROLES
+TAG_REVISION_AUDIT = FEATURE_TAG_REVISION_AUDIT
+
+# Relation labels start at ROLE_TAG_BASE under ResultRoot
+_RELATION_TAG_BASE = ROLE_TAG_BASE
 
 
 # ---------------------------------------------------------------------------
@@ -144,6 +154,30 @@ class TopologyNamingWriter:
         else:
             builder.Modify(previous_result, new_result)
 
+    def write_role_result(
+        self, feat_label, role_tag: int, face: Any,
+        *, previous_face: Any = None,
+    ) -> None:
+        """Write a semantic role face under ResultRoot as TNaming_NamedShape.
+
+        v6.0 §3.2: Sub-shape history must be children of ResultRoot so that
+        OCCT Selector can find them during Solve. Each role gets its own
+        child label with a single TNaming_Builder entry.
+
+        Args:
+            feat_label: The feature's TDF_Label.
+            role_tag: Tag under ResultRoot (e.g. 1001 for top_role).
+            face: The TopoDS_Face for this role.
+            previous_face: Previous revision's face for Modify. None → Generated.
+        """
+        result_root = feat_label.FindChild(FEATURE_TAG_RESULT_ROOT, True)
+        role_label = result_root.FindChild(role_tag, True)
+        builder = TNaming_Builder(role_label)
+        if previous_face is None:
+            builder.Generated(face)
+        else:
+            builder.Modify(previous_face, face)
+
     def _write_result_shape(self, feat_label, result_shape: Any) -> None:
         """Deprecated — use write_feature_result() instead."""
         self.write_feature_result(feat_label, result_shape)
@@ -192,27 +226,26 @@ class TopologyNamingWriter:
         return written
 
     def _write_generated(self, container, idx: int, rel: LiveEvolutionRelation) -> int:
-        """GENERATED: Generated(old_shape, new_shape) — one call per new_shape.
+        """GENERATED: one Builder writes all old→new pairs (v6.0 §11.3).
 
-        Supports 1→N split: one Generated call per element in new_shapes.
+        Uses a single TNaming_Builder on one label for 1→N relations.
+        Multiple Generated calls on the same builder → one NamedShape with SET.
         """
         tag = self._relation_tag(rel, idx)
-        written = 0
-        for si, new_shape in enumerate(rel.new_shapes):
-            label = self._relation_label(container, tag, si)
-            TNaming_Builder(label).Generated(rel.old_shape, new_shape)
-            written += 1
-        return written
+        label = self._relation_label(container, tag)  # same label for all
+        builder = TNaming_Builder(label)
+        for new_shape in rel.new_shapes:
+            builder.Generated(rel.old_shape, new_shape)
+        return len(rel.new_shapes)
 
     def _write_modified(self, container, idx: int, rel: LiveEvolutionRelation) -> int:
-        """MODIFIED: Modify(old_shape, new_shape) — one call per new_shape."""
+        """MODIFIED: one Builder writes all old→new pairs (v6.0 §11.3)."""
         tag = self._relation_tag(rel, idx)
-        written = 0
-        for si, new_shape in enumerate(rel.new_shapes):
-            label = self._relation_label(container, tag, si)
-            TNaming_Builder(label).Modify(rel.old_shape, new_shape)
-            written += 1
-        return written
+        label = self._relation_label(container, tag)
+        builder = TNaming_Builder(label)
+        for new_shape in rel.new_shapes:
+            builder.Modify(rel.old_shape, new_shape)
+        return len(rel.new_shapes)
 
     def _write_deleted(self, container, idx: int, rel: LiveEvolutionRelation) -> int:
         """DELETED: Delete(old_shape) — single call."""

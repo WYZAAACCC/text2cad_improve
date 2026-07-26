@@ -34,6 +34,7 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.errors import (
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.models import StableObjectKey
 from seekflow_engineering_tools.generative_cad.topology.ocaf.schema import (
+    DESIGN_ROOT_TAG,
     DYNAMIC_TAG_START,
     INDEX_TAG_METADATA,
     INDEX_TAG_COUNTERS,
@@ -41,6 +42,10 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.schema import (
     INDEX_META_SCHEMA_VERSION,
     INDEX_META_INDEX_REVISION,
     INDEX_COUNTER_KINDS,
+    TAG_COMPONENTS,
+    TAG_SELECTIONS,
+    TAG_REVISIONS,
+    TAG_CAE_BINDINGS,
     TAGPATH_STABLE_ID_INDEX,
     TagPath,
     make_component_tagpath,
@@ -159,9 +164,12 @@ class StableLabelIndex:
             raise ValueError("Use allocate_feature() for features")
         elif object_kind == "selection":
             tag_path = make_selection_tagpath(tag)
-        elif object_kind in ("relation", "revision", "cae_binding"):
-            # Pending: these will get dedicated TagPath builders in PR-C/PR-F
-            tag_path = TagPath((DYNAMIC_TAG_START,))  # placeholder — not production
+        elif object_kind == "relation":
+            raise ValueError("Use allocate_relation() for relations")
+        elif object_kind == "revision":
+            tag_path = TagPath((DESIGN_ROOT_TAG, TAG_REVISIONS, tag))
+        elif object_kind == "cae_binding":
+            tag_path = TagPath((DESIGN_ROOT_TAG, TAG_CAE_BINDINGS, tag))
         else:
             raise ValueError(f"Unknown object_kind: {object_kind!r}")
 

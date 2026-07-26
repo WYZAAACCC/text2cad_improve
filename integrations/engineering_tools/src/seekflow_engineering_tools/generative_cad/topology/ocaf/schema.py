@@ -89,10 +89,17 @@ COMPONENT_TAG_AUDIT = 4
 # ---------------------------------------------------------------------------
 
 FEATURE_TAG_METADATA = 1
-FEATURE_TAG_CURRENT_RESULT = 2
-FEATURE_TAG_EVOLUTION_RELATIONS = 3
+FEATURE_TAG_RESULT_ROOT = 2        # v6.0 §3: body + sub-shape TNaming children
+FEATURE_TAG_RELATION_METADATA = 3  # v6.0 §3: JSON metadata only (no TNaming)
 FEATURE_TAG_CONSTRUCTION_ROLES = 4
 FEATURE_TAG_REVISION_AUDIT = 5
+
+# Backward compat aliases
+FEATURE_TAG_CURRENT_RESULT = FEATURE_TAG_RESULT_ROOT
+FEATURE_TAG_EVOLUTION_RELATIONS = FEATURE_TAG_RELATION_METADATA
+
+# ResultRoot sub-tags for semantic roles (v6.0 §3.2)
+ROLE_TAG_BASE = 1001
 
 # ---------------------------------------------------------------------------
 # Selection sub-tags

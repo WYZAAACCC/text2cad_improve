@@ -129,7 +129,10 @@ class OcafDocumentSession:
         index = StableLabelIndex()
         index.load_from_ocaf(repo.main_label)
         session._label_index = index
-        session._revision_number = 1  # caller should update from Metadata
+        # v6.0 §6.1: recover revision_number from lineage metadata
+        meta = session.get_lineage_metadata()
+        head_rev = meta.get("head_revision_number")
+        session._revision_number = head_rev if head_rev is not None else 1
         return session
 
     # ------------------------------------------------------------------
@@ -222,6 +225,8 @@ class OcafDocumentSession:
         The component_label must be the result of ensure_component().
         """
         component_tag = component_label.Tag()
+        # v6.0 §6.1 note: ideally use semantic component_id, but ensure_feature
+        # doesn't receive it. Tag-based namespace is stable within one lineage.
         namespace = f"component:{component_tag}"
         existing = self._label_index.resolve_key("feature", namespace, feature_id)
         if existing is not None:

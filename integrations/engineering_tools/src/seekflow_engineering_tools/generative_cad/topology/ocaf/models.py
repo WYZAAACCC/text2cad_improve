@@ -293,6 +293,8 @@ class SelectionResolutionStatus(str, Enum):
     INVALID_SEMANTICS = "invalid_semantics"  # Resolved but fails semantic contract
     INVALID_POLICY = "invalid_policy"        # Policy cannot be read from OCAF (v5.0 §9.2)
     INVALID_CONTRACT = "invalid_contract"    # Contract cannot be read from OCAF (v5.0 §9.2)
+    INVALID_SELECTION_ID = "invalid_selection_id"  # Selection ID not in index (v6.0 §9.1)
+    VALIDATION_UNAVAILABLE = "validation_unavailable"  # Contract check cannot be executed (v6.0 §9.5)
 
 
 @dataclass(frozen=True)
