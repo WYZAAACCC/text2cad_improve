@@ -183,14 +183,17 @@ def get_attribute_by_type(label, attr_type) -> Any | None:
 # TNaming label collection — for building Solve() valid_labels
 # ---------------------------------------------------------------------------
 
-def collect_tnaming_labels(root_label) -> Any:
+def collect_tnaming_labels(root_label, *, restrict_to: Any = None) -> Any:
     """Recursively collect all labels with TNaming_NamedShape into TDF_LabelMap.
 
     Used to build the valid_labels parameter for TNaming_Selector.Solve().
-    Walks the entire label subtree from root_label.
+    Walks the label subtree from root_label.
 
     Args:
         root_label: A TDF_Label to start searching from.
+        restrict_to: Optional TDF_Label or list of labels. If provided, only
+            collect from these subtrees (v6.0 §8.5: scope valid_labels to
+            relevant feature dependency closure).
 
     Returns:
         TDF_LabelMap containing all labels that have TNaming_NamedShape attributes.

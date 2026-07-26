@@ -458,6 +458,7 @@ class TopologyRunConfig:
     output_root: Path | None = None
     required_selection_ids: tuple[str, ...] = ()
     required_cae_binding_ids: tuple[str, ...] = ()
+    cae_bindings: tuple[Any, ...] = ()  # tuple[CaeBinding, ...] — v6.0 §8.3
     verify_in_subprocess: bool = True
 
     @property

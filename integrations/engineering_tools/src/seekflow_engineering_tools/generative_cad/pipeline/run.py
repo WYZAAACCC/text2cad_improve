@@ -159,26 +159,27 @@ def _run_ocaf_write_and_save(
         # 5. Save to temp
         temp = ocaf_session.save_temp()
 
-        # 6. CAE preflight gate (v5.0 §10.4)
+        # 6. CAE preflight gate (v6.0 §8.3: use real bindings, not faked)
         cae_ok = True
-        if topology_config is not None and getattr(topology_config, 'required_cae_binding_ids', ()):
-            try:
-                from seekflow_engineering_tools.generative_cad.topology.ocaf.cae_preflight import (
-                    run_cae_preflight,
-                )
-                from seekflow_engineering_tools.generative_cad.topology.ocaf.selection_service import (
-                    PersistentSelectionService,
-                )
-                svc = PersistentSelectionService(ocaf_session)
-                # Build bindings from config
-                bindings = []
+        if topology_config is not None:
+            bindings = list(getattr(topology_config, 'cae_bindings', ()))
+            # Fallback: legacy required_cae_binding_ids
+            if not bindings and getattr(topology_config, 'required_cae_binding_ids', ()):
+                from seekflow_engineering_tools.generative_cad.topology.ocaf.models import CaeBinding
                 for bid in topology_config.required_cae_binding_ids:
-                    from seekflow_engineering_tools.generative_cad.topology.ocaf.models import CaeBinding
                     bindings.append(CaeBinding(
                         binding_id=bid, selection_id=bid, analysis_role="load",
                         required=True,
                     ))
-                if bindings:
+            if bindings:
+                try:
+                    from seekflow_engineering_tools.generative_cad.topology.ocaf.cae_preflight import (
+                        run_cae_preflight,
+                    )
+                    from seekflow_engineering_tools.generative_cad.topology.ocaf.selection_service import (
+                        PersistentSelectionService,
+                    )
+                    svc = PersistentSelectionService(ocaf_session)
                     from seekflow_engineering_tools.generative_cad.topology.ocaf.compat import (
                         collect_tnaming_labels,
                     )
@@ -188,9 +189,9 @@ def _run_ocaf_write_and_save(
                         cae_ok = False
                         for err in preflight.errors:
                             ctx.warnings.append(f"CAE preflight: {err}")
-            except Exception as exc:
-                ctx.warnings.append(f"CAE preflight error: {exc}")
-                cae_ok = False
+                except Exception as exc:
+                    ctx.warnings.append(f"CAE preflight error: {exc}")
+                    cae_ok = False
 
         # 7. Verify in subprocess (v5.0 §6.6)
         verify_ok = True
