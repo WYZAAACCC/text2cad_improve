@@ -125,7 +125,10 @@ class OcafDocumentSession:
         session = cls.__new__(cls)
         session.session_id = uuid.uuid4().hex[:12]
         session._repository = repo
-        session._label_index = StableLabelIndex()
+        # P0-02: rebuild index from OCAF, not empty
+        index = StableLabelIndex()
+        index.load_from_ocaf(repo.main_label)
+        session._label_index = index
         session._revision_number = 1  # caller should update from Metadata
         return session
 
@@ -184,31 +187,32 @@ class OcafDocumentSession:
     def ensure_component(self, component_id: str):
         """Get or create a component label with stable tag allocation.
 
-        Uses StableLabelIndex.allocate() to assign a persistent tag >= 1000.
+        Uses StableLabelIndex.allocate() with namespace="lineage" for top-level components.
         Subsequent calls with the same component_id return the same label.
         """
-        existing_tagpath = self._label_index.resolve_id(component_id)
-        if existing_tagpath is not None:
-            return existing_tagpath.resolve_or_create(self.main_label)
+        existing = self._label_index.resolve_key("component", "lineage", component_id)
+        if existing is not None:
+            return existing.resolve_or_create(self.main_label)
 
         entry = self._label_index.allocate(
-            "component", component_id, self._revision_number
+            "component", "lineage", component_id, self._revision_number
         )
         return entry.tag_path.resolve_or_create(self.main_label)
 
     def ensure_feature(self, component_label, feature_id: str):
         """Get or create a feature label within a component.
 
-        Uses StableLabelIndex.allocate_feature() for persistent tag assignment.
+        Uses StableLabelIndex.allocate_feature() with namespace="component:<id>".
         The component_label must be the result of ensure_component().
         """
         component_tag = component_label.Tag()
-        existing_tagpath = self._label_index.resolve_id(feature_id)
-        if existing_tagpath is not None:
-            return existing_tagpath.resolve_or_create(self.main_label)
+        namespace = f"component:{component_tag}"
+        existing = self._label_index.resolve_key("feature", namespace, feature_id)
+        if existing is not None:
+            return existing.resolve_or_create(self.main_label)
 
         entry = self._label_index.allocate_feature(
-            component_tag, feature_id, self._revision_number
+            component_tag, namespace, feature_id, self._revision_number
         )
         return entry.tag_path.resolve_or_create(self.main_label)
 
@@ -218,12 +222,12 @@ class OcafDocumentSession:
 
     def ensure_selection(self, selection_id: str):
         """Get or create a selection label with stable tag allocation."""
-        existing_tagpath = self._label_index.resolve_id(selection_id)
-        if existing_tagpath is not None:
-            return existing_tagpath.resolve_or_create(self.main_label)
+        existing = self._label_index.resolve_key("selection", "lineage", selection_id)
+        if existing is not None:
+            return existing.resolve_or_create(self.main_label)
 
         entry = self._label_index.allocate(
-            "selection", selection_id, self._revision_number
+            "selection", "lineage", selection_id, self._revision_number
         )
         return entry.tag_path.resolve_or_create(self.main_label)
 

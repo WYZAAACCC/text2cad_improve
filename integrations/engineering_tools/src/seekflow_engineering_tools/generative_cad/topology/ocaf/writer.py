@@ -200,7 +200,7 @@ class TopologyNamingWriter:
             TNaming_Builder(label).Generated(first_shape)
             written += 1
 
-        if last_shape is not None and last_shape is not first_shape:
+        if last_shape is not None and first_shape is not None and not last_shape.IsSame(first_shape):
             label = feat_label.FindChild(TAG_CONSTRUCTION_ROLES, True).FindChild(2, True)
             TNaming_Builder(label).Generated(last_shape)
             written += 1

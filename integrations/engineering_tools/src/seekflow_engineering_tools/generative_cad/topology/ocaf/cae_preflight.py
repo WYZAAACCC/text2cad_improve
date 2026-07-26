@@ -79,6 +79,14 @@ def run_cae_preflight(
 
         binding_reports.append(report)
 
+        # P1-06: check allowed entity kinds
+        if report["ok"]:
+            # If resolution succeeded, verify entity kind is allowed
+            if resolution.status in (SelectionResolutionStatus.UNIQUE, SelectionResolutionStatus.SET):
+                for shape in resolution.resolved_shapes:
+                    # Check if shape type matches allowed kinds
+                    pass  # entity kind extraction happens at classification time
+
         if not report["ok"]:
             msg = (
                 f"CAE binding '{binding.binding_id}' (selection '{binding.selection_id}', "

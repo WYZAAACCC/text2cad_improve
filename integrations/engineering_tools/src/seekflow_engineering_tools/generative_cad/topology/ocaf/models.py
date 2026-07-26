@@ -305,6 +305,26 @@ class SelectionResolution:
 
 
 # ---------------------------------------------------------------------------
+# Stable Identity models — v4.0 P0-02
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class StableObjectKey:
+    """Composite key for stable label identity across revisions.
+
+    object_kind: "component" | "feature" | "selection" | "relation"
+    namespace:   scoping context (e.g. "lineage", "component:disk", "feature:cut_1")
+    object_id:   business identifier within the namespace
+    """
+    object_kind: str
+    namespace: str
+    object_id: str
+
+    def __str__(self) -> str:
+        return f"{self.object_kind}:{self.namespace}:{self.object_id}"
+
+
+# ---------------------------------------------------------------------------
 # CAE Binding models — §12 of v3.0 implementation guide
 # ---------------------------------------------------------------------------
 

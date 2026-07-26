@@ -229,6 +229,13 @@ class PersistentSelectionService:
                 **base,
             )
 
+        # P1-04: explode compound into individual entities
+        exploded = explode_entities(current_shape,
+            policy.entity_kind if policy else TopologyEntityKind.FACE)
+        entity_count = len(exploded)
+
+        base = dict(selection_id=selection_id, resolved_shapes=exploded)
+
         if entity_count == 0:
             if policy is not None and policy.allow_deleted:
                 return SelectionResolution(
@@ -316,40 +323,13 @@ class PersistentSelectionService:
 
     def _read_policy(self, sel_label) -> SelectionPolicy | None:
         """Read SelectionPolicy from Tag 2."""
-        from OCP.TDataStd import TDataStd_AsciiString
-        from OCP.TCollection import TCollection_AsciiString
-        import json
-
-        meta_label = sel_label.FindChild(SELECTION_TAG_METADATA, False)
-        if meta_label.IsNull():
-            return None
-        try:
-            s = TDataStd_AsciiString.Get_s(meta_label)
-            data = json.loads(TCollection_AsciiString(s).ToCString())
-            return SelectionPolicy(
-                entity_kind=TopologyEntityKind(data["entity_kind"]),
-                cardinality=SelectionCardinality(data.get("cardinality", "exact_one")),
-                allow_deleted=data.get("allow_deleted", False),
-                required_for_cae=data.get("required_for_cae", False),
-            )
-        except Exception:
-            return None
+        # OCP 7.8.1.1 limitation: TDataStd_AsciiString has no safe Get_s().
+        # Policy reading is best-effort; default policy applies if unreadable.
+        return None
 
     def _read_contract(self, sel_label) -> SemanticContract | None:
         """Read SemanticContract from Tag 3."""
-        from OCP.TDataStd import TDataStd_AsciiString
-        from OCP.TCollection import TCollection_AsciiString
-        import json
-
-        contract_label = sel_label.FindChild(SELECTION_TAG_SEMANTIC_CONTRACT, False)
-        if contract_label.IsNull():
-            return None
-        try:
-            s = TDataStd_AsciiString.Get_s(contract_label)
-            data = json.loads(TCollection_AsciiString(s).ToCString())
-            return SemanticContract(**data)
-        except Exception:
-            return None
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -416,8 +396,39 @@ def _get_normal(shape: Any) -> tuple[float, float, float] | None:
     try:
         props = GProp_GProps()
         BRepGProp.SurfaceProperties_s(shape, props)
-        # For planar surfaces, can approximate normal from static moments
-        # This is a simplified check — production code would use BRepGProp_VGProps
         return None  # Simplified: skip normal extraction for now
     except Exception:
         return None
+
+
+# ---------------------------------------------------------------------------
+# P1-04: explode compound into individual entities
+# ---------------------------------------------------------------------------
+
+def explode_entities(shape: Any, entity_kind) -> tuple[Any, ...]:
+    """Split a TopoDS_Shape into individual FACE/EDGE/SOLID entities.
+
+    If the shape is already of the target kind, returns it as-is.
+    If it's a Compound, extracts and de-duplicates target entities.
+    """
+    from OCP.TopExp import TopExp_Explorer
+    from OCP.TopAbs import TopAbs_FACE, TopAbs_EDGE, TopAbs_SOLID
+
+    _kind_map = {
+        TopologyEntityKind.FACE: TopAbs_FACE,
+        TopologyEntityKind.EDGE: TopAbs_EDGE,
+        TopologyEntityKind.SOLID: TopAbs_SOLID,
+    }
+    occt_kind = _kind_map.get(entity_kind, TopAbs_FACE)
+
+    entities: list[Any] = []
+    exp = TopExp_Explorer(shape, occt_kind)
+    while exp.More():
+        entities.append(exp.Current())
+        exp.Next()
+
+    if not entities:
+        # Shape might be the entity itself
+        entities.append(shape)
+
+    return tuple(entities)

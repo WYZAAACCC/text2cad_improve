@@ -126,15 +126,33 @@ def _run_ocaf_write_and_save(
     ocaf_session: Any,
     ocaf_path: Path,
 ) -> bool:
-    """Write captured topology batches to OCAF and save. Returns True on success."""
+    """Write captured topology batches to OCAF, persist index, and save.
+
+    v4.0 P0-02/03: saves StableLabelIndex to OCAF, uses staging + atomic publish.
+    Returns True on success.
+    """
     try:
         from seekflow_engineering_tools.generative_cad.topology.ocaf.writer import (
             TopologyNamingWriter,
         )
+        # 1. Begin transaction
+        ocaf_session.begin_write()
+
+        # 2. Write history
         writer = TopologyNamingWriter(ocaf_session)
         for batch in ctx.capture_session.iter_batches():
             writer.write_batch(batch)
-        ocaf_session.repository.save_to(ocaf_path)
+
+        # 3. Persist StableLabelIndex to OCAF (P0-02)
+        ocaf_session.label_index.save_to_ocaf(ocaf_session.main_label)
+
+        # 4. Commit
+        ocaf_session.commit_write()
+
+        # 5. Save temp + publish (not direct overwrite)
+        temp = ocaf_session.save_temp()
+        ocaf_session.publish(temp, ocaf_path)
+        ocaf_session.close()
         return True
     except Exception as exc:
         msg = f"OCAF write/save failed: {exc}"
@@ -219,7 +237,12 @@ def run_canonical_gcad(
         )
         ctx.enable_topology_capture = True
         ctx.capture_session = CaptureSession()
-        _ocaf_session = OcafDocumentSession()
+        # P0-01 fix: use create() or open(), NOT empty constructor
+        ocaf_target = Path(ocaf_path)
+        if ocaf_target.exists():
+            _ocaf_session = OcafDocumentSession.open(ocaf_target)
+        else:
+            _ocaf_session = OcafDocumentSession.create()
 
     try:
         # ════════════════════════════════════════════════════════════

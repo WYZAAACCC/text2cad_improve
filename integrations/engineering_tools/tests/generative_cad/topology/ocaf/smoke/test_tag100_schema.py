@@ -163,8 +163,8 @@ class TestStableLabelIndex:
         )
 
         index = StableLabelIndex()
-        entry = index.allocate("component", "base_plate", revision=1)
-        assert entry.tag_path.tags[2] >= DYNAMIC_TAG_START  # tag is 3rd element
+        entry = index.allocate("component", "lineage", "base_plate", revision=1)
+        assert entry.tag_path.tags[2] >= DYNAMIC_TAG_START
 
     def test_same_id_returns_same_entry(self):
         """Same object_id returns the same entry (idempotent)."""
@@ -173,10 +173,10 @@ class TestStableLabelIndex:
         )
 
         index = StableLabelIndex()
-        e1 = index.allocate("component", "base_plate", revision=1)
-        e2 = index.allocate("component", "base_plate", revision=1)
+        e1 = index.allocate("component", "lineage", "base_plate", revision=1)
+        e2 = index.allocate("component", "lineage", "base_plate", revision=1)
         assert e1.tag_path == e2.tag_path
-        assert e1.object_kind == e2.object_kind
+        assert e1.key.object_kind == e2.key.object_kind
 
     def test_different_kinds_get_different_tags(self):
         """Components and selections use separate tag counters."""
@@ -185,25 +185,36 @@ class TestStableLabelIndex:
         )
 
         index = StableLabelIndex()
-        c = index.allocate("component", "comp_a", revision=1)
-        s = index.allocate("selection", "sel_a", revision=1)
-        # Different root containers
+        c = index.allocate("component", "lineage", "comp_a", revision=1)
+        s = index.allocate("selection", "lineage", "sel_a", revision=1)
         assert c.tag_path.tags[:2] != s.tag_path.tags[:2]
 
     def test_conflict_detection(self):
-        """Same ID with different kind raises StableLabelConflictError."""
-        import pytest
+        """Same composite key (kind+namespace+id) with different kind allocates separately.
+
+        With composite keys, "component:lineage:x" and "selection:lineage:x" are
+        different keys — they don't conflict. This is correct behavior.
+        """
         from seekflow_engineering_tools.generative_cad.topology.ocaf.label_index import (
             StableLabelIndex,
         )
-        from seekflow_engineering_tools.generative_cad.topology.ocaf.errors import (
-            StableLabelConflictError,
+
+        index = StableLabelIndex()
+        e1 = index.allocate("component", "lineage", "obj_x", revision=1)
+        e2 = index.allocate("selection", "lineage", "obj_x", revision=1)
+        # Different kinds → different TagPaths (no conflict)
+        assert e1.tag_path != e2.tag_path
+
+    def test_different_namespace_same_id_no_conflict(self):
+        """Same ID in different namespaces → no conflict."""
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.label_index import (
+            StableLabelIndex,
         )
 
         index = StableLabelIndex()
-        index.allocate("component", "obj_x", revision=1)
-        with pytest.raises(StableLabelConflictError):
-            index.allocate("selection", "obj_x", revision=1)
+        e1 = index.allocate_feature(1001, "component:1001", "extrude_1", revision=1)
+        e2 = index.allocate_feature(1002, "component:1002", "extrude_1", revision=1)
+        assert e1.tag_path != e2.tag_path
 
     def test_retire_marks_entry(self):
         """Retired entries are marked but not removed."""
@@ -212,8 +223,8 @@ class TestStableLabelIndex:
         )
 
         index = StableLabelIndex()
-        index.allocate("component", "to_retire", revision=1)
-        index.retire("to_retire", revision=3)
-        entry = index.resolve_path(index.resolve_id("to_retire"))
+        index.allocate("component", "lineage", "to_retire", revision=1)
+        index.retire("component", "lineage", "to_retire", revision=3)
+        entry = index.resolve_path(index.resolve_key("component", "lineage", "to_retire"))
         assert entry is not None
         assert entry.retired_revision == 3
