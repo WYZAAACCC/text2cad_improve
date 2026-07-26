@@ -1,7 +1,7 @@
 {
   "schema": "ocaf_status_manifest_v1",
-  "generated_at": "2026-07-26T10:09:10Z",
-  "git_sha": "740c11bcc17aaeb5d9fff738995542fa9dda11a1",
+  "generated_at": "2026-07-26T12:21:48Z",
+  "git_sha": "84387bc63a7c454a543b5fee996e52047ac12903",
   "python": "3.11.9",
   "ocp": "7.8.1.1",
   "occt": "unknown",
@@ -18,6 +18,7 @@
       "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_cae_binding.py",
       "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_cae_gate.py",
       "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_capture_session.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_corrupted_xbf.py",
       "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_failure_injection.py",
       "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_geometry_ab.py",
       "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_hardening.py",
@@ -26,6 +27,7 @@
       "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_operation_coverage.py",
       "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_pipeline_topology_modes.py",
       "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_relation_identity.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_revision_store.py",
       "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_scenario_t3_split.py",
       "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_scenario_t5_unify.py",
       "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_scenario_t6_roles.py",
@@ -36,6 +38,7 @@
       "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_selection_v3.py",
       "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_stable_label_index_v2.py",
       "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_t2_cross_revision.py",
+      "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_t2_semantic_box.py",
       "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_true_t2_modify.py",
       "integrations/engineering_tools/tests/generative_cad/topology/ocaf/test_writer_correctness.py"
     ],
@@ -43,9 +46,9 @@
       "smoke/test_tnaming_roundtrip.py (2 tests, known-fragile: TNaming destructor crash)"
     ],
     "skipped_tests": 0,
-    "passed": 198,
+    "passed": 210,
     "failed": 0,
-    "duration_seconds": 61.46,
-    "report_sha256": "c01c35b7387780231d95de3c4a8bd80552585a970ad0e47176a31420f46d3191"
+    "duration_seconds": 72.02,
+    "report_sha256": "169480fc7da8355ccf72520fac16f737a9a30c6387a64401ebb92fb6d6e28c42"
   }
 }
