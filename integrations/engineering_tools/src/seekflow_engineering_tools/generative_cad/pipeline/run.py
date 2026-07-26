@@ -121,6 +121,29 @@ def run_gcad_core(
 
 # ── Canonical entrypoints (pre-validated) ──
 
+def _run_ocaf_write_and_save(
+    ctx: RuntimeContext,
+    ocaf_session: Any,
+    ocaf_path: Path,
+) -> bool:
+    """Write captured topology batches to OCAF and save. Returns True on success."""
+    try:
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.writer import (
+            TopologyNamingWriter,
+        )
+        writer = TopologyNamingWriter(ocaf_session)
+        for batch in ctx.capture_session.iter_batches():
+            writer.write_batch(batch)
+        ocaf_session.repository.save_to(ocaf_path)
+        return True
+    except Exception as exc:
+        msg = f"OCAF write/save failed: {exc}"
+        if ctx.topology_mode == "enforce":
+            raise
+        ctx.warnings.append(msg)
+        return False
+
+
 def run_canonical_gcad_from_files(
     canonical_json: str | Path,
     validation_seed_json: str | Path,
@@ -181,9 +204,13 @@ def run_canonical_gcad(
         workspace_root=out_step.parent,
     )
 
-    # v6.4: OCAF topology capture (optional)
+    # v6.5 (PR-6): OCAF topology integration
+    # ocaf_path presence activates topology_mode="audit" by default.
+    # Set ctx.topology_mode explicitly for "enforce" behavior.
     _ocaf_session = None
     if ocaf_path is not None:
+        if ctx.topology_mode == "off":
+            ctx.topology_mode = "audit"
         from seekflow_engineering_tools.generative_cad.topology.ocaf.capture_session import (
             CaptureSession,
         )
@@ -363,20 +390,25 @@ def run_canonical_gcad(
                 runtime_postconditions=runtime_pc,
             )
 
-        _export_final_solid(final_handle_id, ctx)
-
-        # v6.4: OCAF topology capture — write batches and save XBF
+        # v6.5 (PR-6): OCAF topology capture — write BEFORE STEP export
         if _ocaf_session is not None and ctx.capture_session is not None:
-            try:
-                from seekflow_engineering_tools.generative_cad.topology.ocaf.writer import (
-                    write_batch,
+            ocaf_ok = _run_ocaf_write_and_save(
+                ctx, _ocaf_session, Path(ocaf_path)  # type: ignore[arg-type]
+            )
+            if not ocaf_ok and ctx.topology_mode == "enforce":
+                return _fail_result(
+                    ctx,
+                    stage="ocaf_write",
+                    error="OCAF write/save failed in enforce mode",
+                    issues=[RuntimeIssue(
+                        stage="ocaf_write",
+                        code="ocaf_write_failed",
+                        message="OCAF topology write or save failed",
+                        repairability="conditionally_repairable",
+                    )],
                 )
-                for batch in ctx.capture_session.iter_batches():
-                    write_batch(_ocaf_session, batch)
-                ocaf_target = Path(ocaf_path)  # type: ignore[arg-type]
-                _ocaf_session.save(ocaf_target)
-            except Exception as exc:
-                ctx.warnings.append(f"OCAF save failed: {exc}")
+
+        _export_final_solid(final_handle_id, ctx)
 
         # ════════════════════════════════════════════════════════════
         # v6.3: Geometry postcondition gate (post-STEP export)

@@ -1,155 +1,266 @@
-"""OcafDocumentSession — XCAF document lifecycle management.
+"""OcafDocumentSession — per-revision OCAF document session.
 
-Manages a single TDocStd_Document with BinXCAF storage for one pipeline revision.
-Provides transaction safety (NewCommand/CommitCommand/AbortCommand) and atomic
-XBF persistence (tmp write + rename + directory fsync).
+Wraps OcafRepository for the common pipeline use case: open a lineage document
+(or create one), write one revision's topology data, save to temp, verify in
+a subprocess, and atomically publish.
 
-Verified APIs (OCP 7.8.1.1):
-- app.SaveAs(doc, TCollection_ExtendedString(path)) → PCDM_SS_OK
-- app.Open(TCollection_ExtendedString(path), doc)
+This module is the primary entry point for pipeline code. It delegates to:
+- OcafRepository (create/open/save/publish)
+- StableLabelIndex (object_id → TagPath mapping)
+- schema.py (fixed Tag tree)
+
+All bugs from the previous implementation have been fixed (§3.1 of v3.0 guide):
+  - ❌ doc.Main().NewChild() → ✅ FindChild(DESIGN_ROOT_TAG, True)
+  - ❌ TCollection_ExtendedString(str) → ✅ ext_utf8(path)
+  - ❌ app.Open(path, doc) → ✅ app.Retrieve(folder, name, True)
+  - ❌ DesignRoot = doc.Main() on reopen → ✅ FindChild(TAG, False)
+  - ❌ save() overwrites official target → ✅ save_temp() + publish()
+  - ❌ fsync exceptions swallowed → ✅ structured error types
+  - ❌ get_or_create always creates → ✅ label_index.allocate()
 """
 
 from __future__ import annotations
 
-import os
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from OCP.TCollection import TCollection_ExtendedString
+from seekflow_engineering_tools.generative_cad.topology.ocaf.compat import ext_utf8
+from seekflow_engineering_tools.generative_cad.topology.ocaf.errors import (
+    OcafRetrieveError,
+    OcafSchemaError,
+    OcafStoreError,
+)
+from seekflow_engineering_tools.generative_cad.topology.ocaf.label_index import StableLabelIndex
+from seekflow_engineering_tools.generative_cad.topology.ocaf.repository import OcafRepository
+from seekflow_engineering_tools.generative_cad.topology.ocaf.schema import (
+    DESIGN_ROOT_TAG,
+    TAGPATH_COMPONENTS,
+    TAGPATH_METADATA,
+    TAGPATH_SELECTIONS,
+    TAGPATH_STABLE_ID_INDEX,
+    TagPath,
+)
 
 
 @dataclass
 class OcafDocumentSession:
-    """Manages one XCAF document for a single pipeline revision.
+    """Per-revision session for reading and writing OCAF topology data.
+
+    Wraps an OcafRepository and a StableLabelIndex. This is the primary
+    API that pipeline code should use.
 
     Usage:
-        session = OcafDocumentSession()
-        session.begin_write()
-        # ... write batches via writer.write_batch(session, batch) ...
-        session.commit_write()
-        size = session.save(Path('output.xbf'))
+        # Create new lineage
+        session = OcafDocumentSession.create()
+        comp_label = session.ensure_component("base_plate")
+        feat_label = session.ensure_feature(comp_label, "extrude_1")
+        # ... write TNaming data to feat_label ...
+        temp = session.save_temp()
+        session.publish(temp, Path("design.xbf"))
 
-        # Reopen:
-        session2 = OcafDocumentSession.open(Path('output.xbf'))
+        # Reopen existing lineage
+        session = OcafDocumentSession.open(Path("design.xbf"))
     """
 
-    storage_path: Path | None = None
     session_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
-    _written_node_ids: set[str] = field(default_factory=set)
+    _repository: OcafRepository | None = field(default=None, repr=False)
+    _label_index: StableLabelIndex = field(default_factory=StableLabelIndex)
+    _revision_number: int = 1
 
-    def __post_init__(self):
-        from OCP.XCAFApp import XCAFApp_Application
-        from OCP.BinXCAFDrivers import BinXCAFDrivers
-        from OCP.TDocStd import TDocStd_Document
+    # ------------------------------------------------------------------
+    # Factory: create new
+    # ------------------------------------------------------------------
 
-        app = XCAFApp_Application.GetApplication_s()
-        BinXCAFDrivers.DefineFormat_s(app)
-        fmt = TCollection_ExtendedString("BinXCAF")
-        doc = TDocStd_Document(fmt)
-        app.InitDocument(doc)
+    @classmethod
+    def create(cls, revision_number: int = 1) -> OcafDocumentSession:
+        """Create a new OCAF document with fixed schema structure.
 
-        self._app = app
-        self._doc = doc
-        self._design_label = doc.Main().NewChild()  # DesignRoot (0:1:1)
+        Initialises DesignRoot and all structural sub-labels (Metadata, Components,
+        Selections, Assembly, CAEBindings, Revisions, StableIdIndex).
 
-    @property
-    def root_label(self):
-        """Return the DesignRoot label (0:1:1)."""
-        return self._design_label
-
-    def get_or_create_component_label(self, component_id: str):
-        """Get or create a component label under DesignRoot."""
-        from OCP.TDF import TDF_ChildIterator
-
-        it = TDF_ChildIterator(self._design_label)
-        while it.More():
-            label = it.Value()
-            it.Next()
-        # Simplified: always create new label. Real impl would use FindChild.
-        return self._design_label.NewChild()
-
-    def begin_write(self) -> None:
-        """Start a new OCAF transaction. Must call before any TNaming writes."""
-        self._doc.NewCommand()
-
-    def commit_write(self) -> None:
-        """Commit the current OCAF transaction."""
-        self._doc.CommitCommand()
-
-    def abort_write(self) -> None:
-        """Abort the current OCAF transaction, discarding all changes."""
-        self._doc.AbortCommand()
-
-    def mark_node_written(self, node_id: str) -> None:
-        """Record that a node's batch has been written."""
-        self._written_node_ids.add(node_id)
-
-    def is_node_written(self, node_id: str) -> bool:
-        """Check if a node's batch has already been written."""
-        return node_id in self._written_node_ids
-
-    def save(self, path: Path | None = None) -> int:
-        """Save the document to XBF atomically.
-
-        Uses tmp file + os.replace + directory fsync for atomicity.
-        Returns the file size in bytes.
+        IMPORTANT: Every label MUST have at least one attribute (e.g. TDataStd_Name)
+        or OCAF serialization will silently drop it on SaveAs→Retrieve.
         """
-        target = Path(path).resolve() if path is not None else self.storage_path
-        if target is None:
-            raise ValueError("No storage path specified")
+        from OCP.TDataStd import TDataStd_Name
+        from OCP.TCollection import TCollection_ExtendedString as TCE
 
-        # Save directly to target. OCCT handles the overwrite internally.
-        # For atomicity in production, save to tmp + os.replace.
-        # For PR-3, direct save is sufficient.
-        tcs = TCollection_ExtendedString(str(target))
-        status = self._app.SaveAs(self._doc, tcs)
-        if status != 0:
-            raise OSError(f"XBF save failed with status {status}")
-        self._fsync_file(target)
-        self._fsync_directory(target.parent)
-        return target.stat().st_size
+        repo = OcafRepository.create()
 
-    @staticmethod
-    def _fsync_file(path: Path) -> None:
-        """Flush a file to disk."""
-        try:
-            fd = os.open(str(path), os.O_RDONLY)
-            os.fsync(fd)
-            os.close(fd)
-        except OSError:
-            pass
+        # Pre-create all structural labels with Name attributes so they persist
+        _name = TDataStd_Name.Set_s
+        _name(repo.design_root_label.FindChild(1, True), TCE("Metadata"))
+        _name(repo.design_root_label.FindChild(2, True), TCE("Components"))
+        _name(repo.design_root_label.FindChild(3, True), TCE("Selections"))
+        _name(repo.design_root_label.FindChild(4, True), TCE("Assembly"))
+        _name(repo.design_root_label.FindChild(5, True), TCE("CAEBindings"))
+        _name(repo.design_root_label.FindChild(6, True), TCE("Revisions"))
+        _name(repo.design_root_label.FindChild(7, True), TCE("StableIdIndex"))
 
-    @staticmethod
-    def _fsync_directory(path: Path) -> None:
-        """Flush directory metadata to disk."""
-        try:
-            fd = os.open(str(path), os.O_RDONLY)
-            os.fsync(fd)
-            os.close(fd)
-        except OSError:
-            pass
+        session = cls.__new__(cls)
+        session.session_id = uuid.uuid4().hex[:12]
+        session._repository = repo
+        session._label_index = StableLabelIndex()
+        session._revision_number = revision_number
+        return session
+
+    # ------------------------------------------------------------------
+    # Factory: open existing
+    # ------------------------------------------------------------------
 
     @classmethod
     def open(cls, path: Path) -> OcafDocumentSession:
-        """Reopen an existing XBF document."""
-        from OCP.XCAFApp import XCAFApp_Application
-        from OCP.BinXCAFDrivers import BinXCAFDrivers
-        from OCP.TDocStd import TDocStd_Document
+        """Open an existing OCAF document for reading/writing.
 
-        app = XCAFApp_Application.GetApplication_s()
-        BinXCAFDrivers.DefineFormat_s(app)
-        fmt = TCollection_ExtendedString("BinXCAF")
-        doc = TDocStd_Document(fmt)
-        app.InitDocument(doc)
-        app.Open(TCollection_ExtendedString(str(path)), doc)
+        Uses Retrieve() (not Open()) and verifies the DesignRoot at Tag 100.
+
+        Raises:
+            FileNotFoundError: if path doesn't exist
+            OcafRetrieveError: if document can't be read
+            OcafSchemaError: if DesignRoot tag 100 is missing
+        """
+        repo = OcafRepository.open(path)
 
         session = cls.__new__(cls)
-        session.storage_path = path
         session.session_id = uuid.uuid4().hex[:12]
-        session._written_node_ids = set()
-        session._app = app
-        session._doc = doc
-        session._design_label = doc.Main()
+        session._repository = repo
+        session._label_index = StableLabelIndex()
+        session._revision_number = 1  # caller should update from Metadata
         return session
+
+    # ------------------------------------------------------------------
+    # Properties
+    # ------------------------------------------------------------------
+
+    @property
+    def repository(self) -> OcafRepository:
+        if self._repository is None:
+            raise RuntimeError("OcafDocumentSession is closed")
+        return self._repository
+
+    @property
+    def label_index(self) -> StableLabelIndex:
+        return self._label_index
+
+    @property
+    def design_root_label(self):
+        """The DesignRoot TDF_Label (Tag 100)."""
+        return self.repository.design_root_label
+
+    @property
+    def main_label(self):
+        """The Main() TDF_Label."""
+        return self.repository.main_label
+
+    @property
+    def revision_number(self) -> int:
+        return self._revision_number
+
+    # ------------------------------------------------------------------
+    # Structural label access
+    # ------------------------------------------------------------------
+
+    def get_metadata_label(self):
+        """Get the Metadata label (Tag 100:1)."""
+        return self.repository.get_or_create_child(self.design_root_label, 1)
+
+    def get_components_label(self):
+        """Get the Components container label (Tag 100:2)."""
+        return self.repository.get_or_create_child(self.design_root_label, 2)
+
+    def get_selections_label(self):
+        """Get the Selections container label (Tag 100:3)."""
+        return self.repository.get_or_create_child(self.design_root_label, 3)
+
+    def get_stable_id_index_label(self):
+        """Get the StableIdIndex label (Tag 100:7)."""
+        return self.repository.get_or_create_child(self.design_root_label, 7)
+
+    # ------------------------------------------------------------------
+    # Component and Feature management
+    # ------------------------------------------------------------------
+
+    def ensure_component(self, component_id: str):
+        """Get or create a component label with stable tag allocation.
+
+        Uses StableLabelIndex.allocate() to assign a persistent tag >= 1000.
+        Subsequent calls with the same component_id return the same label.
+        """
+        existing_tagpath = self._label_index.resolve_id(component_id)
+        if existing_tagpath is not None:
+            return existing_tagpath.resolve_or_create(self.main_label)
+
+        entry = self._label_index.allocate(
+            "component", component_id, self._revision_number
+        )
+        return entry.tag_path.resolve_or_create(self.main_label)
+
+    def ensure_feature(self, component_label, feature_id: str):
+        """Get or create a feature label within a component.
+
+        Uses StableLabelIndex.allocate_feature() for persistent tag assignment.
+        The component_label must be the result of ensure_component().
+        """
+        component_tag = component_label.Tag()
+        existing_tagpath = self._label_index.resolve_id(feature_id)
+        if existing_tagpath is not None:
+            return existing_tagpath.resolve_or_create(self.main_label)
+
+        entry = self._label_index.allocate_feature(
+            component_tag, feature_id, self._revision_number
+        )
+        return entry.tag_path.resolve_or_create(self.main_label)
+
+    # ------------------------------------------------------------------
+    # Selection management
+    # ------------------------------------------------------------------
+
+    def ensure_selection(self, selection_id: str):
+        """Get or create a selection label with stable tag allocation."""
+        existing_tagpath = self._label_index.resolve_id(selection_id)
+        if existing_tagpath is not None:
+            return existing_tagpath.resolve_or_create(self.main_label)
+
+        entry = self._label_index.allocate(
+            "selection", selection_id, self._revision_number
+        )
+        return entry.tag_path.resolve_or_create(self.main_label)
+
+    # ------------------------------------------------------------------
+    # Transaction helpers
+    # ------------------------------------------------------------------
+
+    def begin_write(self) -> None:
+        """Start a new OCAF transaction."""
+        self.repository.begin_txn()
+
+    def commit_write(self) -> None:
+        """Commit the current OCAF transaction."""
+        self.repository.commit_txn()
+
+    def abort_write(self) -> None:
+        """Abort the current OCAF transaction."""
+        self.repository.abort_txn()
+
+    # ------------------------------------------------------------------
+    # Persistence
+    # ------------------------------------------------------------------
+
+    def save_temp(self, parent_dir: Path | None = None) -> Path:
+        """Save the document to a temporary XBF file.
+
+        Does NOT overwrite any official file. Use publish() to atomically promote.
+        """
+        return self.repository.save_temp(parent_dir)
+
+    @staticmethod
+    def publish(temp_path: Path, official_path: Path) -> Path:
+        """Atomically publish a temp XBF to the official location."""
+        return OcafRepository.publish(temp_path, official_path)
+
+    def close(self) -> None:
+        """Release the underlying document."""
+        if self._repository is not None:
+            self._repository.close()
+            self._repository = None

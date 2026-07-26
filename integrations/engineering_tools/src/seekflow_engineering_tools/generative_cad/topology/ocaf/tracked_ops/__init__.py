@@ -3,14 +3,10 @@
 Each function executes the SAME OCCT Builder as the corresponding CadQuery function,
 with ONE addition: history capture. This guarantees identical geometry (verified by
 A/B volume/face/validity comparison).
-
-PR-1 scope: standalone library. No connection to dialect handlers or OCAF Writer.
 """
 
 from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.boolean import (
-    tracked_cut,
-    tracked_fuse,
-    tracked_common,
+    tracked_cut, tracked_fuse, tracked_common,
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.extrude import (
     tracked_extrude,
@@ -18,11 +14,25 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.extrude
 from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.revolve import (
     tracked_revolve,
 )
+from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.fillet import (
+    tracked_fillet,
+)
+from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.chamfer import (
+    tracked_chamfer,
+)
+from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.unify import (
+    tracked_unify,
+)
+from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.mirror import (
+    tracked_mirror,
+)
+from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.pattern import (
+    tracked_linear_pattern,
+)
 
 __all__ = [
-    "tracked_cut",
-    "tracked_fuse",
-    "tracked_common",
-    "tracked_extrude",
-    "tracked_revolve",
+    "tracked_cut", "tracked_fuse", "tracked_common",
+    "tracked_extrude", "tracked_revolve",
+    "tracked_fillet", "tracked_chamfer", "tracked_unify",
+    "tracked_mirror", "tracked_linear_pattern",
 ]

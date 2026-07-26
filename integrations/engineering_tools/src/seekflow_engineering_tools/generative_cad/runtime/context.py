@@ -55,6 +55,17 @@ class RuntimeContext:
     # When True, handlers use tracked operations + stage history to capture_session.
     enable_topology_capture: bool = False
     capture_session: Any = None
+    # v6.5 (PR-6): OCAF Pipeline integration
+    # "off": no OCAF capture (default, zero behavior change)
+    # "audit": capture + write + solve; failures → warnings, pipeline continues
+    # "enforce": like audit but any OCAF failure → pipeline error
+    topology_mode: str = "off"
+    design_lineage_id: str = ""
+    revision_id: str = ""
+    ocaf_repository: Any = None           # OcafRepository instance
+    selection_service: Any = None         # PersistentSelectionService instance
+    topology_audit: list[dict] = field(default_factory=list)
+    required_selection_ids: set[str] = field(default_factory=set)
 
     @property
     def geometry_runtime_name(self) -> str:

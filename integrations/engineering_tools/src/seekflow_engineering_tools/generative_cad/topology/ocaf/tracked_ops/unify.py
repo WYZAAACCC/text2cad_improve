@@ -1,0 +1,117 @@
+"""Tracked Unify — wraps ShapeUpgrade_UnifySameDomain with history extraction.
+
+Merges coplanar faces. HAS History() in OCP 7.8.1.1 (verified PR-5 Step 0).
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from OCP.ShapeUpgrade import ShapeUpgrade_UnifySameDomain
+from OCP.TopAbs import TopAbs_FACE
+from OCP.TopExp import TopExp_Explorer
+
+from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+    EvolutionKind, TopologyEntityKind, ProofClass,
+    TopologyCaptureScope, LiveEvolutionBatch, LiveEvolutionRelation, TrackedShapeResult,
+)
+
+
+def tracked_unify(
+    body: Any,
+    *,
+    angular_tolerance: float = 1e-5,
+    linear_tolerance: float = 1e-5,
+    scope: TopologyCaptureScope | None = None,
+) -> TrackedShapeResult:
+    """Unify coplanar/colinear faces with history capture.
+
+    Args:
+        body: CadQuery Shape to unify.
+        angular_tolerance: Angular tolerance in radians.
+        linear_tolerance: Linear tolerance in mm.
+        scope: TopologyCaptureScope.
+    """
+    import cadquery as cq
+
+    scope = scope or TopologyCaptureScope()
+
+    upgrader = ShapeUpgrade_UnifySameDomain(body.wrapped)
+    upgrader.SetAngularTolerance(angular_tolerance)
+    upgrader.SetLinearTolerance(linear_tolerance)
+    upgrader.Build()
+
+    result_shape = upgrader.Shape()
+    result = cq.Shape.cast(result_shape)
+
+    # Extract history — ShapeUpgrade_UnifySameDomain HAS History() in OCP 7.8.1.1!
+    history = upgrader.History()
+    relations: list[LiveEvolutionRelation] = []
+
+    # Iterate all original faces, check what happened to each
+    exp = TopExp_Explorer(body.wrapped, TopAbs_FACE)
+    face_idx = 0
+    while exp.More():
+        old_face = exp.Current()
+        exp.Next()
+
+        # Generated: new merged faces
+        gen_list = history.Generated(old_face)
+        gen_shapes = tuple(gen_list)
+        if gen_shapes:
+            relations.append(LiveEvolutionRelation(
+                relation_id=f"{scope.node_id}/unify/gen/face_{face_idx}",
+                operation_id=scope.node_id,
+                kind=EvolutionKind.GENERATED,
+                entity_kind=TopologyEntityKind.FACE,
+                source_key=f"face_{face_idx}",
+                old_shape=old_face,
+                new_shapes=gen_shapes,
+                proof=ProofClass.EXACT_KERNEL_HISTORY,
+            ))
+
+        # Modified: faces that were modified
+        mod_list = history.Modified(old_face)
+        mod_shapes = tuple(mod_list)
+        if mod_shapes:
+            relations.append(LiveEvolutionRelation(
+                relation_id=f"{scope.node_id}/unify/mod/face_{face_idx}",
+                operation_id=scope.node_id,
+                kind=EvolutionKind.MODIFIED,
+                entity_kind=TopologyEntityKind.FACE,
+                source_key=f"face_{face_idx}",
+                old_shape=old_face,
+                new_shapes=mod_shapes,
+                proof=ProofClass.EXACT_KERNEL_HISTORY,
+            ))
+
+        # IsRemoved: faces merged into others
+        if history.IsRemoved(old_face):
+            relations.append(LiveEvolutionRelation(
+                relation_id=f"{scope.node_id}/unify/del/face_{face_idx}",
+                operation_id=scope.node_id,
+                kind=EvolutionKind.DELETED,
+                entity_kind=TopologyEntityKind.FACE,
+                source_key=f"face_{face_idx}",
+                old_shape=old_face,
+                new_shapes=(),
+                proof=ProofClass.EXACT_KERNEL_HISTORY,
+            ))
+
+        face_idx += 1
+
+    history_complete = len(relations) > 0
+    batch = LiveEvolutionBatch(
+        scope=scope,
+        builder_kind="ShapeUpgrade_UnifySameDomain",
+        builder_options={
+            "angular_tolerance": angular_tolerance,
+            "linear_tolerance": linear_tolerance,
+        },
+        result_shape=result.wrapped,
+        context_shape=result.wrapped,
+        relations=relations,
+        history_complete=history_complete,
+        missing_phases=[] if history_complete else ["no faces were modified by unify"],
+    )
+    return TrackedShapeResult(result=result, batch=batch)

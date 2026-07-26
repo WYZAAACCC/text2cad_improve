@@ -1,120 +1,236 @@
-"""OCAF TNaming writer — writes TopologyEvolutionBatch to XCAF document.
+"""TopologyNamingWriter — write LiveEvolutionBatch to OCAF with correct TNaming semantics.
 
-Maps EvolutionRelation to TNaming_Builder calls:
-- PRIMITIVE / GENERATED(old, new) → b.Generated(old_shape, new_shape)
-- GENERATED(new only)          → b.Generated(new_shape)
-- MODIFIED                     → b.Modify(old_shape, new_shape)
-- DELETED                      → b.Delete(old_shape)
+Reads LiveEvolutionRelation (with real TopoDS_Shape handles from PR-2) and writes
+the correct TNaming_Builder calls according to EvolutionKind:
 
-Label tree per batch:
-  DesignRoot / Components / <cid> / Features / <node_id> /
-      Result          → TNaming_Builder.Generated(result_shape)
-      Phases / 0 /
-          rel_0       → TNaming_Builder per relation
-          rel_1       → ...
+  PRIMITIVE:  b.Generated(new_shape)           — one call per new_shape
+  GENERATED:  b.Generated(old_shape, new_shape) — one call per new_shape (1→N)
+  MODIFIED:   b.Modify(old_shape, new_shape)    — one call per new_shape
+  DELETED:    b.Delete(old_shape)               — no new shapes
+
+Key design rules (§3.3 of v3.0 guide):
+  - Writer does NOT manage transactions — caller is responsible.
+  - Every TNaming write failure propagates immediately (fail-closed).
+  - Labels use fixed Tags via FindChild(tag, True) — NEVER NewChild().
+  - Each relation gets a stable identity via Tag-indexed labels.
+
+Label schema under each feature label (based on §4.3):
+  Tag 2: CurrentResult              — TNaming for batch.result_shape
+  Tag 3: EvolutionRelations         — container, then Tag 1001+ per relation
+  Tag 4: ConstructionRoles          — first_shape, last_shape, etc.
+  Tag 5: RevisionAudit              — audit metadata (future use)
+
+Verified APIs (OCP 7.8.1.1, PR-3 Step 1):
+  - TNaming_Builder.Generated(shape)              ✅
+  - TNaming_Builder.Generated(old_shape, new_shape) ✅
+  - TNaming_Builder.Modify(old_shape, new_shape)    ✅
+  - TNaming_Builder.Delete(old_shape)               ✅
 """
 
 from __future__ import annotations
 
-from OCP.TNaming import TNaming_Builder, TNaming_Tool, TNaming_NamedShape
-from OCP.TDF import TDF_ChildIterator
+from typing import Any
+
+from OCP.TNaming import TNaming_Builder
 
 from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     EvolutionKind,
-    EvolutionRelation,
-    TopologyEvolutionBatch,
+    LiveEvolutionBatch,
+    LiveEvolutionRelation,
 )
 
+# ---------------------------------------------------------------------------
+# Fixed tag layout under a feature label
+# ---------------------------------------------------------------------------
 
-def ensure_feature_label(session, component_id: str, node_id: str):
-    """Get or create the feature label for a node.
+TAG_CURRENT_RESULT = 2
+TAG_EVOLUTION_RELATIONS = 3
+TAG_CONSTRUCTION_ROLES = 4
+TAG_REVISION_AUDIT = 5
 
-    Path: DesignRoot / Components / <cid> / Features / <node_id>
-    Creates any missing labels along the path.
-    Returns the feature label.
+# Relation labels start at 1001 under TAG_EVOLUTION_RELATIONS
+_RELATION_TAG_BASE = 1001
+
+
+# ---------------------------------------------------------------------------
+# TopologyNamingWriter
+# ---------------------------------------------------------------------------
+
+
+class TopologyNamingWriter:
+    """Writes one LiveEvolutionBatch to the OCAF document with correct TNaming.
+
+    Usage:
+        writer = TopologyNamingWriter(session)
+        writer.write_batch(batch)
+
+    Does NOT manage transactions — begin_txn/commit_txn/abort_txn must be
+    called by the Revision Session that owns the document lifecycle.
     """
-    # Simplified for PR-3: each node gets a new child under DesignRoot
-    # In production, would maintain index: node_id → label_entry
-    return session._design_label.NewChild()
 
+    def __init__(self, session):
+        """session: OcafDocumentSession from PR-1."""
+        self._session = session
 
-def write_batch(session, batch: TopologyEvolutionBatch) -> int:
-    """Write one TopologyEvolutionBatch to the OCAF document.
+    # ── Public API ──────────────────────────────────────────────────────
 
-    Creates the label tree and writes all EvolutionRelations using TNaming_Builder.
-    Uses the batch's live result_shape and history data.
+    def write_batch(self, batch: LiveEvolutionBatch) -> int:
+        """Write all relations from one LiveEvolutionBatch.
 
-    Returns the number of relations written.
-    """
-    scope = batch.scope
-    node_id = scope.node_id
+        Returns the total number of TNaming calls written (one per shape).
 
-    if session.is_node_written(node_id):
-        return 0  # Already written in this session
+        Raises immediately on any write failure — no exception swallowing.
+        """
+        scope = batch.scope
+        feat_label = self._ensure_feature_label(scope.component_id, scope.node_id)
 
-    feat_label = ensure_feature_label(
-        session, scope.component_id, node_id
-    )
+        written = 0
 
-    session.begin_write()
-    written = 0
-    try:
-        # ── Write result shape ──
+        # 1. Write result shape to Tag 2
         if batch.result_shape is not None:
-            result_label = feat_label.NewChild()
-            rb = TNaming_Builder(result_label)
-            try:
-                rb.Generated(batch.result_shape)
-            except Exception:
-                # Some shapes can't be Generated directly (e.g., Compounds)
-                # Fall through — the per-relation writes still capture
-                # the important old→new mappings
-                pass
-
-        # ── Write relations ──
-        # Each relation needs old_shape and new_shape.
-        # In PR-1, we stored old_shape_evidence (lightweight metadata) but
-        # NOT live old_shape handles in EvolutionRelation (by design).
-        # The BRepTools_History is in the EvolutionBatch (batch context).
-        # For PR-3, we write what we can from the available data.
-        #
-        # For BOPAlgo_BOP batches: history is in the batch result_shape
-        #   context — the generated/modified/deleted relations reference
-        #   faces of result_shape that exist at write time.
-        #
-        # For MakePrism/MakeRevol batches: FirstShape/LastShape are available.
-        for rel_idx, rel in enumerate(batch.relations):
-            rel_label = feat_label.NewChild()
-            b = TNaming_Builder(rel_label)
-
-            if rel.kind == EvolutionKind.DELETED:
-                # Delete: no new shape
-                b.Delete(batch.result_shape)
-            elif rel.kind == EvolutionKind.GENERATED:
-                # Generated(result_shape) — the whole result was generated
-                b.Generated(batch.result_shape)
-            elif rel.kind == EvolutionKind.MODIFIED:
-                # Result replaces old
-                b.Generated(batch.result_shape)
-            elif rel.kind == EvolutionKind.PRIMITIVE:
-                b.Generated(batch.result_shape)
+            self._write_result_shape(feat_label, batch.result_shape)
             written += 1
 
-        # ── Write FirstShape/LastShape if available ──
-        if batch.first_shape is not None:
-            fs_label = feat_label.NewChild()
-            fb = TNaming_Builder(fs_label)
-            fb.Generated(batch.first_shape)
+        # 2. Write each evolution relation under Tag 3
+        written += self._write_relations(feat_label, batch.relations)
 
-        if batch.last_shape is not None and batch.last_shape is not batch.first_shape:
-            ls_label = feat_label.NewChild()
-            lb = TNaming_Builder(ls_label)
-            lb.Generated(batch.last_shape)
+        # 3. Write construction roles (first/last) to Tag 4
+        written += self._write_construction_roles(feat_label, batch.construction_roles)
 
-        session.commit_write()
-        session.mark_node_written(node_id)
         return written
 
-    except Exception:
-        session.abort_write()
-        raise
+    # ── Label management ────────────────────────────────────────────────
+
+    def _ensure_feature_label(self, component_id: str, node_id: str):
+        """Get or create a stable feature label via session's index.
+
+        Uses session.ensure_component/ensure_feature from PR-1 —
+        these use StableLabelIndex.allocate() for persistent tag assignment.
+        """
+        comp_label = self._session.ensure_component(component_id or "default")
+        return self._session.ensure_feature(comp_label, node_id or "unnamed")
+
+    # ── Result shape ────────────────────────────────────────────────────
+
+    def _write_result_shape(self, feat_label, result_shape: Any) -> None:
+        """Write batch.result_shape as TNaming_NamedShape at Tag 2."""
+        label = feat_label.FindChild(TAG_CURRENT_RESULT, True)
+        builder = TNaming_Builder(label)
+        builder.Generated(result_shape)
+
+    # ── Relations ───────────────────────────────────────────────────────
+
+    def _write_relations(
+        self, feat_label, relations: list[LiveEvolutionRelation]
+    ) -> int:
+        """Write every LiveEvolutionRelation under Tag 3.
+
+        Creates a child label at Tag 1001+idx within TAG_EVOLUTION_RELATIONS.
+        Returns the number of TNaming calls written (1 per shape).
+        """
+        container = feat_label.FindChild(TAG_EVOLUTION_RELATIONS, True)
+        written = 0
+
+        for idx, rel in enumerate(relations):
+            # ★ Fail-closed: validate contract before writing
+            rel.validate()
+
+            if rel.kind == EvolutionKind.PRIMITIVE:
+                written += self._write_primitive(container, idx, rel)
+
+            elif rel.kind == EvolutionKind.GENERATED:
+                written += self._write_generated(container, idx, rel)
+
+            elif rel.kind == EvolutionKind.MODIFIED:
+                written += self._write_modified(container, idx, rel)
+
+            elif rel.kind == EvolutionKind.DELETED:
+                written += self._write_deleted(container, idx, rel)
+
+        return written
+
+    # ── Per-kind writers ────────────────────────────────────────────────
+
+    def _write_primitive(self, container, idx: int, rel: LiveEvolutionRelation) -> int:
+        """PRIMITIVE: Generated(new_shape) — one call per new_shape."""
+        written = 0
+        for si, new_shape in enumerate(rel.new_shapes):
+            label = self._relation_label(container, idx, si)
+            TNaming_Builder(label).Generated(new_shape)
+            written += 1
+        return written
+
+    def _write_generated(self, container, idx: int, rel: LiveEvolutionRelation) -> int:
+        """GENERATED: Generated(old_shape, new_shape) — one call per new_shape.
+
+        Supports 1→N split: one Generated call per element in new_shapes.
+        """
+        written = 0
+        for si, new_shape in enumerate(rel.new_shapes):
+            label = self._relation_label(container, idx, si)
+            TNaming_Builder(label).Generated(rel.old_shape, new_shape)
+            written += 1
+        return written
+
+    def _write_modified(self, container, idx: int, rel: LiveEvolutionRelation) -> int:
+        """MODIFIED: Modify(old_shape, new_shape) — one call per new_shape."""
+        written = 0
+        for si, new_shape in enumerate(rel.new_shapes):
+            label = self._relation_label(container, idx, si)
+            TNaming_Builder(label).Modify(rel.old_shape, new_shape)
+            written += 1
+        return written
+
+    def _write_deleted(self, container, idx: int, rel: LiveEvolutionRelation) -> int:
+        """DELETED: Delete(old_shape) — single call."""
+        label = self._relation_label(container, idx, 0)
+        TNaming_Builder(label).Delete(rel.old_shape)
+        return 1
+
+    # ── Construction roles ──────────────────────────────────────────────
+
+    def _write_construction_roles(self, feat_label, roles: dict) -> int:
+        """Write first_shape/last_shape etc. under Tag 4."""
+        first_shape = roles.get("start_cap")
+        last_shape = roles.get("end_cap")
+        written = 0
+
+        if first_shape is not None:
+            label = feat_label.FindChild(TAG_CONSTRUCTION_ROLES, True).FindChild(1, True)
+            TNaming_Builder(label).Generated(first_shape)
+            written += 1
+
+        if last_shape is not None and last_shape is not first_shape:
+            label = feat_label.FindChild(TAG_CONSTRUCTION_ROLES, True).FindChild(2, True)
+            TNaming_Builder(label).Generated(last_shape)
+            written += 1
+
+        return written
+
+    # ── Label helpers ───────────────────────────────────────────────────
+
+    @staticmethod
+    def _relation_label(container, rel_idx: int, sub_idx: int = 0):
+        """Get or create a stable label for a relation sub-shape.
+
+        Schema: container / Tag (1001 + rel_idx) / Tag (1 + sub_idx)
+        This ensures 1→N relations can write multiple TNaming attributes
+        on separate child labels within the relation's label tree.
+        """
+        rel_label = container.FindChild(_RELATION_TAG_BASE + rel_idx, True)
+        return rel_label.FindChild(1 + sub_idx, True)
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible module-level function
+# ---------------------------------------------------------------------------
+
+
+def write_batch(session, batch: LiveEvolutionBatch) -> int:
+    """Convenience function: write one batch using TopologyNamingWriter.
+
+    Returns the number of TNaming calls written.
+    Does NOT manage transactions.
+    """
+    writer = TopologyNamingWriter(session)
+    return writer.write_batch(batch)

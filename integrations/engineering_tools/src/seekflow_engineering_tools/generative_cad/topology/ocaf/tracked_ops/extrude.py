@@ -6,10 +6,8 @@ from the BRepPrimAPI_MakePrism builder after Build().
 Verified (OCP 7.8.1.1):
 - BRepPrimAPI_MakePrism has Generated()/Modified()/FirstShape()/LastShape()
 - BUT does NOT have History() method (unlike BOPAlgo_BOP)
-- Generated(profile_face) → TopTools_ListOfShape of generated faces
-- TopTools_ListOfShape supports Python __iter__
 
-CadQuery source: shapes.extrude(s, d) → _get(s, types) → BRepPrimAPI_MakePrism → Build → _compound_or_shape
+PR-2: Collects REAL TopoDS_Shape handles into LiveEvolutionRelation.
 """
 
 from __future__ import annotations
@@ -25,15 +23,12 @@ from OCP.BRepPrimAPI import BRepPrimAPI_MakePrism
 
 from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     EvolutionKind,
-    EvolutionRelation,
-    HistoryQuality,
+    LiveEvolutionBatch,
+    LiveEvolutionRelation,
+    ProofClass,
     TopologyCaptureScope,
-    TopologyEvolutionBatch,
+    TopologyEntityKind,
     TrackedShapeResult,
-)
-from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.boolean import (
-    _stage,
-    _face_evidence,
 )
 
 
@@ -43,18 +38,9 @@ def tracked_extrude(
     *,
     scope: TopologyCaptureScope | None = None,
 ) -> TrackedShapeResult:
-    """Drop-in replacement for shapes.extrude() with History capture.
-
-    Identical to CadQuery 2.7.0 shapes.extrude() line-by-line.
-    History is extracted from BRepPrimAPI_MakePrism.Generated/Modified/FirstShape/LastShape.
-
-    Args:
-        profile: CadQuery Shape (Face, Wire, Edge, Vertex, or Compound thereof)
-        vector: Extrusion direction and magnitude as (x, y, z) tuple
-        scope: TopologyCaptureScope for this operation
-    """
+    """Drop-in replacement for shapes.extrude() with History capture."""
     results: list[Any] = []
-    relations: list[EvolutionRelation] = []
+    relations: list[LiveEvolutionRelation] = []
     first_shape = None
     last_shape = None
 
@@ -62,94 +48,91 @@ def tracked_extrude(
 
     for el in _get(profile, ("Vertex", "Edge", "Wire", "Face")):
         builder = BRepPrimAPI_MakePrism(el.wrapped, Vector(vector).wrapped)
-        builder.Build()  # ★ single execution
+        builder.Build()
         result_shape = builder.Shape()
         results.append(result_shape)
 
         el_type = el.ShapeType()
 
-        # ── History extraction ──
-        # BRepPrimAPI_MakePrism: Generated/Modified on sub-shapes (no History() method)
-        # Wire profile → edges generate lateral faces
-        # Face profile → face generates solid/shell
-
         if el_type == "Wire":
-            # Each edge in the wire generates a lateral face
             for edge in el.Edges():
-                gen_list = builder.Generated(edge.wrapped)
-                if gen_list.Size() > 0:
-                    relations.append(
-                        EvolutionRelation(
-                            relation_id=f"{scope.node_id}/extrude/gen/{len(relations)}",
-                            kind=EvolutionKind.GENERATED,
-                            entity_type="face",
-                            source_role="profile_edge",
-                            quality=HistoryQuality.EXACT_KERNEL,
-                            old_shape_evidence=_face_evidence(edge),
-                            new_shape_count=gen_list.Size(),
-                        )
-                    )
-                mod_list = builder.Modified(edge.wrapped)
-                if mod_list.Size() > 0:
-                    relations.append(
-                        EvolutionRelation(
-                            relation_id=f"{scope.node_id}/extrude/mod/{len(relations)}",
-                            kind=EvolutionKind.MODIFIED,
-                            entity_type="edge",
-                            source_role="profile_edge",
-                            quality=HistoryQuality.EXACT_KERNEL,
-                            old_shape_evidence=_face_evidence(edge),
-                            new_shape_count=1,
-                        )
-                    )
+                _capture_generated(relations, scope, builder, edge, "profile_edge")
+                _capture_modified(relations, scope, builder, edge, "profile_edge")
 
         elif el_type == "Face":
-            # Face generates the solid body
-            gen_list = builder.Generated(el.wrapped)
-            if gen_list.Size() > 0:
-                relations.append(
-                    EvolutionRelation(
-                        relation_id=f"{scope.node_id}/extrude/gen/{len(relations)}",
-                        kind=EvolutionKind.GENERATED,
-                        entity_type="face",
-                        source_role="profile_face",
-                        quality=HistoryQuality.EXACT_KERNEL,
-                        old_shape_evidence=_face_evidence(el),
-                        new_shape_count=gen_list.Size(),
-                    )
-                )
-            mod_list = builder.Modified(el.wrapped)
-            if mod_list.Size() > 0:
-                relations.append(
-                    EvolutionRelation(
-                        relation_id=f"{scope.node_id}/extrude/mod/{len(relations)}",
-                        kind=EvolutionKind.MODIFIED,
-                        entity_type="face",
-                        source_role="profile_face",
-                        quality=HistoryQuality.EXACT_KERNEL,
-                        old_shape_evidence=_face_evidence(el),
-                        new_shape_count=1,
-                    )
-                )
+            _capture_generated(relations, scope, builder, el, "profile_face")
+            _capture_modified(relations, scope, builder, el, "profile_face")
 
-        # Capture FirstShape/LastShape once (start cap / end cap)
         if first_shape is None:
             first_shape = builder.FirstShape()
         last_shape = builder.LastShape()
 
     result = _compound_or_shape(results)
 
-    batch = TopologyEvolutionBatch(
+    batch = LiveEvolutionBatch(
         scope=scope,
         builder_kind="BRepPrimAPI_MakePrism",
-        builder_options={
-            "vector": tuple(float(v) for v in vector),
-        },
+        builder_options={"vector": tuple(float(v) for v in vector)},
         result_shape=result.wrapped,
         context_shape=result.wrapped,
         relations=relations,
-        first_shape=first_shape,
-        last_shape=last_shape,
+        construction_roles={
+            "start_cap": first_shape,
+            "end_cap": last_shape,
+        },
         history_complete=True,
     )
-    return TrackedShapeResult(result=result, capture_token=_stage(batch))
+    return TrackedShapeResult(result=result, batch=batch)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _capture_generated(
+    relations: list[LiveEvolutionRelation],
+    scope: TopologyCaptureScope,
+    builder: Any,
+    element: Any,
+    source_role: str,
+) -> None:
+    gen_list = builder.Generated(element.wrapped)
+    gen_shapes = tuple(gen_list)
+    if gen_shapes:
+        relations.append(
+            LiveEvolutionRelation(
+                relation_id=f"{scope.node_id}/extrude/gen/{len(relations)}",
+                operation_id=scope.node_id,
+                kind=EvolutionKind.GENERATED,
+                entity_kind=TopologyEntityKind.FACE,
+                source_key=source_role,
+                old_shape=element.wrapped,
+                new_shapes=gen_shapes,
+                proof=ProofClass.EXACT_KERNEL_HISTORY,
+            )
+        )
+
+
+def _capture_modified(
+    relations: list[LiveEvolutionRelation],
+    scope: TopologyCaptureScope,
+    builder: Any,
+    element: Any,
+    source_role: str,
+) -> None:
+    mod_list = builder.Modified(element.wrapped)
+    mod_shapes = tuple(mod_list)
+    if mod_shapes:
+        relations.append(
+            LiveEvolutionRelation(
+                relation_id=f"{scope.node_id}/extrude/mod/{len(relations)}",
+                operation_id=scope.node_id,
+                kind=EvolutionKind.MODIFIED,
+                entity_kind=TopologyEntityKind.FACE,
+                source_key=source_role,
+                old_shape=element.wrapped,
+                new_shapes=mod_shapes,
+                proof=ProofClass.EXACT_KERNEL_HISTORY,
+            )
+        )

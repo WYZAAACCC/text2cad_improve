@@ -1,8 +1,20 @@
-"""Pure data models for OCAF topology capture. No OCP/OCCT dependency.
+"""Core data models for OCAF topology capture — Live/Audit separation.
 
-These models separate live (in-process) TopoDS_Shape data from serializable
-audit metadata. Live shapes exist only in TopologyEvolutionBatch during capture;
-EvolutionRelation stores lightweight evidence for audit trails.
+Implements §5 of the v3.0 implementation guide:
+
+  Live Model (in-process only):
+    - LiveEvolutionRelation: stores REAL TopoDS_Shape handles (old_shape + new_shapes)
+    - LiveEvolutionBatch: groups relations from one builder execution
+    - TrackedShapeResult: returned by tracked_* functions, holds batch directly
+
+  Audit Model (JSON-safe, cross-process):
+    - EvolutionRelationAudit: lightweight evidence projection, NO Shape handles
+
+Constraints:
+  - Live Shapes do NOT cross process boundaries and do NOT enter JSON.
+  - Audit projection must not contain TopoDS_Shape handles.
+  - Writer accepts ONLY LiveEvolutionBatch (never Audit).
+  - Illegal relation (kind+shapes mismatch) → fail immediately (validate()).
 """
 
 from __future__ import annotations
@@ -12,6 +24,10 @@ from enum import Enum
 from typing import Any
 
 
+# ---------------------------------------------------------------------------
+# Enums
+# ---------------------------------------------------------------------------
+
 class EvolutionKind(str, Enum):
     """What kind of kernel-observed evolution occurred."""
     PRIMITIVE = "primitive"       # Shape created from nothing (box, cylinder, ...)
@@ -20,14 +36,29 @@ class EvolutionKind(str, Enum):
     DELETED = "deleted"           # Old sub-shapes deleted (tool face consumed by cut)
 
 
-class HistoryQuality(str, Enum):
-    """Provenance strength of a kernel history observation."""
-    EXACT_KERNEL = "exact_kernel"             # Complete BRepTools_History or Builder direct
-    PARTIAL_KERNEL = "partial_kernel"         # Missing post-processing phases (e.g. clean)
-    DETERMINISTIC = "deterministic"           # Based on construction semantics (primitive)
-    UNAVAILABLE = "unavailable"               # Interface not available in current OCCT version
-    FAILED = "failed"                         # Extraction raised an exception
+class TopologyEntityKind(str, Enum):
+    """Granularity of a topology entity."""
+    SOLID = "solid"
+    SHELL = "shell"
+    FACE = "face"
+    WIRE = "wire"
+    EDGE = "edge"
+    VERTEX = "vertex"
 
+
+class ProofClass(str, Enum):
+    """Provenance strength of a kernel history observation."""
+    EXACT_KERNEL_HISTORY = "exact_kernel_history"   # Full BRepTools_History or Builder direct
+    EXACT_CONSTRUCTION = "exact_construction"       # Determined by construction semantics
+    PARTIAL_POSTPROCESS = "partial_postprocess"     # Missing post-processing phases (e.g. clean)
+    EXTERNAL_IMPORT = "external_import"             # Imported geometry, no history available
+    HEURISTIC_CANDIDATE = "heuristic_candidate"     # Fingerprint-based, NOT authoritative
+    FAILED = "failed"                               # Extraction raised an exception
+
+
+# ---------------------------------------------------------------------------
+# Capture scope (unchanged from PR-1)
+# ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class TopologyCaptureScope:
@@ -46,59 +77,259 @@ class TopologyCaptureScope:
     suboperation_index: int = 0
 
 
+# ---------------------------------------------------------------------------
+# Live models — hold real TopoDS_Shape handles (in-process only)
+# ---------------------------------------------------------------------------
+
 @dataclass(frozen=True)
-class EvolutionRelation:
-    """A single kernel-observed evolution: old shape → new shapes.
+class LiveEvolutionRelation:
+    """A single kernel-observed evolution with REAL TopoDS_Shape handles.
 
-    Live TopoDS_Shape handles are NOT stored here — they exist only in the
-    enclosing TopologyEvolutionBatch during in-process capture. This record
-    holds lightweight audit evidence for serialization.
+    Live shapes MUST NOT be serialized or passed across process boundaries.
+    They exist only for the duration of OCAF write within the same geometry worker.
 
-    relation_id is globally unique within a document and scoped by node_id.
+    The validate() method enforces the shape contract:
+      PRIMITIVE:  old_shape=None,  len(new_shapes) >= 1
+      GENERATED:  old_shape!=None, len(new_shapes) >= 1
+      MODIFIED:   old_shape!=None, len(new_shapes) >= 1
+      DELETED:    old_shape!=None, len(new_shapes) == 0
     """
+
     relation_id: str
+    operation_id: str
     kind: EvolutionKind
-    entity_type: str = "face"          # "face" | "edge" | "vertex"
-    source_role: str = ""              # e.g. "target", "tool", "profile_face"
-    quality: HistoryQuality = HistoryQuality.EXACT_KERNEL
-    old_shape_evidence: dict[str, Any] = field(default_factory=dict)
-    new_shape_count: int = 0
-    evidence: dict[str, Any] = field(default_factory=dict)
+    entity_kind: TopologyEntityKind
+    source_key: str
+    old_shape: Any | None                # TopoDS_Shape | None (live!)
+    new_shapes: tuple[Any, ...] = ()     # tuple of TopoDS_Shape (live!)
+    proof: ProofClass = ProofClass.EXACT_KERNEL_HISTORY
+    diagnostics: tuple[str, ...] = ()
+
+    def validate(self) -> None:
+        """Enforce the shape contract. Raises AssertionError on mismatch."""
+        if self.kind is EvolutionKind.PRIMITIVE:
+            assert self.old_shape is None, \
+                f"PRIMITIVE relation {self.relation_id} must have old_shape=None"
+            assert len(self.new_shapes) >= 1, \
+                f"PRIMITIVE relation {self.relation_id} must have >=1 new_shapes"
+        elif self.kind in (EvolutionKind.GENERATED, EvolutionKind.MODIFIED):
+            assert self.old_shape is not None, \
+                f"{self.kind.value} relation {self.relation_id} must have old_shape"
+            assert len(self.new_shapes) >= 1, \
+                f"{self.kind.value} relation {self.relation_id} must have >=1 new_shapes"
+        elif self.kind is EvolutionKind.DELETED:
+            assert self.old_shape is not None, \
+                f"DELETED relation {self.relation_id} must have old_shape"
+            assert len(self.new_shapes) == 0, \
+                f"DELETED relation {self.relation_id} must have 0 new_shapes"
 
 
 @dataclass
-class TopologyEvolutionBatch:
+class LiveEvolutionBatch:
     """All kernel-observed evolutions from a single builder execution.
 
-    Live shapes (result_shape, context_shape, first_shape, last_shape) are
-    in-process TopoDS_Shape handles. They MUST NOT be serialized to JSON or
-    passed across process boundaries. They exist only for the duration of
-    OCAF write and Selector creation within the same geometry worker.
+    Live shapes (result_shape, context_shape, and shapes within relations)
+    are in-process TopoDS_Shape handles. They MUST NOT be serialized.
+
+    Each batch corresponds to one TrackedOperation execution.
     """
+
     scope: TopologyCaptureScope = field(default_factory=TopologyCaptureScope)
     builder_kind: str = ""                 # "BOPAlgo_BOP" | "BRepPrimAPI_MakePrism" | ...
     builder_options: dict[str, Any] = field(default_factory=dict)
-
-    # Live shapes (in-process only, DO NOT serialize)
-    result_shape: Any = None               # TopoDS_Shape
-    context_shape: Any = None              # TopoDS_Shape
-    first_shape: Any = None                # TopoDS_Shape | None (MakePrism FirstShape)
-    last_shape: Any = None                 # TopoDS_Shape | None (MakePrism LastShape)
-
-    relations: list[EvolutionRelation] = field(default_factory=list)
+    result_shape: Any = None               # TopoDS_Shape — the full result
+    context_shape: Any = None              # TopoDS_Shape — context for Selector
+    relations: list[LiveEvolutionRelation] = field(default_factory=list)
+    construction_roles: dict[str, Any] = field(default_factory=dict)
     history_complete: bool = True
     missing_phases: list[str] = field(default_factory=list)
     diagnostics: list[str] = field(default_factory=list)
 
+    def validate_all(self) -> None:
+        """Run validate() on every relation in this batch."""
+        for rel in self.relations:
+            rel.validate()
+
+    def to_audit(self) -> list[EvolutionRelationAudit]:
+        """Project all relations to JSON-safe audit records."""
+        return [rel_to_audit(r) for r in self.relations]
+
+
+# ---------------------------------------------------------------------------
+# Audit model — JSON safe, NO Shape handles
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class EvolutionRelationAudit:
+    """Lightweight, JSON-serializable projection of one evolution.
+
+    Contains scalar evidence (area, centroid) but NO TopoDS_Shape handles.
+    Used for metadata export, diagnostic logging, and audit trails.
+    Must NEVER be used as input to TNaming_Builder.
+    """
+
+    relation_id: str
+    operation_id: str
+    kind: str
+    entity_kind: str
+    source_key: str
+    proof: str
+    old_evidence: dict | None = None
+    new_evidence: tuple[dict, ...] = ()
+    diagnostics: tuple[str, ...] = ()
+
+
+def rel_to_audit(rel: LiveEvolutionRelation) -> EvolutionRelationAudit:
+    """Convert a live relation to its audit projection."""
+    return EvolutionRelationAudit(
+        relation_id=rel.relation_id,
+        operation_id=rel.operation_id,
+        kind=rel.kind.value,
+        entity_kind=rel.entity_kind.value,
+        source_key=rel.source_key,
+        proof=rel.proof.value,
+        old_evidence=_shape_evidence(rel.old_shape) if rel.old_shape is not None else None,
+        new_evidence=tuple(_shape_evidence(s) for s in rel.new_shapes),
+        diagnostics=rel.diagnostics,
+    )
+
+
+def _shape_evidence(shape: Any) -> dict:
+    """Extract lightweight evidence from a TopoDS_Shape for audit.
+
+    Only stores scalar geometric properties — safe for JSON.
+    Returns empty dict if shape is None or evidence extraction fails.
+    """
+    if shape is None:
+        return {}
+    try:
+        # Try to treat as a TopoDS_Face
+        from OCP.TopoDS import TopoDS_Face
+        face = TopoDS_Face()
+        face = TopoDS_Face.DownCast_s(shape) if hasattr(TopoDS_Face, 'DownCast_s') else None
+        # Fallback: use BRepGProp for area/centroid
+        from OCP.BRepGProp import BRepGProp
+        from OCP.GProp import GProp_GProps
+        props = GProp_GProps()
+        BRepGProp.SurfaceProperties_s(shape, props)
+        center = props.CentreOfMass()
+        return {
+            "area_mm2": round(props.Mass(), 4),
+            "center": (round(center.X(), 4), round(center.Y(), 4), round(center.Z(), 4)),
+        }
+    except Exception:
+        return {}
+
+
+# ---------------------------------------------------------------------------
+# TrackedShapeResult — returned by all tracked_* functions
+# ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class TrackedShapeResult:
-    """Returned by every tracked_* function.
+    """Result of a single tracked geometry operation.
 
-    Contains the exact same geometry as the corresponding CadQuery free function
-    (verified by A/B volume/face/validity comparison), plus a capture_token
-    referencing the staged TopologyEvolutionBatch.
+    Contains the identical geometry as the corresponding CadQuery free function
+    (verified by A/B volume/face/validity comparison), plus the LiveEvolutionBatch
+    with all captured history relations.
+
+    No capture_token — the batch is held directly. No global staging.
     """
+
     result: Any = None                     # cadquery.Shape — identical geometry
-    capture_token: str = ""                # unique ID referencing the staged batch
+    batch: LiveEvolutionBatch = field(default_factory=LiveEvolutionBatch)
     diagnostics: tuple[str, ...] = ()
+
+
+# ---------------------------------------------------------------------------
+# Selection models — §5.3 of v3.0 implementation guide
+# ---------------------------------------------------------------------------
+
+class SelectionCardinality(str, Enum):
+    """How many topology entities can satisfy this selection."""
+    EXACT_ONE = "exact_one"
+    SET_ALLOWED = "set_allowed"
+
+
+class SelectionResolutionStatus(str, Enum):
+    """Outcome of solving a persistent selection against current geometry."""
+    UNIQUE = "unique"               # Exactly one matching entity, semantics valid
+    SET = "set"                     # Multiple entities allowed by policy
+    DELETED = "deleted"             # Target deleted, policy allows
+    AMBIGUOUS = "ambiguous"         # Multiple candidates but policy requires EXACT_ONE
+    UNRESOLVED = "unresolved"       # Cannot resolve at all
+    INVALID_SEMANTICS = "invalid_semantics"  # Resolved but fails semantic contract
+
+
+@dataclass(frozen=True)
+class SelectionPolicy:
+    """Constraints on what kind of topology entity and how many.
+
+    entity_kind: expected type (FACE, EDGE, etc.)
+    cardinality: EXACT_ONE or SET_ALLOWED
+    allow_deleted: if True, DELETED is a valid resolution
+    required_for_cae: if True, heuristic fallback is forbidden
+    """
+    entity_kind: TopologyEntityKind
+    cardinality: SelectionCardinality = SelectionCardinality.EXACT_ONE
+    allow_deleted: bool = False
+    required_for_cae: bool = False
+
+
+@dataclass(frozen=True)
+class SemanticContract:
+    """Post-hoc validation constraints on resolved topology.
+
+    These are ONLY used for validation after TNaming Solve — never for
+    identity resolution. A shape that matches all contract constraints
+    is not necessarily the "correct" shape (only TNaming can tell that).
+    """
+    surface_type: str | None = None           # "Plane" | "Cylinder" | "Cone" | ...
+    curve_type: str | None = None
+    expected_axis: tuple[float, float, float] | None = None
+    expected_normal: tuple[float, float, float] | None = None
+    radius_range: tuple[float, float] | None = None
+    zone_id: str | None = None
+    orientation: str | None = None
+    connectivity_role: str | None = None
+
+
+@dataclass(frozen=True)
+class SelectionResolution:
+    """Result of PersistentSelectionService.solve()."""
+    status: SelectionResolutionStatus
+    selection_id: str
+    resolved_shapes: tuple[Any, ...] = ()     # TopoDS_Shape handles (live)
+    candidates: list[dict] = field(default_factory=list)
+    detail: str = ""
+
+
+# ---------------------------------------------------------------------------
+# CAE Binding models — §12 of v3.0 implementation guide
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class CaeBinding:
+    """A binding from a topology selection to a CAE analysis role.
+
+    CAE solvers (ANSYS, etc.) receive only selection_id — never face index,
+    edge index, coordinate, or nearest-neighbor heuristic.
+    """
+    binding_id: str
+    selection_id: str
+    analysis_role: str                    # "load_face" | "constraint_surface" | "bore_contact" | ...
+    required: bool = True
+    allowed_entity_kinds: tuple[TopologyEntityKind, ...] = (TopologyEntityKind.FACE,)
+    cardinality: SelectionCardinality = SelectionCardinality.EXACT_ONE
+
+
+@dataclass(frozen=True)
+class CaePreflightResult:
+    """Result of CAE binding preflight check.
+
+    ok=True only if every required binding has a valid resolution.
+    """
+    ok: bool
+    bindings: list[dict] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)

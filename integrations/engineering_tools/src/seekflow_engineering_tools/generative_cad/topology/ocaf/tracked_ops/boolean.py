@@ -8,14 +8,14 @@ Verified (OCP 7.8.1.1):
 - BOPAlgo_BOP produces identical volume to BRepAlgoAPI_Cut
 - TopTools_ListOfShape supports Python __iter__
 
-CadQuery source references:
-- shapes.cut():   BOPAlgo_BOP + BOPAlgo_CUT + _set_glue + _set_builder_options + Perform
-- shapes.fuse():  BOPAlgo_BOP + BOPAlgo_FUSE + same pattern
+PR-2 changes:
+- Removed global _staged_batches dict — batches are returned directly.
+- LiveEvolutionRelation stores REAL TopoDS_Shape handles (old_shape, new_shapes).
+- TrackedShapeResult holds batch directly (no capture_token).
 """
 
 from __future__ import annotations
 
-import uuid
 from typing import Any
 
 from cadquery.occ_impl.shapes import (
@@ -27,27 +27,18 @@ from OCP.BOPAlgo import BOPAlgo_BOP, BOPAlgo_CUT, BOPAlgo_FUSE, BOPAlgo_COMMON
 
 from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     EvolutionKind,
-    EvolutionRelation,
-    HistoryQuality,
+    LiveEvolutionBatch,
+    LiveEvolutionRelation,
+    ProofClass,
     TopologyCaptureScope,
-    TopologyEvolutionBatch,
+    TopologyEntityKind,
     TrackedShapeResult,
 )
 
-# In-memory staging registry for PR-1 (replaced by CaptureSession in PR-2)
-_staged_batches: dict[str, TopologyEvolutionBatch] = {}
 
-
-def _stage(batch: TopologyEvolutionBatch) -> str:
-    """Stage a batch and return a capture token. PR-1 simple in-memory version."""
-    token = f"capture:{batch.scope.node_id}:{uuid.uuid4().hex[:12]}"
-    _staged_batches[token] = batch
-    return token
-
-
-def get_staged_batch(token: str) -> TopologyEvolutionBatch | None:
-    """Retrieve a previously staged batch by token."""
-    return _staged_batches.get(token)
+# ---------------------------------------------------------------------------
+# Public API — drop-in replacements for CadQuery shapes.*
+# ---------------------------------------------------------------------------
 
 
 def tracked_cut(
@@ -58,33 +49,25 @@ def tracked_cut(
     glue: str | None = None,
     scope: TopologyCaptureScope | None = None,
 ) -> TrackedShapeResult:
-    """Drop-in replacement for shapes.cut() with History capture.
-
-    Identical to CadQuery 2.7.0 shapes.cut() line-by-line.
-    Only addition: SetToFillHistory(True) + History() extraction.
-    """
+    """Drop-in replacement for shapes.cut() with History capture."""
     builder = BOPAlgo_BOP()
     builder.SetOperation(BOPAlgo_CUT)
-    builder.SetToFillHistory(True)  # ★ the ONLY addition to enable history
+    builder.SetToFillHistory(True)
     _set_glue(builder, glue)
     _set_builder_options(builder, tol)
     builder.AddArgument(target.wrapped)
     builder.AddTool(tool.wrapped)
-    builder.Perform()  # ★ single execution
+    builder.Perform()
 
     result = _compound_or_shape(builder.Shape())
-    history = builder.History()  # ★ extract history
+    history = builder.History()
 
     batch = _export_bopalgo_history(
-        history,
-        target=target,
-        tool=tool,
-        result=result,
-        builder_kind="BOPAlgo_BOP",
-        operation="cut",
+        history, target=target, tool=tool, result=result,
+        builder_kind="BOPAlgo_BOP", operation="cut",
         scope=scope or TopologyCaptureScope(),
     )
-    return TrackedShapeResult(result=result, capture_token=_stage(batch))
+    return TrackedShapeResult(result=result, batch=batch)
 
 
 def tracked_fuse(
@@ -95,10 +78,7 @@ def tracked_fuse(
     glue: str | None = None,
     scope: TopologyCaptureScope | None = None,
 ) -> TrackedShapeResult:
-    """Drop-in replacement for shapes.fuse() with History capture.
-
-    Identical to CadQuery 2.7.0 shapes.fuse() line-by-line.
-    """
+    """Drop-in replacement for shapes.fuse() with History capture."""
     builder = BOPAlgo_BOP()
     builder.SetOperation(BOPAlgo_FUSE)
     builder.SetToFillHistory(True)
@@ -112,15 +92,11 @@ def tracked_fuse(
     history = builder.History()
 
     batch = _export_bopalgo_history(
-        history,
-        target=left,
-        tool=right,
-        result=result,
-        builder_kind="BOPAlgo_BOP",
-        operation="fuse",
+        history, target=left, tool=right, result=result,
+        builder_kind="BOPAlgo_BOP", operation="fuse",
         scope=scope or TopologyCaptureScope(),
     )
-    return TrackedShapeResult(result=result, capture_token=_stage(batch))
+    return TrackedShapeResult(result=result, batch=batch)
 
 
 def tracked_common(
@@ -145,18 +121,16 @@ def tracked_common(
     history = builder.History()
 
     batch = _export_bopalgo_history(
-        history,
-        target=left,
-        tool=right,
-        result=result,
-        builder_kind="BOPAlgo_BOP",
-        operation="common",
+        history, target=left, tool=right, result=result,
+        builder_kind="BOPAlgo_BOP", operation="common",
         scope=scope or TopologyCaptureScope(),
     )
-    return TrackedShapeResult(result=result, capture_token=_stage(batch))
+    return TrackedShapeResult(result=result, batch=batch)
 
 
-# ── History extraction ──────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# History extraction
+# ---------------------------------------------------------------------------
 
 
 def _export_bopalgo_history(
@@ -167,78 +141,82 @@ def _export_bopalgo_history(
     builder_kind: str,
     operation: str,
     scope: TopologyCaptureScope,
-) -> TopologyEvolutionBatch:
-    """Extract EvolutionRelations from BRepTools_History after BOPAlgo_BOP.
+) -> LiveEvolutionBatch:
+    """Extract LiveEvolutionRelations from BRepTools_History after BOPAlgo_BOP.
 
-    Iterates each face of target and tool, queries:
-      - history.Generated(face) → TopTools_ListOfShape (new faces from this face)
-      - history.Modified(face) → TopTools_ListOfShape (modified version of this face)
-      - history.IsRemoved(face) → bool (face no longer exists in result)
-
-    TopTools_ListOfShape supports Python __iter__ in OCP 7.8.1.1 (verified).
+    Iterates each face of target and tool, queries Generated/Modified/IsRemoved,
+    and collects REAL TopoDS_Shape handles into LiveEvolutionRelation objects.
     """
-    relations: list[EvolutionRelation] = []
+    relations: list[LiveEvolutionRelation] = []
 
     for role_name, shape in [("target", target), ("tool", tool)]:
         for i, face in enumerate(shape.Faces()):
-            fw = face.wrapped
-            role = f"{role_name}_face_{i}"
+            fw = face.wrapped  # TopoDS_Shape
+            source_key = f"{role_name}_face_{i}"
 
-            # Generated: new faces in result created from this input face
+            # ── Generated: new faces in result created from this input face ──
             gen_list = history.Generated(fw)
-            if gen_list.Size() > 0:
-                for _gen_shape in gen_list:
-                    relations.append(
-                        EvolutionRelation(
-                            relation_id=f"{scope.node_id}/{role}/gen/{len(relations)}",
-                            kind=EvolutionKind.GENERATED,
-                            entity_type="face",
-                            source_role=role,
-                            quality=HistoryQuality.EXACT_KERNEL,
-                            old_shape_evidence=_face_evidence(face),
-                            new_shape_count=gen_list.Size(),
-                        )
-                    )
-
-            # Modified: this input face was modified (typically 1:1)
-            mod_list = history.Modified(fw)
-            if mod_list.Size() > 0:
-                for _mod_shape in mod_list:
-                    relations.append(
-                        EvolutionRelation(
-                            relation_id=f"{scope.node_id}/{role}/mod/{len(relations)}",
-                            kind=EvolutionKind.MODIFIED,
-                            entity_type="face",
-                            source_role=role,
-                            quality=HistoryQuality.EXACT_KERNEL,
-                            old_shape_evidence=_face_evidence(face),
-                            new_shape_count=1,
-                        )
-                    )
-
-            # IsRemoved: this face no longer exists in result
-            if history.IsRemoved(fw):
+            gen_shapes = tuple(gen_list)  # collect REAL shapes
+            if gen_shapes:
                 relations.append(
-                    EvolutionRelation(
-                        relation_id=f"{scope.node_id}/{role}/del/{len(relations)}",
-                        kind=EvolutionKind.DELETED,
-                        entity_type="face",
-                        source_role=role,
-                        quality=HistoryQuality.EXACT_KERNEL,
-                        old_shape_evidence=_face_evidence(face),
-                        new_shape_count=0,
+                    LiveEvolutionRelation(
+                        relation_id=f"{scope.node_id}/{source_key}/gen/{len(relations)}",
+                        operation_id=scope.node_id,
+                        kind=EvolutionKind.GENERATED,
+                        entity_kind=TopologyEntityKind.FACE,
+                        source_key=source_key,
+                        old_shape=fw,
+                        new_shapes=gen_shapes,
+                        proof=ProofClass.EXACT_KERNEL_HISTORY,
                     )
                 )
 
-    return TopologyEvolutionBatch(
+            # ── Modified: this face was modified (typically 1:1) ──
+            mod_list = history.Modified(fw)
+            mod_shapes = tuple(mod_list)
+            if mod_shapes:
+                relations.append(
+                    LiveEvolutionRelation(
+                        relation_id=f"{scope.node_id}/{source_key}/mod/{len(relations)}",
+                        operation_id=scope.node_id,
+                        kind=EvolutionKind.MODIFIED,
+                        entity_kind=TopologyEntityKind.FACE,
+                        source_key=source_key,
+                        old_shape=fw,
+                        new_shapes=mod_shapes,
+                        proof=ProofClass.EXACT_KERNEL_HISTORY,
+                    )
+                )
+
+            # ── IsRemoved: this face no longer exists in result ──
+            if history.IsRemoved(fw):
+                relations.append(
+                    LiveEvolutionRelation(
+                        relation_id=f"{scope.node_id}/{source_key}/del/{len(relations)}",
+                        operation_id=scope.node_id,
+                        kind=EvolutionKind.DELETED,
+                        entity_kind=TopologyEntityKind.FACE,
+                        source_key=source_key,
+                        old_shape=fw,
+                        new_shapes=(),
+                        proof=ProofClass.EXACT_KERNEL_HISTORY,
+                    )
+                )
+
+    batch = LiveEvolutionBatch(
         scope=scope,
         builder_kind=builder_kind,
-        builder_options={"operation": operation},
         result_shape=result.wrapped,
         context_shape=result.wrapped,
         relations=relations,
         history_complete=True,
     )
+    return batch
+
+
+# ---------------------------------------------------------------------------
+# Shared helper — lightweight face evidence for audit (no live Shape dependency)
+# ---------------------------------------------------------------------------
 
 
 def _face_evidence(face: Any) -> dict:
