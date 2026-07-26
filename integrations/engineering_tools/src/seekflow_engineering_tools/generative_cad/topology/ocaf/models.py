@@ -305,8 +305,35 @@ class SelectionResolution:
 
 
 # ---------------------------------------------------------------------------
-# Stable Identity models — v4.0 P0-02
+# Stable Identity models — v4.0 P0-02 + P1-01/02
 # ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class SourceEntityRef:
+    """Stable reference to a topology entity without using face/edge index.
+
+    P1-02: Replaces raw string source_keys like "target_face_0".
+    Tracked operations should populate this from known component/feature/selection IDs.
+    """
+    component_id: str = ""
+    feature_id: str = ""
+    selection_id: str | None = None
+    construction_role: str | None = None   # "start_cap" | "end_cap" | "profile_edge" | ...
+    entity_kind: TopologyEntityKind = TopologyEntityKind.FACE
+
+
+@dataclass(frozen=True)
+class RelationKey:
+    """Stable business identity for an evolution relation.
+
+    P1-01: Replaces relation list index as persistent Tag.
+    Same feature + source entity + kind + role → same OCAF label across revisions.
+    """
+    feature_id: str
+    source_entity_ref: SourceEntityRef
+    evolution_kind: EvolutionKind
+    relation_role: str = ""   # "target" | "tool" | "profile"
+
 
 @dataclass(frozen=True)
 class StableObjectKey:

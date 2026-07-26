@@ -90,15 +90,40 @@ def tracked_linear_pattern(
                         proof=ProofClass.EXACT_KERNEL_HISTORY,
                     ))
 
-    # Fuse all instances sequentially
+    # Fuse all instances with history capture (P1-03)
+    history_complete = True
+    missing_phases: list[str] = []
     if len(instance_shapes) > 1:
-        from OCP.BRepAlgoAPI import BRepAlgoAPI_Fuse
+        from OCP.BOPAlgo import BOPAlgo_BOP, BOPAlgo_FUSE
         fused = instance_shapes[0]
-        for s in instance_shapes[1:]:
-            fuser = BRepAlgoAPI_Fuse(fused, s)
-            fuser.Build()
-            if fuser.IsDone():
-                fused = fuser.Shape()
+        for si, s in enumerate(instance_shapes[1:]):
+            fuser = BOPAlgo_BOP()
+            fuser.SetOperation(BOPAlgo_FUSE)
+            fuser.SetToFillHistory(True)
+            fuser.AddArgument(fused)
+            fuser.AddTool(s)
+            fuser.Perform()
+            fused = fuser.Shape()
+            # Capture Fuse history for this step
+            fhist = fuser.History()
+            if fhist is not None:
+                for fi, face in enumerate(cq.Shape.cast(fused).Faces()):
+                    gen_list = fhist.Generated(face.wrapped)
+                    gen_shapes = tuple(gen_list)
+                    if gen_shapes:
+                        relations.append(LiveEvolutionRelation(
+                            relation_id=f"{scope.node_id}/pattern/fuse_{si}/face_{fi}",
+                            operation_id=scope.node_id,
+                            kind=EvolutionKind.GENERATED,
+                            entity_kind=TopologyEntityKind.FACE,
+                            source_key=f"fuse_{si}_face_{fi}",
+                            old_shape=face.wrapped,
+                            new_shapes=gen_shapes,
+                            proof=ProofClass.EXACT_KERNEL_HISTORY,
+                        ))
+            else:
+                history_complete = False
+                missing_phases.append(f"fuse_step_{si}")
         result = cq.Shape.cast(fused)
     else:
         result = body
@@ -114,6 +139,7 @@ def tracked_linear_pattern(
         result_shape=result.wrapped,
         context_shape=result.wrapped,
         relations=relations,
-        history_complete=True,
+        history_complete=history_complete,
+        missing_phases=missing_phases,
     )
     return TrackedShapeResult(result=result, batch=batch)
