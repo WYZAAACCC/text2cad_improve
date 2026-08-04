@@ -15,6 +15,9 @@ from pydantic import BaseModel, Field
 _BACKEND_SRC = Path(__file__).resolve().parents[3] / "integrations" / "engineering_tools" / "src"
 if str(_BACKEND_SRC) not in sys.path:
     sys.path.insert(0, str(_BACKEND_SRC))
+_EXPERIMENT_SRC = Path(__file__).resolve().parents[3] / "_param_experiment"
+if str(_EXPERIMENT_SRC) not in sys.path:
+    sys.path.insert(0, str(_EXPERIMENT_SRC))
 
 OUT_ROOT = Path(__file__).resolve().parent / "output"
 DATASET_FILE = Path(__file__).resolve().parent / "datasets.json"
@@ -64,6 +67,67 @@ def _update_task(task_id: str, **kwargs):
     with _lock:
         if task_id in _tasks:
             _tasks[task_id].update(kwargs)
+
+# ============================================================
+# DiskCAD-MCP 外层质量门（确定性，复用 _param_experiment/mcp_tools）
+# ============================================================
+# 门禁子集：实体健康 + STEP 回读 + IR 语义槽约束三大类。
+# 排除 3 个 KT787 特定项（check_slot_depth_and_rim 硬编码 x>150 /
+# inspect_slot_root_fillet 强制根圆角 / compare_slot_profile_to_requirement 恒过），
+# 规避特定盘形误判并缩短耗时。
+CORE_SUBSET = [
+    "check_solid_validity", "check_degenerate_geometry",
+    "validate_slot_step_roundtrip", "check_slot_pitch_and_ligament",
+    "check_adjacent_feature_clearance", "validate_slot_pattern_periodicity",
+]
+
+
+def _run_mcp_gate(out_dir: Path):
+    """运行 DiskCAD-MCP 确定性质量门（纯本地，无 LLM）。恒返回 dict，不抛。"""
+    try:
+        from mcp_tools import generate_quality_report
+        report = generate_quality_report(
+            {"base_dir": str(out_dir), "tool_subset": CORE_SUBSET})
+        summary = {
+            "ok": bool(report.get("ok")),
+            "passed_checks": report.get("passed_checks", []),
+            "failed_checks": report.get("failed_checks", []),
+            "measurements": report.get("measurements", []),
+            "ran_checks": len(report.get("passed_checks", [])) + len(report.get("failed_checks", [])),
+            "method": "deterministic(mcp_tools.generate_quality_report)",
+        }
+        return {**report, "summary": summary, "skipped": False}
+    except Exception as exc:
+        return {"ok": False, "passed_checks": [], "failed_checks": [],
+                "measurements": [], "ran_checks": 0, "error": str(exc),
+                "skipped": True,
+                "summary": {"ok": False, "passed_checks": [], "failed_checks": [],
+                            "measurements": [], "ran_checks": 0,
+                            "method": "deterministic(mcp_tools.generate_quality_report)",
+                            "skipped": True}}
+
+
+def _write_inspection_validation(meta_path: Path, gate: dict):
+    """把 MCP 门结果写回 metadata.validation.inspection_validation（替换占位符 ok:false）。"""
+    try:
+        meta = json.loads(Path(meta_path).read_text(encoding="utf-8"))
+    except Exception:
+        return  # metadata 未就绪则跳过（门禁判定已独立完成）
+    issues = [{"code": "mcp_gate_check_failed", "message": c, "severity": "error"}
+              for c in gate.get("failed_checks", [])]
+    meta.setdefault("validation", {})["inspection_validation"] = {
+        "ok": bool(gate.get("ok")),
+        "stage": "inspection_validation",
+        "issues": issues,
+        "checks": {k: gate.get(k) for k in ("passed_checks", "failed_checks", "measurements")},
+        "gate": "mcp_deterministic",
+        "report_time": datetime.now().isoformat(timespec="seconds"),
+    }
+    try:
+        Path(meta_path).write_text(json.dumps(meta, indent=2, ensure_ascii=False),
+                                   encoding="utf-8")
+    except Exception:
+        pass
 
 # ============================================================
 # Chinese option labels — translate ALL spatial option text
@@ -443,9 +507,12 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
         if provider is not None and getattr(provider, "last_report", None) is not None:
             (out_dir/"autofix_report.json").write_text(
                 provider.last_report.model_dump_json(indent=2), encoding="utf-8")
-        if repair_accepted:
+        # 无条件落盘修复后 raw（DiskCAD-MCP 门/参数再生依赖它；无修复时即 llm_raw）
+        try:
             (out_dir/"raw_fixed.json").write_text(
                 json.dumps(loop.document, indent=2, ensure_ascii=False), encoding="utf-8")
+        except Exception:
+            pass  # 序列化失败不阻塞 pipeline；门禁侧据此 skip/fail
 
         canonical, report, bundle = vrun.canonical, vrun.report, vrun.bundle
         # 可观测性: 规则执行记录 + 激活的扩展 (指导书 §15.2/§17 Phase 6)
@@ -462,6 +529,15 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
 
         # ---- Runtime 已在 orchestrator 内执行 (含失败分类/审计) ----
         rr = loop.run_result
+
+        # ---- DiskCAD-MCP 外层质量门（确定性，论文"CAD 生成后的独立质量门"）----
+        mcp_gate = _run_mcp_gate(out_dir)
+        if mcp_gate is not None:
+            _write_inspection_validation(meta_path, mcp_gate)
+            if not mcp_gate["ok"]:
+                _update_task(task_id, status="failed", progress=0,
+                             error=f"MCP quality gate failed: {mcp_gate['failed_checks']}")
+                return  # 被拒任务跳过 STL 导出
 
         step_kb = step_path.stat().st_size//1024 if step_path.exists() else 0
         stl_path = out_dir / "output.stl"
@@ -487,7 +563,8 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                 "validation_llm_attempts": loop.outcome.validation_llm_attempts,
                 "runtime_llm_attempts": loop.outcome.runtime_llm_attempts,
             },
-            "geometryType": "step", "parameters": {"stepKb": step_kb, "stlOk": stl_ok}}
+            "geometryType": "step", "parameters": {"stepKb": step_kb, "stlOk": stl_ok},
+            "mcpGate": mcp_gate["summary"] if mcp_gate is not None else None}
         if not rr.ok: task_result["error_detail"] = rr.error or "Runtime failed"
         _update_task(task_id, status="completed", progress=100, result=task_result)
 

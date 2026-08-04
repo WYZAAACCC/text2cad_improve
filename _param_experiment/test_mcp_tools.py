@@ -101,17 +101,24 @@ def main():
         all_ok &= ok; n += 1
         print(f"[{name}] {'PASS' if ok else 'FAIL'} { {k: v for k, v in r.items() if k != 'ok'} }")
 
-    # ── 6. 展示类 ──
-    r = call("render_standard_views")
-    ok = r.get("ok") and Path(r["section_view_png"]).exists()
+    # ── 6. 展示类（含局部放大图）──
+    r = call("render_standard_views", {"focus": "root_fillet"})
+    ok = r.get("ok") and Path(r["section_view_png"]).exists() and Path(r["detail_view_png"]).exists()
     all_ok &= ok; n += 1
-    print(f"[render_standard_views] {'PASS' if ok else 'FAIL'} {r.get('section_view_png')}")
+    print(f"[render_standard_views] {'PASS' if ok else 'FAIL'} {r.get('section_view_png')} detail={r.get('detail_view_png')}")
 
     # ── 7. 汇总 ──
     r = call("generate_quality_report")
     ok = r.get("ok") and len(r["passed_checks"]) >= 5 and not r["failed_checks"]
     all_ok &= ok; n += 1
     print(f"[generate_quality_report] {'PASS' if ok else 'FAIL'} 通过{len(r.get('passed_checks', []))} 失败{r.get('failed_checks')}")
+
+    # ── 8. base_dir 透传 + 新任务目录（mon_*，圆角 LLM 自由选择后产物）──
+    MON_DIR = str(Path(__file__).resolve().parent.parent / "app" / "text-to-cad" / "server" / "output" / "mon_e2b035beb218")
+    r = call("generate_quality_report", {"base_dir": MON_DIR})
+    ok = r.get("ok") and not r["failed_checks"]
+    all_ok &= ok; n += 1
+    print(f"[generate_quality_report @ mon_* 新目录] {'PASS' if ok else 'FAIL'} 通过{len(r.get('passed_checks', []))} 失败{r.get('failed_checks')}")
 
     print(f"\n{'='*60}")
     print(f"单元测试: {'全部通过' if all_ok else '有失败'} ({n}/{n})")

@@ -560,14 +560,40 @@ def validate_slot_step_roundtrip(args=None):
 # 6. 展示类
 # ═══════════════════════════════════════════════════════════════════════════════
 
+def _detail_focus_points(ir, slot, focus):
+    """局部放大图的目标顶点索引 + 标题。"""
+    if focus == "root_fillet":
+        node = _root_fillet(ir)
+        if node is not None:
+            ai = node["params"].get("at_vertex_index")
+            idx = ai if isinstance(ai, list) else ([ai] if isinstance(ai, int) else [])
+            r = node["params"].get("radius_mm", 0)
+            return idx, f"局部放大图（齿根圆角 R{r:g}mm）"
+        focus = "throat"  # 无根圆角时退回喉部
+    if focus == "throat":
+        return [0], "局部放大图（喉部/口部）"
+    if focus == "lobe_top":
+        n_upper = len(slot) // 2
+        upper = slot[:n_upper]
+        idx = [i for i in range(1, n_upper - 1)
+               if upper[i]["y_mm"] >= upper[i - 1]["y_mm"]
+               and upper[i]["y_mm"] > upper[i + 1]["y_mm"]]
+        return idx, "局部放大图（齿顶）"
+    return [0], "局部放大图"
+
+
 @register(
     "render_standard_views",
-    "生成标准视图 PNG：剖视图（盘面 R-Z 轮廓）、俯视图（外圆+榫槽节距示意）、榫槽轮廓图。",
-    {"type": "object", "properties": {"base_dir": {"type": "string"}},
-     "required": [], "additionalProperties": False},
+    "生成标准视图 PNG：剖视图（盘面 R-Z 轮廓）、俯视图（外圆+榫槽节距示意）、榫槽轮廓图、局部放大图。",
+    {"type": "object", "properties": {
+        "base_dir": {"type": "string"},
+        "focus": {"type": "string", "enum": ["root_fillet", "throat", "lobe_top"],
+                  "description": "局部放大焦点：齿根圆角(默认)/喉部/齿顶"},
+    }, "required": [], "additionalProperties": False},
 )
 def render_standard_views(args=None):
     base = _base_dir(args or {})
+    focus = (args or {}).get("focus") or "root_fillet"
     try:
         import matplotlib
         matplotlib.use("Agg")
@@ -634,8 +660,34 @@ def render_standard_views(args=None):
     fig.savefig(slot_path, dpi=150)
     plt.close(fig)
 
+    # 局部放大图（论文要求：标准视图、剖视图、局部放大图）
+    target_idx, title = _detail_focus_points(ir, slot, focus)
+    fig, ax = plt.subplots(figsize=(6, 4))
+    xs = [p["x_mm"] for p in slot] + [slot[0]["x_mm"]]
+    ys = [p["y_mm"] for p in slot] + [slot[0]["y_mm"]]
+    ax.plot(xs, ys, "-o", ms=2.5, color="#2ca02c")
+    for i in target_idx:
+        ax.plot(slot[i]["x_mm"], slot[i]["y_mm"], "o", color="#d62728", ms=6, zorder=5)
+    if target_idx:
+        tx = [slot[i]["x_mm"] for i in target_idx]
+        ty = [slot[i]["y_mm"] for i in target_idx]
+        cx, cy = sum(tx) / len(tx), sum(ty) / len(ty)
+        half_w = max((max(tx) - min(tx)) / 2, 8) + 2
+        half_h = max((max(ty) - min(ty)) / 2, 6) + 2
+        ax.set_xlim(cx - half_w, cx + half_w)
+        ax.set_ylim(cy - half_h, cy + half_h)
+    ax.set_aspect("equal")
+    ax.axhline(0, color="gray", lw=0.6, ls="--")
+    ax.set_title(title, fontsize=10)
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+    detail_path = VIEW_DIR / "detail_view.png"
+    fig.savefig(detail_path, dpi=150)
+    plt.close(fig)
+
     return {"ok": True, "section_view_png": str(sec_path),
-            "top_view_png": str(top_path), "slot_profile_png": str(slot_path)}
+            "top_view_png": str(top_path), "slot_profile_png": str(slot_path),
+            "detail_view_png": str(detail_path)}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -651,10 +703,14 @@ def render_standard_views(args=None):
 def generate_quality_report(args=None):
     base = _base_dir(args or {})
     results = {}
+    subset = (args or {}).get("tool_subset")  # 可选：只跑指定检查（生产门禁用 CORE_SUBSET）
     for name, t in TOOLS.items():
-        # 排除非检查类：质量报告自身、展示、参数再生、参数清单
+        # 排除非检查类：质量报告自身、展示、参数再生、参数清单、影响分析
         if name in ("generate_quality_report", "render_standard_views",
-                    "regenerate_model", "list_regeneratable_params"):
+                    "regenerate_model", "list_regeneratable_params",
+                    "analyze_param_impact"):
+            continue
+        if subset is not None and name not in subset:
             continue
         try:
             results[name] = t["handler"](args)
@@ -840,9 +896,147 @@ def regenerate_model(args=None):
             "note": "继续用检查工具（如 check_solid_validity/count_fir_tree_slots）传 base_dir=new_base_dir 验证新模型"}
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# 9. 参数再生影响分析（论文公式 Vregen = VΔP ∪ Descendants(VΔP)）
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _downstream_closure(ir: dict, source_ids: list) -> list:
+    """沿 inputs 边的下游闭包：返回 VΔP ∪ Descendants(VΔP)。
+
+    inputs 边方向为 生产者→消费者；建 children[producer]=[consumer] 后 BFS。
+    纯图运算，与节点命名无关。
+    """
+    children: dict = {}
+    for n in ir["nodes"]:
+        for inp in n.get("inputs") or []:
+            prod = inp.get("node")
+            if prod:
+                children.setdefault(prod, []).append(n["id"])
+    seen = set(source_ids)
+    stack = list(source_ids)
+    while stack:
+        cur = stack.pop()
+        for c in children.get(cur, []):
+            if c not in seen:
+                seen.add(c)
+                stack.append(c)
+    return list(seen)
+
+
+def _resolve_param_sources(ir: dict, param_key: str):
+    """op 级语义解析参数→源节点（VΔP），不依赖节点命名（PARAM_REGISTRY 死绑 b572 ID 已失效）。
+
+    返回 {"ids", "field", "values"}；未知参数返回 None。
+    """
+    if param_key in ("slot_count", "slot_distribution_radius"):
+        for n in ir["nodes"]:
+            if n["op"] == "circular_pattern_component":
+                field = "count" if param_key == "slot_count" else "radius_mm"
+                return {"ids": [n["id"]], "field": field,
+                        "values": [n["params"].get(field)]}
+        return None
+    if param_key == "slot_axial_depth":
+        comp = _component_with_op(ir, "extrude_profile")
+        for n in ir["nodes"]:
+            if n["component"] == comp and n["op"] == "extrude_profile":
+                return {"ids": [n["id"]], "field": "depth_mm",
+                        "values": [n["params"].get("depth_mm")]}
+        return None
+    if param_key in ("root_fillet", "flank_fillet", "lobe_top_fillet"):
+        # 榫槽圆角：取榫槽组件全部 fillet_sketch（新方案按半径拆分，角色打散，并集才是正确 VΔP）
+        comp = _component_with_op(ir, "extrude_profile")
+        ids = [n["id"] for n in ir["nodes"]
+               if n["component"] == comp and n["op"] == "fillet_sketch"]
+        if not ids:
+            return None
+        return {"ids": ids, "field": "radius_mm",
+                "values": [_get_node(ir, i)["params"].get("radius_mm") for i in ids]}
+    if param_key in ("disc_hub_web_fillet", "disc_web_rim_fillet"):
+        comp = _component_with_op(ir, "revolve_profile")
+        target = {2, 9} if param_key == "disc_hub_web_fillet" else {3, 8}
+        ids, vals = [], []
+        for n in ir["nodes"]:
+            if n["component"] == comp and n["op"] == "fillet_sketch":
+                ai = n["params"].get("at_vertex_index")
+                ai_set = set(ai) if isinstance(ai, list) else (
+                    {ai} if isinstance(ai, int) else set())
+                if ai_set & target:
+                    ids.append(n["id"])
+                    vals.append(n["params"].get("radius_mm"))
+        if not ids:
+            return None
+        return {"ids": ids, "field": "radius_mm", "values": vals}
+    return None
+
+
+@register(
+    "analyze_param_impact",
+    "分析修改某参数会影响的节点集合（Vregen = VΔP ∪ Descendants(VΔP)），"
+    "报告将重建的节点，供 regenerate_model 前评估影响范围。",
+    {"type": "object", "properties": {
+        "param_key": {"type": "string", "description": "参数 key，见 list_regeneratable_params"},
+        "new_value": {"type": "number", "description": "可选，目标新值（仅做范围校验，不触发重建）"},
+        "node_id": {"type": "string", "description": "可选，任意单节点 id 的影响分析（绕过参数语义解析）"},
+        "base_dir": {"type": "string"},
+    }, "required": ["param_key"], "additionalProperties": False},
+)
+def analyze_param_impact(args=None):
+    base = _base_dir(args or {})
+    args = args or {}
+    try:
+        ir = _load_ir(base)
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+    param_key, node_id = args.get("param_key"), args.get("node_id")
+    if not param_key and not node_id:
+        return {"ok": False, "error": "缺少 param_key（或 node_id）"}
+    try:
+        if node_id:
+            if _get_node(ir, node_id) is None:
+                return {"ok": False, "error": f"节点 {node_id} 不存在"}
+            source_ids, field, values = [node_id], None, [None]
+        else:
+            res = _resolve_param_sources(ir, param_key)
+            if res is None:
+                return {"ok": False, "error": f"未知或不适用参数 {param_key!r}"}
+            source_ids, field, values = res["ids"], res["field"], res["values"]
+
+        # 标签/范围来自 PARAM_REGISTRY（仅标签与范围字段，不依赖其死绑节点 id）
+        reg = next((r for r in PARAM_REGISTRY if r["param"] == param_key), None)
+        label = reg["label"] if reg else param_key
+        rng = reg["range"] if reg else None
+
+        current = values[0] if values else None
+        new_value = args.get("new_value")
+        in_range = None
+        if new_value is not None and rng is not None:
+            in_range = rng[0] <= new_value <= rng[1]
+
+        affected = _downstream_closure(ir, source_ids)
+        node_map = {n["id"]: n for n in ir["nodes"]}
+        src_set = set(source_ids)
+        affected_nodes = [{
+            "id": nid, "op": node_map[nid].get("op"),
+            "component": node_map[nid].get("component"),
+            "phase": node_map[nid].get("phase"),
+            "role": "source" if nid in src_set else "descendant",
+        } for nid in affected]
+        return {"ok": True, "param_key": param_key, "node_id": node_id,
+                "label": label, "current_value": current, "new_value": new_value,
+                "in_range": in_range, "range": rng, "field": field,
+                "source_nodes": [n for n in affected_nodes if n["role"] == "source"],
+                "affected_nodes": affected_nodes,
+                "affected_node_count": len(affected_nodes),
+                "will_rebuild": True,
+                "rebuild_mechanism": "整文档重建(regenerate_model)",
+                "note": "Vregen = VΔP ∪ Descendants(VΔP)；实际重建走 regenerate_model 整文档确定性重建"}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+
+
 if __name__ == "__main__":
     for name, t in TOOLS.items():
-        if name == "regenerate_model":  # 需要参数，跳过
+        if name in ("regenerate_model", "analyze_param_impact"):  # 需要参数，跳过
             continue
         try:
             res = t["handler"]({})
