@@ -4,7 +4,7 @@ Text-to-CAD HTTP Server — skills/orchestrator L1/L2 + spatial v6 interaction.
 Start:  E:/auto_detection_process/.conda/python.exe -m uvicorn server.main:app --port 8080
 """
 from __future__ import annotations
-import json, os, sys, uuid, threading, traceback, time as _time, math
+import json, os, sys, uuid, threading, traceback, hashlib, time as _time, math
 from pathlib import Path
 from datetime import datetime
 from fastapi import FastAPI, HTTPException
@@ -153,25 +153,96 @@ def _append_parametric_block(text: str, req: dict) -> str:
 
 
 # ============================================================
+# 数据集字段 L：工具调用轨迹（逐次审计，不碰 src）+ pipeline 日志汇总
+# ============================================================
+def _json_hash(obj) -> str:
+    """JSON 稳定哈希（同 ir/hashing.stable_hash 语义：sort_keys + default=str → sha256）。"""
+    try:
+        return "sha256:" + hashlib.sha256(
+            json.dumps(obj, sort_keys=True, default=str, ensure_ascii=False).encode("utf-8")).hexdigest()
+    except Exception:
+        return ""
+
+
+class _AuditToolCaller:
+    """DeepSeekToolCaller 薄包装：逐次记录工具调用轨迹（L 增强，不碰 src）。
+
+    仅转发 call_strict_tool（唯一公开方法，sync + 全 keyword-only）。
+    repair 调用（tool_name=emit_repair_patch）内联 messages 全文（orchestrator
+    内部构造、无其他落盘来源）；L1/L2 调用只存 hash/字数（全文在 prompt_full
+    _l{1,2}.json，避免重复）。出参存摘要（keys/size/hash）+ 引用既有产物。
+    失败透传不吞（L1 重试 / repair 分类依赖）。"""
+    _REPAIR_TOOL = "emit_repair_patch"
+
+    def __init__(self, inner, audit: list):
+        self._inner = inner
+        self._audit = audit
+
+    def call_strict_tool(self, **kw):
+        msgs = kw.get("messages") or []
+        rec = {
+            "ts": datetime.now().isoformat(timespec="seconds"),
+            "tool_name": kw.get("tool_name"),
+            "model": getattr(kw.get("model_config"), "model", None),
+            "prompt_chars": sum(len(str(m.get("content", ""))) for m in msgs),
+            "prompt_hash": _json_hash(msgs),
+            "tool_schema_hash": _json_hash(kw.get("tool_schema")),
+        }
+        if kw.get("tool_name") == self._REPAIR_TOOL:
+            rec["prompt_messages"] = msgs  # repair prompt 全文（无其他落盘来源）
+        t0 = _time.perf_counter()
+        try:
+            r = self._inner.call_strict_tool(**kw)
+            rec["ok"] = True
+            rec["raw_response_id"] = r.raw_response_id
+            rec["model"] = r.model
+            args = r.arguments
+            if isinstance(args, dict):
+                rec["result_keys"] = sorted(args.keys())
+                rec["result_size"] = len(json.dumps(args, ensure_ascii=False))
+                rec["result_hash"] = _json_hash(args)
+            else:
+                rec["result_size"] = len(json.dumps(args, ensure_ascii=False))
+            return r
+        except Exception as exc:
+            rec["ok"] = False
+            rec["error"] = f"{type(exc).__name__}: {exc}"
+            raise
+        finally:
+            rec["elapsed_s"] = round(_time.perf_counter() - t0, 3)
+            self._audit.append(rec)
+
+
+# ============================================================
 # 数据集字段 L：pipeline 日志汇总落盘（论文 Y 元组第 6 元素）
 # ============================================================
 def _write_pipeline_log(out_dir: Path, *, ok: bool, error: str = "",
-                        stages: dict | None = None) -> None:
+                        stages: dict | None = None,
+                        tool_audit: list | None = None) -> None:
     """L：pipeline 日志汇总落盘（需求解析/生成/执行/修复/工具调用的入口索引）。
 
-    阶段摘要 + 产物清单（目录扫描自动生成，覆盖 req_param_report / llm_raw /
-    validation_execution / repair_summary / repair/* 等分散日志产物）。
-    失败不阻塞主流程。"""
+    阶段摘要 + 工具调用统计 + 产物清单（目录扫描自动生成）；非空 tool_audit
+    时另写 tool_calls.json（逐次调用轨迹）。失败不阻塞主流程。"""
     try:
+        ta = tool_audit or []
         log = {
             "schema": "pipeline_log_v1",
             "ok": ok,
             "error": error or None,
             "stages": stages or {},
+            "tool_calls": {
+                "count": len(ta),
+                "ok": sum(1 for r in ta if r.get("ok")),
+                "failed": sum(1 for r in ta if not r.get("ok")),
+                "total_elapsed_s": round(sum(r.get("elapsed_s", 0) for r in ta), 3),
+            },
             "artifacts": sorted(p.name for p in out_dir.iterdir() if p.is_file()),
         }
         (out_dir / "pipeline_log.json").write_text(
             json.dumps(log, indent=2, ensure_ascii=False), encoding="utf-8")
+        if ta:
+            (out_dir / "tool_calls.json").write_text(
+                json.dumps(ta, indent=2, ensure_ascii=False), encoding="utf-8")
     except Exception:
         pass
 
@@ -441,7 +512,9 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
         except Exception:
             pass
         config = LlmModelConfig(model="deepseek-v4-pro", base_url="https://api.deepseek.com/beta")
-        caller = DeepSeekToolCaller()
+        # 数据集字段 L：逐次工具调用轨迹（薄 wrapper，不碰 src；L1/L2/双 repair 环共用同一实例）
+        _tool_audit: list = []
+        caller = _AuditToolCaller(DeepSeekToolCaller(), _tool_audit)
         reg = default_registry()
         prompt_compiler = PromptCompiler()
 
@@ -495,6 +568,12 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                                                  request_id=task_id)
             (out_dir/"prompt_trace_l1.json").write_text(
                 l1c.trace.model_dump_json(indent=2), encoding="utf-8")
+            # 数据集字段 L：prompt 全文落盘（trace 仅 hash，此处存 system+user 实际发送版）
+            try:
+                (out_dir/"prompt_full_l1.json").write_text(
+                    json.dumps(l1c.messages, ensure_ascii=False, indent=2), encoding="utf-8")
+            except Exception:
+                pass
             l1_tool = build_level1_tool()
             LEGACY = {"axisymmetric_base":"axisymmetric","sketch_extrude_base":"sketch_extrude",
                       "loft_sweep_base":"loft_sweep","shell_housing_base":"shell_housing","composition_base":"composition"}
@@ -561,7 +640,8 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
 
         if plan.route_decision != "generative_cad_ir":
             _write_pipeline_log(out_dir, ok=False,
-                                error=f"Route: {plan.route_decision}, not generative_cad_ir")
+                                error=f"Route: {plan.route_decision}, not generative_cad_ir",
+                                tool_audit=_tool_audit)
             _update_task(task_id, status="failed", progress=0,
                          error=f"Route: {plan.route_decision}, not generative_cad_ir")
             return
@@ -578,6 +658,12 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                                                  request_id=task_id)
             (out_dir/"prompt_trace_l2.json").write_text(
                 l2c.trace.model_dump_json(indent=2), encoding="utf-8")
+            # 数据集字段 L：prompt 全文落盘（user 含方向 X 参数化注入块 = 实际发送版）
+            try:
+                (out_dir/"prompt_full_l2.json").write_text(
+                    json.dumps(l2c.messages, ensure_ascii=False, indent=2), encoding="utf-8")
+            except Exception:
+                pass
 
             l2_tool = build_level2_tool()
             tc2 = caller.call_strict_tool(
@@ -593,7 +679,8 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                 (out_dir/"fillet_clamp.json").write_text(
                     json.dumps(clamp_report, indent=2, ensure_ascii=False), encoding="utf-8")
         except Exception as e:
-            _write_pipeline_log(out_dir, ok=False, error=f"L2 authoring failed: {e}")
+            _write_pipeline_log(out_dir, ok=False, error=f"L2 authoring failed: {e}",
+                                tool_audit=_tool_audit)
             _update_task(task_id, status="failed", progress=0, error=f"L2 authoring failed: {e}")
             return
 
@@ -665,7 +752,8 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                 pass
         errs = [i for i in report.issues if i.severity=="error"]
         if canonical is None or errs:
-            _write_pipeline_log(out_dir, ok=False, error=f"Validation: {len(errs)} errors")
+            _write_pipeline_log(out_dir, ok=False, error=f"Validation: {len(errs)} errors",
+                                tool_audit=_tool_audit)
             _update_task(task_id, status="failed", progress=0,
                          error=f"Validation: {len(errs)} errors")
             return
@@ -679,7 +767,8 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
             _write_inspection_validation(meta_path, mcp_gate)
             if not mcp_gate["ok"]:
                 _write_pipeline_log(out_dir, ok=False,
-                                    error=f"MCP quality gate failed: {mcp_gate['failed_checks']}")
+                                    error=f"MCP quality gate failed: {mcp_gate['failed_checks']}",
+                                    tool_audit=_tool_audit)
                 _update_task(task_id, status="failed", progress=0,
                              error=f"MCP quality gate failed: {mcp_gate['failed_checks']}")
                 return  # 被拒任务跳过 STL 导出
@@ -724,13 +813,13 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                          "failed_checks": mcp_gate.get("failed_checks", [])
                          if not mcp_gate["ok"] else []},
             "stl": {"ok": stl_ok},
-        })
+        }, tool_audit=_tool_audit)
         _update_task(task_id, status="completed", progress=100, result=task_result)
 
     except Exception as exc:
         _update_task(task_id, status="failed", progress=0,
                      error=str(exc), result={"error_detail": str(exc), "traceback": traceback.format_exc()})
-        _write_pipeline_log(out_dir, ok=False, error=str(exc))
+        _write_pipeline_log(out_dir, ok=False, error=str(exc), tool_audit=_tool_audit)
 
 # ============================================================
 # Routes

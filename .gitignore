@@ -49,7 +49,7 @@ output/
 !app/text-to-cad/server/output/
 # ...but exclude monitor-test task dirs (transient pipeline runs)
 app/text-to-cad/server/output/mon_*/
-app/text-to-cad/server/output/verify_ds_*/
+app/text-to-cad/server/output/verify_*/
 # Trace outputs
 trace_output.json
 # Dev scripts
