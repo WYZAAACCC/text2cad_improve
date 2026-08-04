@@ -47,6 +47,8 @@ skills-lock.json
 output/
 # ...but keep text-to-cad server outputs tracked
 !app/text-to-cad/server/output/
+# ...but exclude monitor-test task dirs (transient pipeline runs)
+app/text-to-cad/server/output/mon_*/
 # Trace outputs
 trace_output.json
 # Dev scripts
