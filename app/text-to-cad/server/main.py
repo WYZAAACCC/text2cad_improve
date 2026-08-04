@@ -116,6 +116,43 @@ def _clamp_fillet_radii(raw: dict, factor: float = 0.85) -> dict:
 
 
 # ============================================================
+# L2 prompt 注入：实验参数化轮廓规则（方向 X，提高喉部/齿数/圆角遵循率）
+# ============================================================
+def _append_parametric_block(text: str, req: dict) -> str:
+    """把实验参数化轮廓规则 + 本次需求参数值附加到 user_request（方向 X）。
+
+    补上生产 L2 缺失的"参数→轮廓坐标"映射（生产 system 是硬编码 26 点模板，
+    无 mouth=第0点y / 点数随齿数 2+4N+3 / 圆角 radius 映射规则）。
+    不碰 src；规则文本复用实验 param_prompts；实验模块不可用时静默跳过。
+    """
+    try:
+        from param_prompts import DISC_PROFILE_RULES, SLOT_PROFILE_RULES
+    except Exception:
+        return ""
+    lines = [
+        "",
+        "### PARAMETRIC PROFILE CONSTRUCTION (STRICTLY OBEY — overrides any hardcoded 26-point template in the system prompt) ###",
+        DISC_PROFILE_RULES,
+        SLOT_PROFILE_RULES,
+        "### 本次用户需求参数值（必须严格采用，不得使用模板默认值如 W_mouth=4.0 / D_total=24）###",
+    ]
+    if "throat_half_width_mm" in req:
+        lines.append(f"- 喉部半宽 = {req['throat_half_width_mm']}mm → mouth_half_width（榫槽轮廓第 0 点 y，X=0 处）")
+    if "teeth_count" in req:
+        n = int(req["teeth_count"])
+        per_side = 2 + 4 * n + 3
+        lines.append(f"- 齿数 = {n} → 榫槽每侧点数 = 2+4×{n}+3 = {per_side}，总点数 = {2 * per_side}")
+    if "slot_depth_mm" in req:
+        lines.append(f"- 槽深 = {req['slot_depth_mm']}mm → slot_depth（榫槽轮廓 x 范围 0 到 -{req['slot_depth_mm']}）")
+    if "root_fillet_mm" in req:
+        lines.append(f"- 齿根圆角 = {req['root_fillet_mm']}mm → 覆盖 neck/root 顶点的 fillet_sketch radius_mm = {req['root_fillet_mm']}")
+    if "slots" in req:
+        lines.append(f"- 槽数 = {req['slots']} → circular_pattern_component count = {req['slots']}")
+    lines.append("- 严格按上述参数构造轮廓点与圆角半径；fillet 的 at_vertex_index 按轮廓角色语义（neck 齿根 / tip_flank 齿面 / tip_platform 齿顶）重算。")
+    return "\n".join(lines)
+
+
+# ============================================================
 # DiskCAD-MCP 外层质量门（确定性，复用 _param_experiment/mcp_tools）
 # ============================================================
 # 门禁子集：实体健康 + STEP 回读 + IR 语义槽约束三大类。
@@ -501,7 +538,10 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
         try:
             # 提示词组合迁移至 PromptCompiler (prompt_system) — 输出与原内联拼接
             # 逐字节一致 (tests/generative_cad/prompt_system 回归锁定), 并落盘 trace。
-            l2c = prompt_compiler.compile_level2(text, plan, spatial_context=spatial_context,
+            # 方向 X：注入实验参数化轮廓规则 + 本次需求参数值（提高喉部/齿数/圆角遵循率）
+            from validate_req_params import extract_requirements
+            l2_text = text + _append_parametric_block(text, extract_requirements(text))
+            l2c = prompt_compiler.compile_level2(l2_text, plan, spatial_context=spatial_context,
                                                  request_id=task_id)
             (out_dir/"prompt_trace_l2.json").write_text(
                 l2c.trace.model_dump_json(indent=2), encoding="utf-8")
