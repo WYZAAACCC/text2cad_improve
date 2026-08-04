@@ -782,6 +782,8 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                 shape = cq.importers.importStep(str(step_path))
                 cq.exporters.export(shape, str(stl_path))
                 if stl_path.exists() and stl_path.stat().st_size > 0: stl_ok = True
+                # 数据集字段 MBRep：原生 B-rep（STEP 回读版，继承 ~0.06mm 中性格式偏差）
+                cq.exporters.export(shape, str(out_dir / "output.brep"))
             except Exception:
                 pass
 
