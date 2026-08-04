@@ -51,10 +51,10 @@ def main():
     check("disc_hub_web_fillet/b572", r["ok"] and r["affected_node_count"] == 7,
           f"cnt={r['affected_node_count']} affected={ids(r['affected_nodes'])}")
 
-    # 4. root_fillet → mon（圆角 LLM 自由选择后）：5 个按半径命名 fillet + extrude + pattern + bool
+    # 4. root_fillet → mon（主成分语义定位，精确源节点，不含并集）
     r = analyze_param_impact({"param_key": "root_fillet", "base_dir": MON})
     src = sorted(n["id"] for n in r["source_nodes"])
-    check("root_fillet/mon", r["ok"] and len(src) == 5 and r["affected_node_count"] == 8,
+    check("root_fillet/mon", r["ok"] and src == ["n_cutter_fillet_r1p0"] and r["affected_node_count"] == 6,
           f"src={src} cnt={r['affected_node_count']} affected={ids(r['affected_nodes'])}")
 
     # 5. 未知参数 → ok:false
@@ -79,6 +79,12 @@ def main():
     # 9. 不存在的 node_id → ok:false
     r = analyze_param_impact({"node_id": "n_missing", "base_dir": B572})
     check("missing node_id", not r["ok"], r.get("error"))
+
+    # 10. root_fillet → b572 语义定位 = 原死绑 ID（主成分 neck），证明语义化向后兼容
+    r = analyze_param_impact({"param_key": "root_fillet", "base_dir": B572})
+    src = sorted(n["id"] for n in r["source_nodes"])
+    check("root_fillet/b572 semantic==deadbind", r["ok"] and src == ["n_fillet_cutter_neck_root"],
+          f"src={src} affected={ids(r['affected_nodes'])}")
 
     print(f"\n{'='*60}")
     print(f"测试结果: {'全部通过' if all_ok else '有失败'} ({n}/{n})")

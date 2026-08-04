@@ -730,25 +730,24 @@ def generate_quality_report(args=None):
 
 REGEN_WS = Path(__file__).resolve().parent / "output" / "mcp_server" / "regen_ws"
 
-# 受支持参数清单（LLM 只认 param_key，程序映射到节点；对称节点同步改）
+# 受支持参数清单（LLM 只认 param_key，节点由 _resolve_param_nodes 语义定位，
+# 不依赖具体节点 id —— 圆角 LLM 自由选择后节点命名随 run 变化）
 PARAM_REGISTRY = [
-    {"param": "slot_count", "label": "榫槽数量", "node": "n_pattern_cutters",
+    {"param": "slot_count", "label": "榫槽数量",
      "field": "count", "range": [24, 96], "unit": "个", "type": "int"},
-    {"param": "slot_distribution_radius", "label": "榫槽分布半径", "node": "n_pattern_cutters",
+    {"param": "slot_distribution_radius", "label": "榫槽分布半径",
      "field": "radius_mm", "range": [200, 280], "unit": "mm", "type": "float"},
-    {"param": "slot_axial_depth", "label": "榫槽轴向长度", "node": "n_extrude_cutter",
+    {"param": "slot_axial_depth", "label": "榫槽轴向长度",
      "field": "depth_mm", "range": [20, 120], "unit": "mm", "type": "float"},
-    {"param": "root_fillet", "label": "齿根圆角", "node": "n_fillet_cutter_neck_root",
+    {"param": "root_fillet", "label": "齿根圆角",
      "field": "radius_mm", "range": [0.5, 4.0], "unit": "mm", "type": "float"},
-    {"param": "flank_fillet", "label": "齿面圆角", "node": "n_fillet_cutter_flanks",
+    {"param": "flank_fillet", "label": "齿面圆角",
      "field": "radius_mm", "range": [0.5, 4.0], "unit": "mm", "type": "float"},
-    {"param": "lobe_top_fillet", "label": "齿顶圆角", "node": "n_fillet_cutter_lobe_tops",
+    {"param": "lobe_top_fillet", "label": "齿顶圆角",
      "field": "radius_mm", "range": [0.5, 4.0], "unit": "mm", "type": "float"},
     {"param": "disc_hub_web_fillet", "label": "轮毂-腹板圆角",
-     "nodes": ["n_fillet_disc_hub_web_lower", "n_fillet_disc_hub_web_upper"],
      "field": "radius_mm", "range": [4, 20], "unit": "mm", "type": "float"},
     {"param": "disc_web_rim_fillet", "label": "腹板-轮缘圆角",
-     "nodes": ["n_fillet_disc_web_rim_lower", "n_fillet_disc_web_rim_upper"],
      "field": "radius_mm", "range": [4, 18], "unit": "mm", "type": "float"},
 ]
 
@@ -760,11 +759,99 @@ def _get_node(ir: dict, node_id: str):
     return None
 
 
-def _current_value(ir: dict, reg: dict):
-    node_ids = reg.get("nodes") or [reg["node"]]
-    node = _get_node(ir, node_ids[0])
-    if node is None:
+def _param_field(param_key: str):
+    reg = next((r for r in PARAM_REGISTRY if r["param"] == param_key), None)
+    return reg["field"] if reg else None
+
+
+def _slot_index_role(i: int, n_upper: int) -> str:
+    """轮廓顶点索引→角色前缀（mouth/neck/tip_flank_top/tip_platform_end/connector）。
+
+    上侧 5+4n 点（0=mouth, 1=neck, 2+4k=tip_flank_top, 3+4k=tip_platform_end,
+    4+4k=neck, 5+4k=connector）；下侧镜像 = 2·n_upper-1-i。
+    """
+    if i >= n_upper:
+        i = 2 * n_upper - 1 - i
+    if i == 0:
+        return "mouth"
+    return ("neck", "tip_flank_top", "tip_platform_end", "connector")[(i - 1) % 4]
+
+
+def _slot_fillet_class(ir: dict, node: dict):
+    """榫槽 fillet 节点按覆盖角色主成分分类：root/flank/lobe_top/None（平局/无覆盖→None）。
+
+    圆角 LLM 自由选择后榫槽 fillet 按半径分组、角色打散，
+    用轮廓角色映射把每个 at_vertex_index 归入 root(neck)/flank(tip_flank+connector)/
+    lobe_top(tip_platform_end)，占比最高者即该节点的语义角色。
+    """
+    n_upper = len(_slot_profile(ir)) // 2
+    ai = node["params"].get("at_vertex_index")
+    idxs = ai if isinstance(ai, list) else ([ai] if isinstance(ai, int) else [])
+    counts = {"root": 0, "flank": 0, "lobe_top": 0}
+    for i in idxs:
+        role = _slot_index_role(i, n_upper)
+        if role == "neck":
+            counts["root"] += 1
+        elif role in ("tip_flank_top", "connector"):
+            counts["flank"] += 1
+        elif role == "tip_platform_end":
+            counts["lobe_top"] += 1
+    best = max(counts, key=counts.get)
+    if counts[best] == 0 or sum(1 for v in counts.values() if v == counts[best]) > 1:
         return None
+    return best
+
+
+def _resolve_param_nodes(ir: dict, param_key: str):
+    """语义定位参数→节点 id 列表（不依赖节点命名）。未知/组件缺失→None。
+
+    - slot_count / slot_distribution_radius → circular_pattern_component
+    - slot_axial_depth → 榫槽组件 extrude_profile
+    - root/flank/lobe_top_fillet → 榫槽组件 fillet_sketch 按主成分角色分类
+    - disc_hub_web_fillet / disc_web_rim_fillet → 盘体组件 fillet ∩ at_vertex_index {2,9}/{3,8}
+    """
+    try:
+        if param_key in ("slot_count", "slot_distribution_radius"):
+            for n in ir["nodes"]:
+                if n["op"] == "circular_pattern_component":
+                    return [n["id"]]
+            return None
+        if param_key == "slot_axial_depth":
+            comp = _component_with_op(ir, "extrude_profile")
+            for n in ir["nodes"]:
+                if n["component"] == comp and n["op"] == "extrude_profile":
+                    return [n["id"]]
+            return None
+        if param_key in ("root_fillet", "flank_fillet", "lobe_top_fillet"):
+            comp = _component_with_op(ir, "extrude_profile")
+            cls = {"root_fillet": "root", "flank_fillet": "flank",
+                   "lobe_top_fillet": "lobe_top"}[param_key]
+            out = [n["id"] for n in ir["nodes"]
+                   if n["component"] == comp and n["op"] == "fillet_sketch"
+                   and _slot_fillet_class(ir, n) == cls]
+            return out or None
+        if param_key in ("disc_hub_web_fillet", "disc_web_rim_fillet"):
+            comp = _component_with_op(ir, "revolve_profile")
+            target = {2, 9} if param_key == "disc_hub_web_fillet" else {3, 8}
+            out = []
+            for n in ir["nodes"]:
+                if n["component"] == comp and n["op"] == "fillet_sketch":
+                    ai = n["params"].get("at_vertex_index")
+                    ai_set = set(ai) if isinstance(ai, list) else (
+                        {ai} if isinstance(ai, int) else set())
+                    if ai_set & target:
+                        out.append(n["id"])
+            return out or None
+    except ValueError:
+        return None
+    return None
+
+
+def _current_value(ir: dict, reg: dict):
+    nodes = _resolve_param_nodes(ir, reg["param"])
+    if not nodes:
+        return None
+    node = _get_node(ir, nodes[0])
     return node["params"].get(reg["field"])
 
 
@@ -831,15 +918,14 @@ def regenerate_model(args=None):
             errors.append(f"{key}={val} 超出范围 [{lo},{hi}]{reg['unit']}")
             continue
         old = _current_value(raw, reg)
-        node_ids = reg.get("nodes") or [reg["node"]]
-        missing = [nid for nid in node_ids if _get_node(raw, nid) is None]
-        if missing:
-            errors.append(f"参数 {key} 对应节点缺失: {missing}")
+        node_ids = _resolve_param_nodes(raw, key)
+        if not node_ids:
+            errors.append(f"参数 {key} 在当前文档中不可用（未找到对应节点）")
             continue
         for nid in node_ids:
             _get_node(raw, nid)["params"][reg["field"]] = val
         changes.append({"param": key, "label": reg["label"], "old": old, "new": val,
-                        "unit": reg["unit"]})
+                        "unit": reg["unit"], "nodes": node_ids})
 
     if errors:
         return {"ok": False, "reason": "非法参数", "detail": errors, "param_changes": changes}
@@ -924,49 +1010,16 @@ def _downstream_closure(ir: dict, source_ids: list) -> list:
 
 
 def _resolve_param_sources(ir: dict, param_key: str):
-    """op 级语义解析参数→源节点（VΔP），不依赖节点命名（PARAM_REGISTRY 死绑 b572 ID 已失效）。
+    """语义解析参数→源节点（VΔP），统一走 _resolve_param_nodes（精确语义定位）。
 
-    返回 {"ids", "field", "values"}；未知参数返回 None。
+    返回 {"ids", "field", "values"}；未知/不可用返回 None。
     """
-    if param_key in ("slot_count", "slot_distribution_radius"):
-        for n in ir["nodes"]:
-            if n["op"] == "circular_pattern_component":
-                field = "count" if param_key == "slot_count" else "radius_mm"
-                return {"ids": [n["id"]], "field": field,
-                        "values": [n["params"].get(field)]}
+    ids = _resolve_param_nodes(ir, param_key)
+    if not ids:
         return None
-    if param_key == "slot_axial_depth":
-        comp = _component_with_op(ir, "extrude_profile")
-        for n in ir["nodes"]:
-            if n["component"] == comp and n["op"] == "extrude_profile":
-                return {"ids": [n["id"]], "field": "depth_mm",
-                        "values": [n["params"].get("depth_mm")]}
-        return None
-    if param_key in ("root_fillet", "flank_fillet", "lobe_top_fillet"):
-        # 榫槽圆角：取榫槽组件全部 fillet_sketch（新方案按半径拆分，角色打散，并集才是正确 VΔP）
-        comp = _component_with_op(ir, "extrude_profile")
-        ids = [n["id"] for n in ir["nodes"]
-               if n["component"] == comp and n["op"] == "fillet_sketch"]
-        if not ids:
-            return None
-        return {"ids": ids, "field": "radius_mm",
-                "values": [_get_node(ir, i)["params"].get("radius_mm") for i in ids]}
-    if param_key in ("disc_hub_web_fillet", "disc_web_rim_fillet"):
-        comp = _component_with_op(ir, "revolve_profile")
-        target = {2, 9} if param_key == "disc_hub_web_fillet" else {3, 8}
-        ids, vals = [], []
-        for n in ir["nodes"]:
-            if n["component"] == comp and n["op"] == "fillet_sketch":
-                ai = n["params"].get("at_vertex_index")
-                ai_set = set(ai) if isinstance(ai, list) else (
-                    {ai} if isinstance(ai, int) else set())
-                if ai_set & target:
-                    ids.append(n["id"])
-                    vals.append(n["params"].get("radius_mm"))
-        if not ids:
-            return None
-        return {"ids": ids, "field": "radius_mm", "values": vals}
-    return None
+    field = _param_field(param_key)
+    return {"ids": ids, "field": field,
+            "values": [_get_node(ir, i)["params"].get(field) if field else None for i in ids]}
 
 
 @register(
