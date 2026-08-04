@@ -328,9 +328,11 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                         tool_schema=l1_tool["function"]["parameters"], model_config=config)
                     args = dict(tc.arguments)
                     # LLM 可能返回 null (而非缺省): get(k, []) 对存在的 None 键
-                    # 仍返回 None → for 迭代 TypeError。规范化为 []。
+                    # 仍返回 None → for 迭代 TypeError / Pydantic 拒绝 null。规范化为 []。
                     if args.get("selected_domain_skills") is None:
                         args["selected_domain_skills"] = []
+                    if args.get("selected_dialects") is None:
+                        args["selected_dialects"] = []
                     for s in args["selected_domain_skills"]:
                         if not s.get("skill_version"): s["skill_version"]="1.0"
                     plan = DialectSelectionPlan.model_validate(args)
