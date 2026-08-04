@@ -50,6 +50,8 @@ output/
 # ...but exclude monitor-test task dirs (transient pipeline runs)
 app/text-to-cad/server/output/mon_*/
 app/text-to-cad/server/output/verify_*/
+# ...but exclude regenerable derived fields (run_enrich 可再生成)
+app/text-to-cad/server/output/*/dataset_enrich.json
 # Trace outputs
 trace_output.json
 # Dev scripts
