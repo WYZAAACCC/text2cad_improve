@@ -99,8 +99,11 @@ def _symbolize(obj):
 
 
 def _ir_doc_hash(raw: dict) -> str:
-    """Disk-G-CAD 文档哈希：RawGcadDocument.model_dump（对齐 raw_graph_hash 风格）→ params 符号化 → stable_hash。
+    """Disk-G-CAD 文档哈希：model_dump → 节点 id 归一（抗 LLM 命名漂移）→ params 符号化 → stable_hash。
 
+    - nodes 按 (component, dialect, op, op_version, 参数符号化 hash) 稳定排序，抗节点顺序漂移；
+    - 节点 id 替换为位置占位 n{i}，inputs/outputs/components.root_node 引用同步替换，抗命名漂移；
+    - params 数值/字符串符号化：同结构不同参数值 → 同 hash；改结构（点数/节点数）→ 变。
     注意：须走 model_dump（pydantic 补 autofix_hints 等默认字段），不能直接 hash raw JSON。
     """
     try:
@@ -108,11 +111,44 @@ def _ir_doc_hash(raw: dict) -> str:
         doc = RawGcadDocument.model_validate(raw).model_dump()
     except Exception as exc:  # noqa: BLE001
         return _json_hash({"error": str(exc)})
-    # 仅对参数做符号化（其余字段保留）；节点 id 保留（已知取舍：命名漂移影响 hash）
     symbolized = copy.deepcopy(doc)
-    for node in symbolized.get("nodes", []):
-        if isinstance(node, dict) and isinstance(node.get("params"), dict):
-            node["params"] = _symbolize(node["params"])
+    nodes = symbolized.get("nodes", [])
+    for n in nodes:
+        if isinstance(n, dict):
+            n.setdefault("params", {})
+    # 规范排序（component/dialect/op/op_version/参数结构），抗 LLM 自由命名与节点顺序漂移
+    nodes.sort(key=lambda n: (str(n.get("component", "")), str(n.get("dialect", "")),
+                              str(n.get("op", "")), str(n.get("op_version", "")),
+                              _json_hash(_symbolize(n.get("params")))))
+    # 节点 id → 位置占位
+    id_map: dict = {}
+    for i, n in enumerate(nodes):
+        if isinstance(n, dict):
+            old = n.get("id")
+            if old is not None:
+                id_map[old] = f"n{i}"
+            n["id"] = f"n{i}"
+    # 引用替换：inputs.producer_node / outputs.value_id(node 段) / components.root_node
+    for n in nodes:
+        for inp in n.get("inputs", []) or []:
+            prod = inp.get("node")
+            if prod in id_map:
+                inp["node"] = id_map[prod]
+        for out in n.get("outputs", []) or []:
+            v = out.get("value_id")
+            if isinstance(v, str):
+                parts = v.split(":")
+                if len(parts) >= 3 and parts[2] in id_map:
+                    parts[2] = id_map[parts[2]]
+                    out["value_id"] = ":".join(parts)
+    for comp in symbolized.get("components", []) or []:
+        rn = comp.get("root_node")
+        if rn in id_map:
+            comp["root_node"] = id_map[rn]
+    # 参数符号化
+    for n in nodes:
+        if isinstance(n, dict) and isinstance(n.get("params"), dict):
+            n["params"] = _symbolize(n["params"])
     return _json_hash(symbolized)
 
 

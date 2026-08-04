@@ -46,6 +46,41 @@ h3 = run_enrich._ir_doc_hash(raw4)
 assert h0 != h3, "新增节点 hash 应变化"
 print("新增节点 → hash 变化  PASS")
 
+# 改节点 id（保序）：hash 应不变（抗 LLM 命名漂移）
+raw5 = copy.deepcopy(raw)
+renamed = {}
+for n in raw5["nodes"]:
+    renamed[n["id"]] = "new_" + n["id"]
+    n["id"] = "new_" + n["id"]
+for n in raw5["nodes"]:
+    for inp in n.get("inputs") or []:
+        if inp.get("node") in renamed:
+            inp["node"] = renamed[inp["node"]]
+for comp in raw5.get("components") or []:
+    if comp.get("root_node") in renamed:
+        comp["root_node"] = renamed[comp["root_node"]]
+h4 = run_enrich._ir_doc_hash(raw5)
+assert h0 == h4, "改节点 id hash 不应变化"
+print("改节点 id（保序）→ hash 不变  PASS")
+
+# 结构分组间乱序（组内保序）：hash 应不变（抗整体顺序漂移）
+raw6 = copy.deepcopy(raw)
+def _skey(n):
+    return (str(n.get("component", "")), str(n.get("dialect", "")), str(n.get("op", "")),
+            str(n.get("op_version", "")),
+            run_enrich._json_hash(run_enrich._symbolize(n.get("params", {}))))
+groups = {}
+for n in raw6["nodes"]:
+    groups.setdefault(_skey(n), []).append(n)
+import random
+random.seed(2)
+glist = list(groups.values())
+random.shuffle(glist)
+raw6["nodes"] = [n for g in glist for n in g]
+h5 = run_enrich._ir_doc_hash(raw6)
+assert h0 == h5, "结构分组间乱序 hash 不应变化"
+print("结构分组间乱序 → hash 不变  PASS")
+
 # ── ⑦b：参数向量 ──
 t_g1 = _text(500, 120, 76, 38, 30, 60, 2, 250, 24, 4.0, 1.0)
 t_g1_rw = ("请生成高压涡轮盘的参考模型：轮毂-腹板-轮缘结构，外径500mm、中心孔直径120mm、"
