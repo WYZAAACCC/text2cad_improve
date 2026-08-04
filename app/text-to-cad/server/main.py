@@ -153,6 +153,30 @@ def _append_parametric_block(text: str, req: dict) -> str:
 
 
 # ============================================================
+# 数据集字段 L：pipeline 日志汇总落盘（论文 Y 元组第 6 元素）
+# ============================================================
+def _write_pipeline_log(out_dir: Path, *, ok: bool, error: str = "",
+                        stages: dict | None = None) -> None:
+    """L：pipeline 日志汇总落盘（需求解析/生成/执行/修复/工具调用的入口索引）。
+
+    阶段摘要 + 产物清单（目录扫描自动生成，覆盖 req_param_report / llm_raw /
+    validation_execution / repair_summary / repair/* 等分散日志产物）。
+    失败不阻塞主流程。"""
+    try:
+        log = {
+            "schema": "pipeline_log_v1",
+            "ok": ok,
+            "error": error or None,
+            "stages": stages or {},
+            "artifacts": sorted(p.name for p in out_dir.iterdir() if p.is_file()),
+        }
+        (out_dir / "pipeline_log.json").write_text(
+            json.dumps(log, indent=2, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+
+
+# ============================================================
 # DiskCAD-MCP 外层质量门（确定性，复用 _param_experiment/mcp_tools）
 # ============================================================
 # 门禁子集：实体健康 + STEP 回读 + IR 语义槽约束三大类。
@@ -409,6 +433,13 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
 
         out_dir = OUT_ROOT / task_id
         out_dir.mkdir(parents=True, exist_ok=True)
+        # 数据集字段 T：需求文本全文落盘（prompt_trace 仅存 hash，此处存原文）
+        try:
+            (out_dir / "request.json").write_text(
+                json.dumps({"text": text, "desc_style": None}, ensure_ascii=False, indent=2),
+                encoding="utf-8")
+        except Exception:
+            pass
         config = LlmModelConfig(model="deepseek-v4-pro", base_url="https://api.deepseek.com/beta")
         caller = DeepSeekToolCaller()
         reg = default_registry()
@@ -529,6 +560,8 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
             return
 
         if plan.route_decision != "generative_cad_ir":
+            _write_pipeline_log(out_dir, ok=False,
+                                error=f"Route: {plan.route_decision}, not generative_cad_ir")
             _update_task(task_id, status="failed", progress=0,
                          error=f"Route: {plan.route_decision}, not generative_cad_ir")
             return
@@ -560,6 +593,7 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                 (out_dir/"fillet_clamp.json").write_text(
                     json.dumps(clamp_report, indent=2, ensure_ascii=False), encoding="utf-8")
         except Exception as e:
+            _write_pipeline_log(out_dir, ok=False, error=f"L2 authoring failed: {e}")
             _update_task(task_id, status="failed", progress=0, error=f"L2 authoring failed: {e}")
             return
 
@@ -622,8 +656,16 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
             "records": [r.model_dump(mode="json") for r in vrun.execution_records],
         }, ensure_ascii=False, indent=2), encoding="utf-8")
         (out_dir/"validation_report.json").write_text(report.model_dump_json(indent=2), encoding="utf-8")
+        # 数据集字段 CCAD：canonical IR（按依赖拓扑序的操作节点 = 执行序列文档）
+        if canonical is not None:
+            try:
+                (out_dir / "canonical_ir.json").write_text(
+                    canonical.model_dump_json(indent=2), encoding="utf-8")
+            except Exception:
+                pass
         errs = [i for i in report.issues if i.severity=="error"]
         if canonical is None or errs:
+            _write_pipeline_log(out_dir, ok=False, error=f"Validation: {len(errs)} errors")
             _update_task(task_id, status="failed", progress=0,
                          error=f"Validation: {len(errs)} errors")
             return
@@ -636,6 +678,8 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
         if mcp_gate is not None:
             _write_inspection_validation(meta_path, mcp_gate)
             if not mcp_gate["ok"]:
+                _write_pipeline_log(out_dir, ok=False,
+                                    error=f"MCP quality gate failed: {mcp_gate['failed_checks']}")
                 _update_task(task_id, status="failed", progress=0,
                              error=f"MCP quality gate failed: {mcp_gate['failed_checks']}")
                 return  # 被拒任务跳过 STL 导出
@@ -667,11 +711,26 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
             "geometryType": "step", "parameters": {"stepKb": step_kb, "stlOk": stl_ok},
             "mcpGate": mcp_gate["summary"] if mcp_gate is not None else None}
         if not rr.ok: task_result["error_detail"] = rr.error or "Runtime failed"
+        # 数据集字段 L：pipeline 日志汇总落盘（论文 Y 元组第 6 元素）
+        _write_pipeline_log(out_dir, ok=True, stages={
+            "route": plan.route_decision,
+            "l2_author": {"nodes": n_nodes, "fillet_clamped": clamp_report.get("count", 0)},
+            "validation": {"errors": len(errs), "issues": len(report.issues)},
+            "repair": {"stop_code": loop.outcome.stop_code,
+                       "validation_llm_attempts": loop.outcome.validation_llm_attempts,
+                       "runtime_llm_attempts": loop.outcome.runtime_llm_attempts},
+            "runtime": {"ok": rr.ok},
+            "mcp_gate": {"ok": mcp_gate["ok"],
+                         "failed_checks": mcp_gate.get("failed_checks", [])
+                         if not mcp_gate["ok"] else []},
+            "stl": {"ok": stl_ok},
+        })
         _update_task(task_id, status="completed", progress=100, result=task_result)
 
     except Exception as exc:
         _update_task(task_id, status="failed", progress=0,
                      error=str(exc), result={"error_detail": str(exc), "traceback": traceback.format_exc()})
+        _write_pipeline_log(out_dir, ok=False, error=str(exc))
 
 # ============================================================
 # Routes
