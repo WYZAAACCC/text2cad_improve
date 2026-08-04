@@ -606,6 +606,15 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
         except Exception:
             pass  # 序列化失败不阻塞 pipeline；门禁侧据此 skip/fail
 
+        # 需求参数一致性报告：尺寸偏差写报告、不拒绝（几何/布尔错误由 MCP 门判定）
+        try:
+            from validate_req_params import validate_ir
+            _req_report = validate_ir(text, out_dir)
+            (out_dir/"req_param_report.json").write_text(
+                json.dumps(_req_report, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            pass  # 报告失败不阻塞 pipeline
+
         canonical, report, bundle = vrun.canonical, vrun.report, vrun.bundle
         # 可观测性: 规则执行记录 + 激活的扩展 (指导书 §15.2/§17 Phase 6)
         (out_dir/"validation_execution.json").write_text(json.dumps({
