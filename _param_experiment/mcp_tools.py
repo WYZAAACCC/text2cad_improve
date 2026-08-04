@@ -137,6 +137,11 @@ def _profile_stats(points):
                 and upper[i]["y_mm"] > throat_y):
             peak_idx.append(i)
     teeth = len(peak_idx)
+    # 齿数优先用枞树形 5+4n 结构推导（圆角 LLM 自由选择后轮廓尾段 y 可能偏高，
+    # 峰值检测会把它误判为额外齿顶）；仅当点数列确为 5+4n 时采用。
+    n_struct = (n_upper - 5) // 4
+    if n_upper >= 9 and n_upper == 5 + 4 * n_struct:
+        teeth = n_struct
     slot_depth = abs(max(xs) - min(xs))
     flank_angle = None
     for i in range(1, n_upper):
