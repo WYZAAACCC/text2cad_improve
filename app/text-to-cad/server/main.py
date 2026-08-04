@@ -4,7 +4,7 @@ Text-to-CAD HTTP Server — skills/orchestrator L1/L2 + spatial v6 interaction.
 Start:  E:/auto_detection_process/.conda/python.exe -m uvicorn server.main:app --port 8080
 """
 from __future__ import annotations
-import json, os, sys, uuid, threading, traceback, time as _time
+import json, os, sys, uuid, threading, traceback, time as _time, math
 from pathlib import Path
 from datetime import datetime
 from fastapi import FastAPI, HTTPException
@@ -67,6 +67,53 @@ def _update_task(task_id: str, **kwargs):
     with _lock:
         if task_id in _tasks:
             _tasks[task_id].update(kwargs)
+
+# ============================================================
+# L2 后处理：fillet 安全半径 clamp
+# ============================================================
+def _clamp_fillet_radii(raw: dict, factor: float = 0.85) -> dict:
+    """L2 后处理：fillet 半径 clamp 到 r≤factor×min(两条邻边)，防 BRep_API: command not done。
+
+    LLM 自由选择圆角时半径 r 可能等于/超过邻边长度，导致 fillet2D 几何退化
+    （圆角弧与邻边终点重合）。此处仅做安全上限保护（不改变 LLM 选角与安全范围内
+    的半径），超限半径 clamp 到 factor×min(目标顶点两邻边)，并记录 clamp 报告。
+
+    返回 {"clamped": [{node_id, old, new, min_edge}], "count"}。
+    """
+    comp_points: dict = {}
+    for n in raw.get("nodes", []):
+        if n["op"] == "add_polyline":
+            comp_points[n["component"]] = n["params"].get("points") or []
+    clamped: list = []
+    for n in raw.get("nodes", []):
+        if n["op"] != "fillet_sketch":
+            continue
+        pts = comp_points.get(n["component"])
+        if not pts:
+            continue
+        radius = n["params"].get("radius_mm")
+        ai = n["params"].get("at_vertex_index")
+        idxs = ai if isinstance(ai, list) else ([ai] if isinstance(ai, int) else [])
+        min_edges = []
+        for i in idxs:
+            if not (0 <= i < len(pts)):
+                continue
+            prev = pts[(i - 1) % len(pts)]
+            nxt = pts[(i + 1) % len(pts)]
+            p = pts[i]
+            la = math.hypot(prev["x_mm"] - p["x_mm"], prev["y_mm"] - p["y_mm"])
+            lb = math.hypot(p["x_mm"] - nxt["x_mm"], p["y_mm"] - nxt["y_mm"])
+            min_edges.append(min(la, lb))
+        if not min_edges or not isinstance(radius, (int, float)):
+            continue
+        safe = min(min_edges) * factor
+        if radius > safe:
+            old = radius
+            n["params"]["radius_mm"] = round(safe, 3)
+            clamped.append({"node_id": n["id"], "old": old,
+                            "new": n["params"]["radius_mm"], "min_edge": round(min(min_edges), 3)})
+    return {"clamped": clamped, "count": len(clamped)}
+
 
 # ============================================================
 # DiskCAD-MCP 外层质量门（确定性，复用 _param_experiment/mcp_tools）
@@ -467,6 +514,11 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
             raw = tc2.arguments
             if "llm_validation_hints" not in raw: raw["llm_validation_hints"] = {}
             (out_dir/"llm_raw.json").write_text(json.dumps(raw, indent=2, ensure_ascii=False), encoding="utf-8")
+            # fillet 安全半径 clamp（防 BRep_API: command not done；llm_raw.json 保留 LLM 原始输出）
+            clamp_report = _clamp_fillet_radii(raw)
+            if clamp_report["count"]:
+                (out_dir/"fillet_clamp.json").write_text(
+                    json.dumps(clamp_report, indent=2, ensure_ascii=False), encoding="utf-8")
         except Exception as e:
             _update_task(task_id, status="failed", progress=0, error=f"L2 authoring failed: {e}")
             return
