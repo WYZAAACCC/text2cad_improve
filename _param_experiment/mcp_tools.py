@@ -62,34 +62,66 @@ def _step_path(base: Path):
     return base / "output.step"
 
 
-def _disc_profile(ir):
+def _component_with_op(ir, op):
+    """语义定位：找含指定 op 的组件 id（盘体=revolve_profile，工具体=extrude_profile）。
+
+    不依赖具体节点 id —— 任意建模产物（节点命名可能不同）都能定位。
+    """
     for n in ir["nodes"]:
-        if n["id"] == "n_polyline_disc":
+        if n["op"] == op:
+            return n["component"]
+    raise ValueError(f"未找到含 op={op!r} 的组件")
+
+
+def _find_profile_node(ir, component, op="add_polyline"):
+    for n in ir["nodes"]:
+        if n["component"] == component and n["op"] == op:
             return n["params"]["points"]
-    raise ValueError("未找到盘面轮廓")
+    raise ValueError(f"组件 {component} 未找到 op={op!r} 轮廓点")
+
+
+def _disc_profile(ir):
+    comp = _component_with_op(ir, "revolve_profile")
+    return _find_profile_node(ir, comp)
 
 
 def _slot_profile(ir):
-    for n in ir["nodes"]:
-        if n["id"] == "n_polyline_cutter":
-            return n["params"]["points"]
-    raise ValueError("未找到榫槽轮廓")
+    comp = _component_with_op(ir, "extrude_profile")
+    return _find_profile_node(ir, comp)
 
 
 def _pattern(ir):
     for n in ir["nodes"]:
-        if n["id"] == "n_pattern_cutters":
+        if n["op"] == "circular_pattern_component":
             return n["params"]
-    raise ValueError("未找到榫槽阵列")
+    raise ValueError("未找到榫槽阵列 (circular_pattern_component)")
 
 
 def _slot_fillets(ir):
+    """工具体组件的全部 fillet_sketch 节点（语义定位，不依赖节点命名）。"""
+    comp = _component_with_op(ir, "extrude_profile")
     out = {}
     for n in ir["nodes"]:
-        if n["id"].startswith("n_fillet_cutter"):
+        if n["component"] == comp and n["op"] == "fillet_sketch":
             out[n["id"]] = {"radius_mm": n["params"]["radius_mm"],
                             "at_vertex_index": n["params"]["at_vertex_index"]}
     return out
+
+
+def _root_fillet(ir):
+    """语义定位齿根圆角：工具体组件 fillet 中 max(at_vertex_index) 最大的节点。
+
+    轮廓点索引从口部(0)递增到根部，覆盖最大索引的 fillet 即根部圆角。
+    """
+    comp = _component_with_op(ir, "extrude_profile")
+    best, best_max = None, -1
+    for n in ir["nodes"]:
+        if n["component"] == comp and n["op"] == "fillet_sketch":
+            ai = n["params"].get("at_vertex_index")
+            m = max(ai) if isinstance(ai, list) else (ai if isinstance(ai, int) else -1)
+            if m > best_max:
+                best_max, best = m, n
+    return best
 
 
 def _profile_stats(points):
@@ -324,11 +356,8 @@ def measure_fir_tree_slot_profile(args=None):
     ir = _load_ir(base)
     pts = _slot_profile(ir)
     stats = _profile_stats(pts)
-    fillets = _slot_fillets(ir)
-    if "n_fillet_cutter_neck_root" in fillets:
-        stats["root_fillet_mm"] = fillets["n_fillet_cutter_neck_root"]["radius_mm"]
-    else:
-        stats["root_fillet_mm"] = None
+    root = _root_fillet(ir)
+    stats["root_fillet_mm"] = root["params"]["radius_mm"] if root else None
     stats["profile_point_count"] = len(pts)
     stats["ok"] = True
     return stats
@@ -425,9 +454,8 @@ def compare_slot_profile_to_requirement(args=None):
     ir = _load_ir(base)
     pts = _slot_profile(ir)
     actual = _profile_stats(pts)
-    fillets = _slot_fillets(ir)
-    actual_root = (fillets["n_fillet_cutter_neck_root"]["radius_mm"]
-                   if "n_fillet_cutter_neck_root" in fillets else None)
+    root = _root_fillet(ir)
+    actual_root = root["params"]["radius_mm"] if root else None
     tol_mm, tol_deg = 0.05, 0.1
     req = {
         "teeth_count": args.get("req_teeth_count", actual["teeth_count"]),
@@ -469,13 +497,12 @@ def compare_slot_profile_to_requirement(args=None):
 def inspect_slot_root_fillet(args=None):
     base = _base_dir(args or {})
     ir = _load_ir(base)
-    fillets = _slot_fillets(ir)
-    neck_root = fillets.get("n_fillet_cutter_neck_root")
-    if neck_root is None:
+    root = _root_fillet(ir)
+    if root is None:
         return {"ok": False, "applied": False, "root_fillet_mm": None,
-                "message": "未找到齿根圆角节点 n_fillet_cutter_neck_root"}
-    radius = neck_root["radius_mm"]
-    indices = neck_root["at_vertex_index"]
+                "message": "未找到齿根圆角（工具体组件无 fillet_sketch 节点）"}
+    radius = root["params"]["radius_mm"]
+    indices = root["params"]["at_vertex_index"]
     return {"ok": True, "applied": True, "root_fillet_mm": radius,
             "applied_at_vertex_indices": indices, "source": "disk-g-cad"}
 
