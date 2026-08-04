@@ -336,10 +336,15 @@ def handle_fillet_sketch(node, ctx) -> dict:
         if isinstance(vertex_idx, list):
             # Multi-radius list form: use position-based lookup for chain safety.
             # Cache original vertex positions on first call, then match by proximity.
+            # NOTE: XZ-plane profiles (disc R-Z section) have Center().y always 0,
+            # so matching on (x,y) collapses the two mirror halves. Match in the
+            # profile-plane coords: (x,z) for XZ plane (normal along Y), (x,y) otherwise.
+            use_z_axis = abs(wp.plane.zDir.y) > 0.9  # XZ plane (normal along Y)
             orig_key = "__fillet_orig_pos__"
             orig_pos = _get_state(ctx, cid, orig_key)
             if orig_pos is None:
-                orig_pos = [(v.Center().x, v.Center().y) for v in vertices]
+                orig_pos = [(v.Center().x, v.Center().z if use_z_axis else v.Center().y)
+                            for v in vertices]
                 _set_state(ctx, cid, orig_key, orig_pos)
             # Find target vertices in current wire by matching original positions
             targets = []
@@ -350,7 +355,8 @@ def handle_fillet_sketch(node, ctx) -> dict:
                     best_v, best_d = None, float('inf')
                     for v in vertices:
                         c = v.Center()
-                        d = (c.x - ox)**2 + (c.y - oy)**2
+                        cy = c.z if use_z_axis else c.y
+                        d = (c.x - ox)**2 + (cy - oy)**2
                         if d < best_d:
                             best_d, best_v = d, v
                     if best_v is not None:

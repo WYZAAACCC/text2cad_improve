@@ -1,12 +1,15 @@
-"""LLM 自由选择圆角 → 移植到主流程（后处理圆角规划器）。
+"""LLM 自由选择圆角 → 主流程（盘面 + 榫槽统一，后处理圆角规划器）。
 
-把实验最终方案（_param_experiment/output/llm_free_select_full 采用的 LLM 自由选择）
-作用于主流程产物：读 raw_fixed.json → 候选角表 → LLM 自由选择 {顶点+两条边+半径}
-→ 规划期安全半径 clamp → 生成/替换 fillet_sketch 节点 → run_gcad_core_from_files 重建。
+**最终目标**：所有圆角（盘面 XZ + 榫槽 XY）都由 **LLM 自由选择"一个点 + 两条邻边 + 半径"**
+决定，程序不硬编码圆角。程序只提供候选角表（语义 key）、校验（resolve_selection）、
+安全半径保护（compute_safe_radius）与执行（生成 fillet_sketch 节点 → run_gcad_core_from_files 重建）。
 
-零主程序改动：不改 integrations/engineering_tools/src/、不改 server/main.py。
-圆角执行仍由主流程 sketch_profile 的 handle_fillet_sketch 承担（list 形式 + proximity 重匹配），
-本工具只接管"圆角决策"（选角 + 安全半径），并保证 at_vertex_index 分区互不重叠。
+对每个圆角组件（盘面 = 含 revolve_profile、榫槽 = 含 extrude_profile）各一次 LLM 选择：
+  1. 提取轮廓点 + 角色表（盘面 DISC_ROLES / 榫槽 annotate_roles）
+  2. 通用候选角表 → prompt（坐标语义区分）→ LLM 选 {vertex, edge_a, edge_b, radius_mm}
+  3. resolve_selection 校验 → 安全半径（盘面 edge_factor=1.0 / 榫槽 0.5）
+  4. 转 at_vertex_index（list 形式，按半径分组每节点一组）→ 替换该组件 fillet 链
+  5. run_gcad_core_from_files 重建
 
 用法:
   .conda/python.exe _param_experiment/fillet_select_apply.py \
@@ -33,12 +36,14 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from fillet_free_select import (  # noqa: E402
-    build_candidate_table,
-    build_selection_prompt,
+    DISC_ROLES,
+    ROLE_MEANING,
+    build_candidate_table_generic,
     free_select_schema,
     resolve_selection,
 )
 from fillet_corners import compute_safe_radius  # noqa: E402
+from fillet_strategy import annotate_roles  # noqa: E402
 
 from seekflow_engineering_tools.generative_cad.llm.deepseek_client import (  # noqa: E402
     DeepSeekToolCaller,
@@ -53,57 +58,72 @@ API_KEY_FILE = ROOT / "_archive" / "apikey.txt"
 DEFAULT_BASE = ROOT / "app" / "text-to-cad" / "server" / "output" / "b572661c219c4952"
 DEFAULT_OUT = _HERE / "output" / "fillet_select"
 
+# 组件规格：(定位 op, 类型, edge_factor, 坐标语义, 半径参考 min/max)
+COMPONENT_SPECS = [
+    ("revolve_profile", "disc", 1.0,
+     "盘面（XZ 子午截面：x=半径mm 60-250, y=轴向mm -38~+38）", 6.0, 20.0),
+    ("extrude_profile", "slot", 0.5,
+     "榫槽（XY 切面：x=径向深度mm 0=轮缘面 负向=向中心, y=切向半宽mm）", 0.4, 1.5),
+]
 
-# ── 语义定位（不依赖固定节点 id）─────────────────────────────────────────────
+
+# ── 语义定位 ─────────────────────────────────────────────────────────────
 
 
-def _find_extrude_component(ir: dict) -> str:
-    for n in ir["nodes"]:
-        if n["op"] == "extrude_profile":
+def _find_component_with_op(ir: dict, op: str):
+    for n in ir.get("nodes", []):
+        if n["op"] == op:
             return n["component"]
-    raise ValueError("未找到工具体组件 (extrude_profile)")
+    return None
 
 
-def _find_slot_profile(ir: dict) -> list:
-    comp = _find_extrude_component(ir)
-    for n in ir["nodes"]:
+def _find_profile_points(ir: dict, comp: str):
+    for n in ir.get("nodes", []):
         if n["component"] == comp and n["op"] == "add_polyline":
             return n["params"]["points"]
-    raise ValueError(f"组件 {comp} 未找到榫槽轮廓 (add_polyline)")
+    return None
 
 
-def _find_close_node(ir: dict, comp: str) -> dict:
+def _find_close_node(ir: dict, comp: str):
     for n in ir["nodes"]:
         if n["component"] == comp and n["op"] == "close_profile":
             return n
     raise ValueError(f"组件 {comp} 未找到 close_profile")
 
 
-def _find_extrude_node(ir: dict, comp: str) -> dict:
+def _find_terminal_node(ir: dict, comp: str, op: str):
     for n in ir["nodes"]:
-        if n["component"] == comp and n["op"] == "extrude_profile":
+        if n["component"] == comp and n["op"] == op:
             return n
-    raise ValueError(f"组件 {comp} 未找到 extrude_profile")
+    raise ValueError(f"组件 {comp} 未找到 {op}")
 
 
 def _derive_teeth_count(pts: list) -> int:
-    """从轮廓点数推导齿数：总点数 = 2*(5+4n)。26 点 → 2。"""
     total = len(pts)
     if total % 2 != 0:
-        raise ValueError(f"轮廓点数 {total} 非偶数，无法推导齿数")
+        raise ValueError(f"点数 {total} 非偶数")
     n_upper = total // 2
     if (n_upper - 5) < 0 or (n_upper - 5) % 4 != 0:
         raise ValueError(f"上侧点数 {n_upper} 不符合 5+4n 结构")
     return (n_upper - 5) // 4
 
 
-# ── LLM 自由选择 ─────────────────────────────────────────────────────────────
+def _build_component_roles(pts: list, comp_type: str) -> list:
+    """角色表：盘面固定 12 角色；榫槽 = annotate_roles + 下侧镜像。"""
+    if comp_type == "disc":
+        if len(pts) != len(DISC_ROLES):
+            raise ValueError(f"盘面点数 {len(pts)} != {len(DISC_ROLES)}（候选角表需盘面 12 点结构）")
+        return list(DISC_ROLES)
+    n = _derive_teeth_count(pts)
+    upper = annotate_roles(n)
+    return upper + upper[::-1]
 
 
-def _call_llm_fillet(prompt: str, max_attempts: int) -> tuple:
-    """调 LLM 自由选择圆角。返回 (llm_fillets, feedback)。"""
+# ── LLM 自由选择 ─────────────────────────────────────────────────────────
+
+
+def _call_llm_fillet(prompt: str, max_attempts: int) -> list:
     caller = DeepSeekToolCaller()
-    feedback = []
     last_err = None
     for attempt in range(max_attempts):
         try:
@@ -118,42 +138,71 @@ def _call_llm_fillet(prompt: str, max_attempts: int) -> tuple:
                 tool_schema=to_deepseek_strict_schema(free_select_schema()),
                 model_config=MODEL_CONFIG,
             )
-            return list(r.arguments.get("fillets", [])), feedback
+            return list(r.arguments.get("fillets", []))
         except Exception as exc:
             last_err = str(exc)
-            feedback.append(f"LLM 调用失败(尝试{attempt + 1}): {last_err}")
     raise RuntimeError(f"LLM 自由选择圆角失败: {last_err}")
 
 
-def _role_group(key: str, role: str) -> str:
-    if "tip" in key:
-        return "tip"
-    if role == "neck":
-        return "neck"
-    if role == "connector":
-        return "connector"
-    return "bottom"
+def build_selection_prompt(candidates: list, comp_type: str, r_min: float, r_max: float) -> str:
+    """选角 prompt：按组件类型区分坐标语义、角色释义与半径量级。"""
+    plane_desc = COMPONENT_SPECS[0][3] if comp_type == "disc" else COMPONENT_SPECS[1][3]
+    title = "盘面（R-Z 子午截面）" if comp_type == "disc" else "榫槽（枞树形轮廓）"
+    lines = [
+        f"{title}轮廓已生成，共 {len(candidates)} 个候选角。",
+        f"坐标语义：{plane_desc}。",
+        "你需要【自由选择】要圆角的角。轮廓上每个角由一个顶点和它的两条邻边构成。",
+        "",
+        "候选角表（每角 = 顶点key + 两条邻边key + 顶点坐标）：",
+    ]
+    for c in candidates:
+        meaning = ROLE_MEANING.get(c["role"], c["role"])
+        lines.append(
+            f"  {c['key']:30s} {meaning:18s} "
+            f"顶点({c['vertex'][0]:7.1f},{c['vertex'][1]:6.1f})  "
+            f"边a:{c['edge_a_key']}  边b:{c['edge_b_key']}"
+        )
+    lines.append("")
+    lines.append("选角原则：")
+    if comp_type == "disc":
+        lines += [
+            "  - hub_web_transition（轮毂→腹板凹角）/ web_rim_transition（腹板→轮缘凹角）："
+            "应力集中关键，【强烈建议】圆角",
+            "  - hub_outer_corner / rim_inner_step：可选圆角（工程变体）",
+            "  - bore_mouth / rim_outer_corner：通常不圆角（bore 是定位面、rim 外圆是加工基准）",
+        ]
+    else:
+        lines += [
+            "  - 齿根凹角 neck@i / connector@i：应力集中关键，【强烈建议】圆角",
+            "  - 齿顶凸角 tip_flank_top@i / tip_platform_end@i：建议圆角",
+            "  - 槽底 bottom_flare@-1 / bottom_platform@-1 / root@-1：建议圆角",
+            "  - 口部 mouth@-1：通常不圆角（保持口部形状）",
+        ]
+    lines += [
+        f"  - 半径参考：{r_min}~{r_max}mm（盘面取大值，榫槽取小值）",
+        "  - 碰撞注意：相邻两角（共享一条边）半径之和 ≤ 共享边长，过大程序会自动 clamp",
+        "",
+        "硬规则：",
+        "  1. vertex / edge_a / edge_b 必须【逐字抄写】自上面的候选角表，不得自创或修改任何字符",
+        "  2. edge_a / edge_b 必须是该顶点在表中的两条邻边",
+        "  3. 只输出你选择要圆角的角；不想圆角的角【不要】出现",
+        "  4. 可只选必须圆角的角，也可全选",
+    ]
+    return "\n".join(lines)
 
 
-# ── 生成 fillet 节点 ─────────────────────────────────────────────────────────
+# ── 规划与节点生成 ─────────────────────────────────────────────────────────
 
 
-def build_fillet_plan(pts: list, teeth_count: int, llm_fillets: list) -> dict:
-    """由 LLM 自由选择结果构建圆角计划（选角 → 安全半径 → 分组）。
-
-    返回 {corners, at_vertex_map, groups, final_radii, feedback, safe}
-      - corners: resolve_selection 后的候选角（含 vertex_idx/lower_vertex_idx）
-      - at_vertex_map: {key: [vertex_idx, lower_vertex_idx]}
-      - groups: [{radius, at_vertex_index: list}]（按 final radius 分组）
-      - final_radii: {key: final_radius}
-    """
-    cands = build_candidate_table(pts, teeth_count)
-    corners, llm_out, feedback = resolve_selection(cands, llm_fillets)
+def build_component_plan(pts: list, roles: list, edge_factor: float,
+                         llm_fillets: list) -> dict:
+    """候选角表 → LLM 选角 → 安全半径 → 按半径分组。"""
+    cands = build_candidate_table_generic(pts, roles)
+    corners, _llm_out, feedback = resolve_selection(cands, llm_fillets)
     if not corners:
-        return {"corners": [], "at_vertex_map": {}, "groups": [], "final_radii": {},
-                "feedback": feedback, "candidates": cands}
+        return {"corners": [], "groups": [], "final_radii": {}, "feedback": feedback,
+                "candidates": cands, "at_vertex_map": {}}
 
-    # LLM 请求半径（按角）
     requested = {}
     for f in llm_fillets:
         vk = f.get("vertex")
@@ -165,48 +214,40 @@ def build_fillet_plan(pts: list, teeth_count: int, llm_fillets: list) -> dict:
             r = 0.5
         requested[vk] = r
 
-    # radius_by_role（compute_safe_radius 按组）
+    # radius_by_role（按角色分组取 max 请求）
     radius_by_role = {}
     for c in corners:
-        g = _role_group(c["key"], c["role"])
-        radius_by_role[g] = max(radius_by_role.get(g, 0), requested.get(c["key"], 0.5))
+        radius_by_role[c["role"]] = max(radius_by_role.get(c["role"], 0),
+                                        requested.get(c["key"], 0.5))
+    safe = compute_safe_radius(corners, pts, radius_by_role, edge_factor)
 
-    # 规划期安全半径 clamp（从 pts 算邻边 + 相邻碰撞）
-    safe = compute_safe_radius(corners, pts, radius_by_role)
-
-    # 每角最终半径 = min(请求, 安全)
     final_radii = {}
     for c in corners:
         key = c["key"]
         final_radii[key] = min(requested.get(key, 0.5), safe.get(key, requested.get(key, 0.5)))
 
-    # at_vertex_index（上下镜像）+ 按 final radius 分组（round 0.1）
-    at_vertex_map = {c["key"]: [c["vertex_idx"], c["lower_vertex_idx"]] for c in corners}
+    at_vertex_map = {c["key"]: [c["vertex_idx"]] for c in corners}
     groups: dict[float, list] = {}
     for c in corners:
         r = round(final_radii[c["key"]], 1)
-        groups.setdefault(r, []).append(c["key"])
-    group_list = [{"radius": r, "at_vertex_index": sorted(
-        sum((at_vertex_map[k] for k in keys), []))} for r, keys in sorted(groups.items(), reverse=True)]
+        groups.setdefault(r, []).extend(at_vertex_map[c["key"]])
+    group_list = [{"radius": r, "at_vertex_index": sorted(set(groups[r]))}
+                  for r in sorted(groups, reverse=True)]
 
-    return {"corners": corners, "at_vertex_map": at_vertex_map, "groups": group_list,
-            "final_radii": final_radii, "feedback": feedback, "candidates": cands}
+    return {"corners": corners, "groups": group_list, "final_radii": final_radii,
+            "feedback": feedback, "candidates": cands, "at_vertex_map": at_vertex_map}
 
 
-def _replace_fillet_chain(ir: dict, plan: dict) -> list:
-    """用新 fillet 节点替换 cutter 组件的原 fillet 链，返回新节点 id 列表。"""
-    comp = _find_extrude_component(ir)
+def _replace_fillet_chain(ir: dict, plan: dict, comp: str, terminal_op: str) -> list:
+    """替换组件 fillet 链：close → fillet₁→…→fillet_N → terminal。返回新节点 id。"""
     close_node = _find_close_node(ir, comp)
-    extrude_node = _find_extrude_node(ir, comp)
+    terminal_node = _find_terminal_node(ir, comp, terminal_op)
 
-    # 删除原 fillet 节点
     kept = [n for n in ir["nodes"] if not (n["component"] == comp and n["op"] == "fillet_sketch")]
-
-    # 生成新节点（链式：close → fillet1 → ... → filletN）
     new_ids = []
     prev_node = close_node["id"]
     for i, g in enumerate(plan["groups"], 1):
-        nid = f"n_fillet_sel_{i}"
+        nid = f"n_fillet_{comp}_{i}"
         new_ids.append(nid)
         kept.append({
             "id": nid,
@@ -223,16 +264,15 @@ def _replace_fillet_chain(ir: dict, plan: dict) -> list:
         })
         prev_node = nid
 
-    # extrude 输入改指最后一个 fillet
     for n in kept:
-        if n["id"] == extrude_node["id"]:
+        if n["id"] == terminal_node["id"]:
             n["inputs"] = [{"node": new_ids[-1], "output": "profile"}]
 
     ir["nodes"] = kept
     return new_ids
 
 
-# ── 主流程 ───────────────────────────────────────────────────────────────────
+# ── 主流程 ─────────────────────────────────────────────────────────────────
 
 
 def apply_llm_fillet_selection(
@@ -240,59 +280,62 @@ def apply_llm_fillet_selection(
     out_dir: str | Path | None = None,
     max_attempts: int = 2,
     rebuild: bool = True,
-    llm_fillets: list | None = None,
+    llm_fillets: dict | None = None,
 ) -> dict:
-    """对主流程产物执行 LLM 自由选择圆角 → 生成/替换 fillet 节点 →（可选）重建。
+    """对主流程产物执行 LLM 自由选择圆角（盘面 + 榫槽）→ 替换节点 →（可选）重建。
 
-    llm_fillets 可预注入（测试/复用），否则调用 LLM 自由选择。
-    返回结果 dict（选角/反馈/节点/重建状态）。
+    llm_fillets: 可选预注入 {comp_type: [{vertex, edge_a, edge_b, radius_mm}]}（测试用）。
+    返回结果 dict。
     """
     base = Path(base_dir).resolve()
     out_dir = Path(out_dir or (DEFAULT_OUT / base.name))
     out_dir.mkdir(parents=True, exist_ok=True)
 
     ir = json.loads((base / "raw_fixed.json").read_text(encoding="utf-8"))
-    pts = _find_slot_profile(ir)
-    teeth_count = _derive_teeth_count(pts)
+    ir_mod = copy.deepcopy(ir)
 
-    # LLM 自由选择
-    cands = build_candidate_table(pts, teeth_count)
+    # API key
     if llm_fillets is None:
         key = API_KEY_FILE.read_text(encoding="utf-8").strip()
         os.environ["DEEPSEEK_API_KEY"] = key
-        llm_fillets, _ = _call_llm_fillet(build_selection_prompt(cands, teeth_count), max_attempts)
 
-    plan = build_fillet_plan(pts, teeth_count, llm_fillets)
+    result = {"ok": True, "base_dir": str(base), "components": {}}
 
-    # 替换依赖链
-    ir_mod = copy.deepcopy(ir)
-    new_ids = _replace_fillet_chain(ir_mod, plan)
+    for op, comp_type, edge_factor, _plane_desc, r_min, r_max in COMPONENT_SPECS:
+        comp = _find_component_with_op(ir_mod, op)
+        if comp is None:
+            continue
+        pts = _find_profile_points(ir_mod, comp)
+        roles = _build_component_roles(pts, comp_type)
+        cands = build_candidate_table_generic(pts, roles)
+
+        if llm_fillets is not None:
+            fillets_for = llm_fillets.get(comp_type, [])
+        else:
+            fillets_for = _call_llm_fillet(
+                build_selection_prompt(cands, comp_type, r_min, r_max), max_attempts)
+
+        plan = build_component_plan(pts, roles, edge_factor, fillets_for)
+        new_ids = _replace_fillet_chain(ir_mod, plan, comp, op)
+
+        comp_result = {
+            "comp_type": comp_type, "component": comp,
+            "n_candidates": len(cands), "n_selected": len(plan["corners"]),
+            "selected_roles": {c["role"]: 0 for c in plan["corners"]},
+            "groups": plan["groups"], "final_radii": plan["final_radii"],
+            "feedback": plan["feedback"], "new_fillet_node_ids": new_ids,
+        }
+        for c in plan["corners"]:
+            comp_result["selected_roles"][c["role"]] += 1
+        result["components"][comp_type] = comp_result
 
     raw_path = out_dir / "raw_fillet_selected.json"
     raw_path.write_text(json.dumps(ir_mod, ensure_ascii=False, indent=2), encoding="utf-8")
-
-    result = {
-        "ok": True,
-        "base_dir": str(base),
-        "teeth_count": teeth_count,
-        "profile_point_count": len(pts),
-        "n_candidates": len(cands),
-        "n_selected": len(plan["corners"]),
-        "selected_roles": {c["role"]: 0 for c in plan["corners"]},
-        "groups": plan["groups"],
-        "final_radii": plan["final_radii"],
-        "feedback": plan["feedback"],
-        "new_fillet_node_ids": new_ids,
-        "raw_path": str(raw_path),
-        "rebuild": {},
-    }
-    for c in plan["corners"]:
-        result["selected_roles"][c["role"]] += 1
+    result["raw_path"] = str(raw_path)
 
     if not rebuild:
         return result
 
-    # 重建
     step_path = out_dir / "output.step"
     meta_path = out_dir / "output.metadata.json"
     try:
@@ -305,32 +348,27 @@ def apply_llm_fillet_selection(
         result["ok"] = False
         return result
 
-    result["rebuild"] = {
-        "ok": res.ok,
-        "step": str(step_path),
-        "warnings": list(res.warnings) if res.warnings else [],
-        "error": getattr(res, "error", None),
-    }
-    # 提取 geometry_postcheck
+    rb = {"ok": res.ok, "step": str(step_path),
+          "warnings": list(res.warnings) if res.warnings else [],
+          "error": getattr(res, "error", None)}
     if meta_path.exists():
         try:
             meta = json.loads(meta_path.read_text(encoding="utf-8"))
             gp = meta.get("validation", {}).get("geometry_postcheck", {})
-            result["rebuild"]["geometry_postcheck"] = {
-                k: gp.get(k) for k in ("ok", "volume_mm3", "n_solids", "closed", "is_valid_solid")
-            }
+            rb["geometry_postcheck"] = {k: gp.get(k)
+                                        for k in ("ok", "volume_mm3", "n_solids", "closed", "is_valid_solid")}
         except Exception:
             pass
-    # fillet pass-through 检查
-    fillet_pt = [w for w in result["rebuild"].get("warnings", [])
-                 if "fillet" in w.lower() and ("pass" in w.lower() or "skip" in w.lower())]
-    result["rebuild"]["fillet_passthrough_warnings"] = fillet_pt
+    fillet_pt = [w for w in rb["warnings"]
+                 if "fillet" in str(w).lower() and ("pass" in str(w).lower() or "skip" in str(w).lower())]
+    rb["fillet_passthrough_warnings"] = fillet_pt
+    result["rebuild"] = rb
     result["ok"] = res.ok and (not fillet_pt)
     return result
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="LLM 自由选择圆角 → 主流程 fillet_sketch 节点规划器")
+    ap = argparse.ArgumentParser(description="LLM 自由选择圆角 → 主流程（盘面+榫槽统一）规划器")
     ap.add_argument("--base-dir", default=None, help="主流程建模产物目录（含 raw_fixed.json + output.step）")
     ap.add_argument("--out", default=None, help="输出目录（默认 _param_experiment/output/fillet_select/<hash>）")
     ap.add_argument("--no-rebuild", action="store_true", help="只规划生成节点，不重建 STEP")
@@ -347,20 +385,21 @@ def main(argv=None) -> int:
     )
 
     print(f"[base] {base.name}")
-    print(f"[teeth] {result['teeth_count']}  轮廓点 {result['profile_point_count']}")
-    print(f"[选角] {result['n_selected']}/{result['n_candidates']}  分布 {result['selected_roles']}")
-    print(f"[分组] {result['groups']}")
-    if result["feedback"]:
-        print(f"[feedback] {result['feedback']}")
-    print(f"[节点] {result['new_fillet_node_ids']}")
+    for ct, r in result.get("components", {}).items():
+        print(f"=== {ct} 组件（{r['component']}）===")
+        print(f"  选角 {r['n_selected']}/{r['n_candidates']}  分布 {r['selected_roles']}")
+        print(f"  分组 {r['groups']}")
+        print(f"  节点 {r['new_fillet_node_ids']}")
+        if r["feedback"]:
+            print(f"  feedback {r['feedback']}")
     print(f"[raw] {result['raw_path']}")
     if result.get("rebuild"):
         rb = result["rebuild"]
-        print(f"[重建] ok={rb.get('ok')}  step={rb.get('step')}")
+        print(f"[重建] ok={rb.get('ok')}")
         if rb.get("geometry_postcheck"):
             print(f"[几何] {rb['geometry_postcheck']}")
         if rb.get("fillet_passthrough_warnings"):
-            print(f"[fillet跳过] {len(rb['fillet_passthrough_warnings'])} 个 fillet pass-through")
+            print(f"[fillet跳过] {len(rb['fillet_passthrough_warnings'])} 个")
         if rb.get("error"):
             print(f"[错误] {rb['error']}")
     return 0 if result["ok"] else 1

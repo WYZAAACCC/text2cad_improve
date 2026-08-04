@@ -28,7 +28,52 @@ ROLE_MEANING = {
     "bottom_flare": "槽底外扩角",
     "bottom_platform": "槽底平台端",
     "root": "根部（凹角）",
+    # 盘面（R-Z 子午截面）角色
+    "bore_mouth": "中心孔口部（bore 内孔端）",
+    "hub_outer_corner": "轮毂底部转角（hub 直角）",
+    "hub_web_transition": "轮毂→腹板过渡（凹角，应力集中）",
+    "web_rim_transition": "腹板→轮缘过渡（凹角，应力集中）",
+    "rim_inner_step": "轮缘内壁阶梯（凸台阶）",
+    "rim_outer_corner": "轮缘外端（加工基准面）",
 }
+
+
+# 盘面 12 点角色（XZ 平面：x=半径 60-250, y=轴向 ±38；下侧 0-5 + 上侧 6-11 镜像）
+DISC_ROLES = [
+    "bore_mouth", "hub_outer_corner", "hub_web_transition", "web_rim_transition",
+    "rim_inner_step", "rim_outer_corner",
+    "rim_outer_corner", "rim_inner_step", "web_rim_transition", "hub_web_transition",
+    "hub_outer_corner", "bore_mouth",
+]
+
+
+def build_candidate_table_generic(pts: list, roles: list) -> list[dict]:
+    """通用候选角表：任意闭合轮廓，每顶点一个角（语义 key + 两条邻边）。
+
+    不依赖枞树形结构（榫槽用 build_candidate_table 保持向后兼容）。
+    结构兼容 resolve_selection / compute_safe_radius 的 corners 格式。
+    """
+    total = len(pts)
+    if len(roles) != total:
+        raise ValueError(f"roles 长度 {len(roles)} != 点数 {total}")
+    cands = []
+    for i in range(total):
+        prev = (i - 1) % total
+        nxt = (i + 1) % total
+        cands.append({
+            "key": f"{roles[i]}@{i}",
+            "role": roles[i],
+            "tooth_index": -1,
+            "vertex_idx": i,
+            "vertex": [pts[i]["x_mm"], pts[i]["y_mm"]],
+            "edge_a_key": f"{roles[prev]}@{prev}→{roles[i]}@{i}",
+            "edge_b_key": f"{roles[i]}@{i}→{roles[nxt]}@{nxt}",
+            "edge_a": [[pts[prev]["x_mm"], pts[prev]["y_mm"]],
+                       [pts[i]["x_mm"], pts[i]["y_mm"]]],
+            "edge_b": [[pts[i]["x_mm"], pts[i]["y_mm"]],
+                       [pts[nxt]["x_mm"], pts[nxt]["y_mm"]]],
+        })
+    return cands
 
 
 def build_candidate_table(pts: list, teeth_count: int) -> list[dict]:

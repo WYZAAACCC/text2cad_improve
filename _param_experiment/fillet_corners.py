@@ -148,10 +148,13 @@ def _dist(p1, p2) -> float:
     return math.hypot(p1[0] - p2[0], p1[1] - p2[1])
 
 
-def compute_safe_radius(corners: list, pts: list, radius_by_role: dict) -> dict[str, float]:
+def compute_safe_radius(corners: list, pts: list, radius_by_role: dict,
+                        edge_factor: float = 0.5) -> dict[str, float]:
     """为每个角计算碰撞安全半径（上下两侧取最小邻边）。
 
-    约束 1（邻边）：半径 ≤ min(上下邻边)/2
+    约束 1（邻边）：半径 ≤ min(上下邻边) × edge_factor
+      - 榫槽 edge_factor=0.5（半邻边，保守，短边多）
+      - 盘面 edge_factor=1.0（全邻边，长邻边 15-16mm，避免 clamp 掉 10-12mm 工程半径）
     约束 2（相邻碰撞）：相邻两角半径之和 ≤ 共享边长（上下两侧都检查）
     """
     n = len(pts)
@@ -165,29 +168,33 @@ def compute_safe_radius(corners: list, pts: list, radius_by_role: dict) -> dict[
             return "connector"
         return "bottom"
 
-    # 每角上下邻边长度
+    # 每角上下邻边长度（通用候选表无 lower_* 字段，仅上侧）
     def _min_edge(c) -> float:
-        Ls = []
-        for (e1, e2, vi) in [(c["edge_a"], c["edge_b"], c["vertex_idx"]),
-                             (c["lower_edge_a"], c["lower_edge_b"], c["lower_vertex_idx"])]:
-            Ls.append(_dist(e1[0], e1[1]))
-            Ls.append(_dist(e2[0], e2[1]))
+        Ls = [_dist(c["edge_a"][0], c["edge_a"][1]),
+              _dist(c["edge_b"][0], c["edge_b"][1])]
+        if "lower_edge_a" in c:
+            Ls.append(_dist(c["lower_edge_a"][0], c["lower_edge_a"][1]))
+            Ls.append(_dist(c["lower_edge_b"][0], c["lower_edge_b"][1]))
         return min(Ls)
 
-    # 初始：半径 = min(上下邻边)/2，且 ≤ 请求值
+    # 初始：半径 = min(邻边) × edge_factor，且 ≤ 请求值
     safe = {}
     for c in corners:
-        g = _role_group(c["key"], c["role"])
-        req = radius_by_role.get(g, 0.5)
-        r = min(_min_edge(c) / 2, req)
+        # radius_by_role 键兼容：盘面按角色（hub_web_transition…）、榫槽按分组（tip/neck/…）
+        req = radius_by_role.get(c["role"]) or radius_by_role.get(
+            _role_group(c["key"], c["role"]), 0.5)
+        r = min(_min_edge(c) * edge_factor, req)
         safe[c["key"]] = max(r, 0.05)
 
     # 约束 2：相邻角（共享边）半径之和 ≤ 共享边长（上侧 + 下侧）
     # 上下两侧各自按对应顶点索引升序排列；下侧必须用 lower_vertex_idx 排序，
     # 否则（按 vertex_idx 排序）lower_vertex_idx 恒降序，ib-ia!=1 全部跳过 → 下侧检查死代码。
+    has_lower = all("lower_vertex_idx" in c for c in corners)
     for _ in range(20):
         changed = False
         for side in ("upper", "lower"):
+            if side == "lower" and not has_lower:
+                continue  # 通用候选表（单顶点）无下侧镜像
             if side == "upper":
                 order = sorted(corners, key=lambda c: c["vertex_idx"])
                 get_i, get_v = (lambda c: c["vertex_idx"]), (lambda c: c["vertex"])
