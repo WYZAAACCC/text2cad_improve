@@ -35,7 +35,7 @@ def _e(od=500, bore=120, thick=76, slots=60, teeth=2, depth=24, throat=4.0, fr=1
     return _expect(od, bore, thick, slots, teeth, depth, throat, fr)
 
 
-CASES = [
+P_CASES = [
     {"name": "P1_slots_48",  "text": _t(slots=48),  "expect": _e(slots=48)},
     {"name": "P2_slots_72",  "text": _t(slots=72),  "expect": _e(slots=72)},
     {"name": "P3_depth_28",  "text": _t(depth=28),  "expect": _e(depth=28)},
@@ -52,6 +52,23 @@ CASES = [
      "expect": _e(teeth=3, depth=28, fr=1.2)},
 ]
 
+# 第二轮（Q 集）：更极端参数值，测系统边界
+Q_CASES = [
+    {"name": "Q1_slots_84",   "text": _t(slots=84),   "expect": _e(slots=84)},
+    {"name": "Q2_slots_96",   "text": _t(slots=96),   "expect": _e(slots=96)},
+    {"name": "Q3_depth_18",   "text": _t(depth=18),   "expect": _e(depth=18)},
+    {"name": "Q4_depth_32",   "text": _t(depth=32),   "expect": _e(depth=32)},
+    {"name": "Q5_od_440",     "text": _t(od=440, R=220), "expect": _e(od=440)},
+    {"name": "Q6_od_520",     "text": _t(od=520, R=260), "expect": _e(od=520)},
+    {"name": "Q7_bore_100",   "text": _t(bore=100),   "expect": _e(bore=100)},
+    {"name": "Q8_bore_140",   "text": _t(bore=140),   "expect": _e(bore=140)},
+    {"name": "Q9_throat_30",  "text": _t(throat=3.0), "expect": _e(throat=3.0)},
+    {"name": "Q10_throat_60", "text": _t(throat=6.0), "expect": _e(throat=6.0)},
+    {"name": "Q11_fr_08",     "text": _t(fr=0.8),     "expect": _e(fr=0.8)},
+    {"name": "Q12_fr_20",     "text": _t(fr=2.0),     "expect": _e(fr=2.0)},
+]
+
+CASES = P_CASES  # 默认 P 集（--set Q 切 Q 集）
 BATCH_SIZE = 3
 
 
@@ -85,14 +102,29 @@ def run_batch(batch_idx: int, workers: int = 3) -> list:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--batch", type=int, required=True, help="批次号（1 起，每批 3 组）")
+    ap.add_argument("--batch", type=int, default=None, help="批次号（1 起，每批 3 组）；--only 时不需")
     ap.add_argument("--workers", type=int, default=3, help="并行 worker 数")
+    ap.add_argument("--set", default="P", choices=["P", "Q"], help="组合集 P(原12) / Q(新12极端)")
+    ap.add_argument("--only", default=None, help="只跑指定组（如 Q1,Q3；覆盖 --batch）")
     args = ap.parse_args(argv)
 
+    global CASES
+    if args.set == "Q":
+        CASES = Q_CASES
     print("=" * 72)
-    print("大量参数组合并行测试（真实 pipeline IR 主路径）")
+    print(f"大量参数组合并行测试（真实 pipeline IR 主路径，组合集 {args.set}，共 {len(CASES)} 组）")
     print("=" * 72)
-    results = run_batch(args.batch, args.workers)
+    if args.only:
+        want = {x.strip().upper() for x in args.only.split(",")}
+        sel = [c for c in CASES if c["name"].split("_")[0] in want]
+        print(f"[only] {len(sel)} 组: {[c['name'] for c in sel]}")
+        with mp.Pool(processes=args.workers) as pool:
+            results = pool.map(_worker, sel)
+    elif args.batch is not None:
+        results = run_batch(args.batch, args.workers)
+    else:
+        print("错误：--batch 或 --only 必须提供一个")
+        return 2
 
     print(f"\n{'组':16s} {'任务状态':12s} {'验证':6s} {'失败项/原因'}")
     for r in results:
