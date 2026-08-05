@@ -385,45 +385,60 @@ def run_one(task_id: str) -> dict:
     # ⑦a ir_doc_hash
     rep["ir_doc_hash"] = _ir_doc_hash(ir)
 
-    # ⑦b param_template_id + ① 标识（design_id/model_id/design_family_id）
-    design_vec = None
+    # ① 标识：继承源（E 阶段 Gen 3 描述变体显式继承源 design_id/model_id/family）
+    inherited = False
     try:
-        req = json.loads((base / "request.json").read_text(encoding="utf-8"))
-        rep["param_template_id"] = _param_template_id(req.get("text", ""))
-        design_vec = _param_vector(extract_requirements(req.get("text", "")))
-        rep["design_vec_source"] = "request"
+        sr = json.loads((base / "source_ref.json").read_text(encoding="utf-8"))
+        if sr.get("design_id"):
+            rep["design_id"] = sr["design_id"]
+            rep["param_template_id"] = sr["design_id"]
+            rep["model_id"] = sr.get("model_id")
+            rep["design_family_id"] = sr.get("design_family_id") or "custom"
+            rep["design_vec_source"] = "inherited"
+            inherited = True
     except Exception:  # noqa: BLE001
         pass
-    if not design_vec or all(v is None for v in design_vec.values()):
-        # 旧任务无 request.json → 用 req_param_report.extracted 兜底
+
+    if not inherited:
+        # ⑦b param_template_id + ① 标识（design_id/model_id/design_family_id）
+        design_vec = None
         try:
-            rp = json.loads((base / "req_param_report.json").read_text(encoding="utf-8"))
-            design_vec = _param_vector(rp.get("extracted") or {})
-            if rep["param_template_id"] is None and any(v is not None for v in design_vec.values()):
-                rep["param_template_id"] = _json_hash(design_vec)
-            rep["design_vec_source"] = "req_param_report"
+            req = json.loads((base / "request.json").read_text(encoding="utf-8"))
+            rep["param_template_id"] = _param_template_id(req.get("text", ""))
+            design_vec = _param_vector(extract_requirements(req.get("text", "")))
+            rep["design_vec_source"] = "request"
         except Exception:  # noqa: BLE001
             pass
-    if not design_vec or all(v is None for v in design_vec.values()):
-        # 最终兜底：从 IR 测量构造参数向量（早期任务两者都缺，如 mon_sweep_g5）
-        try:
-            measured = {"outer_diameter_mm": agg.get("outer_diameter_mm"),
-                        "bore_diameter_mm": agg.get("bore_diameter_mm"),
-                        "axial_thickness_mm": agg.get("axial_thickness_mm"),
-                        "slots": agg.get("count"), "teeth_count": agg.get("teeth_count"),
-                        "slot_depth_mm": agg.get("slot_depth_mm"),
-                        "throat_half_width_mm": agg.get("throat_half_width_mm"),
-                        "root_fillet_mm": agg.get("root_fillet_mm")}
-            if any(v is not None for v in measured.values()):
-                design_vec = _param_vector(measured)
-                if rep["param_template_id"] is None:
+        if not design_vec or all(v is None for v in design_vec.values()):
+            # 旧任务无 request.json → 用 req_param_report.extracted 兜底
+            try:
+                rp = json.loads((base / "req_param_report.json").read_text(encoding="utf-8"))
+                design_vec = _param_vector(rp.get("extracted") or {})
+                if rep["param_template_id"] is None and any(v is not None for v in design_vec.values()):
                     rep["param_template_id"] = _json_hash(design_vec)
-                rep["design_vec_source"] = "ir-measured"
-        except Exception:  # noqa: BLE001
-            pass
-    rep["design_id"] = rep["param_template_id"]
-    rep["model_id"] = (rep["ir_doc_hash"] or "")[:12] if rep["ir_doc_hash"] else None
-    rep["design_family_id"] = _match_family(design_vec) if design_vec else "custom"
+                rep["design_vec_source"] = "req_param_report"
+            except Exception:  # noqa: BLE001
+                pass
+        if not design_vec or all(v is None for v in design_vec.values()):
+            # 最终兜底：从 IR 测量构造参数向量（早期任务两者都缺，如 mon_sweep_g5）
+            try:
+                measured = {"outer_diameter_mm": agg.get("outer_diameter_mm"),
+                            "bore_diameter_mm": agg.get("bore_diameter_mm"),
+                            "axial_thickness_mm": agg.get("axial_thickness_mm"),
+                            "slots": agg.get("count"), "teeth_count": agg.get("teeth_count"),
+                            "slot_depth_mm": agg.get("slot_depth_mm"),
+                            "throat_half_width_mm": agg.get("throat_half_width_mm"),
+                            "root_fillet_mm": agg.get("root_fillet_mm")}
+                if any(v is not None for v in measured.values()):
+                    design_vec = _param_vector(measured)
+                    if rep["param_template_id"] is None:
+                        rep["param_template_id"] = _json_hash(design_vec)
+                    rep["design_vec_source"] = "ir-measured"
+            except Exception:  # noqa: BLE001
+                pass
+        rep["design_id"] = rep["param_template_id"]
+        rep["model_id"] = (rep["ir_doc_hash"] or "")[:12] if rep["ir_doc_hash"] else None
+        rep["design_family_id"] = _match_family(design_vec) if design_vec else "custom"
 
     # ⑤ role（参考 vs 生成）
     try:

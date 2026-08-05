@@ -78,41 +78,54 @@ def _cn_param(p: dict) -> str:
 
 
 def _cn_semantic(p: dict, disk: str) -> str:
+    # 工程语义 + 参数化清晰（措辞对齐 _text 正则，提高 LLM 参数遵循率）
     parts = [f"本设计为{disk}，采用轮毂-腹板-轮缘子午轮廓结构"]
     if p["outer_diameter_mm"] is not None:
-        parts.append(f"外径达{_num(p['outer_diameter_mm'])}mm、中心孔直径{_num(p['bore_diameter_mm'])}mm"
-                     if p["bore_diameter_mm"] is not None else f"外径达{_num(p['outer_diameter_mm'])}mm")
+        s = f"外径{_num(p['outer_diameter_mm'])}mm"
+        if p["bore_diameter_mm"] is not None:
+            s += f"，中心孔直径{_num(p['bore_diameter_mm'])}mm"
+        if p["axial_thickness_mm"] is not None:
+            s += f"，轴向最大厚度{_num(p['axial_thickness_mm'])}mm"
+        parts.append(s)
     if p["hub_half_thickness_mm"] is not None:
-        parts.append(f"轮毂半厚{_num(p['hub_half_thickness_mm'])}mm、轮缘半厚{_num(p['rim_half_thickness_mm'])}mm"
-                     if p["rim_half_thickness_mm"] is not None else f"轮毂半厚{_num(p['hub_half_thickness_mm'])}mm")
+        s = f"轮毂半厚{_num(p['hub_half_thickness_mm'])}mm"
+        if p["rim_half_thickness_mm"] is not None:
+            s += f"，轮缘半厚{_num(p['rim_half_thickness_mm'])}mm"
+        parts.append(s)
     if p["count"] is not None and p["teeth_count"] is not None:
-        parts.append(f"轮缘布置{_num(p['count'])}个{_num(p['teeth_count'])}齿枞树形榫槽（楔形齿面，承受叶片离心载荷）")
+        s = f"轮缘上{_num(p['count'])}个{_num(p['teeth_count'])}齿枞树形榫槽（楔形齿面，承受叶片离心载荷）"
+        if p["distribution_radius_mm"] is not None:
+            s += f"，分布半径{_num(p['distribution_radius_mm'])}mm"
+        parts.append(s)
     if p["slot_depth_mm"] is not None:
-        parts.append(f"榫槽槽深{_num(p['slot_depth_mm'])}mm、喉部半宽{_num(p['throat_half_width_mm'])}mm"
-                     if p["throat_half_width_mm"] is not None else f"榫槽槽深{_num(p['slot_depth_mm'])}mm")
+        s = f"榫槽槽深{_num(p['slot_depth_mm'])}mm"
+        if p["throat_half_width_mm"] is not None:
+            s += f"，喉部半宽{_num(p['throat_half_width_mm'])}mm"
+        parts.append(s)
     if p["root_fillet_mm"] is not None:
         parts.append(f"齿根圆角{_num(p['root_fillet_mm'])}mm以降低应力集中")
     return "。".join(parts) + "。"
 
 
 def _en_mixed(p: dict) -> str:
+    # 英文骨架 + 中文参数（中英混合，提高 LLM 参数遵循率）
     parts = ["Generate a high-pressure turbine disk with hub-web-rim body"]
     if p["outer_diameter_mm"] is not None:
-        parts.append(f"outer diameter {_num(p['outer_diameter_mm'])} mm")
+        parts.append(f"outer diameter {_num(p['outer_diameter_mm'])} mm（外径{_num(p['outer_diameter_mm'])}mm）")
     if p["bore_diameter_mm"] is not None:
-        parts.append(f"bore diameter {_num(p['bore_diameter_mm'])} mm")
+        parts.append(f"bore diameter {_num(p['bore_diameter_mm'])} mm（中心孔直径{_num(p['bore_diameter_mm'])}mm）")
     if p["axial_thickness_mm"] is not None:
-        parts.append(f"axial thickness {_num(p['axial_thickness_mm'])} mm")
+        parts.append(f"axial thickness {_num(p['axial_thickness_mm'])} mm（轴向最大厚度{_num(p['axial_thickness_mm'])}mm）")
     if p["count"] is not None and p["teeth_count"] is not None:
-        parts.append(f"{_num(p['count'])} fir-tree slots ({_num(p['teeth_count'])} teeth)")
+        parts.append(f"{_num(p['count'])} fir-tree slots ({_num(p['teeth_count'])} teeth)（轮缘上{_num(p['count'])}个{_num(p['teeth_count'])}齿枞树形榫槽）")
     if p["distribution_radius_mm"] is not None:
-        parts.append(f"pitch radius {_num(p['distribution_radius_mm'])} mm")
+        parts.append(f"pitch radius {_num(p['distribution_radius_mm'])} mm（分布半径{_num(p['distribution_radius_mm'])}mm）")
     if p["slot_depth_mm"] is not None:
-        parts.append(f"slot depth {_num(p['slot_depth_mm'])} mm")
+        parts.append(f"slot depth {_num(p['slot_depth_mm'])} mm（槽深{_num(p['slot_depth_mm'])}mm）")
     if p["throat_half_width_mm"] is not None:
-        parts.append(f"throat half-width {_num(p['throat_half_width_mm'])} mm")
+        parts.append(f"throat half-width {_num(p['throat_half_width_mm'])} mm（喉部半宽{_num(p['throat_half_width_mm'])}mm）")
     if p["root_fillet_mm"] is not None:
-        parts.append(f"root fillet {_num(p['root_fillet_mm'])} mm")
+        parts.append(f"root fillet {_num(p['root_fillet_mm'])} mm（齿根圆角{_num(p['root_fillet_mm'])}mm）")
     return ", ".join(parts) + "."
 
 
