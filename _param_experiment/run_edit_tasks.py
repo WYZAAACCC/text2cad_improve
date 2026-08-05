@@ -74,34 +74,45 @@ def _delta(before: dict, after: dict) -> dict:
     return d
 
 
-def run_one(tid: str) -> dict | None:
+def run_one(tid: str, param_specs=None) -> dict | None:
+    """param_specs: list[(param_key, new_value or None)]；None → 自动选 1 个可用参数。"""
     base = OUTPUT / tid
     raw_path = base / "raw_fixed.json"
     if not raw_path.exists():
         return None
     ir = json.loads(raw_path.read_text(encoding="utf-8"))
-    reg, cur = _pick_param(ir)
-    if reg is None:
+    if param_specs is None:
+        reg, cur = _pick_param(ir)
+        param_specs = [(reg["param"], None)] if reg else []
+    updates, instr_parts = [], []
+    for pk, nv in param_specs:
+        reg = next((r for r in PARAM_REGISTRY if r["param"] == pk), None)
+        if reg is None or not _resolve_param_nodes(ir, pk):
+            continue
+        cur = _current_value(ir, reg)
+        new = nv if nv is not None else _new_value(reg, cur)
+        if new is None:
+            continue
+        updates.append({"param_key": pk, "new_value": new})
+        instr_parts.append(f"将{reg['label']}从 {cur} 调整为 {new}{reg['unit']}")
+    if not updates:
         print(f"- {tid}  SKIP  无可用参数")
         return None
-    new = _new_value(reg, cur)
     inh = _inherit(tid)
-    instruction = f"请将{reg['label']}从 {cur} 调整为 {new}{reg['unit']}"
+    instruction = "；".join(instr_parts) + "。"
 
     before = run_enrich._measure_all(str(base))
-    res = regenerate_model({"base_dir": str(base),
-                            "param_updates": [{"param_key": reg["param"], "new_value": new}]})
+    res = regenerate_model({"base_dir": str(base), "param_updates": updates})
     if not res.get("ok"):
         print(f"- {tid}  FAIL  {res.get('reason')}")
         return None
     after = run_enrich._measure_all(res["new_base_dir"])
-    sample_id = f"{tid}_{reg['param']}{new}"
+    sample_id = f"{tid}_" + "_".join(f"{u['param_key']}{u['new_value']}" for u in updates)
     sample = {
         "task_type": "edit", "sample_id": sample_id, "source_task_id": tid,
         "design_id": inh["design_id"], "model_id": inh["model_id"],
         "instruction": instruction,
-        "param_updates": [{"param_key": reg["param"], "label": reg["label"],
-                           "old": cur, "new": new, "unit": reg["unit"]}],
+        "param_updates": res.get("param_changes", []),
         "before": before, "after": after, "delta": _delta(before, after),
         "new_base_dir": res.get("new_base_dir"), "checks": res.get("checks"),
         "validated_ok": bool(res.get("ok") and res.get("checks", {}).get("valid_solid")),
@@ -117,7 +128,22 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Edit 任务样本构造器（改参重生成）")
     ap.add_argument("--only", default=None, help="只处理指定 task_id")
     ap.add_argument("--limit", type=int, default=None, help="最多处理前 N 个任务")
+    ap.add_argument("--params", default=None,
+                    help='耦合参数 "slot_count:48,root_fillet:1.5"（逗号 k:v，缺 v 则 cur×0.6）')
     args = ap.parse_args(argv)
+
+    param_specs = None
+    if args.params:
+        param_specs = []
+        for item in args.params.split(","):
+            item = item.strip()
+            if not item:
+                continue
+            if ":" in item:
+                k, v = item.split(":", 1)
+                param_specs.append((k.strip(), float(v)))
+            else:
+                param_specs.append((item, None))
 
     if args.only:
         tasks = [args.only]
@@ -133,10 +159,10 @@ def main(argv=None) -> int:
     done = 0
     for tid in tasks:
         try:
-            s = run_one(tid)
+            s = run_one(tid, param_specs)
             if s:
                 done += 1
-                print(f"- {tid}  OK  {s['instruction'][:50]}  "
+                print(f"- {tid}  OK  {s['instruction'][:60]}  "
                       f"count {s['before'].get('count')}->{s['after'].get('count')}")
         except Exception as exc:  # noqa: BLE001
             print(f"- {tid}  FAIL  {exc}")

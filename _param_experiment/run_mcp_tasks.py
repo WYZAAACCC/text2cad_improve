@@ -25,7 +25,16 @@ sys.path.insert(0, str(ROOT / "app" / "text-to-cad" / "server"))
 sys.path.insert(0, str(ROOT / "integrations" / "engineering_tools" / "src"))
 sys.path.insert(0, str(_HERE))
 
-from mcp_tools import TOOLS  # noqa: E402
+from mcp_tools import TOOLS, register, check_slot_depth_and_rim  # noqa: E402
+
+
+# 新工具示例（实验层注册，仅脚本运行时生效，不影响 src/mcp_tools 持久化）
+@register("check_rim_thickness",
+          "测量轮缘厚度并检查槽底剩料裕度（新工具发现任务用）",
+          {"type": "object", "properties": {"base_dir": {"type": "string"}}, "required": []})
+def _check_rim_thickness(args=None):
+    return check_slot_depth_and_rim(args)
+
 
 # 确定性工具序列定义：(mcp_task_type, instruction, [(tool_name, extra_args)])
 SEQUENCES = [
@@ -35,6 +44,12 @@ SEQUENCES = [
      [("count_fir_tree_slots", {}),
       ("check_slot_pitch_and_ligament", {}),
       ("check_slot_depth_and_rim", {})]),
+    ("new_tool", "发现并使用新工具检查轮缘厚度（check_rim_thickness）",
+     [("check_rim_thickness", {})]),
+    ("exception", "调用榫槽数量工具但 base_dir 无效（异常调用路径）",
+     [("count_fir_tree_slots", {"base_dir": "/nonexistent/__invalid__"})]),
+    ("edge", "超出工具能力的边界任务（如应力分布分析）",
+     [("_unsupported_stress_analysis", {})]),
 ]
 
 

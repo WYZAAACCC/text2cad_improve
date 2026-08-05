@@ -122,10 +122,30 @@ def _inject_hints_null(ir: dict):
     ir["llm_validation_hints"] = None
 
 
+def _inject_pitch_ligament(ir: dict):
+    # 使 pitch=2πr/N < 槽宽 → 最小剩料 ≤0（类⑤，MCP check_slot_pitch_and_ligament 检测）
+    for n in ir.get("nodes", []):
+        if n.get("op") == "circular_pattern_component":
+            n["params"]["count"] = 240
+            return
+
+
+def _inject_bool_fillet(ir: dict):
+    # 使 fillet 半径远超邻边 → runtime BRep_API（类⑥；检测在 runtime 层，repair 在验证层不触发）
+    for n in ir.get("nodes", []):
+        if n.get("op") == "fillet_sketch" and isinstance(n.get("params"), dict):
+            if isinstance(n["params"].get("radius_mm"), (int, float)):
+                n["params"]["radius_mm"] = 30.0
+                return
+
+
 INJECTIONS = [
-    ("fillet_zero", "fix_fillet_zero_radius", _inject_fillet_zero),
-    ("op_version", "fix_op_versions", _inject_bad_op_version),
-    ("hints_null", "fix_null_hints", _inject_hints_null),
+    # (id, rule_id, check 层, apply)
+    ("fillet_zero", "fix_fillet_zero_radius", "validation", _inject_fillet_zero),
+    ("op_version", "fix_op_versions", "validation", _inject_bad_op_version),
+    ("hints_null", "fix_null_hints", "validation", _inject_hints_null),
+    ("pitch_ligament", "slot_pitch_ligament", "mcp", _inject_pitch_ligament),
+    ("bool_fillet", "boolean_runtime_geometry", "runtime", _inject_bool_fillet),
 ]
 
 
@@ -134,12 +154,26 @@ def _inject_samples(tid: str) -> list:
     base = OUTPUT / tid
     inh = _inherit(tid)
     raw = json.loads((base / "raw_fixed.json").read_text(encoding="utf-8"))
-    for inj_id, rule_id, apply in INJECTIONS:
+    for inj_id, rule_id, check, apply in INJECTIONS:
         wrong = copy.deepcopy(raw)
         apply(wrong)
         try:
             vrun = run_validation(wrong)
             err_codes = [i.code for i in vrun.report.issues if i.severity == "error"]
+            mcp_failed = []
+            runtime_failed = None
+            if check == "mcp":
+                from mcp_tools import generate_quality_report
+                tmp = base / f"_inj_{inj_id}"
+                tmp.mkdir(parents=True, exist_ok=True)
+                (tmp / "raw_fixed.json").write_text(
+                    json.dumps(wrong, ensure_ascii=False), encoding="utf-8")
+                gr = generate_quality_report({"base_dir": str(tmp),
+                                              "tool_subset": ["check_slot_pitch_and_ligament"]})
+                mcp_failed = gr.get("failed_checks", [])
+            elif check == "runtime":
+                # runtime 布尔/几何错误：验证层不检测，记录注入目标（确定性复现需 run_gcad_core，本轮不做）
+                runtime_failed = f"injected fillet radius 30mm (expect BRep_API at runtime)"
             res = repair_documents(wrong, vrun)
             right = res.document
             repair_ok = bool(res.outcome.final_ok)
@@ -153,7 +187,8 @@ def _inject_samples(tid: str) -> list:
             "error_source": "controlled_injection", "phase": None,
             "rule_id": rule_id, "rule_id_source": "known",
             "wrong_ir": wrong, "right_ir": right,
-            "validation_error_codes": err_codes, "repair_ok": repair_ok,
+            "validation_error_codes": err_codes, "mcp_failed_checks": mcp_failed,
+            "runtime_failed": runtime_failed, "repair_ok": repair_ok,
             "timestamp": datetime.now().isoformat(timespec="seconds"),
         })
     return samples
