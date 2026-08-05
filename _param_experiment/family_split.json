@@ -1,0 +1,10 @@
+{
+  "schema": "family_split_v1",
+  "note": "设计族→集合分配（可配置）。当前为测试数据演示分配；正式 32 设计族（20 训练/4 验证/8 留出）在种子设计族定义后填充。",
+  "family_split": {
+    "G1": "train",
+    "G2": "train",
+    "G3": "val",
+    "custom": "train"
+  }
+}
