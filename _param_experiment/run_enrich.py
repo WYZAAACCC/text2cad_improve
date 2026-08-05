@@ -21,6 +21,7 @@ import argparse
 import copy
 import hashlib
 import json
+import math
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -67,6 +68,51 @@ NORMALIZED_PARAMS = [
     ("count", "榫槽数量", False, None),
     ("teeth_count", "齿数", False, None),
 ]
+
+# design_family 匹配注册表（G1-G5 期望参数向量；离散键精确、连续键 tol）
+FAMILY_REGISTRY = [
+    {"id": "G1", "expect": {"outer_diameter_mm": 500, "bore_diameter_mm": 120, "axial_thickness_mm": 76,
+                            "slots": 60, "teeth_count": 2, "slot_depth_mm": 24,
+                            "throat_half_width_mm": 4.0, "root_fillet_mm": 1.0}},
+    {"id": "G2", "expect": {"outer_diameter_mm": 500, "bore_diameter_mm": 120, "axial_thickness_mm": 76,
+                            "slots": 48, "teeth_count": 2, "slot_depth_mm": 28,
+                            "throat_half_width_mm": 4.0, "root_fillet_mm": 1.0}},
+    {"id": "G3", "expect": {"outer_diameter_mm": 460, "bore_diameter_mm": 110, "axial_thickness_mm": 70,
+                            "slots": 60, "teeth_count": 2, "slot_depth_mm": 24,
+                            "throat_half_width_mm": 3.5, "root_fillet_mm": 1.0}},
+    {"id": "G4", "expect": {"outer_diameter_mm": 500, "bore_diameter_mm": 110, "axial_thickness_mm": 76,
+                            "slots": 60, "teeth_count": 2, "slot_depth_mm": 24,
+                            "throat_half_width_mm": 3.0, "root_fillet_mm": 1.5}},
+    {"id": "G5", "expect": {"outer_diameter_mm": 500, "bore_diameter_mm": 120, "axial_thickness_mm": 76,
+                            "slots": 60, "teeth_count": 3, "slot_depth_mm": 30,
+                            "throat_half_width_mm": 4.0, "root_fillet_mm": 1.2}},
+]
+FAMILY_TOL = {"outer_diameter_mm": 5, "bore_diameter_mm": 5, "axial_thickness_mm": 3,
+              "slot_depth_mm": 2, "throat_half_width_mm": 0.5, "root_fillet_mm": 0.3}
+
+
+def _match_family(vec: dict) -> str:
+    """参数向量匹配 design_family：要求 8 键齐全，离散键精确、连续键 tol 内。未命中 custom。"""
+    if not vec:
+        return "custom"
+    for f in FAMILY_REGISTRY:
+        exp = f["expect"]
+        ok = True
+        for k, ev in exp.items():
+            v = vec.get(k)
+            if v is None:
+                ok = False
+                break
+            if k in ("slots", "teeth_count"):
+                if int(v) != int(ev):
+                    ok = False
+                    break
+            elif abs(float(v) - float(ev)) > FAMILY_TOL.get(k, 1.0):
+                ok = False
+                break
+        if ok:
+            return f["id"]
+    return "custom"
 
 
 def _json_hash(obj) -> str:
@@ -152,12 +198,14 @@ def _ir_doc_hash(raw: dict) -> str:
     return _json_hash(symbolized)
 
 
+def _param_vector(req: dict) -> dict:
+    """规范化 8 参数向量（缺失补 None、float 化）。"""
+    return {k: (float(req[k]) if req.get(k) is not None else None) for k in PARAM_VECTOR_KEYS}
+
+
 def _param_template_id(text: str) -> str:
-    """参数模板 id：需求文本提取的 8 参数向量（缺失补 None、float 化）→ stable_hash。"""
-    req = extract_requirements(text)
-    vec = {k: (float(req[k]) if k in req and req[k] is not None else None)
-           for k in PARAM_VECTOR_KEYS}
-    return _json_hash(vec)
+    """参数模板 id：需求文本提取的 8 参数向量 → stable_hash。"""
+    return _json_hash(_param_vector(extract_requirements(text)))
 
 
 def _measure_all(base: str) -> dict:
@@ -185,12 +233,131 @@ def _build_normalized(agg: dict, ro: float) -> list:
     return out
 
 
+def _mouth_wedge(ir: dict) -> dict | None:
+    """槽口楔形段（榫槽轮廓前 2 点）：run=|Δx|、drop=|Δy|、angle=atan(drop/run)。
+
+    语义 ≈ 论文"槽口倒角"的首齿楔形入口（非显式 chamfer op）。"""
+    cutter_comp = None
+    for n in ir.get("nodes", []):
+        if n.get("op") == "extrude_profile":
+            cutter_comp = n.get("component")
+            break
+    if not cutter_comp:
+        return None
+    for n in ir.get("nodes", []):
+        if n.get("op") == "add_polyline" and n.get("component") == cutter_comp:
+            pts = (n.get("params") or {}).get("points") or []
+            if len(pts) >= 2:
+                p0, p1 = pts[0], pts[1]
+                run = abs(p1.get("x_mm", 0) - p0.get("x_mm", 0))
+                drop = abs(p0.get("y_mm", 0) - p1.get("y_mm", 0))
+                if run > 0:
+                    return {"mouth_wedge_run_mm": round(run, 3),
+                            "mouth_wedge_drop_mm": round(drop, 3),
+                            "mouth_wedge_angle_deg": round(math.degrees(math.atan2(drop, run)), 3)}
+            break
+    return None
+
+
+def _slot_axial_depth(ir: dict):
+    for n in ir.get("nodes", []):
+        if n.get("op") == "extrude_profile":
+            return (n.get("params") or {}).get("depth_mm")
+    return None
+
+
+def _feature_counts(ir: dict) -> dict:
+    ops: dict = {}
+    for n in ir.get("nodes", []):
+        op = n.get("op", "?")
+        ops[op] = ops.get(op, 0) + 1
+    return {"nodes": len(ir.get("nodes", [])),
+            "components": len(ir.get("components", [])),
+            "op_counts": ops}
+
+
+def _constraints(agg: dict, ir: dict) -> list:
+    """显式工程约束注册表（当前盘型适用 3 式；孔/环槽式 N/A）。"""
+    ops = {n.get("op") for n in ir.get("nodes", [])}
+    cons = []
+    pitch = agg.get("circumferential_pitch_mm")
+    if isinstance(pitch, (int, float)):
+        cons.append({"id": "slot_pitch", "formula": "ps = 2π·rs/Ns", "applicable": True,
+                     "params": {"count": agg.get("count"), "radius_mm": agg.get("distribution_radius_mm")},
+                     "value_mm": round(pitch, 4), "validated_ok": True})
+    width, lig = agg.get("slot_max_tangential_width_mm"), agg.get("min_ligament_mm")
+    if isinstance(width, (int, float)) and isinstance(lig, (int, float)) and isinstance(pitch, (int, float)):
+        lhs = width + 2 * lig
+        cons.append({"id": "ws_plus_2cs_leq_ps", "formula": "ws + 2·cs ≤ ps", "applicable": True,
+                     "params": {"width_mm": round(width, 4), "ligament_mm": round(lig, 4)},
+                     "value_mm": round(lhs, 4), "bound_mm": round(pitch, 4),
+                     "validated_ok": lhs <= pitch + 1e-6})
+    depth, rim, bl = agg.get("slot_depth_mm"), agg.get("rim_thickness_mm"), agg.get("bottom_ligament_mm")
+    if isinstance(depth, (int, float)) and isinstance(rim, (int, float)):
+        lhs = depth + (bl if isinstance(bl, (int, float)) else 0)
+        cons.append({"id": "hs_plus_cr_leq_tr", "formula": "hs + cr ≤ tr", "applicable": True,
+                     "params": {"slot_depth_mm": round(depth, 4), "bottom_ligament_mm": bl},
+                     "value_mm": round(lhs, 4), "bound_mm": round(rim, 4),
+                     "validated_ok": lhs <= rim + 1e-6})
+    if "cut_circular_hole_pattern" not in ops:
+        cons.append({"id": "rp_plus_dh2_plus_cb_leq_rb", "formula": "rp + dh/2 + cb ≤ rb",
+                     "applicable": False, "reason": "当前盘无孔阵列 op (cut_circular_hole_pattern)"})
+    else:
+        cons.append({"id": "rp_plus_dh2_plus_cb_leq_rb", "formula": "rp + dh/2 + cb ≤ rb",
+                     "applicable": True, "validated_ok": None})
+    if not {"cut_annular_groove", "cut_rim_slot_pattern"} & ops:
+        cons.append({"id": "annular_groove_clearance", "formula": "环槽/rim_slot 约束",
+                     "applicable": False, "reason": "当前盘无环槽/rim_slot op"})
+    return cons
+
+
+def _fingerprint(out_dir: Path) -> dict | None:
+    """B-rep 几何指纹：体积/面积/包围盒/面边数/曲面类型分布 + stable hash。"""
+    brep = out_dir / "output.brep"
+    if not brep.exists():
+        return None
+    try:
+        import cadquery as cq
+        shape = cq.importers.importBrep(str(brep)).val()
+        bb = shape.BoundingBox()
+        from OCP.TopExp import TopExp_Explorer
+        from OCP.TopAbs import TopAbs_FACE, TopAbs_EDGE
+        from OCP.BRepAdaptor import BRepAdaptor_Surface
+        from OCP.TopoDS import TopoDS
+        from OCP.GeomAbs import (GeomAbs_Plane, GeomAbs_Cylinder, GeomAbs_Cone,
+                                 GeomAbs_Sphere, GeomAbs_Torus)
+        _SURFACE_NAMES = {GeomAbs_Plane: "Plane", GeomAbs_Cylinder: "Cylinder",
+                          GeomAbs_Cone: "Cone", GeomAbs_Sphere: "Sphere", GeomAbs_Torus: "Torus"}
+        fexp = TopExp_Explorer(shape.wrapped, TopAbs_FACE)
+        eexp = TopExp_Explorer(shape.wrapped, TopAbs_EDGE)
+        face_count = edge_count = 0
+        types: dict = {}
+        while fexp.More():
+            face_count += 1
+            ad = BRepAdaptor_Surface(TopoDS.Face_s(fexp.Current()))
+            name = _SURFACE_NAMES.get(ad.GetType(), f"Type{ad.GetType()}")
+            types[name] = types.get(name, 0) + 1
+            fexp.Next()
+        while eexp.More():
+            edge_count += 1
+            eexp.Next()
+        fp = {"volume_mm3": round(shape.Volume(), 4), "area_mm2": round(shape.Area(), 4),
+              "bbox_mm": [round(bb.xlen, 4), round(bb.ylen, 4), round(bb.zlen, 4)],
+              "face_count": face_count, "edge_count": edge_count, "surface_types": types}
+        fp["hash"] = _json_hash(fp)
+        return fp
+    except Exception as exc:  # noqa: BLE001
+        return {"error": str(exc)}
+
+
 def run_one(task_id: str) -> dict:
     base = OUTPUT / task_id
-    rep = {"task_id": task_id, "schema": "dataset_enrich_v1", "Ro_mm": None,
+    rep = {"task_id": task_id, "schema": "dataset_enrich_v2", "Ro_mm": None,
            "Ro_source": None, "normalized_params": [], "param_template_id": None,
-           "ir_doc_hash": None, "error": None,
-           "timestamp": datetime.now().isoformat(timespec="seconds")}
+           "ir_doc_hash": None, "design_id": None, "model_id": None,
+           "design_family_id": "custom", "role": "generated",
+           "labels": None, "constraints": [], "b_rep_fingerprint": None,
+           "error": None, "timestamp": datetime.now().isoformat(timespec="seconds")}
 
     raw_path = base / "raw_fixed.json"
     if not raw_path.exists():
@@ -205,6 +372,7 @@ def run_one(task_id: str) -> dict:
         return rep
 
     # ④ 归一化参数
+    agg = {}
     try:
         agg = _measure_all(str(base))
         ro = agg.get("outer_radius_mm")
@@ -217,12 +385,69 @@ def run_one(task_id: str) -> dict:
     # ⑦a ir_doc_hash
     rep["ir_doc_hash"] = _ir_doc_hash(ir)
 
-    # ⑦b param_template_id（request.json 的需求文本）
+    # ⑦b param_template_id + ① 标识（design_id/model_id/design_family_id）
+    design_vec = None
     try:
         req = json.loads((base / "request.json").read_text(encoding="utf-8"))
         rep["param_template_id"] = _param_template_id(req.get("text", ""))
+        design_vec = _param_vector(extract_requirements(req.get("text", "")))
     except Exception:  # noqa: BLE001
         pass
+    if not design_vec or all(v is None for v in design_vec.values()):
+        # 旧任务无 request.json → 用 req_param_report.extracted 兜底
+        try:
+            rp = json.loads((base / "req_param_report.json").read_text(encoding="utf-8"))
+            design_vec = _param_vector(rp.get("extracted") or {})
+            if rep["param_template_id"] is None and any(v is not None for v in design_vec.values()):
+                rep["param_template_id"] = _json_hash(design_vec)
+        except Exception:  # noqa: BLE001
+            pass
+    rep["design_id"] = rep["param_template_id"]
+    rep["model_id"] = (rep["ir_doc_hash"] or "")[:12] if rep["ir_doc_hash"] else None
+    rep["design_family_id"] = _match_family(design_vec) if design_vec else "custom"
+
+    # ⑤ role（参考 vs 生成）
+    try:
+        meta = json.loads((base / "output.metadata.json").read_text(encoding="utf-8"))
+        tl = (meta.get("generative_metadata") or {}).get("trust_level") or meta.get("trust_level")
+        if tl == "reference_geometry":
+            rep["role"] = "reference"
+    except Exception:  # noqa: BLE001
+        pass
+
+    # ③ labels（feasible / slot_key_dims / feature_counts）
+    try:
+        step_ok = (base / "output.step").exists()
+        val_ok = False
+        try:
+            vr = json.loads((base / "validation_report.json").read_text(encoding="utf-8"))
+            val_ok = bool(vr.get("ok"))
+        except Exception:  # noqa: BLE001
+            pass
+        skd = {"pitch_mm": agg.get("circumferential_pitch_mm"),
+               "min_ligament_mm": agg.get("min_ligament_mm"),
+               "flank_angle_deg": agg.get("flank_angle_deg"),
+               "slot_axial_depth_mm": _slot_axial_depth(ir)}
+        wedge = _mouth_wedge(ir)
+        if wedge:
+            skd.update(wedge)
+        rep["labels"] = {"feasible": step_ok and val_ok,
+                         "slot_key_dims": {k: v for k, v in skd.items() if v is not None},
+                         "feature_counts": _feature_counts(ir)}
+    except Exception as exc:  # noqa: BLE001
+        rep["error"] = f"labels 失败: {exc}"
+
+    # ④ 约束注册表
+    try:
+        rep["constraints"] = _constraints(agg, ir)
+    except Exception as exc:  # noqa: BLE001
+        rep["error"] = f"constraints 失败: {exc}"
+
+    # ② B-rep 指纹
+    try:
+        rep["b_rep_fingerprint"] = _fingerprint(base)
+    except Exception as exc:  # noqa: BLE001
+        rep["b_rep_fingerprint"] = {"error": str(exc)}
 
     (base / "dataset_enrich.json").write_text(
         json.dumps(rep, ensure_ascii=False, indent=2), encoding="utf-8")

@@ -29,7 +29,7 @@ sys.path.insert(0, str(ROOT / "integrations" / "engineering_tools" / "src"))
 sys.path.insert(0, str(_HERE))
 
 from mcp_tools import (  # noqa: E402
-    PARAM_REGISTRY, _current_value, count_fir_tree_slots,
+    PARAM_REGISTRY, _current_value, _resolve_param_nodes, count_fir_tree_slots,
     measure_disc_dimensions, measure_fir_tree_slot_profile, regenerate_model,
 )
 
@@ -72,11 +72,11 @@ def _delta(before: dict, after: dict) -> dict:
     return d
 
 
-def run_one(task_id: str, param_key: str, new_value=None, copy: bool = False) -> dict:
+def run_one(task_id: str, params, copy: bool = False) -> dict:
+    """params: list[(param_key, new_value or None)]；None → cur×0.6 安全减少。"""
     base = OUTPUT / task_id
-    report = {"task_id": task_id, "schema": "regen_report_v1",
-              "param": param_key, "param_changes": [],
-              "before": {}, "after": {}, "delta": {},
+    report = {"task_id": task_id, "schema": "regen_report_v1", "param_updates": [],
+              "param_changes": [], "before": {}, "after": {}, "delta": {},
               "regenerated_ok": False, "new_base_dir": None, "checks": None,
               "error": None, "timestamp": datetime.now().isoformat(timespec="seconds")}
     raw_path = base / "raw_fixed.json"
@@ -84,25 +84,38 @@ def run_one(task_id: str, param_key: str, new_value=None, copy: bool = False) ->
         report["error"] = "任务目录无 raw_fixed.json"
         return report
 
-    reg = next((r for r in PARAM_REGISTRY if r["param"] == param_key), None)
-    if reg is None:
-        report["error"] = f"未知参数 key {param_key!r}"
-        return report
     try:
         ir = json.loads(raw_path.read_text(encoding="utf-8"))
     except Exception as exc:  # noqa: BLE001
         report["error"] = f"raw_fixed.json 读取失败: {exc}"
         return report
 
-    cur = _current_value(ir, reg)
-    new = _safe_new_value(reg, cur, new_value)
-    if new is None:
-        report["error"] = f"参数 {param_key} 当前文档不可用"
+    # 逐参数校验可用性（_resolve_param_nodes 语义定位），不可用跳过，可用的继续
+    updates = []
+    skipped = []
+    for pk, nv in params:
+        reg = next((r for r in PARAM_REGISTRY if r["param"] == pk), None)
+        if reg is None:
+            skipped.append(f"{pk}(未知key)")
+            continue
+        if not _resolve_param_nodes(ir, pk):
+            skipped.append(f"{pk}(文档不可用)")
+            continue
+        new = _safe_new_value(reg, _current_value(ir, reg), nv)
+        if new is None:
+            skipped.append(f"{pk}(无当前值)")
+            continue
+        updates.append({"param_key": pk, "new_value": new})
+    if not updates:
+        report["error"] = f"无可用参数更新（跳过: {', '.join(skipped) or '全部不可用'}）"
+        (base / "regen_report.json").write_text(
+            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
         return report
+    report["param_updates"] = updates
+    report["skipped_params"] = skipped or None
     report["before"] = _measure(str(base))
 
-    res = regenerate_model({"base_dir": str(base),
-                            "param_updates": [{"param_key": param_key, "new_value": new}]})
+    res = regenerate_model({"base_dir": str(base), "param_updates": updates})
     if not res.get("ok"):
         report["error"] = res.get("reason") or "再生失败"
         report["param_changes"] = res.get("param_changes", [])
@@ -133,10 +146,26 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Rregen 参数再生测试（数据集字段）")
     ap.add_argument("--only", default=None, help="只处理指定 task_id")
     ap.add_argument("--param", default="slot_count",
-                    help=f"参数 key（可选：{[r['param'] for r in PARAM_REGISTRY]}）")
+                    help=f"参数 key（可选：{[r['param'] for r in PARAM_REGISTRY]}；与 --params 互斥）")
     ap.add_argument("--new-value", type=float, default=None, help="指定新值（默认 cur×0.6 安全减少）")
+    ap.add_argument("--params", default=None,
+                    help='多参数 "slot_count:48,root_fillet:1.5"（逗号 k:v，缺 v 则 cur×0.6）')
     ap.add_argument("--copy", action="store_true", help="把新模型复制进任务目录 regen/<tag>/")
     args = ap.parse_args(argv)
+
+    if args.params:
+        params = []
+        for item in args.params.split(","):
+            item = item.strip()
+            if not item:
+                continue
+            if ":" in item:
+                k, v = item.split(":", 1)
+                params.append((k.strip(), float(v)))
+            else:
+                params.append((item, None))
+    else:
+        params = [(args.param, args.new_value)]
 
     if args.only:
         tasks = [args.only]
@@ -147,15 +176,13 @@ def main(argv=None) -> int:
         print("没有任务目录")
         return 1
 
-    print(f"Rregen 参数再生（param={args.param}，{len(tasks)} 个任务）")
+    print(f"Rregen 参数再生（{params}，{len(tasks)} 个任务）")
     for tid in tasks:
         print(f"- {tid} ...", end=" ", flush=True)
-        r = run_one(tid, args.param, args.new_value, copy=args.copy)
+        r = run_one(tid, params, copy=args.copy)
         if r["regenerated_ok"]:
-            ch = r["param_changes"][0] if r["param_changes"] else {}
-            print(f"OK  {ch.get('param')}: {ch.get('old')}→{ch.get('new')}  "
-                  f"槽数 {r['after'].get('count')}  "
-                  f"delta={ {k: v for k, v in r['delta'].items() if k == 'count'} }")
+            chs = [f"{c.get('param')}:{c.get('old')}→{c.get('new')}" for c in r["param_changes"]]
+            print(f"OK  {', '.join(chs)}  after_count={r['after'].get('count')}")
         else:
             print(f"FAIL  {r['error']}")
     print("DONE")
