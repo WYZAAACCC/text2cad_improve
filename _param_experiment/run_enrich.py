@@ -354,8 +354,8 @@ def run_one(task_id: str) -> dict:
     base = OUTPUT / task_id
     rep = {"task_id": task_id, "schema": "dataset_enrich_v2", "Ro_mm": None,
            "Ro_source": None, "normalized_params": [], "param_template_id": None,
-           "ir_doc_hash": None, "design_id": None, "model_id": None,
-           "design_family_id": "custom", "role": "generated",
+           "ir_doc_hash": None, "design_id": None, "design_vec_source": None,
+           "model_id": None, "design_family_id": "custom", "role": "generated",
            "labels": None, "constraints": [], "b_rep_fingerprint": None,
            "error": None, "timestamp": datetime.now().isoformat(timespec="seconds")}
 
@@ -391,6 +391,7 @@ def run_one(task_id: str) -> dict:
         req = json.loads((base / "request.json").read_text(encoding="utf-8"))
         rep["param_template_id"] = _param_template_id(req.get("text", ""))
         design_vec = _param_vector(extract_requirements(req.get("text", "")))
+        rep["design_vec_source"] = "request"
     except Exception:  # noqa: BLE001
         pass
     if not design_vec or all(v is None for v in design_vec.values()):
@@ -400,6 +401,24 @@ def run_one(task_id: str) -> dict:
             design_vec = _param_vector(rp.get("extracted") or {})
             if rep["param_template_id"] is None and any(v is not None for v in design_vec.values()):
                 rep["param_template_id"] = _json_hash(design_vec)
+            rep["design_vec_source"] = "req_param_report"
+        except Exception:  # noqa: BLE001
+            pass
+    if not design_vec or all(v is None for v in design_vec.values()):
+        # 最终兜底：从 IR 测量构造参数向量（早期任务两者都缺，如 mon_sweep_g5）
+        try:
+            measured = {"outer_diameter_mm": agg.get("outer_diameter_mm"),
+                        "bore_diameter_mm": agg.get("bore_diameter_mm"),
+                        "axial_thickness_mm": agg.get("axial_thickness_mm"),
+                        "slots": agg.get("count"), "teeth_count": agg.get("teeth_count"),
+                        "slot_depth_mm": agg.get("slot_depth_mm"),
+                        "throat_half_width_mm": agg.get("throat_half_width_mm"),
+                        "root_fillet_mm": agg.get("root_fillet_mm")}
+            if any(v is not None for v in measured.values()):
+                design_vec = _param_vector(measured)
+                if rep["param_template_id"] is None:
+                    rep["param_template_id"] = _json_hash(design_vec)
+                rep["design_vec_source"] = "ir-measured"
         except Exception:  # noqa: BLE001
             pass
     rep["design_id"] = rep["param_template_id"]

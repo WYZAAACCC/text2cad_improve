@@ -27,6 +27,7 @@ _TASK_PAT = re.compile(r"task=([A-Za-z0-9_]+)")
 
 
 def _scan_logs() -> dict:
+    """只认 [ 开头行（[状态]/[错误]/[路径]），避免验证表格行（任务名开头）误标前一任务。"""
     samples: dict = {}
     for log in sorted(LOG_DIR.glob("sweep_*.log")):
         cur = None
@@ -34,15 +35,19 @@ def _scan_logs() -> dict:
             m = _TASK_PAT.search(line)
             if m:
                 cur = m.group(1)
-            if not cur:
                 continue
+            if not cur or not line.lstrip().startswith("["):
+                continue
+            em = _ERROR_PAT.search(line)
+            failed = "failed" in line
+            if not (em or failed):
+                continue  # [状态] completed / 非失败行不创建样本
             rec = samples.setdefault(cur, {"task_id": cur, "error_code": "run_failed",
                                            "evidence": "", "failed_checks": None})
-            em = _ERROR_PAT.search(line)
             if em:
                 rec["evidence"] = em.group(0).strip()
-            elif "failed" in line and "task=" not in line and not rec["evidence"]:
-                rec["evidence"] = line.strip()[:120]
+            elif not rec["evidence"]:
+                rec["evidence"] = "run failed (sweep log)"
     return samples
 
 
