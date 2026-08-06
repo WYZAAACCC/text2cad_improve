@@ -596,8 +596,9 @@ def build_coupled_disc(params: dict) -> dict:
     disc = build_axisym_disc(params)
     all_nodes = list(disc["nodes"])
     comps = list(disc["components"])
-    # 盘体+特征布尔后的 final body = assembly 组件 root_node
-    disc_final = next(c["root_node"] for c in comps if c["id"] == "__assembly__")
+    # 盘体+特征布尔后的 final body = assembly 组件 root_node；无特征（无 assembly）时 = 盘体 revolve
+    disc_final = next((c["root_node"] for c in comps if c["id"] == "__assembly__"),
+                      "n_disc_revolve")
     teeth = int(params.get("teeth", 2))
     slots = int(params.get("slots", 60))
     depth = params.get("depth_mm", 24.0)
@@ -619,9 +620,13 @@ def build_coupled_disc(params: dict) -> dict:
     all_nodes += [n_pattern, n_final_cut]
     comps.append({"id": "slot_cutter", "owner_dialect": "sketch_profile",
                   "kind_hint": "fir_tree_slot_cutter", "root_node": "n_cutter_extrude"})
-    for c in comps:
-        if c["id"] == "__assembly__":
-            c["root_node"] = "n_final_cut"
+    asm = next((c for c in comps if c["id"] == "__assembly__"), None)
+    if asm is None:
+        # 盘体无孔/环槽特征时 build_axisym_disc 不建 assembly → 补建
+        comps.append({"id": "__assembly__", "owner_dialect": "composition",
+                      "kind_hint": "assembly", "root_node": "n_final_cut"})
+    else:
+        asm["root_node"] = "n_final_cut"
     return {
         "document_id": f"tpl_coupled_{params.get('_tag', 'ref')}",
         "part_name": "HP_Turbine_Disc_Coupled",
