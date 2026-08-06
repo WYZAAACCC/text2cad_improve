@@ -118,10 +118,12 @@ def disc_profile(od_mm, bore_mm, hub_half_mm, rim_half_mm, thick_mm,
     else:
         web_inner = web_inner_half if web_inner_half else _clamp(0.6 * hub_half_mm, 8.0, 40.0)
         web_outer = web_outer_half if web_outer_half else _clamp(0.5 * rim_half_mm, 6.0, 32.0)
-    # 复杂轮缘曲线过渡（transition != linear）：web-rim 台阶插入过渡点逼近曲线
+    # 复杂轮缘曲线过渡（transition != linear）：web-rim 台阶插入过渡点逼近曲线。
+    # 幅度 ≤6mm（0.06×rim_radial）：过渡点 r 限制在 rim_junc±6 内，不深入腹板
+    # （此前 0.2×rim_radial 使 D29 s_curve 点 r_min=148.8 深陷腹板 → 过渡完全错误）。
     trans_t = 0.0
     if transition != "linear":
-        trans_t = _clamp(0.2 * rim_radial, 4.0, 20.0)
+        trans_t = _clamp(0.06 * rim_radial, 2.0, 6.0)
 
     def _wr(z0, z1):
         return _transition_pts(rim_junc, z0, z1, trans_t, transition)
@@ -194,13 +196,15 @@ def slot_profile(teeth, depth_mm, mouth_half, neck_half, lobe_half,
             pts.append((round(base + 0.40 * per, 3), round(lobe, 3)))      # 齿顶平台
             pts.append((round(base + 0.60 * per, 3), neck_half))           # 内斜面降
             pts.append((round(base + 0.85 * per, 3), neck_half))           # 颈部平台
-        # 槽底：喇叭口(bottom) → 内斜面 → 平底(root_half)。平底半宽 ≥2mm
-        # （参考 mon_e2b035beb218 平底 + llm_free_select 槽底 ±2.5；此前收缩到
-        # max(bottom-1.5,1) 形成视觉尖底）。
-        root_half = max(bottom_half - 0.75, 2.0)
-        pts.append((round(tooth_end, 3), bottom_half))        # 喇叭口上沿
-        pts.append((round(tooth_end - 1.0, 3), root_half))    # 内斜面到平底
-        pts.append((-depth_mm, root_half))                    # 平底（镜像成 2·root_half 宽）
+        # 槽底：圆弧底（90° 半圆扇逼近，圆心 (−depth+bottom_half, 0)，半径 bottom_half）。
+        # 参考枞树形标准"齿底圆弧"（HB 5965-2002）+ 动力涡轮榫接"齿底圆弧"设计——
+        # 最靠近圆心的槽底是圆润弧，替代平底/尖底的生硬过渡，第一齿（近圆心）形状自然。
+        r_arc = bottom_half
+        cx = -depth_mm + r_arc
+        pts.append((round(cx, 3), round(r_arc, 3)))                          # 弧起点（喇叭口上沿）
+        pts.append((round(cx - 0.5 * r_arc, 3), round(0.866 * r_arc, 3)))    # 120°
+        pts.append((round(cx - 0.866 * r_arc, 3), round(0.5 * r_arc, 3)))    # 150°
+        pts.append((round(cx - r_arc, 3), 0.0))                              # 底点（最深处，y=0）
         return pts
     upper_pts = upper()
     # 迭代短边修正（仅上侧）：相邻点距离 <1mm 时把后一点沿 x 外推到前一点左侧 dx 处，
@@ -286,8 +290,8 @@ def _slot_cutter_nodes(teeth, slots, depth_mm, throat_half, fr_mm, rim_r,
     all_conn = _mirror(conn_idxs)
     root_idxs = sorted({n_upper - 1, n_upper})  # 仅槽底根点（对称 2 点），避免台阶点圆角产生小边
 
-    root_half = max(bottom - 0.75, 2.0)   # 与 slot_profile 平底半宽一致
-    root_room = max(root_half - 0.6, 0.5)  # 槽底圆角可放空间
+    # 槽底圆弧底（slot_profile 90° 半圆扇）已圆润，槽底圆角取小值防弧端退化
+    root_room = max(bottom * 0.4, 0.4)
     # 齿根（connector）圆角：fr_mm 为齿根圆角参数，clamp 到 neck 可放空间 + 2.5 上限
     # （可见圆角；此前 cap 到 1.2 且 root_room 过小 → R0.75 在整盘上不可见）
     neck_rad = round(min(float(fr_mm), 0.8 * float(neck), 2.5), 3)
@@ -300,7 +304,7 @@ def _slot_cutter_nodes(teeth, slots, depth_mm, throat_half, fr_mm, rim_r,
                           "edge_treatment", "sketch_profile")
     fillet_nodes.append(n_fillet_neck)
     cur = "n_fillet_neck"
-    fr = min(float(fr_mm) + 0.3, root_room)  # 槽底圆角略大于齿根（参考 mon 槽底 r0.8）
+    fr = min(float(fr_mm), root_room)  # 槽底圆弧处小圆角
     n_fillet_root = _node("n_fillet_cutter_root", "slot_cutter", "fillet_sketch",
                           [_nref(cur, "profile")], [_out("profile", "profile")],
                           {"radius_mm": round(max(fr, 0.3), 3), "at_vertex_index": root_idxs},
@@ -519,11 +523,18 @@ def _ring_cutter(comp_id: str, inner_dia_mm: float, outer_dia_mm: float,
 
 def _rim_slot_cutter(comp_id: str, rim_r: float, rs_depth_mm: float,
                      rs_half_width_mm: float) -> list:
-    """径向切槽切割组件：XY 槽截面 polyline + extrude（槽口在轮缘外表面 rim_r）。"""
-    pts = [{"x_mm": round(rim_r, 3), "y_mm": round(rs_half_width_mm, 3)},
-           {"x_mm": round(rim_r - rs_depth_mm, 3), "y_mm": round(rs_half_width_mm, 3)},
-           {"x_mm": round(rim_r - rs_depth_mm, 3), "y_mm": round(-rs_half_width_mm, 3)},
-           {"x_mm": round(rim_r, 3), "y_mm": round(-rs_half_width_mm, 3)}]
+    """径向切槽切割组件：XY 槽截面 polyline + extrude（槽口在轮缘外表面 rim_r）。
+
+    U 形槽底（半圆弧逼近，替代矩形尖底——用户反馈"直接用矩形切的槽"不真实）：
+    直壁到 rim_r−rs_depth，底部圆弧下沉 arc_r（圆心向盘内），截面 5 点。
+    """
+    w = rs_half_width_mm
+    arc_r = min(max(w * 0.6, 1.0), 0.4 * rs_depth_mm)  # 槽底圆弧半径（计入总深）
+    pts = [{"x_mm": round(rim_r, 3), "y_mm": round(w, 3)},
+           {"x_mm": round(rim_r - rs_depth_mm, 3), "y_mm": round(w, 3)},
+           {"x_mm": round(rim_r - rs_depth_mm - arc_r, 3), "y_mm": 0.0},
+           {"x_mm": round(rim_r - rs_depth_mm, 3), "y_mm": round(-w, 3)},
+           {"x_mm": round(rim_r, 3), "y_mm": round(-w, 3)}]
     return [
         _node(f"{comp_id}_sketch", comp_id, "create_2d_sketch", [], [_out("sketch", "sketch")],
               {"plane": "XY", "origin_x_mm": 0, "origin_y_mm": 0}, "sketch", "sketch_profile"),
@@ -606,23 +617,29 @@ def build_axisym_disc(params: dict) -> dict:
             n_pat = _asm_pattern(f"n_pat_cl_{k}", f"{cid}_extrude", int(params["cl_holes"]),
                                  cl_pcd, asm_nodes)
             cur_body = _asm_bool(f"n_bool_cl_{k}", cur_body, n_pat, asm_nodes)
-    # 环槽（轮缘内壁中段集气环槽——旋转切除，从轮缘内壁向实体 +r 方向挖 gd 深）。
-    # 截面 [r ∈ rim_junc, rim_junc+gd] × [z ∈ z_c−gw/2, z_c+gw/2]，z_c 沿轮缘轴向中段
-    # 分布（多道等距、留端面剩料），完全落在轮缘实体内（不再跨 web-rim 交界 → 无悬空退化）。
+    # 环槽（collar 卡环槽 / mid 中段集气环槽——旋转切除，从轮缘内壁向实体 +r 方向挖 gd 深）。
+    # 起点 rim_junc+12：避开盘体 web-rim fillet 弧（r=10 + 2 余量），消除"先圆角再切除"的
+    # 圆角旋转成形残留（D11/D13/D23-D28 用户反馈）。
+    # 截面 [r ∈ g_inner, g_inner+gd] × [z ∈ z_c−gw/2, z_c+gw/2]。
+    # collar（卡环/封严槽，US4247257）z_c 靠轮缘端面；mid（冷却集气）z_c 中段。
     if params.get("grooves"):
         n = int(params["grooves"])
         gw = params.get("gw_mm", 14.0)
         gd = params.get("gd_mm", 8.0)
+        gtype = params.get("groove_type", "mid")
         margin = 3.0  # 端面剩料
         limit = max(rim_half - margin - gw / 2.0, 0.0)
-        if n == 1:
-            z_cs = [-0.4 * limit]  # 偏腹板侧一道
+        if gtype == "collar":
+            z_cs = [-0.7 * limit] if n == 1 \
+                else [-0.7 * limit + (1.0 * limit) * i / (n - 1) for i in range(n)]
         else:
-            z_cs = [-limit + 2.0 * limit * i / (n - 1) for i in range(n)]
+            z_cs = [0.0] if n == 1 \
+                else [-limit + 2.0 * limit * i / (n - 1) for i in range(n)]
+        g_inner = rim_junc + 12.0  # 避开 web-rim fillet 弧
         for i, z_c in enumerate(z_cs):
             cid = f"feat_groove_{i}"
             feat_comp(cid, f"{cid}_revolve")
-            all_nodes += _ring_cutter(cid, 2.0 * rim_junc, 2.0 * (rim_junc + gd),
+            all_nodes += _ring_cutter(cid, 2.0 * g_inner, 2.0 * (g_inner + gd),
                                       gw, z_c - gw / 2.0)
             cur_body = _asm_bool(f"n_bool_groove_{i}", cur_body, f"{cid}_revolve", asm_nodes)
     # 径向局部切槽（轮缘外表面周向矩形槽）

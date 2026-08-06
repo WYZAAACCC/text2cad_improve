@@ -39,12 +39,12 @@ RANGES = {
     "holes": (6, 36), "hdia_mm": (4, 26), "pcd_mm": (80, 310),
     "grooves": (1, 3), "gw_mm": (4, 28), "gd_mm": (2, 20),
     "slots": (24, 96), "teeth": (2, 4), "R_mm": (180, 300),
-    "depth_mm": (12, 45), "throat_half_width_mm": (2, 9), "fr_mm": (0.5, 4.0),
+    "depth_mm": (12, 60), "throat_half_width_mm": (2, 9), "fr_mm": (0.5, 4.0),
     # 减重结构（论文 2.2）：减重孔/冷却孔复用孔阵列范围；切槽/环形腔为新增特征
     "lh_holes": (6, 36), "lh_pcd_mm": (80, 310), "lh_hdia_mm": (4, 26),
     "cl_holes": (6, 36), "cl_pcd_mm": (80, 310), "cl_hdia_mm": (4, 26),
     "rs_count": (12, 96), "rs_depth_mm": (4, 20), "rs_half_width_mm": (1, 6),
-    "cavity_width_mm": (16, 60), "cavity_depth_mm": (2, 6),
+    "cavity_width_mm": (8, 60), "cavity_depth_mm": (2, 6),  # 下限 8：环形腔避开孔后可能较窄（guideline）
     "rim_arc_radius_mm": (12, 30),
 }
 BOUNDARY_MARGIN = 5.0  # 剩料 margin < 5mm 视为边界区（真实贴近约束边界）
@@ -150,13 +150,13 @@ def _resolve_groove_feats(subj: dict, tpl: dict) -> dict:
     _resolve("cl_pcd_mm", "cl_pcd_frac")
     _resolve("cl_pcd2_mm", "cl_pcd2_frac")
     return f
-# 榫槽变体：深度与轮缘径向高匹配（depth ≈ 0.4-0.67×rim_radial，论文 5.3 depth+mr<=tr），
-# throat 3.5-5（槽口 7-10mm，视觉与轮缘成比例）；fr 2-2.5（圆角可见）。
+# 榫槽变体：深度与轮缘径向高匹配（depth ≈ 0.55-0.85×rim_radial，深窄型槽切透轮缘，
+# 论文 5.3 depth+mr<=tr；实例深 53/窄 12.3/深宽比 4.3）；throat 3.5-5；fr 2-2.5。
 _SLOT_VARIANTS = [
-    {"slots": 48, "teeth": 2, "R_mm": 220, "depth_mm": 24, "throat_half_width_mm": 4.0, "fr_mm": 2.0},
-    {"slots": 60, "teeth": 3, "R_mm": 230, "depth_mm": 32, "throat_half_width_mm": 4.0, "fr_mm": 2.0},
-    {"slots": 72, "teeth": 3, "R_mm": 240, "depth_mm": 36, "throat_half_width_mm": 4.5, "fr_mm": 2.5},
-    {"slots": 90, "teeth": 4, "R_mm": 250, "depth_mm": 40, "throat_half_width_mm": 5.0, "fr_mm": 2.5},
+    {"slots": 48, "teeth": 2, "R_mm": 220, "depth_mm": 36, "throat_half_width_mm": 4.0, "fr_mm": 2.0},
+    {"slots": 60, "teeth": 3, "R_mm": 230, "depth_mm": 42, "throat_half_width_mm": 4.0, "fr_mm": 2.0},
+    {"slots": 72, "teeth": 3, "R_mm": 240, "depth_mm": 48, "throat_half_width_mm": 4.5, "fr_mm": 2.5},
+    {"slots": 90, "teeth": 4, "R_mm": 250, "depth_mm": 54, "throat_half_width_mm": 5.0, "fr_mm": 2.5},
 ]
 
 # 不可行变体（参数落论文范围但普遍违反几何约束；zone 由 check_all 判定）
@@ -392,7 +392,6 @@ def _sample_family(fid: str, fam: dict, per_family: int) -> list:
                 hi = _r["rim_junc"] - gap - dia / 2.0
                 fam_feat[key] = round(min(fam_feat[key], max(hi, 0.0)), 1)
 
-        _clamp_pcd("lh_pcd_mm", fam_feat.get("lh_hdia_mm"))
         _clamp_pcd("pcd_mm", fam_feat.get("hdia_mm"))
         cdia = fam_feat.get("cl_hdia_mm")
         _clamp_pcd("cl_pcd2_mm", cdia)
@@ -401,7 +400,30 @@ def _sample_family(fid: str, fam: dict, per_family: int) -> list:
             if fam_feat.get("cl_pcd2_mm") is not None:
                 hi = min(hi, fam_feat["cl_pcd2_mm"] - cdia - 2.0)  # 保双排间距
             fam_feat["cl_pcd_mm"] = round(min(fam_feat["cl_pcd_mm"], max(hi, 0.0)), 1)
+        # 减重孔在冷却孔内侧（cl 外侧优先），间距 ≥ max(hdia, cdia)+2（避免 D14 孔重叠）
+        if fam_feat.get("lh_pcd_mm") is not None and fam_feat.get("cl_pcd_mm") is not None \
+                and fam_feat.get("lh_hdia_mm") and cdia:
+            spacing = max(fam_feat["lh_hdia_mm"], cdia) + 2.0
+            hi_lh = fam_feat["cl_pcd_mm"] - spacing
+            fam_feat["lh_pcd_mm"] = round(min(fam_feat["lh_pcd_mm"], max(hi_lh, 0.0)), 1)
+        else:
+            _clamp_pcd("lh_pcd_mm", fam_feat.get("lh_hdia_mm"))
+        # 环形腔避开孔（腔外径 ≤ 最内孔内缘 − gap → 收缩腔宽）
+        if fam_feat.get("cavity_width_mm") is not None:
+            _pc = [fam_feat[k] for k in ("pcd_mm", "lh_pcd_mm", "cl_pcd_mm", "cl_pcd2_mm")
+                   if fam_feat.get(k) is not None]
+            _dia = [fam_feat[k] for k in ("hdia_mm", "lh_hdia_mm", "cl_hdia_mm", "cl_hdia_mm")
+                    if fam_feat.get(k) is not None]
+            if _pc and _dia:
+                inner = min(_pc) - max(_dia) / 2.0 - 2.0
+                max_w = 2.0 * (inner - _r["web_r"])
+                fam_feat["cavity_width_mm"] = round(min(fam_feat["cavity_width_mm"],
+                                                        max(max_w, 0.0)), 1)
     if fam_feat:
+        # 族名义榫槽深度提高：≥ 0.55×rim_radial（深窄型，槽切透轮缘；上限 rim_radial−3）
+        if fam_feat.get("depth_mm") and subj.get("rim_radial_mm"):
+            rr = subj["rim_radial_mm"]
+            fam_feat["depth_mm"] = round(max(0.55 * rr, min(fam_feat["depth_mm"], rr - 3.0)), 1)
         zone, _ch = _classify(subj, fam_feat)
         if zone == "infeasible" and fam_feat.get("slots"):
             # 族名义不可行（如 96 槽节距不足）：递减 slots 到可行，保持 teeth/depth 族名义

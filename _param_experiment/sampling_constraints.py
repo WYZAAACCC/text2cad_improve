@@ -225,16 +225,20 @@ def check_all(params: dict, cb: float = 2.0, ch: float = 2.0,
         if params.get("depth_mm") is not None and params.get("rim_radial_mm") is not None:
             checks.append({"name": "slot_depth",
                            **check_slot_depth(params["depth_mm"], params["rim_radial_mm"], mr)})
+            # 深窄型：槽深 ≥ 0.55×rim_radial（槽切透轮缘，参考实例深/轮缘高 60-70%）
+            checks.append({"name": "slot_depth_ratio",
+                           "ok": params["depth_mm"] >= 0.55 * params["rim_radial_mm"] - 1e-9,
+                           "min_depth_mm": round(0.55 * params["rim_radial_mm"], 3)})
         if params.get("depth_mm") is not None:
             checks.append({"name": "slot_bottom",
                            **check_slot_bottom(params["depth_mm"], od, form=form)})
         if params.get("fr_mm") is not None:
             checks.append({"name": "slot_root_fillet",
                            **check_slot_root_fillet(params["fr_mm"], params["throat_half_width_mm"])})
-    # 环槽
+    # 环槽（起点 rim_junc+12 避开 web-rim fillet 弧，故可用径向厚度减 12）
     if params.get("gd_mm") is not None and params.get("rim_radial_mm") is not None:
         checks.append({"name": "groove_depth",
-                       **check_groove_depth(params["gd_mm"], params["rim_radial_mm"], mr)})
+                       **check_groove_depth(params["gd_mm"], params["rim_radial_mm"] - 12.0, mr)})
     # 环槽-孔径向间隙：孔/冷却孔整体落在 rim_junc−gd−gap 内侧（不碰轮缘内壁环槽）。
     # 否则孔 16 边形边与环槽台阶曲面布尔产生 <0.25mm 退化小边（MCP check_degenerate_geometry 拦截）。
     if params.get("grooves") and params.get("gd_mm") is not None:
@@ -279,11 +283,20 @@ def check_all(params: dict, cb: float = 2.0, ch: float = 2.0,
             checks.append({"name": "cl_double_row_spacing",
                            **check_double_row_spacing(params["cl_pcd_mm"], params["cl_pcd2_mm"],
                                                       params["cl_hdia_mm"], ch)})
+    # 减重孔与冷却孔径向分开（D14 曾 lh_pcd=200 与 cl_pcd=202.9 边缘重叠）
+    if params.get("lh_pcd_mm") is not None and params.get("cl_pcd_mm") is not None \
+            and params.get("lh_hdia_mm") is not None and params.get("cl_hdia_mm") is not None:
+        dia = max(params["lh_hdia_mm"], params["cl_hdia_mm"])
+        checks.append({"name": "lh_cl_spacing",
+                       **check_double_row_spacing(params["lh_pcd_mm"], params["cl_pcd_mm"], dia, ch)})
     # 径向局部切槽（轮缘外表面）
     if params.get("rs_count") is not None and params.get("rs_depth_mm") is not None:
         rim_rad = params.get("rim_radial_mm") or _clamp(0.12 * od, 25.0, 95.0)
+        # U 形槽底圆弧计入总深（_rim_slot_cutter arc_r = min(0.6w, 0.4×depth)）
+        arc = min(max(0.6 * (params.get("rs_half_width_mm") or 2.0), 1.0),
+                  0.4 * params["rs_depth_mm"])
         checks.append({"name": "rim_slot_depth",
-                       **check_groove_depth(params["rs_depth_mm"], rim_rad, mr)})
+                       **check_groove_depth(params["rs_depth_mm"] + arc, rim_rad, mr)})
         if params.get("rs_half_width_mm") is not None:
             checks.append({"name": "rim_slot_pitch",
                            **check_rim_slot_pitch(int(params["rs_count"]), params["rs_half_width_mm"], od, cs)})
@@ -292,6 +305,17 @@ def check_all(params: dict, cb: float = 2.0, ch: float = 2.0,
         checks.append({"name": "annular_cavity",
                        **check_annular_cavity(params["cavity_width_mm"], params["cavity_depth_mm"],
                                               od, bore, params.get("thick_mm", 76.0), form=form)})
+        # 环形腔避开孔（孔轴向贯穿，腔为半深环形槽，二者重叠会互相打断 → 腔形状破碎）。
+        # 腔外径 ≤ 最内孔内缘 − gap（腔整体在孔内侧）。
+        _pcds = [params[k] for k in ("pcd_mm", "lh_pcd_mm", "cl_pcd_mm", "cl_pcd2_mm")
+                 if params.get(k) is not None]
+        _dias = [params[k] for k in ("hdia_mm", "lh_hdia_mm", "cl_hdia_mm", "cl_hdia_mm")
+                 if params.get(k) is not None]
+        if _pcds and _dias:
+            inner = min(_pcds) - max(_dias) / 2.0 - 2.0
+            cav_r = _axisym_radii(od, bore, form)["web_r"] + params["cavity_width_mm"] / 2.0
+            checks.append({"name": "cavity_hole_clearance",
+                           "ok": cav_r <= inner + 1e-9, "limit_mm": round(inner, 3)})
     # 基础盘无任何特征 → 无约束 → 视为可行（而非 bool([])=False 误判）
     if not checks:
         return {"ok": True, "checks": checks}
