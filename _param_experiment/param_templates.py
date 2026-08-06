@@ -38,35 +38,66 @@ def _clamp(v: float, lo: float, hi: float) -> float:
 # 盘体几何推导（od/bore/thick/hub/rim → 12 点 R-Z 轮廓）
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def disc_profile(od_mm, bore_mm, hub_half_mm, rim_half_mm, thick_mm,
-                 web_inner_half=None, web_outer_half=None) -> dict:
-    """盘体 12 点 R-Z 轮廓（闭合顺序，关于 y=0 对称）→ {points, params}。
+# 盘体形态（几何结构差异——族间不只是参数不同，论文泛化/丰富性要求）
+#   standard    标准 hub-web-rim（hub 径向 0.16od，rim 径向 0.12od，web 厚 0.5-0.6×半厚）
+#   thin_web    薄腹板（web 轴向厚仅 0.3-0.35×半厚，腹板更轻）
+#   thick_rim   厚轮缘（rim 径向高 0.17od，轮缘更厚重）
+#   large_hub   大轮毂（hub 径向高 0.22od，轮毂更大）
+#   conical      锥形腹板（web 斜面更陡，腹板呈锥形）
+DISC_FORMS = ("standard", "thin_web", "thick_rim", "large_hub", "conical")
+_RADIAL_FAC = {"standard": (0.16, 0.12), "thin_web": (0.16, 0.12),
+               "thick_rim": (0.14, 0.17), "large_hub": (0.22, 0.10),
+               "conical": (0.16, 0.12)}
 
-    径向站：bore_r → hub_r → rim_junc → rim_r（论文轮毂/轮缘径向高度 25-100/25-95）。
+
+def disc_profile(od_mm, bore_mm, hub_half_mm, rim_half_mm, thick_mm,
+                 web_inner_half=None, web_outer_half=None, form="standard") -> dict:
+    """盘体 R-Z 轮廓（闭合顺序，关于 y=0 对称）→ {points, params}。
+
+    径向站：bore_r → hub_r → rim_junc → rim_r。形态决定 hub/rim 径向高度与 web 厚度，
+    使不同设计族（薄腹板/厚轮缘/大毂/锥形）轮廓结构可区分，而非仅尺寸参数不同。
     """
     bore_r = bore_mm / 2.0
     rim_r = od_mm / 2.0
-    hub_radial = _clamp(0.16 * od_mm, 25.0, 100.0)
-    rim_radial = _clamp(0.12 * od_mm, 25.0, 95.0)
+    h_fac, r_fac = _RADIAL_FAC.get(form, (0.16, 0.12))
+    hub_radial = _clamp(h_fac * od_mm, 25.0, 100.0)
+    rim_radial = _clamp(r_fac * od_mm, 25.0, 95.0)
     hub_r = bore_r + hub_radial
     rim_junc = rim_r - rim_radial
     if hub_r >= rim_junc:  # 保证腹板存在
         hub_r = (bore_r + rim_junc) / 2.0
-    web_inner = web_inner_half if web_inner_half else _clamp(0.6 * hub_half_mm, 8.0, 40.0)
-    web_outer = web_outer_half if web_outer_half else _clamp(0.5 * rim_half_mm, 6.0, 32.0)
-    pts = [
-        (round(bore_r, 3), -hub_half_mm), (round(hub_r, 3), -hub_half_mm),
-        (round(hub_r, 3), -web_inner), (round(rim_junc, 3), -web_outer),
-        (round(rim_junc, 3), -rim_half_mm), (round(rim_r, 3), -rim_half_mm),
-        (round(rim_r, 3), rim_half_mm), (round(rim_junc, 3), rim_half_mm),
-        (round(rim_junc, 3), web_outer), (round(hub_r, 3), web_inner),
-        (round(hub_r, 3), hub_half_mm), (round(bore_r, 3), hub_half_mm),
-    ]
+    if form == "thin_web":
+        web_inner = web_inner_half if web_inner_half else _clamp(0.35 * hub_half_mm, 5.0, 22.0)
+        web_outer = web_outer_half if web_outer_half else _clamp(0.3 * rim_half_mm, 4.0, 18.0)
+    else:
+        web_inner = web_inner_half if web_inner_half else _clamp(0.6 * hub_half_mm, 8.0, 40.0)
+        web_outer = web_outer_half if web_outer_half else _clamp(0.5 * rim_half_mm, 6.0, 32.0)
+    if form == "conical":
+        # 锥形腹板：web 下表面从 hub 顶（z=-wi）连到 rim 内壁更高处（z=-wo_cone），斜面更陡
+        wo_cone = _clamp(0.85 * rim_half_mm, 12.0, 40.0)
+        pts = [
+            (round(bore_r, 3), -hub_half_mm), (round(hub_r, 3), -hub_half_mm),
+            (round(hub_r, 3), -web_inner), (round(rim_junc, 3), -wo_cone),
+            (round(rim_junc, 3), -rim_half_mm), (round(rim_r, 3), -rim_half_mm),
+            (round(rim_r, 3), rim_half_mm), (round(rim_junc, 3), rim_half_mm),
+            (round(rim_junc, 3), wo_cone), (round(hub_r, 3), web_inner),
+            (round(hub_r, 3), hub_half_mm), (round(bore_r, 3), hub_half_mm),
+        ]
+    else:
+        pts = [
+            (round(bore_r, 3), -hub_half_mm), (round(hub_r, 3), -hub_half_mm),
+            (round(hub_r, 3), -web_inner), (round(rim_junc, 3), -web_outer),
+            (round(rim_junc, 3), -rim_half_mm), (round(rim_r, 3), -rim_half_mm),
+            (round(rim_r, 3), rim_half_mm), (round(rim_junc, 3), rim_half_mm),
+            (round(rim_junc, 3), web_outer), (round(hub_r, 3), web_inner),
+            (round(hub_r, 3), hub_half_mm), (round(bore_r, 3), hub_half_mm),
+        ]
     return {"points": [{"x_mm": p[0], "y_mm": p[1]} for p in pts],
             "params": {"bore_radius_mm": round(bore_r, 3), "hub_radius_mm": round(hub_r, 3),
                        "rim_web_junction_mm": round(rim_junc, 3), "rim_radius_mm": round(rim_r, 3),
                        "hub_radial_mm": round(hub_radial, 3), "rim_radial_mm": round(rim_radial, 3),
-                       "web_inner_half_mm": round(web_inner, 3), "web_outer_half_mm": round(web_outer, 3)}}
+                       "web_inner_half_mm": round(web_inner, 3), "web_outer_half_mm": round(web_outer, 3),
+                       "form": form}}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -223,7 +254,7 @@ def build_slot_disc(params: dict) -> dict:
     """榫槽盘 llm_raw。params 键：od_mm/bore_mm/thick_mm/hub_mm/rim_mm +
     slots/teeth/R_mm/depth_mm/throat_half_width_mm/fr_mm。"""
     dp = disc_profile(params["od_mm"], params["bore_mm"], params["hub_mm"], params["rim_mm"],
-                      params["thick_mm"])
+                      params["thick_mm"], form=params.get("form", "standard"))
     teeth = int(params.get("teeth", 2))
     slots = int(params.get("slots", 60))
     depth = params.get("depth_mm", 24.0)
@@ -344,7 +375,8 @@ def _sketch_disc_body(params: dict) -> list:
     thick = params["thick_mm"]
     hub_half = params.get("hub_mm", round(thick * 0.5, 1))
     rim_half = params.get("rim_mm", round(thick * 0.4, 1))
-    dp = disc_profile(params["od_mm"], params["bore_mm"], hub_half, rim_half, thick)
+    dp = disc_profile(params["od_mm"], params["bore_mm"], hub_half, rim_half, thick,
+                      form=params.get("form", "standard"))
     nodes = [
         _node("n_disc_sketch", "disc_body", "create_2d_sketch", [], [_out("sketch", "sketch")],
               {"plane": "XZ", "origin_x_mm": 0, "origin_y_mm": 0}, "sketch", "sketch_profile"),
@@ -706,7 +738,8 @@ def build(params: dict) -> dict:
         if prof["kind"] == "disc":
             points[pid] = disc_profile(params["od_mm"], params["bore_mm"],
                                        params.get("hub_mm", 38), params.get("rim_mm", 30),
-                                       params["thick_mm"])["points"]
+                                       params["thick_mm"],
+                                       form=params.get("form", "standard"))["points"]
         elif prof["kind"] == "slot":
             teeth = int(params.get("teeth", 2))
             depth = params.get("depth_mm", 24.0)

@@ -68,7 +68,8 @@ def _subject(fam: dict) -> dict:
     rim = _clamp(fam.get("rim", 30), *RANGES["rim_mm"])
     return {"od_mm": od, "bore_mm": bore, "thick_mm": thick,
             "hub_mm": hub, "rim_mm": rim,
-            "rim_radial_mm": _rim_radial(od)}
+            "rim_radial_mm": _rim_radial(od),
+            "form": fam.get("form", "standard")}
 
 
 def _subj_variants(subj: dict) -> list:
@@ -199,13 +200,18 @@ def _feat_variants(cat: str) -> list:
 _AXISYM_CATS = ("basic", "hole", "groove")  # axisym 盘体（3 段轴向近似）不承诺精确半厚
 
 
+_FORM_LABEL = {"standard": "标准", "thin_web": "薄腹板", "thick_rim": "厚轮缘",
+               "large_hub": "大轮毂", "conical": "锥形腹板"}
+
+
 def _make_text(params: dict, cat: str) -> str:
     """采样参数向量 → 需求文本（措辞对齐 RE_PARAMS 正则）。
 
     axisym 盘（basic/hole/groove）几何为 3 段轴向近似，不表达精确轮毂/轮缘半厚，
     故文本不承诺 hub/rim（避免文本↔几何不一致）；sketch_profile 榫槽盘保留。
     """
-    p = [f"生成一个高压涡轮盘参考几何：{CATEGORY_LABEL[cat]}",
+    form = params.get("form", "standard")
+    p = [f"生成一个{_FORM_LABEL.get(form, '')}高压涡轮盘参考几何：{CATEGORY_LABEL[cat]}",
          f"外径{params['od_mm']}mm，中心孔直径{params['bore_mm']}mm，"
          f"轴向最大厚度{params['thick_mm']}mm"]
     if cat not in _AXISYM_CATS:
