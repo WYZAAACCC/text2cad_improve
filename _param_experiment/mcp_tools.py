@@ -876,6 +876,15 @@ PARAM_REGISTRY = [
      "field": "radius_mm", "range": [4, 20], "unit": "mm", "type": "float"},
     {"param": "disc_web_rim_fillet", "label": "腹板-轮缘圆角",
      "field": "radius_mm", "range": [4, 18], "unit": "mm", "type": "float"},
+    # axisym 盘（basic/hole/groove）再生参数——论文 4.2 参数范围，语义无半径/直径歧义。
+    # 榫槽盘（slot/coupled/complex_rim）无 cut_center_bore 节点 → bore_diameter 不可用，
+    # 但仍可用 slot_count 等榫槽参数（两套并存，不互斥）。
+    {"param": "bore_diameter", "label": "中心孔直径",
+     "field": "diameter_mm", "range": [50, 200], "unit": "mm", "type": "float"},
+    {"param": "hole_count", "label": "周向孔数量",
+     "field": "count", "range": [6, 36], "unit": "个", "type": "int"},
+    {"param": "groove_depth", "label": "环槽深度",
+     "field": "depth_mm", "range": [2, 20], "unit": "mm", "type": "float"},
 ]
 
 
@@ -969,6 +978,23 @@ def _resolve_param_nodes(ir: dict, param_key: str):
                     if ai_set & target:
                         out.append(n["id"])
             return out or None
+        # axisym 盘（basic/hole/groove）：语义定位 cut_center_bore / 首个孔 pattern /
+        # 首个环槽节点。多孔/多槽盘取首个（"主特征"），避免歧义。
+        if param_key == "bore_diameter":
+            for n in ir["nodes"]:
+                if n["op"] == "cut_center_bore":
+                    return [n["id"]]
+            return None
+        if param_key == "hole_count":
+            for n in ir["nodes"]:
+                if n["op"] == "cut_circular_hole_pattern":
+                    return [n["id"]]
+            return None
+        if param_key == "groove_depth":
+            for n in ir["nodes"]:
+                if n["op"] == "cut_annular_groove":
+                    return [n["id"]]
+            return None
     except ValueError:
         return None
     return None
