@@ -831,3 +831,8 @@ def _run_composition_or_select_final(
 def _export_final_solid(handle_id: str, ctx: RuntimeContext) -> None:
     obj = ctx.object_store.get(handle_id)
     ctx.geometry_runtime.export_step(obj, ctx.out_step)
+    # 数据集字段 MBRep：导出原生 B-rep（与 STEP 同一实体；容错，失败不阻塞）
+    try:
+        ctx.geometry_runtime.export_brep(obj, ctx.out_step.parent / "output.brep")
+    except Exception:
+        pass

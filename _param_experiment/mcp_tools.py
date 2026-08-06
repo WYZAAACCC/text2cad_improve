@@ -286,6 +286,57 @@ def measure_disc_dimensions(args=None):
 
 
 @register(
+    "measure_hole_pattern",
+    "从 IR 读取周向孔阵列参数（cut_circular_hole_pattern）：数量/分布半径/孔径。"
+    "axisym 方言 pcd 为直径，转半径与论文 rp 一致。",
+    {"type": "object", "properties": {"base_dir": {"type": "string"}},
+     "required": [], "additionalProperties": False},
+)
+def measure_hole_pattern(args=None):
+    base = _base_dir(args or {})
+    ir = _load_ir(base)
+    nodes = [n for n in ir.get("nodes", []) if n.get("op") == "cut_circular_hole_pattern"]
+    if not nodes:
+        return {"ok": False, "reason": "无孔阵列节点"}
+    n = nodes[0]
+    p = n.get("params", {}) or {}
+    count = p.get("count")
+    pcd = p.get("pcd_mm")
+    dia = p.get("hole_dia_mm")
+    if not all(isinstance(v, (int, float)) for v in (count, pcd, dia)):
+        return {"ok": False, "reason": "孔参数不完整"}
+    return {"ok": True, "holes": int(count),
+            "pcd_mm": round(float(pcd) / 2.0, 3),  # axisym pcd=直径 → 半径
+            "hdia_mm": round(float(dia), 3)}
+
+
+@register(
+    "measure_groove",
+    "从 IR 读取环槽参数（cut_annular_groove）：数量/槽宽/槽深。",
+    {"type": "object", "properties": {"base_dir": {"type": "string"}},
+     "required": [], "additionalProperties": False},
+)
+def measure_groove(args=None):
+    base = _base_dir(args or {})
+    ir = _load_ir(base)
+    nodes = [n for n in ir.get("nodes", []) if n.get("op") == "cut_annular_groove"]
+    if not nodes:
+        return {"ok": False, "reason": "无环槽节点"}
+    gw = []
+    gd = []
+    for n in nodes:
+        p = n.get("params", {}) or {}
+        if isinstance(p.get("inner_dia_mm"), (int, float)) \
+                and isinstance(p.get("outer_dia_mm"), (int, float)):
+            gw.append((float(p["outer_dia_mm"]) - float(p["inner_dia_mm"])) / 2.0)
+        if isinstance(p.get("depth_mm"), (int, float)):
+            gd.append(float(p["depth_mm"]))
+    return {"ok": True, "grooves": len(nodes),
+            "gw_mm": round(max(gw), 3) if gw else None,
+            "gd_mm": round(max(gd), 3) if gd else None}
+
+
+@register(
     "measure_disc_from_brep",
     "从 STEP 实体测量：外径(bbox)、轴向厚度(bbox)、中心孔(截面最小半径)，与 IR 交叉验证。",
     {"type": "object", "properties": {"base_dir": {"type": "string"}},
@@ -548,15 +599,58 @@ def validate_slot_step_roundtrip(args=None):
     try:
         obj = _import_solid(_step_path(base))
         vol = sum(s.Volume() for s in obj.solids().vals())
-        # 期望体积来自 metadata（geometry_postcheck）
+        # 期望体积/尺寸来自 metadata（geometry_postcheck）
         meta = json.loads((base / "output.metadata.json").read_text(encoding="utf-8"))
-        expected = meta.get("validation", {}).get("geometry_postcheck", {}).get("volume_mm3")
+        gp = (meta.get("validation") or {}).get("geometry_postcheck") or {}
+        expected = gp.get("volume_mm3")
+        ok = True
+        res = {}
         if expected:
             err = abs(vol - expected) / expected * 100
-            return {"ok": err < 0.1, "roundtrip_volume_mm3": round(vol, 3),
-                    "expected_volume_mm3": round(expected, 3),
-                    "volume_error_pct": round(err, 4)}
-        return {"ok": True, "roundtrip_volume_mm3": round(vol, 3)}
+            ok = ok and err < 0.1
+            res.update({"roundtrip_volume_mm3": round(vol, 3),
+                        "expected_volume_mm3": round(expected, 3),
+                        "volume_error_pct": round(err, 4)})
+        # 尺寸一致性（论文 5.5：回读关键尺寸误差 <0.05mm）：
+        # 外径 = bbox.xlen、轴厚 = bbox.zlen，对比 geometry_postcheck.bbox_mm。
+        # 向后兼容：缺参考 bbox → dims=None，不改变 ok（历史任务不受影响）。
+        dims = None
+        try:
+            bb = obj.val().BoundingBox()
+            ref_bb = gp.get("bbox_mm")
+            if isinstance(ref_bb, (list, tuple)) and len(ref_bb) >= 3:
+                checks = {"outer_diameter_mm": abs(bb.xlen - ref_bb[0]),
+                          "axial_thickness_mm": abs(bb.zlen - ref_bb[2])}
+                dims = {k: {"err_mm": round(v, 4), "ok": v <= 0.05}
+                        for k, v in checks.items()}
+                dims["all_within_05mm"] = all(v["ok"] for v in dims.values())
+                # 仅当尺寸测得且超差 0.05mm 才 fail（向后兼容历史任务）
+                ok = ok and dims["all_within_05mm"]
+        except Exception:  # noqa: BLE001
+            dims = None
+        # 榫槽数量/齿数一致性（IR 参考，回读 STEP 不做几何计数）
+        feats = None
+        try:
+            ir = _load_ir(base)
+            pat = next((n for n in ir.get("nodes", [])
+                        if n.get("op") == "circular_pattern_component"), None)
+            count = (pat.get("params") or {}).get("count") if pat else None
+            n_upper = None
+            cutter = next((n for n in ir.get("nodes", [])
+                           if n.get("op") == "add_polyline"
+                           and n.get("component") != "disc_body"), None)
+            if cutter:
+                n_pts = len((cutter.get("params") or {}).get("points") or [])
+                n_upper = n_pts // 2 if n_pts else None
+                teeth = (n_upper - 5) // 4 if n_upper and n_upper >= 5 else None
+            feats = {"slots": int(count) if isinstance(count, (int, float)) else None,
+                     "teeth": teeth}
+        except Exception:  # noqa: BLE001
+            feats = None
+        res.update({"dims": dims, "features": feats, "ok": ok})
+        if "roundtrip_volume_mm3" not in res:
+            res["roundtrip_volume_mm3"] = round(vol, 3)
+        return res
     except Exception as exc:
         return {"ok": False, "error": str(exc)}
 
@@ -743,7 +837,7 @@ PARAM_REGISTRY = [
     {"param": "slot_distribution_radius", "label": "榫槽分布半径",
      "field": "radius_mm", "range": [200, 280], "unit": "mm", "type": "float"},
     {"param": "slot_axial_depth", "label": "榫槽轴向长度",
-     "field": "depth_mm", "range": [20, 120], "unit": "mm", "type": "float"},
+     "field": "depth_mm", "range": [20, 90], "unit": "mm", "type": "float"},
     {"param": "root_fillet", "label": "齿根圆角",
      "field": "radius_mm", "range": [0.5, 4.0], "unit": "mm", "type": "float"},
     {"param": "flank_fillet", "label": "齿面圆角",

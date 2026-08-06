@@ -172,8 +172,24 @@ def _inject_samples(tid: str) -> list:
                                               "tool_subset": ["check_slot_pitch_and_ligament"]})
                 mcp_failed = gr.get("failed_checks", [])
             elif check == "runtime":
-                # runtime 布尔/几何错误：验证层不检测，记录注入目标（确定性复现需 run_gcad_core，本轮不做）
-                runtime_failed = f"injected fillet radius 30mm (expect BRep_API at runtime)"
+                # runtime 布尔/几何错误：真实复现（run_gcad_core_from_files 重建），
+                # 确认注入确实产生 runtime 失败；未复现 → injection_confirmed=False（样本不成立）
+                try:
+                    from seekflow_engineering_tools.generative_cad.pipeline.run import (
+                        run_gcad_core_from_files,
+                    )
+                    tmp = base / f"_inj_{inj_id}"
+                    tmp.mkdir(parents=True, exist_ok=True)
+                    (tmp / "raw_fixed.json").write_text(
+                        json.dumps(wrong, ensure_ascii=False), encoding="utf-8")
+                    rres = run_gcad_core_from_files(tmp / "raw_fixed.json",
+                                                    tmp / "output.step", tmp / "output.metadata.json")
+                    if not rres.ok:
+                        runtime_failed = str(getattr(rres, "error", "runtime failed"))[:150]
+                    else:
+                        runtime_failed = None  # 注入未复现 runtime 错误
+                except Exception as exc:  # noqa: BLE001
+                    runtime_failed = str(exc)[:150]
             res = repair_documents(wrong, vrun)
             right = res.document
             repair_ok = bool(res.outcome.final_ok)
@@ -181,6 +197,8 @@ def _inject_samples(tid: str) -> list:
             print(f"    [skip] {tid}/{inj_id}: {exc}")
             continue
         sample_id = f"{tid}_inject_{inj_id}"
+        # runtime 注入：injection_confirmed 标识注入确实产生目标错误（未复现则样本不成立）
+        injection_confirmed = (check != "runtime") or bool(runtime_failed)
         samples.append({
             "task_type": "repair", "sample_id": sample_id, "source_task_id": tid,
             "design_id": inh["design_id"], "model_id": inh["model_id"],
@@ -188,10 +206,93 @@ def _inject_samples(tid: str) -> list:
             "rule_id": rule_id, "rule_id_source": "known",
             "wrong_ir": wrong, "right_ir": right,
             "validation_error_codes": err_codes, "mcp_failed_checks": mcp_failed,
-            "runtime_failed": runtime_failed, "repair_ok": repair_ok,
+            "runtime_failed": runtime_failed, "injection_confirmed": injection_confirmed,
+            "repair_ok": repair_ok,
             "timestamp": datetime.now().isoformat(timespec="seconds"),
         })
     return samples
+
+
+def _model_volume(base: Path) -> float | None:
+    """任务目录模型体积：metadata.geometry_postcheck.volume_mm3 优先，否则 STEP 测量。"""
+    try:
+        meta = json.loads((base / "output.metadata.json").read_text(encoding="utf-8"))
+        v = ((meta.get("validation") or {}).get("geometry_postcheck") or {}).get("volume_mm3")
+        if isinstance(v, (int, float)):
+            return float(v)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        import cadquery as cq
+        s = base / "output.step"
+        if s.exists():
+            return float(cq.importers.importStep(str(s)).val().Volume())
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
+def _inject_step_roundtrip_samples(tid: str, base: Path, inh: dict) -> list:
+    """P1-5 STEP 回读错误注入（论文 Repair 7 类：参数再生或 STEP 回读错误）。
+
+    确定性复现：修改几何参数 → regenerate_model 确定性重建 → 新模型体积相对原模型
+    >0.1% → 视为"STEP 回读不一致"（volume_error_pct 证据）。
+    策略按体积敏感度尝试：[槽数→96（切割次数变化），轴向深度→×1.5]。
+    wrong_ir 为改参后的 IR，right_ir 为源有效 IR。
+    """
+    from mcp_tools import regenerate_model
+    raw_path = base / "raw_fixed.json"
+    if not raw_path.exists():
+        return []
+    raw = json.loads(raw_path.read_text(encoding="utf-8"))
+    src_vol = _model_volume(base)
+    if src_vol is None:
+        return []
+    # 候选修改（体积敏感优先：槽数切割次数变化最显著）
+    attempts = [("slot_count", 96)]
+    for n in raw.get("nodes", []):
+        if n.get("op") == "extrude_profile" and isinstance((n.get("params") or {}).get("depth_mm"), (int, float)):
+            attempts.append(("slot_axial_depth", round(float(n["params"]["depth_mm"]) * 1.5, 3)))
+            break
+    hit = None
+    for pkey, nv in attempts:
+        res = regenerate_model({"base_dir": str(base),
+                                "param_updates": [{"param_key": pkey, "new_value": nv}]})
+        if not res.get("ok"):
+            continue
+        vol_new = _model_volume(Path(res["new_base_dir"]))
+        if vol_new is None:
+            continue
+        err = abs(vol_new - src_vol) / src_vol
+        if err > 0.001:
+            hit = {"pkey": pkey, "nv": nv, "vol_new": vol_new, "err": err}
+            break
+    if hit is None:
+        return []
+    wrong_ir = copy.deepcopy(raw)
+    if hit["pkey"] == "slot_count":
+        for n in wrong_ir.get("nodes", []):
+            if n.get("op") == "circular_pattern_component":
+                n["params"]["count"] = hit["nv"]
+                break
+    else:
+        for n in wrong_ir.get("nodes", []):
+            if n.get("op") == "extrude_profile":
+                n["params"]["depth_mm"] = hit["nv"]
+                break
+    return [{
+        "task_type": "repair", "sample_id": f"{tid}_inject_step_roundtrip",
+        "source_task_id": tid, "design_id": inh["design_id"], "model_id": inh["model_id"],
+        "error_source": "controlled_injection", "phase": None,
+        "rule_id": "step_roundtrip_inconsistent", "rule_id_source": "known",
+        "injection": {"param_key": hit["pkey"], "new_value": hit["nv"]},
+        "wrong_ir": wrong_ir, "right_ir": raw,
+        "volume_src_mm3": round(src_vol, 4), "volume_wrong_mm3": round(hit["vol_new"], 4),
+        "roundtrip_volume_error_pct": round(hit["err"] * 100, 4),
+        "step_roundtrip_failed": True,
+        "repair_ok": False, "note": "P1-5 STEP 回读错误注入（几何参数修改致体积不一致）",
+        "timestamp": datetime.now().isoformat(timespec="seconds"),
+    }]
 
 
 def _save(samples: list):
@@ -226,6 +327,8 @@ def main(argv=None) -> int:
             if not args.inject_only:
                 ss += _extract_real_attempts(tid)
             ss += _inject_samples(tid)
+            # P1-5：STEP 回读错误注入（确定性重建，~40s/任务）
+            ss += _inject_step_roundtrip_samples(tid, OUTPUT / tid, _inherit(tid))
             _save(ss)
             total += len(ss)
             print(f"- {tid}  {len(ss)} samples")

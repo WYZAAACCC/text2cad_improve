@@ -40,6 +40,16 @@ from mcp_tools import (  # noqa: E402
 L2_TOOLS = ["check_slot_pitch_and_ligament", "check_adjacent_feature_clearance",
             "validate_slot_pattern_periodicity"]
 
+_LEVEL_INDEX = {"L1": 1, "L2": 2, "L3": 3, "L4": 4, "L5": 5}
+
+
+def _cumulative_level(lv: dict) -> int:
+    """级联通过级：最大的 k 使 L1..Lk 全部 True（None/False 视为未通过）。"""
+    for k in range(1, 6):
+        if lv.get(f"L{k}") is not True:
+            return k - 1
+    return 5
+
 
 def _levels(base: Path) -> dict:
     base_s = str(base)
@@ -93,29 +103,34 @@ def main(argv=None) -> int:
     models = []
     for tid in tids:
         lv = _levels(OUTPUT / tid)
-        models.append({"task_id": tid, "levels": lv})
+        cl = _cumulative_level(lv)
+        models.append({"task_id": tid, "levels": lv, "cumulative_level": cl})
         passed = sum(1 for k in ("L1", "L2", "L3", "L4") if lv[k] is True)
         print(f"- {tid}  {'OK ' if passed == 4 else '    '} L1={lv['L1']} L2={lv['L2']} "
-              f"L3={lv['L3']} L4={lv['L4']} L5={lv['L5']}")
+              f"L3={lv['L3']} L4={lv['L4']} L5={lv['L5']}  cum={cl}")
 
     n = len(models)
     retention = {}
     prev = n
     for lvl in ("L1", "L2", "L3", "L4", "L5"):
-        passed = sum(1 for m in models if m["levels"][lvl] is True)
+        # 级联语义：通过本级需 L1..Lk 全部 True（论文逐级淘汰，只统计相对初始保留率）
+        passed = sum(1 for m in models if _cumulative_level(m["levels"]) >= _LEVEL_INDEX[lvl])
         retention[lvl] = {"passed": passed, "of_total": n,
                           "rel_initial_pct": round(passed / n * 100, 2) if n else 0,
-                          "rel_prev_pct": round(passed / prev * 100, 2) if prev else 0}
+                          "rel_prev_pct": round(passed / prev * 100, 2) if prev else 0,
+                          "cascade": True}
         prev = passed
 
     report = {"schema": "filter_report_v1", "generated_at": datetime.now().isoformat(timespec="seconds"),
               "models": models, "retention": retention}
     DATASETS.mkdir(parents=True, exist_ok=True)
     FILTER.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"\n保留率（{n} 候选）:")
+    print(f"\n级联保留率（{n} 候选，L1..Lk 全通过才算通过 Lk）:")
     for lvl, r in retention.items():
         print(f"  {lvl}: {r['passed']}/{r['of_total']} = {r['rel_initial_pct']}% "
               f"(相对上一级 {r['rel_prev_pct']}%)")
+    n_valid = sum(1 for m in models if m["cumulative_level"] == 5)
+    print(f"  通过全 5 级（有效模型）: {n_valid}")
     print(f"filter report -> {FILTER}")
     return 0
 

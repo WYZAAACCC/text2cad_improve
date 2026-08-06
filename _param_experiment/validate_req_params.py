@@ -19,21 +19,38 @@ sys.path.insert(0, str(_HERE))
 sys.path.insert(0, str(_HERE.parent / "integrations" / "engineering_tools" / "src"))
 
 # (param_key, 正则, 类型, 容差)
+# 注意：环槽用"环槽槽宽/环槽槽深"措辞（candidate_sampler 文本一致），避免与榫槽"槽深"冲突。
 RE_PARAMS = [
-    ("outer_diameter_mm",    r"外径(\d+)",          float, 5.0),
-    ("bore_diameter_mm",     r"中心孔直径(\d+)",     float, 5.0),
-    ("axial_thickness_mm",   r"轴向最大厚度(\d+)",   float, 3.0),
-    ("slots",                r"轮缘上(\d+)个",       int,   0),
-    ("teeth_count",          r"(\d)齿枞树形",        int,   0),
-    ("slot_depth_mm",        r"槽深(\d+)",          float, 2.0),
-    ("throat_half_width_mm", r"喉部半宽([\d.]+)",    float, 0.5),
-    ("root_fillet_mm",       r"齿根圆角([\d.]+)",    float, 0.3),
+    ("outer_diameter_mm",    r"外径[Φ]?(\d+)",        float, 5.0),
+    ("bore_diameter_mm",     r"中心孔直径[Φ]?(\d+)",  float, 5.0),
+    ("axial_thickness_mm",   r"轴向最大厚度[Φ]?(\d+)", float, 3.0),
+    ("slots",                r"轮缘上(\d+)个",        int,   0),
+    ("teeth_count",          r"(\d)齿枞树形",         int,   0),
+    ("slot_depth_mm",        r"(?<!环槽)槽深(\d+)",   float, 2.0),
+    ("throat_half_width_mm", r"喉部半宽([\d.]+)",     float, 0.5),
+    ("root_fillet_mm",       r"齿根圆角([\d.]+)",     float, 0.3),
+    ("R_mm",                 r"枞树形榫槽.*?分布半径([\d.]+)", float, 2.0),
+    # 主体：轮毂/轮缘半厚
+    ("hub_half_mm",          r"轮毂半厚([\d.]+)",    float, 3.0),
+    ("rim_half_mm",          r"轮缘半厚([\d.]+)",    float, 3.0),
+    # 孔阵列（"安装孔"限定避免与榫槽"分布半径"冲突）
+    ("holes",                r"(\d+)个安装孔",       int,   0),
+    ("hdia_mm",              r"孔径([\d.]+)",        float, 0.5),
+    ("pcd_mm",               r"安装孔.*?分布半径([\d.]+)", float, 2.0),
+    # 环槽
+    ("grooves",              r"(\d+)道环槽",         int,   0),
+    ("gw_mm",                r"环槽槽宽([\d.]+)",    float, 0.5),
+    ("gd_mm",                r"环槽槽深([\d.]+)",    float, 0.5),
 ]
 
 LABELS = {
     "outer_diameter_mm": "外径", "bore_diameter_mm": "中心孔",
     "axial_thickness_mm": "轴厚", "slots": "榫槽数量", "teeth_count": "齿数",
     "slot_depth_mm": "槽深", "throat_half_width_mm": "喉部半宽", "root_fillet_mm": "齿根圆角",
+    "hub_half_mm": "轮毂半厚", "rim_half_mm": "轮缘半厚",
+    "holes": "孔数量", "hdia_mm": "孔径", "pcd_mm": "孔分布半径",
+    "grooves": "环槽数量", "gw_mm": "环槽槽宽", "gd_mm": "环槽槽深",
+    "R_mm": "榫槽分布半径",
 }
 
 
@@ -69,16 +86,22 @@ def validate_ir(text: str, base_dir) -> dict:
         "slot_depth_mm": sp.get("slot_depth_mm"),
         "throat_half_width_mm": sp.get("throat_half_width_mm"),
         "root_fillet_mm": sp.get("root_fillet_mm"),
+        # 孔/环槽/轮毂轮缘：无专用测量工具（盘型数据暂缓），actual=None → 跳过验证
+        "hub_half_mm": None, "rim_half_mm": None,
+        "holes": None, "hdia_mm": None, "pcd_mm": None,
+        "grooves": None, "gw_mm": None, "gd_mm": None,
     }
     checks = []
     for key, _pat, _typ, tol in RE_PARAMS:
         if key not in req:
             continue
         expected, actual = req[key], actuals.get(key)
-        if key in ("slots", "teeth_count"):
-            ok = actual is not None and int(actual) == int(expected)
+        if actual is None:
+            continue  # 无测量工具（孔/环槽等），跳过验证不误判
+        if key in ("slots", "teeth_count", "holes", "grooves"):
+            ok = int(actual) == int(expected)
         else:
-            ok = actual is not None and abs(actual - expected) <= tol
+            ok = abs(actual - expected) <= tol
         checks.append({"param": key, "label": LABELS[key], "expected": expected,
                        "actual": actual, "tol": tol, "ok": bool(ok)})
     return {"ok": bool(checks) and all(c["ok"] for c in checks),

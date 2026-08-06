@@ -51,6 +51,9 @@ output/
 app/text-to-cad/server/output/mon_*/
 app/text-to-cad/server/output/verify_*/
 app/text-to-cad/server/output/gen_*/
+app/text-to-cad/server/output/cand_*/
+# ...exclude all task-output subdirs (uuid/_test/fea3d pipeline artifacts — 数据产物不入库)
+app/text-to-cad/server/output/*/
 # ...but exclude regenerable derived fields (run_enrich 可再生成)
 app/text-to-cad/server/output/*/dataset_enrich.json
 app/text-to-cad/server/output/*/descriptions.json

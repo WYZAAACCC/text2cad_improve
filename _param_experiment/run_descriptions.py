@@ -108,25 +108,29 @@ def _cn_semantic(p: dict, disk: str) -> str:
 
 
 def _en_mixed(p: dict) -> str:
-    # 英文骨架 + 中文参数（中英混合，提高 LLM 参数遵循率）
+    # P1-3 纯英文参数化措辞（key = value mm 显式格式，去掉中文括号干扰，提高 LLM 遵循率）
     parts = ["Generate a high-pressure turbine disk with hub-web-rim body"]
     if p["outer_diameter_mm"] is not None:
-        parts.append(f"outer diameter {_num(p['outer_diameter_mm'])} mm（外径{_num(p['outer_diameter_mm'])}mm）")
+        parts.append(f"outer diameter = {_num(p['outer_diameter_mm'])} mm")
     if p["bore_diameter_mm"] is not None:
-        parts.append(f"bore diameter {_num(p['bore_diameter_mm'])} mm（中心孔直径{_num(p['bore_diameter_mm'])}mm）")
+        parts.append(f"center bore diameter = {_num(p['bore_diameter_mm'])} mm")
     if p["axial_thickness_mm"] is not None:
-        parts.append(f"axial thickness {_num(p['axial_thickness_mm'])} mm（轴向最大厚度{_num(p['axial_thickness_mm'])}mm）")
+        parts.append(f"maximum axial thickness = {_num(p['axial_thickness_mm'])} mm")
+    if p["hub_half_thickness_mm"] is not None:
+        parts.append(f"hub half thickness = {_num(p['hub_half_thickness_mm'])} mm")
+    if p["rim_half_thickness_mm"] is not None:
+        parts.append(f"rim half thickness = {_num(p['rim_half_thickness_mm'])} mm")
     if p["count"] is not None and p["teeth_count"] is not None:
-        parts.append(f"{_num(p['count'])} fir-tree slots ({_num(p['teeth_count'])} teeth)（轮缘上{_num(p['count'])}个{_num(p['teeth_count'])}齿枞树形榫槽）")
+        parts.append(f"{_num(p['count'])} fir-tree slots with {_num(p['teeth_count'])} teeth on the rim")
     if p["distribution_radius_mm"] is not None:
-        parts.append(f"pitch radius {_num(p['distribution_radius_mm'])} mm（分布半径{_num(p['distribution_radius_mm'])}mm）")
+        parts.append(f"slot pitch radius = {_num(p['distribution_radius_mm'])} mm")
     if p["slot_depth_mm"] is not None:
-        parts.append(f"slot depth {_num(p['slot_depth_mm'])} mm（槽深{_num(p['slot_depth_mm'])}mm）")
+        parts.append(f"slot depth = {_num(p['slot_depth_mm'])} mm")
     if p["throat_half_width_mm"] is not None:
-        parts.append(f"throat half-width {_num(p['throat_half_width_mm'])} mm（喉部半宽{_num(p['throat_half_width_mm'])}mm）")
+        parts.append(f"slot throat half-width = {_num(p['throat_half_width_mm'])} mm")
     if p["root_fillet_mm"] is not None:
-        parts.append(f"root fillet {_num(p['root_fillet_mm'])} mm（齿根圆角{_num(p['root_fillet_mm'])}mm）")
-    return ", ".join(parts) + "."
+        parts.append(f"root fillet radius = {_num(p['root_fillet_mm'])} mm")
+    return " ".join(parts) + ". Reference geometry, not a flight part."
 
 
 # ── SER 七步（确定性，测量/IR 驱动）──────────────────────────────────────

@@ -1,0 +1,290 @@
+面向航空发动机涡轮盘的自然语言参数化CAD建模：领域大模型与多智能体自校正
+摘要
+航空发动机涡轮盘包含轮毂-腹板-轮缘主体、孔槽特征和多齿枞树形榫槽，其参数、特征依赖与几何约束高度耦合。现有自然语言生成CAD方法多面向通用零件，直接生成底层代码时难以同时保证领域语义正确、几何可行、参数再生稳定和模型质量可验证。本文提出一种融合领域适配大语言模型、可校验中间表示、确定性几何编译与多智能体自校正的涡轮盘自然语言参数化建模方法。系统首先将设计需求转换为Feature Graph和Disk-G-CAD，再由Compiler调用确定性操作库生成边界表示模型；当静态校验、CAD执行或模型质量检查失败时，corrector依据结构化错误证据实施局部修复，并通过Model Context Protocol（MCP）调用尺寸测量、实体健康、参数再生和STEP回读工具形成双层闭环。本文构建NL2DiskCAD数据集，覆盖32个设计族、49920个有效参数化模型和217920组生成、编辑、修复及工具调用实例；在8个完全留出的设计族上设置40项任务并开展400次独立实验。完整方法的首轮工程成功率和三轮内最终成功率分别为82.8%和95.3%，参数化再生成功率为95.8%，不可行设计正确拒绝率为92.5%。实验表明，领域微调主要提升专业语义与特征依赖建模能力，中间表示与Compiler提高几何执行稳定性，结构化纠错提高最终成功率，MCP质量门显著降低“CAD可运行但工程模型不合格”的隐性风险。该方法为复杂盘类零件从自然语言需求到可追溯、可修复参数化模型的自动转换提供了可复用技术路径。
+关键词： 航空发动机；涡轮盘；自然语言建模；参数化CAD；领域大语言模型；多智能体；Model Context Protocol
+引言
+涡轮盘在高温、高转速和复杂离心-热载荷下工作，是航空发动机转子系统中设计约束密集、失效后果严重的关键承力部件。其几何不仅决定质量分布、应力集中和装配关系，也是强度分析、寿命评估、结构优化和制造准备的共同数据基础。典型涡轮盘由轮毂、腹板、轮缘、中心孔、周向孔阵列、环槽以及枞树形榫槽等特征构成，局部尺寸变化会同时改变多个关联特征和安全裕度。尽管参数化设计、代理模型、可靠性优化和拓扑优化已用于涡轮盘研制[1-8]，复杂盘类模型的建立与方案变更仍高度依赖资深工程师；特征引用失效、榫槽轮廓约束冲突和容差敏感的布尔运算会增加迭代成本，并可能将几何错误传递至后续分析与制造环节[9-11]。
+近年来，CAD智能生成研究已由网格和点云逐步发展到草图约束、建模序列和边界表示。ABC、SketchGraphs和Fusion 360 Gallery为几何-拓扑联合学习和人类建模历史建模提供了数据基础[12-14]；DeepCAD、Computer-Aided Design as Language、Vitruvion和SkexGen证明了将CAD构造过程表示为序列或程序的可行性[15,16,19,20]；BRepNet、UV-Net、SolidGen和BrepGen进一步面向B-rep几何与拓扑开展学习[17,18,21-23]。在文本或多模态条件下，Text2CAD、Query2CAD、CAD-MLLM、CAD-Llama和CAD-Recode等方法拓展了参数化模型生成与逆向重建能力[26-31]。然而，现有研究主要面向通用机械零件或有限的草图-拉伸特征，评价通常集中于几何相似度、命令准确率和程序可执行性，尚不足以覆盖涡轮盘所要求的专业术语、特征依赖、局部剩余材料、参数再生和中性格式交换等工程条件。对于工程参数化模型，几何外形接近参考模型并不等价于建模结果可用：相同外形可能由不可编辑的单一实体、错误的特征顺序或脆弱的拓扑引用得到；程序一次执行成功也不能证明模型在参数变化、格式交换和下游分析中保持稳定。因此，评价对象需要从“生成结果的外形”扩展为“设计意图-特征历史-几何实体-再生行为-质量证据”的完整链路。
+大语言模型（large language model，LLM）的检索增强、参数高效微调、工具调用和多智能体协同，为自然语言驱动工程软件提供了新的实现基础[32-44]。在计算流体力学领域，MetaOpenFOAM、OpenFOAMGPT和领域微调模型已实现从自然语言到算例配置、求解执行、后处理和错误恢复[46-50]；CFD-copilot进一步通过MCP连接专业工具，展示了领域模型、智能体与标准化接口协同的潜力[51]。与文本配置不同，参数化CAD同时包含连续几何、离散拓扑、特征历史以及对容差敏感的局部运算。若LLM直接生成完整CAD代码，设计意图、参数推导、坐标变换和底层API混合在同一程序中，执行失败难以定位；即使代码成功运行，也不能保证关键尺寸、特征数量、榫槽节距、实体健康和参数再生满足工程要求。多齿枞树形榫槽尤其具有轮廓闭合、直线-圆弧连接、齿面角、周向节距、最小剩余材料与阵列布尔稳定性耦合等特点，单纯依赖提示工程或整段代码重试难以形成可靠闭环。现有LLM工程智能体常以日志反馈驱动再次生成，但CAD后端返回的异常通常只反映最后失败的几何操作，无法直接说明错误来自需求解析、参数推导、特征依赖还是内核容差。若缺少领域化中间表示，系统既难以限定模型的生成空间，也难以将错误证据回映射到可修改的最小单元。由此，涡轮盘自然语言建模的关键问题不是让LLM记住更多API，而是建立一种可表达设计意图、可接受静态校验、可由几何内核执行且可支持局部修复的中间层。
+针对上述问题，本文提出面向航空发动机涡轮盘的自然语言参数化CAD建模框架。其核心思想是将概率式语言理解与确定性几何执行分离，并以结构化质量反馈连接两者。本文的主要贡献如下：
+（1）构建覆盖主体轮廓、孔槽特征以及双齿、三齿和四齿枞树形榫槽的NL2DiskCAD数据体系，通过真实CAD执行、参数再生和STEP回读对样本进行过滤，并据此适配代码大语言模型AeroDisk-LLM。
+（2）提出Feature Graph-Disk-G-CAD-Compiler方法，将设计意图、参数、特征依赖、硬/软约束和质量要求显式化，由确定性操作库完成复杂轮廓、阵列、坐标变换与布尔运算，避免LLM直接生成不可控的完整CAD程序。
+（3）构建由需求预检、生成、执行、纠错和后处理智能体组成的自校正流程，通过统一Repair Ticket实现节点级错误回映射，并利用DiskCAD-MCP建立CAD执行与工程质量检查双层闭环。
+（4）建立按盘体设计族、枞树形榫槽母型和特征图模板隔离的DiskCAD-Bench，从语义理解、中间表示、端到端工程成功、参数再生、不可行设计识别和工具调用等维度验证方法有效性。
+方法
+问题定义与总体框架
+本文研究从自然语言设计需求自动生成航空发动机涡轮盘参数化CAD模型的问题。输入包括自然语言描述、显式尺寸、硬约束、可调软约束和输出要求：
+其中，为设计需求，为用户明确给出的参数，为不得自动修改的硬约束，为允许在给定范围内调整的软约束，为模型文件、标准视图和质量报告等输出要求。系统输出为
+其中，为Feature Graph，为Disk-G-CAD文档，和分别为原生B-rep模型和STEP模型，为质量报告，为需求解析、生成、执行、修复和工具调用日志。本文不以“代码可执行”作为完成条件，而将工程成功定义为
+其中，表示特征与参数符合需求，表示中间表示合法，表示形成有效封闭实体，表示关键尺寸和几何约束通过，表示参数变化后可稳定再生，表示STEP导出-回读后一致。该定义将语义、结构、几何和交换质量置于同一判定中，避免把语法正确或单次布尔成功误认为工程完成。对于硬约束冲突，系统允许的正确输出是结构化拒绝及冲突证据，而不是通过修改用户参数获得一个形式上可执行的模型。
+图 1 自然语言驱动的涡轮盘参数化建模总体框架
+如图 1所示，pre-checker首先完成术语、单位、参数完整性和显式冲突检查；AeroDisk-LLM生成Feature Graph与Disk-G-CAD；静态校验通过后，Compiler将其转换为确定性CadQuery/OpenCascade操作并生成实体。当静态校验或CAD执行失败时，错误被映射到具体节点和参数，由corrector实施最小范围修复；实体生成后，post-processing agent通过MCP调用尺寸、榫槽、实体健康、参数再生和STEP回读工具。系统由此形成“中间表示-CAD执行”内层纠错和“CAD模型-工程质量”外层纠错。内层闭环解决schema、参数、依赖和几何执行问题，外层闭环独立检查模型是否真正满足工程验收条件；两层闭环共享同一特征标识和错误对象，使每次修复均可追溯到原始需求、受影响节点和实际CAD证据。
+NL2DiskCAD数据集与领域模型
+NL2DiskCAD以32个由工程人员建立并检查的种子设计族为基础，其中20个用于训练数据生成、4个用于验证、8个完全留出用于独立测试。训练、验证和测试集合在盘体子午轮廓母型、枞树形榫槽轮廓母型、Feature Graph模板以及自然语言改写层面相互隔离。用于训练和验证的24个设计族共采样102 400组候选参数，覆盖正常可行区、接近几何边界的区域和人为构造的不可行区域。种子设计族包括基础轮毂-腹板-轮缘盘、中心孔与周向孔阵列盘、环槽与减重结构盘、标准枞树形榫槽盘、榫槽-孔阵列-环槽耦合盘以及复杂轮缘过渡组合盘。参数采样并非仅在安全区内随机取值，而是有意增加临界节距、最小剩余材料、局部圆角和多特征干涉附近的样本，以使模型学习可行域边界及拒绝条件。候选模型依次通过schema与图结构检查、参数与几何预检查、Compiler/CAD执行、实体质量检查、参数再生以及STEP导出-回读，最终保留49 920个有效参数化模型，整体保留率为48.75%。各阶段保留数量分别为88064、73728、61952、54784和49920，说明仅通过结构校验远不足以保证几何和再生有效，真实软件执行是数据质量控制的必要环节。
+针对每个有效模型，本文构造简洁参数指令、中文工程描述和英文参数说明，并进一步生成参数修改、错误修复和MCP工具规划实例。数据集共包含217 920组任务，其中生成任务149 760组、编辑任务24960组、修复任务30 720组、MCP任务12 480组。所有生成样本均附带Structured Engineering Rationale（SER）。SER不是自由形式的隐式推理文本，而是由主体区域识别、参数归一化、特征分解、榫槽轮廓构造、依赖组织和约束检查等可复核字段组成，用于使模型学习工程建模过程而非仅拟合最终文档。每个字段均可由规则、参考Feature Graph或CAD执行结果验证，例如单位归一化必须与参数表一致，特征分解必须覆盖目标几何，约束检查必须对应明确的几何量。该设计一方面降低了自由推理文本带来的不可审计性，另一方面为后续错误定位提供了与生成过程一致的语义锚点。
+图 2 NL2DiskCAD数据构建、增强与执行过滤流程
+本文以Qwen2.5-Coder-32B-Instruct为基座，采用QLoRA进行参数高效领域适配[36,40]，得到AeroDisk-LLM。训练同时覆盖生成、编辑、修复和工具规划任务，其目标为
+其中，表示第类任务数据，用于平衡不同任务。AeroDisk-LLM不直接输出最终CadQuery代码，而是生成受schema约束的Feature Graph和Disk-G-CAD，从模型层面分离语言生成与几何构造。
+Feature Graph-Disk-G-CAD-Compiler
+Feature Graph将涡轮盘建模历史表示为有向无环图
+其中，和分别为特征节点和依赖边，为参数及表达式，为工程约束，为节点和最终模型的质量检查要求。每个节点定义为
+其中，为操作类型，和为输入、输出实体，为节点参数，为局部坐标系。Disk-G-CAD是Feature Graph的领域化执行文档，显式记录schema版本、单位体系、操作方言、参数表、实体引用、根实体、工程约束和后置检查要求。Feature Graph强调“模型如何构造”及节点间依赖，Disk-G-CAD则提供类型明确、可校验和可执行的完整输入。二者分层后，LLM可以在高层组织设计意图，Compiler无需解释自然语言即可调用固定操作；同一Feature Graph还可被不同CAD后端降低为各自的API序列。图 3给出了包含主体旋转、中心孔、孔阵列、环槽和枞树形榫槽的典型特征依赖。
+图 3 含枞树形榫槽涡轮盘的Feature Graph与节点依赖
+Compiler按照“文档解析-参数求值-拓扑排序-节点降低-操作库调用-实体生成-文件导出”的顺序执行。文档解析阶段检查字段类型、单位和实体引用；参数求值阶段计算派生尺寸并冻结用户硬约束；拓扑排序确保所有输入实体在使用前已经生成；节点降低将领域操作映射为CadQuery/OpenCascade调用；每个节点执行后均记录输入、输出、耗时和几何摘要。确定性操作库覆盖主体旋转、中心孔、周向孔阵列、环槽、双/三/四齿枞树形榫槽、局部切除、圆角、倒角和STEP导出。主体盘由子午轮廓旋转形成，榫槽则按照“二维轮廓-轴向工具体-周向阵列-批量切除-局部修饰”的固定语义执行，从而避免模型自行决定坐标变换和布尔顺序。对于参考半径为、数量为的榫槽阵列，周向节距；若单槽最大切向宽度为、两侧最小剩余材料为，槽深为、轮缘可用径向厚度为、槽底最小剩余材料为，则至少满足
+此外，二维榫槽轮廓须闭合、无自交，直线与圆弧连接连续，局部圆角可构造，周向阵列后相邻工具体不得发生非预期相交。对于周向孔阵列，孔中心分布半径、孔径、有效边界半径和安全裕度必须满足孔不越界且孔间剩余材料不低于阈值；环槽还需检查槽宽、槽深和与相邻孔槽的最小距离。上述约束在几何构造前进行快速筛查，在实体生成后再由MCP工具进行实际测量，分别形成预测性检查和结果性检查。复杂轮廓和批量布尔由确定性模块实现，而非由LLM临时生成代码。当参数变化时，系统依据参数引用关系确定受影响节点集合，仅重建这些节点及其后继子图；未受影响的主体、孔槽或榫槽节点保持不变，从而保留清晰的建模历史并减少无关重算。
+多智能体自校正与MCP质量反馈
+系统采用确定性工作流管理器协调五类智能体：pre-checker负责需求规范化和冲突预检；generator调用AeroDisk-LLM生成中间表示；runner完成静态校验、Compiler执行和文件导出；corrector解释错误证据并实施规则或模型辅助修复；post-processing agent通过DiskCAD-MCP调用专业质量工具。各模块共享统一错误对象，记录失败阶段、错误代码、来源节点、相关参数、几何证据和受保护硬约束。统一错误对象解决了语言模型、校验器和CAD内核错误格式不一致的问题：例如一个布尔失败不仅保留后端异常，还同时记录工具体编号、对应Feature Graph节点、输入实体体积和可能违反的边界约束，使corrector能够区分语义错误、参数错误和内核数值问题。
+Disk-G-CAD进入Compiler前接受schema、图结构、参数和几何风险四级校验。若校验或执行失败，后端日志被转换为Repair Ticket。corrector遵循“确定性规则优先、领域模型补充”的原则：字段、单位、类型、默认值和简单引用错误由规则修复；涉及特征顺序、设计意图和多参数耦合的问题由AeroDisk-LLM处理。任何修复均不得改变用户硬约束；若硬约束构成不可行组合，系统返回冲突说明而非静默生成替代方案。对软约束的修改也受到最小改动原则限制，Repair Ticket中需要给出修改前后数值、触发证据和受影响节点。工作流管理器缓存已经失败的修复路径，并比较前后文档差异，防止corrector在两种局部方案之间无限震荡。
+CAD实体生成后，DiskCAD-MCP以统一工具名称、说明和输入输出schema接入实体检查、尺寸测量、榫槽检查、几何裕度、参数再生、STEP回读、可视化和质量报告工具。当质量检查未通过时，结果被转换为新的Repair Ticket并返回corrector。系统在全部质量门通过、达到最多3轮修复、确认设计不可行或发现操作库不支持目标特征时终止。每次终止均输出明确状态：成功任务包含模型、质量报告和完整日志；不可行任务包含冲突约束及几何证据；能力不足任务则指出未支持的操作类型。该设计使失败成为可解释结果，而不是无结构的代码异常。图 4展示了内外两层纠错流程。
+图 4 多智能体生成-执行-质量检查双层纠错流程
+实验设置
+DiskCAD-Bench与数据隔离
+DiskCAD-Bench由8个完全留出的设计族组成，共40项自然语言参数化建模任务，其中32项为从零生成，8项为在已有主体模型基础上的参数修改。测试集包含未见盘体轮廓、未见榫槽母型、复杂特征组合和接近几何边界的参数；26项任务包含双齿、三齿或四齿枞树形榫槽。按Feature Graph节点数和特征耦合程度，任务划分为4级：Level 1包含8项基础主体与中心孔任务，Level 2包含10项孔阵列、环槽和局部修饰任务，Level 3包含12项双/三齿榫槽与多特征组合任务，Level 4包含10项未见四齿榫槽、复杂轮缘过渡和强耦合边界任务。
+每项任务均提供自然语言需求、规范化参数表、专家确认的Feature Graph、参考Disk-G-CAD、B-rep实体、STEP文件、关键尺寸清单、参数再生方案和质量验收条件。对于含榫槽任务，参考数据进一步记录齿数、槽深、喉部宽度、各级齿面角、齿根/槽底圆角、周向节距和最小剩余材料，使评价能够定位到局部轮廓而非仅比较整体体积。两名具有航空发动机结构与CAD经验的工程人员独立建模与标注，第三名专家处理分歧；节点类型、参数和约束标注的初始一致性系数为0.93。数据隔离同时在设计族、榫槽母型、图哈希、Disk-G-CAD文档哈希和B-rep几何指纹层面执行，避免仅数值不同的近重复模板跨集合。图哈希依据规范化操作标签和依赖关系识别结构重复；文档哈希在字段排序和参数符号化后计算；几何指纹综合体积、表面积、包围盒、曲面类型分布和截面轮廓。由同一几何模型生成的自然语言改写、编辑和修复样本只能属于同一集合，从源头抑制通过模板记忆获得虚高性能。
+除40项主任务外，本文设置800组参数扰动、320条语义等价自然语言指令、120组不可行设计和160项MCP工具任务。参数扰动覆盖单参数、双参数、3-5参数及跨特征耦合修改；不可行设计包括孔阵列越界、榫槽节距不足、槽深超过可用轮缘厚度、局部圆角不可构造和硬约束冲突；MCP测试包含单工具、多工具、异常恢复和训练后新增工具调用。
+图 5 DiskCAD-Bench设计族、难度分级与数据隔离
+对比方法、指标与实现
+领域模型比较保持pre-checker、schema、Compiler、CAD后端、corrector和MCP工具不变，仅替换核心生成/语义修复模型，包括Base-Coder、CAD-RAG、Qwen2.5-72B、DeepSeek-R1-Distill、Llama-3.3-70B和AeroDisk-LLM。CAD-RAG从2 400个已验证Disk-G-CAD示例、416条操作与约束说明以及812组错误-修复记录中检索前5项。系统架构比较包括Direct-Base、Direct-SFT、IR-Single、MA-NoCorr、MA-Corr和Full Framework，用于区分领域微调、中间表示/Compiler、多智能体分工、corrector和MCP的贡献。Direct-Base由未经微调的代码模型直接生成CadQuery；Direct-SFT使用与AeroDisk-LLM相同的领域样本，但训练目标为完整CadQuery程序；IR-Single保留中间表示和Compiler，但把预检、生成和修复合并为单一智能体；MA-NoCorr采用多智能体分工而不允许自动修复；MA-Corr增加内层纠错；Full Framework进一步加入MCP外层质量反馈。该递进设置使同一领域数据、同一CAD后端和相同三轮预算下的架构贡献可以被单独识别。
+主实验中，每种方法在40项任务上使用10个随机种子独立运行，共400次。训练和推理在8张NVIDIA A800 80 GB GPU上完成，CAD侧采用Python 3.11、CadQuery 2.4和OpenCascade 7.7。推理temperature为0.3、top-p为0.9、最大上下文为8192 tokens；单次CAD执行和端到端任务超时分别为900 s和3600 s，最多自动纠错3轮。全部STEP模型由OpenCascade回读，参考模型和随机抽取的20%生成模型进一步在商业CAD软件中独立导入。不同模型使用相同任务指令、Feature Graph定义、Disk-G-CAD schema和错误对象格式，仅进行聊天模板所需的消息封装；直接代码生成方法在相同三轮预算内允许重新生成或修改代码，而中间表示方法只能修改错误关联节点及必要依赖，不能通过整份重写规避错误定位。
+评价覆盖参数识别、Feature Graph节点/依赖、Disk-G-CAD一次合法率、首轮工程成功率（Pass@1）、三轮内最终成功率（FinalSuccess@3）、关键尺寸与榫槽轮廓误差、参数再生、不可行设计拒绝、错误定位与修复、MCP工具调用及计算效率。离散参数和特征类型要求完全一致；长度与角度参数在统一单位后分别采用0.05 mm和0.1°绝对容差。榫槽轮廓按弧长均匀采样2 000点，以参考槽深归一化的双向Hausdorff距离评价。STEP回读要求形成有效单一实体、体积相对误差不超过0.1%、关键尺寸差异不超过0.05 mm且孔槽数量与榫槽齿数保持一致。参数再生不仅统计模型能否重新执行，还要求修改后仍满足全部几何约束；不可行设计只有在明确指出冲突且未改变硬约束时才记为正确拒绝。MCP多工具任务则同时要求工具集合、调用顺序、参数绑定和最终结果正确。
+比例指标采用以任务为聚类单元的10 000次bootstrap计算95%置信区间；二元结果采用广义线性混合效应模型，连续指标在任务层面取中位数后使用配对Wilcoxon检验，并进行Holm-Bonferroni校正。几何误差仅在形成有效实体的样本上计算，同时报告工程成功率，避免通过排除失败样本掩盖系统可靠性差异。详细指标公式见补充材料。
+结果
+领域模型与端到端性能
+表 1比较了不同生成模型。在相同系统后端下，AeroDisk-LLM的参数识别准确率、特征节点F1、依赖边F1和Disk-G-CAD一次合法率分别达到96.5%、94.3%、91.2%和96.9%，均为最高。与同规模Base-Coder相比，上述指标分别提高13.8、15.9、20.6和19.4个百分点，说明领域适配的收益不仅来自格式稳定性，更体现在涡轮盘特征分解和依赖组织。
+表 1 不同领域模型的建模性能
+模型
+参数准确率/%
+节点F1/%
+依赖边F1/%
+一次合法率/%
+Pass@1/%
+FinalSuccess@3/%
+Base-Coder
+82.7
+78.4
+70.6
+77.5
+61.3
+69.0
+CAD-RAG
+89.1
+85.6
+80.7
+87.2
+70.5
+79.3
+Qwen2.5-72B
+92.0
+88.3
+84.7
+90.0
+73.8
+82.0
+DeepSeek-R1-Distill
+91.1
+87.1
+83.9
+88.8
+72.0
+81.3
+Llama-3.3-70B
+86.3
+82.5
+77.1
+82.8
+64.5
+73.5
+AeroDisk-LLM
+96.5
+94.3
+91.2
+96.9
+82.8
+95.3
+AeroDisk-LLM的Pass@1和FinalSuccess@3分别为82.8%和95.3%，较Base-Coder提高21.5和26.3个百分点。混合效应模型给出的首轮成功优势比为3.04，95%置信区间为[2.32, 3.99]（）。与参数规模更大的Qwen2.5-72B相比，AeroDisk-LLM的Pass@1提高9.0个百分点，优势比为1.70，95%置信区间为[1.19, 2.43]（）。这说明，对于具有明确术语、特征依赖和软件执行规则的专业工程任务，扩大通用模型规模不能替代高质量领域数据与执行反馈。CAD-RAG较Base-Coder有明显提升，但在未见主体轮廓、未见榫槽母型和多特征耦合任务中容易机械拼接检索片段，导致实体引用或约束冲突，其FinalSuccess@3仍比AeroDisk-LLM低16.0个百分点。AeroDisk-LLM平均每个任务消耗15.8k tokens，低于Qwen2.5-72B的29.6k和DeepSeek-R1-Distill的33.4k。结果说明，领域微调不仅减少错误，也缩短了模型在术语解释、操作选择和多轮修复上的冗余推理。
+图 6 不同领域模型的语义与端到端性能比较
+任务难度增加时，Pass@1由Level 1的95.0%下降至Level 4的71.0%，但三轮内最终成功率仍分别达到100.0%、98.0%、95.0%和89.0%（表2）。Level 3和Level 4的首轮失败主要来自榫槽参数缺失、阵列与轮缘边界冲突、布尔切除后圆角不可构造以及多特征共同修改导致的派生参数失效。自动纠错显著缩小了不同难度间的最终性能差距。
+表 2 不同难度任务的端到端结果
+难度
+实验次数
+Pass@1/%
+FinalSuccess@3/%
+平均关键尺寸误差/%
+平均纠错轮数
+Level 1
+80
+95.0
+100.0
+0.06
+0.52
+Level 2
+100
+89.0
+98.0
+0.09
+0.91
+Level 3
+120
+79.2
+95.0
+0.15
+1.46
+Level 4
+100
+71.0
+89.0
+0.24
+2.28
+总体
+400
+82.8
+95.3
+0.14
+1.34
+在26项含枞树形榫槽任务形成的260次实验中，Pass@1和FinalSuccess@3分别为78.5%和93.5%；不含榫槽的140次实验分别为90.7%和98.6%。差异主要来自多段直线-圆弧连接、榫槽宽度与周向节距耦合以及完整阵列带来的大量布尔切割面。尽管含榫槽任务更困难，节点级错误定位和确定性榫槽操作库仍使最终成功率超过93%。
+图 7 任务难度及枞树形榫槽对建模成功率的影响
+架构消融与自动纠错
+表3给出了系统架构消融结果。Direct-SFT相较Direct-Base显著提高CAD和工程成功率，说明领域数据即使在直接代码生成范式下也有效；但其FinalSuccess@3仅为67.0%，明显低于保留中间表示和Compiler的IR-Single（84.8%）。直接代码将建模意图、坐标变换和实体引用混合，一旦局部失败，通常需要重写较大范围程序；Feature Graph和Disk-G-CAD则能将错误映射到具体节点，仅重建受影响子图。
+表 3 不同系统架构的端到端性能
+方法
+CAD Pass@1/%
+工程Pass@1/%
+FinalSuccess@3/%
+参数再生率/%
+平均任务时间/s
+Direct-Base
+48.0
+39.8
+46.3
+68.4
+318
+Direct-SFT
+67.5
+59.5
+67.0
+79.6
+301
+IR-Single
+81.0
+72.0
+84.8
+91.2
+355
+MA-NoCorr
+86.0
+80.8
+80.8
+91.0
+361
+MA-Corr
+86.0
+80.8
+93.8
+94.4
+389
+Full Framework
+87.0
+82.8
+95.3
+95.8
+407
+MA-NoCorr的工程Pass@1为80.8%，高于IR-Single的72.0%，表明需求预检与角色分工改善了首轮质量；但关闭corrector后，最终成功率不再提升。开启corrector使FinalSuccess@3由80.8%提高至93.8%，说明多智能体的关键价值不是增加角色数量，而是利用结构化证据实施局部恢复。进一步引入MCP质量反馈后，最终成功率增至95.3%，参数再生率增至95.8%。完整框架平均任务时间为407 s，高于Direct-SFT；但按最终成功模型折算的平均时间为427 s，低于Direct-SFT的449 s，表明质量检查增加了单次开销，却减少了无效重试和人工返工。
+400次完整框架实验共生成259项Repair Ticket。总体错误定位准确率和自动修复成功率分别为94.6%和88.4%。字段、单位和参数类型错误的修复成功率超过93%；特征依赖和榫槽剩余材料错误分别为85.2%和87.0%；布尔运算/CAD内核错误最困难，定位准确率和修复成功率分别为84.8%和75.8%。成功修复中，68.7%在第一轮完成，23.5%在第二轮完成，7.8%需要第三轮。Schema字段缺失、单位或类型错误通常可以由规则一次修复；节点引用和依赖错误需要结合Feature Graph上下文；榫槽轮廓与剩余材料问题常需联合调整派生参数或软约束；布尔运算错误则可能涉及短边、相切面和局部退化，单靠后端异常难以唯一判因。去除SER后，特征节点F1由94.3%降至88.9%，依赖边F1由91.2%降至84.3%，Pass@1下降11.0个百分点，说明可复核的工程过程标注主要改善复杂特征分解和操作顺序学习。
+几何质量、参数再生与不可行设计
+对最终通过工程验收的381次实验，生成模型的平均关键尺寸相对误差为0.14%，95%分位数为0.41%，最大值为0.86%；平均体积和表面积相对误差分别为0.08%和0.13%。枞树形榫槽归一化Hausdorff距离平均为0.18%，双齿、三齿和四齿轮廓分别为0.12%、0.17%和0.26%。所有最终成功模型均形成单一有效封闭实体，榫槽数量、齿数、孔阵列数量和环槽数量与参考模型一致。分项看，盘体外径、中心孔直径和轴向最大厚度的平均绝对误差分别为0.07、0.04和0.05 mm；榫槽喉部宽度和总深度分别为0.06和0.09 mm；齿面角平均绝对误差为0.18°。榫槽相关误差略高于主体尺寸，主要源于部分需求以比例、区间或平滑过渡等语义形式给出，需要由系统转换为显式几何参数。
+在348个首轮生成有效实体的模型中，342个一次通过STEP导出-回读，成功率为98.3%。6个未通过模型主要出现齿根圆角面重新分割、榫槽边界退化短边、共面面未合并和体积偏差超限；其中4个经局部容差或布尔批次调整后修复。随机抽取80个STEP文件在商业CAD软件中独立导入，78个无需修复即可形成单一实体，另2个经软件内置缝合或几何修复后满足尺寸与体积要求，直接导入成功率为97.5%。该结果验证的是几何与拓扑交换，不意味着普通STEP能够传递Feature Graph和参数表达式。
+800组参数扰动中，单参数、双参数、3-5参数和跨特征耦合修改的再生成功率分别为98.1%、96.7%、93.8%和87.5%，总体为95.8%。当样本距最近可行域边界的归一化裕度大于0.30时，再生成功率为99.2%；裕度小于0.05时降至86.7%，表明接近边界时布尔和圆角的数值稳定性仍是主要瓶颈。
+图 8 参数修改复杂度与可行域边界对模型稳定性的影响
+在120组不可行设计中，系统正确拒绝111组，正确拒绝率为92.5%。被拒绝的主要原因包括榫槽节距不足、槽深超过轮缘可用厚度、孔阵列越界、环槽与榫槽底部干涉以及硬约束冲突。其余9组均未作为有效模型交付。去除Disk-G-CAD显式约束后，正确拒绝率降至61.7%；直接代码生成仅为44.2%，说明显式工程约束既用于生成，也构成防止系统静默修改设计意图的安全边界。
+MCP工具调用与自然语言鲁棒性
+MCP评价包含160项任务，每项独立执行5次，共800次工具流程。表4显示，固定函数调用在预定义单工具选择和参数绑定上略优于MCP，但无法在不修改客户端代码的情况下调用训练后新增工具；LLM临时生成检查代码则易出现API、测量基准和多特征处理错误。DiskCAD-MCP的工具选择F1为95.6%，多工具流程完成率为91.7%，结果准确率为98.1%，新增工具正确调用率为85.0%，在可扩展性与可靠性之间取得更好平衡。20项新增工具只在模型训练结束后注册到服务器，模型依据工具说明和输入schema完成发现与调用；失败主要来自新旧工具功能描述重叠以及单位说明不充分。这表明标准化工具描述能够支持一定程度的零样本扩展，但工具语义设计仍直接影响调用可靠性。
+表 4 不同CAD后处理接口的性能
+方法
+工具选择F1/%
+参数绑定准确率/%
+多工具流程完成率/%
+结果准确率/%
+新工具正确调用率/%
+LLM临时生成检查代码
+81.2
+78.5
+69.4
+88.6
+45.0
+固定函数调用
+96.1
+95.0
+86.9
+98.4
+0.0
+DiskCAD-MCP
+95.6
+93.8
+91.7
+98.1
+85.0
+在348个首轮有效实体中，MCP额外发现17个未体现在CAD执行状态中的问题，包括7个关键尺寸偏差、4个特征数量错误、3个最小边界裕度违规和3个STEP回读不一致；14个经外层纠错修复，3个被判定失败。若仅依靠CAD执行状态，独立专家复核得到的工程质量漏检率为5.8%；引入MCP后降至1.0%。因此，MCP的主要作用不是替代几何算法，而是在软件运行状态之外建立独立、可扩展和可审计的工程质量门。
+在320条语义等价自然语言指令中，AeroDisk-LLM的参数提取一致率、规范化Feature Graph同构率和最终工程成功率分别为96.6%、93.4%和90.9%。语序变化和专业术语替换影响较小，主要下降来自公制/英制混用、绝对值与比例值同时出现、模糊修饰语、跨段落分散参数以及文字与表格冲突。Pre-checker能够识别多数显式冲突，但对“适当减小”“保持较厚轮缘”等模糊偏好仍需要交互确认。
+失败模式
+完整方法在400次主实验中最终失败19次。其中，复杂榫槽阵列布尔不稳定6次，多特征耦合约束未收敛5次，corrector修复路径震荡4次，自然语言歧义未充分消除2次，STEP回读拓扑异常2次。19个失败样本中15个包含枞树形榫槽，11个属于Level 4，基础盘体与简单孔阵列任务未出现最终失败。该分布说明，当前瓶颈已由一般语法和接口错误转向复杂几何边界与跨特征约束。
+复杂榫槽阵列失败通常并非来自齿数或槽深识别错误，而是理论可行轮廓在B-rep内核中形成极短过渡边、相切面或局部退化拓扑，阵列后批量布尔对容差更加敏感。结构化错误对象能够定位失败的工具体与来源节点，但CAD内核日志不足以唯一判断应调整圆角、容差还是布尔批次，因此该类错误的自动修复率最低。多特征耦合失败则反映局部最小改动策略的局限：当孔阵列、环槽与榫槽同时接近边界时，修复一个节点可能把冲突转移到另一个节点。后续需要把corrector由局部启发式修复扩展为受硬约束保护的多软参数联合优化。
+两类自然语言歧义失败均涉及硬约束与偏好边界不清。固定benchmark不允许系统追加询问，因此只能依据默认优先级解释；在实际应用中，应将交互澄清视为正常工作流，而不是强制模型在信息不足时一次生成。上述失败分析也表明，95.3%的最终成功率代表受控设计域内的CAD工程可靠性，而非对任意涡轮盘结构的通用自动设计能力。
+讨论
+本文结果表明，复杂工程CAD的可靠自动化不能仅依赖更大模型或更多代码重试。模型参数规模主要改善一般语言能力和代码先验，却不能自动获得涡轮盘特征语义、局部剩余材料规则和稳定建模顺序；RAG能够补充局部示例，但在强耦合任务中仍缺少对全局依赖的内化。相反，领域训练数据与真实CAD反馈共同定义了模型应学习的任务边界，而中间表示和Compiler进一步把这种知识转化为可执行约束。完整框架的性能来自四个相互依赖的机制：领域微调将涡轮盘术语、特征组合和约束关系写入模型；Feature Graph与Disk-G-CAD将开放式语言生成压缩到可校验的结构空间；Compiler将几何操作交给确定性模块；corrector与MCP分别使错误可修复、质量可独立验证。缺少其中任一环节，系统都可能退化为“语义近似但几何不可执行”或“代码可运行但工程模型不合格”。
+与通用文本到CAD方法相比，本文并不以生成任意形状或最大化几何相似度为目标，而面向受控设计域内的工程参数化建模。其优势体现在：设计需求能够追溯到参数和特征节点；复杂榫槽由领域操作库稳定构造；参数修改后可执行约束检查和局部再生；失败能够定位到具体节点、参数和工具证据；不可行方案不会通过静默放宽硬约束被强行交付。这一范式适合需求表达复杂、方案变更频繁且需要完整审计轨迹的盘类零件设计，也可为叶片、机匣和轴类零件构建类似的领域中间表示与工具体系。向其他零部件迁移时，不必重新训练一个能够生成全部底层API的模型，而应优先扩展操作注册表、约束schema、质量工具和少量领域数据；这样可以把通用的工作流机制与零件特有的几何知识解耦。与此同时，工程成功率应始终与几何误差同时报告，避免只在成功样本上计算精度而掩盖大量生成失败。
+从工程部署角度看，系统的可追溯性同样重要。每个交付模型均关联原始需求、规范化参数、Feature Graph、Disk-G-CAD版本、Compiler日志、修复差异和质量报告，因此能够支持设计复核、问题追责和后续规则沉淀。MCP并未替代尺寸或实体算法，而是把已有专业算法包装为可发现、可组合和可审计的服务，这种接口层能够降低模型与特定CAD平台的耦合，也便于在企业环境中对工具权限、版本和涉密数据流进行独立控制。
+本研究仍存在四方面边界。第一，NL2DiskCAD和DiskCAD-Bench使用非型号化参数范围与受控特征集合，尚未覆盖非对称轮缘、制造补偿、微小冷却结构和企业专用建模规范。第二，几何质量通过不等同于结构性能合理；本文未评价应力、寿命、振动、装配变形和制造工艺可行性。第三，最终失败的19次实验中有15次包含枞树形榫槽、11次属于Level 4，复杂阵列布尔、短边和容差敏感拓扑仍受CAD内核限制。第四，多智能体和MCP增加部署复杂度，对于简单、固定模板的盘体建模，传统参数模板可能更高效。后续研究应将局部修复扩展为多软参数约束优化，并连接结构分析、寿命评估和优化设计工具，形成从自然语言需求到“建模-分析-校核-修改”的闭环。
+结论
+本文提出面向航空发动机涡轮盘的自然语言参数化CAD建模方法，通过领域适配LLM、Feature Graph-Disk-G-CAD中间表示、确定性Compiler、多智能体纠错和MCP质量反馈，将自然语言需求转换为可追溯、可修复和可再生的工程模型。基于32个设计族构建的NL2DiskCAD包含49 920个有效模型和217 920组任务实例；在8个未见设计族的40项任务上，完整方法获得82.8%的Pass@1、95.3%的FinalSuccess@3和95.8%的参数再生成功率。消融结果表明，领域微调决定专业语义与特征依赖质量，中间表示和Compiler决定几何执行稳定性，corrector主要提升失败恢复能力，MCP则将工程质量漏检率由5.8%降至1.0%。该研究证明，将概率式语言模型置于显式工程约束、确定性几何执行和独立质量门之中，是自然语言驱动复杂CAD由演示性生成走向工程可信应用的关键路径。
+参考文献
+Huang ZH, Wang CE, Chen J, et al. Optimal design of aeroengine turbine disc based on Kriging surrogate models. Computers &amp; Structures, 2011, 89(1–2): 27–37. DOI: 10.1016/j.compstruc.2010.07.010.
+Hu DY, Yang JJ, Fei CW, et al. Reliability-based design optimization method of turbine disk with transformed deterministic constraints. Journal of Aerospace Engineering, 2017, 30(1): 04016070. DOI: 10.1061/(ASCE)AS.1943-5525.0000671.
+Zhang M, Gou W, Yao Q. Reliability-based multidisciplinary design and optimization for twin-web disk using adaptive Kriging surrogate model. Advances in Mechanical Engineering, 2016, 8(9). DOI: 10.1177/1687814016671448.
+Yan C, Yin Z, Shen X, et al. Surrogate-based optimization with improved support vector regression for non-circular vent hole on aero-engine turbine disk. Aerospace Science and Technology, 2020, 96: 105332. DOI: 10.1016/j.ast.2019.105332.
+Yan C, Zhu J, Shen X, et al. Structural design and optimization for vent holes of an industrial turbine sealing disk. Chinese Journal of Aeronautics, 2021, 34(5): 265–277. DOI: 10.1016/j.cja.2020.07.010.
+Yan C, Liu C, Du H, et al. Topology optimization of turbine disk considering maximum stress prediction and constraints. Chinese Journal of Aeronautics, 2023, 36(8): 182–206. DOI: 10.1016/j.cja.2023.03.019.
+Kolias I, Aretakis N, Alexiou A, et al. A tool for the design of turbomachinery disks for an aero-engine preliminary design framework. Aerospace, 2023, 10(5): 460. DOI: 10.3390/aerospace10050460.
+Wen C, Zheng Y, Mi D, et al. Design for the vent holes of gas turbine flow guide disks based on the shape optimization method. Metals, 2023, 13(7): 1151. DOI: 10.3390/met13071151.
+Yu J, Li X, Zhao W, et al. A brief review on the status of machining technology of fir-tree slots on aero-engine turbine disk. Advances in Mechanical Engineering, 2022, 14(7). DOI: 10.1177/16878132221113420.
+Meguid SA, Kanth PS, Czekanski A. Finite element analysis of fir-tree region in turbine discs. Finite Elements in Analysis and Design, 2000, 35(4): 305–317. DOI: 10.1016/S0168-874X(99)00072-4.
+Song W, Keane AJ, Rees JM, et al. Turbine blade fir-tree root design optimisation using intelligent CAD and finite element analysis. Computers &amp; Structures, 2002, 80(24): 1853–1867. DOI: 10.1016/S0045-7949(02)00225-0.
+Koch S, Matveev A, Jiang Z, et al. ABC: A big CAD model dataset for geometric deep learning. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. 2019: 9601–9611.
+Seff A, Ovadia Y, Zhou W, et al. SketchGraphs: A large-scale dataset for modeling relational geometry in computer-aided design. arXiv:2007.08506, 2020.
+Willis KDD, Pu Y, Luo J, et al. Fusion 360 Gallery: A dataset and environment for programmatic CAD construction from human design sequences. ACM Transactions on Graphics, 2021, 40(4): 54.
+Wu R, Xiao C, Zheng C. DeepCAD: A deep generative network for computer-aided design models. In: Proceedings of the IEEE/CVF International Conference on Computer Vision. 2021: 6772–6782.
+Ganin Y, Bartunov S, Li Y, et al. Computer-aided design as language. Advances in Neural Information Processing Systems, 2021, 34.
+Lambourne JG, Willis KDD, Jayaraman PK, et al. BRepNet: A topological message passing system for solid models. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. 2021: 12773–12782.
+Jayaraman PK, Sanghi A, Lambourne JG, et al. UV-Net: Learning from boundary representations. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. 2021: 11703–11712.
+Seff A, Zhou W, Richardson N, et al. Vitruvion: A generative model of parametric CAD sketches. In: International Conference on Learning Representations. 2022.
+Xu X, Willis KDD, Lambourne JG, et al. SkexGen: Autoregressive generation of CAD construction sequences with disentangled codebooks. In: Proceedings of the International Conference on Machine Learning. PMLR, 2022, 162: 24698–24724.
+Jayaraman PK, Lambourne JG, Desai N, et al. SolidGen: An autoregressive model for direct B-rep synthesis. Transactions on Machine Learning Research, 2023.
+Xu X, Jayaraman PK, Lambourne JG, et al. Hierarchical neural coding for controllable CAD model generation. In: Proceedings of the International Conference on Machine Learning. PMLR, 2023, 202: 38443–38461.
+Xu X, Lambourne JG, Jayaraman PK, et al. BrepGen: A B-rep generative diffusion model with structured latent geometry. ACM Transactions on Graphics, 2024, 43(4): 1–14. DOI: 10.1145/3658129.
+Uy MA, Chang YY, Sung M, et al. Point2Cyl: Reverse engineering 3D objects from point clouds to extrusion cylinders. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. 2022.
+Li P, Guo J, Zhang X, et al. SECAD-Net: Self-supervised CAD reconstruction by learning sketch-extrude operations. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. 2023: 16816–16826.
+Khan MS, Sinha S, Sheikh TU, et al. Text2CAD: Generating sequential CAD models from beginner-to-expert level text prompts. Advances in Neural Information Processing Systems, 2024, 37: 7552–7579.
+Badagabettu A, Yarlagadda SS, Barati Farimani A. Query2CAD: Generating CAD models using natural language queries. arXiv:2406.00144, 2024.
+Khan MS, Dupont E, Ali SA, et al. CAD-SIGNet: CAD language inference from point clouds using layer-wise sketch instance guided attention. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. 2024: 4713–4722.
+Xu J, Wang C, Zhao Z, et al. CAD-MLLM: Unifying multimodality-conditioned CAD generation with MLLM. arXiv:2411.04954, 2024.
+Li J, Ma W, Li X, et al. CAD-Llama: Leveraging large language models for computer-aided design parametric 3D model generation. arXiv:2505.04481, 2025.
+Rukhovich D, Dupont E, Mallis D, et al. CAD-Recode: Reverse engineering CAD code from point clouds. In: Proceedings of the IEEE/CVF International Conference on Computer Vision. 2025: 9801–9811.
+Lewis P, Perez E, Piktus A, et al. Retrieval-augmented generation for knowledge-intensive NLP tasks. Advances in Neural Information Processing Systems, 2020, 33: 9459–9474.
+Hu EJ, Shen Y, Wallis P, et al. LoRA: Low-rank adaptation of large language models. In: International Conference on Learning Representations. 2022.
+Wei J, Wang X, Schuurmans D, et al. Chain-of-thought prompting elicits reasoning in large language models. Advances in Neural Information Processing Systems, 2022, 35: 24824–24837.
+Yao S, Zhao J, Yu D, et al. ReAct: Synergizing reasoning and acting in language models. In: International Conference on Learning Representations. 2023.
+Dettmers T, Pagnoni A, Holtzman A, et al. QLoRA: Efficient finetuning of quantized LLMs. Advances in Neural Information Processing Systems, 2023, 36: 10088–10115.
+Schick T, Dwivedi-Yu J, Dessì R, et al. Toolformer: Language models can teach themselves to use tools. Advances in Neural Information Processing Systems, 2023, 36: 68539–68551.
+Hong S, Zhuge M, Chen J, et al. MetaGPT: Meta programming for a multi-agent collaborative framework. In: International Conference on Learning Representations. 2024.
+Wu Q, Bansal G, Zhang J, et al. AutoGen: Enabling next-generation LLM applications via multi-agent conversation. In: Conference on Language Modeling. 2024.
+Hui B, Yang J, Cui Z, et al. Qwen2.5-Coder technical report. arXiv:2409.12186, 2024.
+Qwen Team. Qwen2.5 technical report. arXiv:2412.15115, 2024.
+Grattafiori A, Dubey A, Jauhri A, et al. The Llama 3 herd of models. arXiv:2407.21783, 2024.
+DEEPSEEK-AI. DeepSeek-R1: Incentivizing reasoning capability in LLMs via reinforcement learning[EB/OL]. arXiv:2501.12948, 2025.
+Guo D, Yang D, Zhang H, et al. DeepSeek-R1 incentivizes reasoning in LLMs through reinforcement learning. Nature, 2025, 645: 633–638. DOI: 10.1038/s41586-025-09422-z.
+Model Context Protocol. Model Context Protocol Specification: Protocol Revision 2025-06-18. 2025.
+Chen Y, Zhu X, Zhou H, et al. MetaOpenFOAM: An LLM-based multi-agent framework for CFD. arXiv:2407.21320, 2024.
+Chen Y, Zhu X, Zhou H, et al. MetaOpenFOAM 2.0: Large language model driven chain of thought for automating CFD simulation and post-processing. arXiv:2502.00498, 2025.
+Pandey S, Xu R, Wang W, et al. OpenFOAMGPT: A retrieval-augmented large language model agent for OpenFOAM-based computational fluid dynamics. Physics of Fluids, 2025, 37(3): 035120. DOI: 10.1063/5.0257555.
+Dong Z, Lu Z, Yang Y. Fine-tuning a large language model for automating computational fluid dynamics simulations. Theoretical and Applied Mechanics Letters, 2025, 15(3): 100594. DOI: 10.1016/j.taml.2025.100594.
+Wang W, Xu R, Feng J, et al. A status quo investigation of large-language models for cost-effective computational fluid dynamics automation with OpenFOAMGPT. Theoretical and Applied Mechanics Letters, 2025, 15(6): 100623. DOI: 10.1016/j.taml.2025.100623.
+Dong Z, Du S, Lu Z, et al. CFD-copilot: Leveraging domain-adapted large language model and model context protocol to enhance simulation automation. Chinese Journal of Aeronautics, 2026: 104321. DOI: 10.1016/j.cja.2026.104321.

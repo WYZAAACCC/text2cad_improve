@@ -89,10 +89,15 @@ def main(argv=None) -> int:
                     gen_ok += 1
             except Exception as exc:  # noqa: BLE001
                 print(f"FAIL  {exc}")
-            # 变体后处理（继承 design_id）
+            # 变体后处理（继承 design_id + 补 descriptions/SER，P1-1）
             try:
                 import run_enrich
                 run_enrich.run_one(new_tid)
+            except Exception:  # noqa: BLE001
+                pass
+            try:
+                import run_descriptions
+                run_descriptions.run_one(new_tid)
             except Exception:  # noqa: BLE001
                 pass
 

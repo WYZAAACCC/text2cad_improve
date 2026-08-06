@@ -653,24 +653,34 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
             # 逐字节一致 (tests/generative_cad/prompt_system 回归锁定), 并落盘 trace。
             # 方向 X：注入实验参数化轮廓规则 + 本次需求参数值（提高喉部/齿数/圆角遵循率）
             from validate_req_params import extract_requirements
-            l2_text = text + _append_parametric_block(text, extract_requirements(text))
-            l2c = prompt_compiler.compile_level2(l2_text, plan, spatial_context=spatial_context,
-                                                 request_id=task_id)
-            (out_dir/"prompt_trace_l2.json").write_text(
-                l2c.trace.model_dump_json(indent=2), encoding="utf-8")
-            # 数据集字段 L：prompt 全文落盘（user 含方向 X 参数化注入块 = 实际发送版）
-            try:
-                (out_dir/"prompt_full_l2.json").write_text(
-                    json.dumps(l2c.messages, ensure_ascii=False, indent=2), encoding="utf-8")
-            except Exception:
-                pass
+            if os.environ.get("TEMPLATE_L2") == "1" and (out_dir / "llm_raw.json").exists():
+                # 确定性参数化模板预置 llm_raw（run_batch 模板模式，非 LLM 生成）。
+                # 模板生成的 IR 结构合法，validation 一次过；下游 repair/runtime/MCP 门照常。
+                raw = json.loads((out_dir / "llm_raw.json").read_text(encoding="utf-8"))
+            elif os.environ.get("AGENTIC_L2") == "1":
+                # 生成层 agent 化：整体设计 agent + 轮廓实现 agent（输出与 llm_raw 同构）
+                from agentic_l2 import run_agentic_l2
+                raw = run_agentic_l2(text, plan, caller=caller,
+                                     llm_model_config=config, out_dir=out_dir)
+            else:
+                l2_text = text + _append_parametric_block(text, extract_requirements(text))
+                l2c = prompt_compiler.compile_level2(l2_text, plan, spatial_context=spatial_context,
+                                                     request_id=task_id)
+                (out_dir/"prompt_trace_l2.json").write_text(
+                    l2c.trace.model_dump_json(indent=2), encoding="utf-8")
+                # 数据集字段 L：prompt 全文落盘（user 含方向 X 参数化注入块 = 实际发送版）
+                try:
+                    (out_dir/"prompt_full_l2.json").write_text(
+                        json.dumps(l2c.messages, ensure_ascii=False, indent=2), encoding="utf-8")
+                except Exception:
+                    pass
 
-            l2_tool = build_level2_tool()
-            tc2 = caller.call_strict_tool(
-                messages=l2c.messages,
-                tool_name=l2_tool["function"]["name"], tool_description=l2_tool["function"]["description"],
-                tool_schema=l2_tool["function"]["parameters"], model_config=config)
-            raw = tc2.arguments
+                l2_tool = build_level2_tool()
+                tc2 = caller.call_strict_tool(
+                    messages=l2c.messages,
+                    tool_name=l2_tool["function"]["name"], tool_description=l2_tool["function"]["description"],
+                    tool_schema=l2_tool["function"]["parameters"], model_config=config)
+                raw = tc2.arguments
             if "llm_validation_hints" not in raw: raw["llm_validation_hints"] = {}
             (out_dir/"llm_raw.json").write_text(json.dumps(raw, indent=2, ensure_ascii=False), encoding="utf-8")
             # fillet 安全半径 clamp（防 BRep_API: command not done；llm_raw.json 保留 LLM 原始输出）
@@ -782,8 +792,8 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                 shape = cq.importers.importStep(str(step_path))
                 cq.exporters.export(shape, str(stl_path))
                 if stl_path.exists() and stl_path.stat().st_size > 0: stl_ok = True
-                # 数据集字段 MBRep：原生 B-rep（STEP 回读版，继承 ~0.06mm 中性格式偏差）
-                cq.exporters.export(shape, str(out_dir / "output.brep"))
+                # 数据集字段 MBRep：原生 B-rep 已由 pipeline._export_final_solid 直接导出
+                # （此处不再从 STEP 回读覆盖，避免引入中性格式偏差）
             except Exception:
                 pass
 

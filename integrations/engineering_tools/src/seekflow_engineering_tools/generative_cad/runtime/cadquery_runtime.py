@@ -31,6 +31,18 @@ class CadQueryRuntime:
                 pass
         cq.exporters.export(solid_obj, str(out_step))
 
+    def export_brep(self, solid_obj: Any, out_brep: Path) -> None:
+        """Export solid to native B-Rep (BREP). Best-effort, never raises.
+
+        数据集字段 MBRep：直接导出原生边界表示实体（非 STEP 回读版）。
+        失败仅告警，不阻塞 pipeline。
+        """
+        try:
+            import cadquery as cq
+            cq.exporters.export(solid_obj, str(out_brep))
+        except Exception as exc:
+            warnings.warn(f"export_brep failed: {exc}")
+
     def inspect_solid(self, solid_obj: Any) -> dict:
         """Best-effort object-level inspection."""
         try:

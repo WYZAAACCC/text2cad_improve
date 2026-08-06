@@ -37,13 +37,18 @@ sys.path.insert(0, str(_HERE))
 from mcp_tools import (  # noqa: E402
     check_slot_depth_and_rim, check_slot_pitch_and_ligament,
     count_fir_tree_slots, measure_disc_dimensions, measure_fir_tree_slot_profile,
+    measure_groove, measure_hole_pattern,
 )
 from validate_req_params import extract_requirements  # noqa: E402
 
-# ⑦b 参数向量固定 8 键（extract_requirements 的键，缺失补 None 抗漂移）
+# ⑦b 参数向量键（extract_requirements 的键，缺失补 None 抗漂移）。
+# 覆盖主体 + 榫槽 + 孔 + 环槽，使 6 类盘的 param_template_id/design_id 正确区分。
 PARAM_VECTOR_KEYS = ["outer_diameter_mm", "bore_diameter_mm", "axial_thickness_mm",
+                     "hub_half_mm", "rim_half_mm",
                      "slots", "teeth_count", "slot_depth_mm",
-                     "throat_half_width_mm", "root_fillet_mm"]
+                     "throat_half_width_mm", "root_fillet_mm",
+                     "holes", "hdia_mm", "pcd_mm",
+                     "grooves", "gw_mm", "gd_mm"]
 
 # ④ 归一化参数注册表：(key, label, is_derived, expression)
 NORMALIZED_PARAMS = [
@@ -66,6 +71,12 @@ NORMALIZED_PARAMS = [
     ("bottom_ligament_mm", "槽底剩料", True, "rim−depth"),
     ("flank_angle_deg", "齿面角", True, "atan(dy/dx)"),
     ("count", "榫槽数量", False, None),
+    ("holes", "孔数量", False, None),
+    ("pcd_mm", "孔分布半径", False, None),
+    ("hdia_mm", "孔径", False, None),
+    ("grooves", "环槽数量", False, None),
+    ("gw_mm", "环槽槽宽", False, None),
+    ("gd_mm", "环槽槽深", False, None),
     ("teeth_count", "齿数", False, None),
 ]
 
@@ -212,7 +223,7 @@ def _measure_all(base: str) -> dict:
     agg = {}
     for fn in (measure_disc_dimensions, count_fir_tree_slots,
                measure_fir_tree_slot_profile, check_slot_pitch_and_ligament,
-               check_slot_depth_and_rim):
+               check_slot_depth_and_rim, measure_hole_pattern, measure_groove):
         try:
             agg.update(fn({"base_dir": base}))
         except Exception:  # noqa: BLE001
@@ -350,6 +361,23 @@ def _fingerprint(out_dir: Path) -> dict | None:
         return {"error": str(exc)}
 
 
+def _brep_source(base: Path) -> str | None:
+    """B-rep 来源：pipeline 原生导出 = native；backfill 从 STEP 回读生成 = step_roundtrip。
+
+    backfill_fields.py 生成回读 brep 时写 brep_source.json 标记；
+    pipeline 原生导出（P1-6 后）无标记默认 native。
+    """
+    if not (base / "output.brep").exists():
+        return None
+    sentinel = base / "brep_source.json"
+    if sentinel.exists():
+        try:
+            return json.loads(sentinel.read_text(encoding="utf-8")).get("source") or "step_roundtrip"
+        except Exception:  # noqa: BLE001
+            return "step_roundtrip"
+    return "native"
+
+
 def run_one(task_id: str) -> dict:
     base = OUTPUT / task_id
     rep = {"task_id": task_id, "schema": "dataset_enrich_v2", "Ro_mm": None,
@@ -357,6 +385,7 @@ def run_one(task_id: str) -> dict:
            "ir_doc_hash": None, "design_id": None, "design_vec_source": None,
            "model_id": None, "design_family_id": "custom", "role": "generated",
            "labels": None, "constraints": [], "b_rep_fingerprint": None,
+           "b_rep_source": None, "request_source": None,
            "error": None, "timestamp": datetime.now().isoformat(timespec="seconds")}
 
     raw_path = base / "raw_fixed.json"
@@ -425,10 +454,16 @@ def run_one(task_id: str) -> dict:
                 measured = {"outer_diameter_mm": agg.get("outer_diameter_mm"),
                             "bore_diameter_mm": agg.get("bore_diameter_mm"),
                             "axial_thickness_mm": agg.get("axial_thickness_mm"),
+                            "hub_half_mm": agg.get("hub_half_thickness_mm"),
+                            "rim_half_mm": agg.get("rim_half_thickness_mm"),
                             "slots": agg.get("count"), "teeth_count": agg.get("teeth_count"),
                             "slot_depth_mm": agg.get("slot_depth_mm"),
                             "throat_half_width_mm": agg.get("throat_half_width_mm"),
-                            "root_fillet_mm": agg.get("root_fillet_mm")}
+                            "root_fillet_mm": agg.get("root_fillet_mm"),
+                            "holes": agg.get("holes"), "hdia_mm": agg.get("hdia_mm"),
+                            "pcd_mm": agg.get("pcd_mm"),
+                            "grooves": agg.get("grooves"), "gw_mm": agg.get("gw_mm"),
+                            "gd_mm": agg.get("gd_mm")}
                 if any(v is not None for v in measured.values()):
                     design_vec = _param_vector(measured)
                     if rep["param_template_id"] is None:
@@ -438,7 +473,14 @@ def run_one(task_id: str) -> dict:
                 pass
         rep["design_id"] = rep["param_template_id"]
         rep["model_id"] = (rep["ir_doc_hash"] or "")[:12] if rep["ir_doc_hash"] else None
-        rep["design_family_id"] = _match_family(design_vec) if design_vec else "custom"
+        # family_ref.json 显式标注（run_batch 候选生成时写入）；否则参数向量匹配兜底
+        family_id = None
+        try:
+            family_id = json.loads((base / "family_ref.json").read_text(encoding="utf-8")).get("family_id")
+        except Exception:  # noqa: BLE001
+            pass
+        rep["design_family_id"] = family_id if family_id else (
+            _match_family(design_vec) if design_vec else "custom")
 
     # ⑤ role（参考 vs 生成）
     try:
@@ -477,11 +519,24 @@ def run_one(task_id: str) -> dict:
     except Exception as exc:  # noqa: BLE001
         rep["error"] = f"constraints 失败: {exc}"
 
-    # ② B-rep 指纹
+    # ② B-rep 指纹 + 来源（native / step_roundtrip / None）
     try:
         rep["b_rep_fingerprint"] = _fingerprint(base)
+        rep["b_rep_source"] = _brep_source(base)
     except Exception as exc:  # noqa: BLE001
         rep["b_rep_fingerprint"] = {"error": str(exc)}
+
+    # ① request 来源标记（backfill 重建 / existing / missing）
+    try:
+        req = json.loads((base / "request.json").read_text(encoding="utf-8"))
+        if req.get("backfilled_from"):
+            rep["request_source"] = "backfilled_cases"
+        elif req.get("missing"):
+            rep["request_source"] = "missing"
+        else:
+            rep["request_source"] = "existing"
+    except Exception:  # noqa: BLE001
+        rep["request_source"] = None
 
     (base / "dataset_enrich.json").write_text(
         json.dumps(rep, ensure_ascii=False, indent=2), encoding="utf-8")

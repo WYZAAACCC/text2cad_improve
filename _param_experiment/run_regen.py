@@ -29,8 +29,9 @@ sys.path.insert(0, str(ROOT / "integrations" / "engineering_tools" / "src"))
 sys.path.insert(0, str(_HERE))
 
 from mcp_tools import (  # noqa: E402
-    PARAM_REGISTRY, _current_value, _resolve_param_nodes, count_fir_tree_slots,
-    measure_disc_dimensions, measure_fir_tree_slot_profile, regenerate_model,
+    PARAM_REGISTRY, _current_value, _resolve_param_nodes, check_solid_validity,
+    count_fir_tree_slots, measure_disc_dimensions, measure_fir_tree_slot_profile,
+    regenerate_model, validate_slot_step_roundtrip,
 )
 
 
@@ -70,6 +71,32 @@ def _delta(before: dict, after: dict) -> dict:
         if isinstance(b, (int, float)) and isinstance(a, (int, float)):
             d[k] = round(a - b, 4)
     return d
+
+
+_DIM_KEYS = ("outer_diameter_mm", "bore_diameter_mm", "axial_thickness_mm")
+
+
+def _dims_within_tol(before: dict, after: dict, tol: float = 0.05) -> bool:
+    """主体关键尺寸稳定性（论文 5.5：回读关键尺寸误差 <0.05mm）。
+
+    PARAM_REGISTRY 的可再生参数（槽数/分布半径/轴向深度/圆角）不修改主体尺寸，
+    故 before/after 主体尺寸应保持 <tol。
+    """
+    detail = {}
+    for k in _DIM_KEYS:
+        b, a = before.get(k), after.get(k)
+        if isinstance(b, (int, float)) and isinstance(a, (int, float)):
+            diff = abs(a - b)
+            detail[k] = round(diff, 4)
+            if diff > tol:
+                return False
+    return bool(detail)
+
+
+def _fv(b, a):
+    if isinstance(b, (int, float)) and isinstance(a, (int, float)):
+        return round(a - b, 4)
+    return None
 
 
 def run_one(task_id: str, params, copy: bool = False) -> dict:
@@ -129,6 +156,19 @@ def run_one(task_id: str, params, copy: bool = False) -> dict:
     report["checks"] = res.get("checks")
     report["after"] = _measure(res["new_base_dir"])
     report["delta"] = _delta(report["before"], report["after"])
+    # P1-2 补 STEP 回读一致性 / 主体尺寸稳定性 / 有效实体校验（论文 5.5）
+    try:
+        report["roundtrip"] = validate_slot_step_roundtrip({"base_dir": res["new_base_dir"]})
+    except Exception as exc:  # noqa: BLE001
+        report["roundtrip"] = {"error": str(exc)}
+    report["dims_stable_05mm"] = _dims_within_tol(report["before"], report["after"])
+    try:
+        sv = check_solid_validity({"base_dir": res["new_base_dir"]})
+        report["solid_valid"] = bool(sv.get("ok"))
+    except Exception:  # noqa: BLE001
+        report["solid_valid"] = None
+    report["slot_feature_delta"] = {k: _fv(report["before"].get(k), report["after"].get(k))
+                                    for k in ("count", "teeth_count")}
 
     if copy and res.get("new_base_dir"):
         tag = Path(res["new_base_dir"]).name
