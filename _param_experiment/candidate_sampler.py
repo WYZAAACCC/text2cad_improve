@@ -49,6 +49,27 @@ RANGES = {
 }
 BOUNDARY_MARGIN = 5.0  # 剩料 margin < 5mm 视为边界区（真实贴近约束边界）
 
+# design_families.features 键 → 模板参数键（_mm 后缀）。族名义特征经此转换落到采样/生成。
+_FEAT_KEY_MAP = {
+    "R": "R_mm", "depth": "depth_mm", "throat": "throat_half_width_mm", "fr": "fr_mm",
+    "pcd": "pcd_mm", "hdia": "hdia_mm",
+    "gw": "gw_mm", "gd": "gd_mm",
+    "lh_pcd": "lh_pcd_mm", "lh_hdia": "lh_hdia_mm",
+    "cl_pcd": "cl_pcd_mm", "cl_hdia": "cl_hdia_mm", "cl_pcd2": "cl_pcd2_mm",
+    "rs_depth": "rs_depth_mm", "rs_half_width": "rs_half_width_mm",
+    "cavity_width": "cavity_width_mm", "cavity_depth": "cavity_depth_mm",
+    "rim_arc_radius": "rim_arc_radius_mm",
+}
+
+
+def fam_features(fam: dict) -> dict:
+    """设计族定义的 features → 模板参数键（族名义特征，candidate_sampler 优先采用）。
+
+    保证每族第一个候选 = 设计族定义的真实结构组合（D14 双排冷却孔+环形腔 /
+    D19 三齿 / D23 榫槽+孔+环槽），而非通用变体的低端组合。
+    """
+    return {_FEAT_KEY_MAP.get(k, k): v for k, v in (fam.get("features") or {}).items()}
+
 
 def _clamp(v: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, v))
@@ -117,7 +138,7 @@ _GROOVE_LH_TEMPLATES = [
 def _resolve_groove_feats(subj: dict, tpl: dict) -> dict:
     """groove 减重模板：把 pcd_frac（腹板段比例）解析为绝对 pcd_mm（_axisym_radii）。"""
     from sampling_constraints import _axisym_radii
-    r = _axisym_radii(subj["od_mm"], subj["bore_mm"])
+    r = _axisym_radii(subj["od_mm"], subj["bore_mm"], subj.get("form", "standard"))
     f = dict(tpl)
 
     def _resolve(key: str, frac_key: str):
@@ -129,11 +150,13 @@ def _resolve_groove_feats(subj: dict, tpl: dict) -> dict:
     _resolve("cl_pcd_mm", "cl_pcd_frac")
     _resolve("cl_pcd2_mm", "cl_pcd2_frac")
     return f
+# 榫槽变体：深度与轮缘径向高匹配（depth ≈ 0.4-0.67×rim_radial，论文 5.3 depth+mr<=tr），
+# throat 3.5-5（槽口 7-10mm，视觉与轮缘成比例）；fr 2-2.5（圆角可见）。
 _SLOT_VARIANTS = [
-    {"slots": 30, "teeth": 2, "R_mm": 210, "depth_mm": 15, "throat_half_width_mm": 3.0, "fr_mm": 1.0},
-    {"slots": 48, "teeth": 2, "R_mm": 220, "depth_mm": 24, "throat_half_width_mm": 4.0, "fr_mm": 1.0},
-    {"slots": 90, "teeth": 3, "R_mm": 240, "depth_mm": 40, "throat_half_width_mm": 3.0, "fr_mm": 2.0},  # 节距边界
-    {"slots": 90, "teeth": 3, "R_mm": 260, "depth_mm": 40, "throat_half_width_mm": 3.5, "fr_mm": 2.0},
+    {"slots": 48, "teeth": 2, "R_mm": 220, "depth_mm": 24, "throat_half_width_mm": 4.0, "fr_mm": 2.0},
+    {"slots": 60, "teeth": 3, "R_mm": 230, "depth_mm": 32, "throat_half_width_mm": 4.0, "fr_mm": 2.0},
+    {"slots": 72, "teeth": 3, "R_mm": 240, "depth_mm": 36, "throat_half_width_mm": 4.5, "fr_mm": 2.5},
+    {"slots": 90, "teeth": 4, "R_mm": 250, "depth_mm": 40, "throat_half_width_mm": 5.0, "fr_mm": 2.5},
 ]
 
 # 不可行变体（参数落论文范围但普遍违反几何约束；zone 由 check_all 判定）
@@ -177,22 +200,27 @@ def _feat_variants(cat: str) -> list:
     if cat == "slot":
         return list(_SLOT_VARIANTS)
     if cat == "coupled":
+        # 补全"榫槽+孔+环槽"完整耦合变体（此前无同时含 holes+grooves 的 → D23-D28 无环槽）
         return list(_SLOT_VARIANTS) + [
             {"slots": 48, "teeth": 2, "R_mm": 220, "depth_mm": 24,
-             "throat_half_width_mm": 4.0, "fr_mm": 1.0,
+             "throat_half_width_mm": 4.0, "fr_mm": 1.5,
              "holes": 12, "pcd_mm": 200, "hdia_mm": 12},
             {"slots": 60, "teeth": 3, "R_mm": 240, "depth_mm": 30,
              "throat_half_width_mm": 4.0, "fr_mm": 2.0,
              "grooves": 1, "gw_mm": 12, "gd_mm": 8},
+            {"slots": 60, "teeth": 2, "R_mm": 230, "depth_mm": 28,
+             "throat_half_width_mm": 4.0, "fr_mm": 2.0,
+             "holes": 16, "pcd_mm": 210, "hdia_mm": 12,
+             "grooves": 1, "gw_mm": 10, "gd_mm": 6},
         ]
     if cat == "complex_rim":
-        # 圆弧曲线过渡盘体（论文 2.1）：各槽参数变体 + 圆弧过渡半径（12/20/28）
+        # 曲线过渡盘体（论文 2.1）：各槽参数变体 + 过渡类型/幅度（族间曲线结构不同）
         out = []
         for t in _SLOT_VARIANTS + [
                 {"slots": 84, "teeth": 3, "R_mm": 250, "depth_mm": 36,
                  "throat_half_width_mm": 5.0, "fr_mm": 2.0}]:
-            for arc in (12.0, 20.0, 28.0):
-                out.append({**t, "rim_arc_radius_mm": arc})
+            for arc, tr in ((12.0, "s_curve"), (20.0, "ellipse"), (28.0, "power")):
+                out.append({**t, "rim_arc_radius_mm": arc, "transition": tr})
         return out
     return []  # basic
 
@@ -296,8 +324,9 @@ def _normalize_slot(p: dict) -> dict:
         # 由 check_slot_bottom 判该候选不可行（不产生超论文范围的 R）
         p["R_mm"] = round(min(max(p["R_mm"], lo), hi), 3)
     if p.get("slots") and p.get("fr_mm") is not None and p.get("throat_half_width_mm") is not None:
-        root_half = 0.75 * p["throat_half_width_mm"] - 1.5
-        p["fr_mm"] = round(min(p["fr_mm"], max(root_half, 0.3)), 3)
+        # 槽底平底半宽 = max(0.75×throat−0.75, 2.0)，圆角上限 = root_half−0.3（与模板一致）
+        root_half = max(0.75 * p["throat_half_width_mm"] - 0.75, 2.0)
+        p["fr_mm"] = round(min(p["fr_mm"], max(root_half - 0.3, 0.3)), 3)
     return p
 
 
@@ -343,6 +372,51 @@ def _sample_family(fid: str, fam: dict, per_family: int) -> list:
     infeas_n = len(_INFEASIBLE.get(cat, []))
     budget = max(per_family - infeas_n - 1, 2)
     used = 0
+    # 0. 族名义候选（优先）：设计族定义的真实特征组合 → 每族第一个候选 = 完整结构
+    #    （D14 双排冷却孔+环形腔 / D19 三齿 / D23 榫槽+孔+环槽），preview 取第一候选时即展示完整特征。
+    fam_feat = fam_features(fam)
+    if fam_feat and cat in ("groove", "coupled"):
+        # 族名义孔 pcd 固定值可能越腹板段/碰轮缘内壁环槽 → clamp 到 rim_junc−gd−gap 内侧
+        # （结构不变，避免孔 16 边形边与环槽台阶曲面布尔产生 <0.25mm 退化小边）。
+        # cl 双排先定外排 cl_pcd2 再定内排 cl_pcd（保双排间距 ≥ hdia + ch）。
+        from sampling_constraints import _axisym_radii
+        _r = _axisym_radii(subj["od_mm"], subj["bore_mm"], subj.get("form", "standard"))
+        gd = fam_feat.get("gd_mm", 0.0)  # 环槽深，孔须在其内侧留间隙
+
+        # 孔/冷却孔避开 web-rim fillet 弧（rim_junc−12）+ 环槽（gd+2）——取较严边界，
+        # 避免 16 边形孔边与 fillet/环槽曲面布尔退化小边。
+        gap = max(gd + 2.0, 12.0)
+
+        def _clamp_pcd(key, dia):
+            if fam_feat.get(key) is not None and dia:
+                hi = _r["rim_junc"] - gap - dia / 2.0
+                fam_feat[key] = round(min(fam_feat[key], max(hi, 0.0)), 1)
+
+        _clamp_pcd("lh_pcd_mm", fam_feat.get("lh_hdia_mm"))
+        _clamp_pcd("pcd_mm", fam_feat.get("hdia_mm"))
+        cdia = fam_feat.get("cl_hdia_mm")
+        _clamp_pcd("cl_pcd2_mm", cdia)
+        if fam_feat.get("cl_pcd_mm") is not None and cdia:
+            hi = _r["rim_junc"] - gap - cdia / 2.0
+            if fam_feat.get("cl_pcd2_mm") is not None:
+                hi = min(hi, fam_feat["cl_pcd2_mm"] - cdia - 2.0)  # 保双排间距
+            fam_feat["cl_pcd_mm"] = round(min(fam_feat["cl_pcd_mm"], max(hi, 0.0)), 1)
+    if fam_feat:
+        zone, _ch = _classify(subj, fam_feat)
+        if zone == "infeasible" and fam_feat.get("slots"):
+            # 族名义不可行（如 96 槽节距不足）：递减 slots 到可行，保持 teeth/depth 族名义
+            for ns in (int(fam_feat["slots"]), 90, 84, 72, 60, 48, 36, 24):
+                fam_feat["slots"] = ns
+                zone, _ch = _classify(subj, fam_feat)
+                if zone != "infeasible":
+                    break
+        if zone != "infeasible":
+            params = dict(subj)
+            params.update(fam_feat)
+            push(params, zone)
+            used += 1
+        else:
+            print(f"  [{fid}] 族名义特征不可行，回退通用变体")
     for s in subj_variants:
         if used >= budget:
             break

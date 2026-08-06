@@ -50,12 +50,12 @@ _RADIAL_FAC = {"standard": (0.16, 0.12), "thin_web": (0.16, 0.12),
                "conical": (0.16, 0.12)}
 
 
-def disc_profile(od_mm, bore_mm, hub_half_mm, rim_half_mm, thick_mm,
-                 web_inner_half=None, web_outer_half=None, form="standard") -> dict:
-    """盘体 R-Z 轮廓（闭合顺序，关于 y=0 对称）→ {points, params}。
+def _disc_radii(od_mm, bore_mm, form="standard") -> dict:
+    """盘体半径推导唯一真源——disc_profile 轮廓、build_axisym_disc 特征、
+    sampling_constraints 约束全部用同一组半径（消除此前 build_axisym 硬编码
+    0.12 系数导致的 rim_junc 偏差，如 thick_rim 偏差 -27mm）。
 
-    径向站：bore_r → hub_r → rim_junc → rim_r。形态决定 hub/rim 径向高度与 web 厚度，
-    使不同设计族（薄腹板/厚轮缘/大毂/锥形）轮廓结构可区分，而非仅尺寸参数不同。
+    返回 {bore_r, rim_r, hub_r, rim_junc, web_r, hub_radial, rim_radial}。
     """
     bore_r = bore_mm / 2.0
     rim_r = od_mm / 2.0
@@ -66,29 +66,91 @@ def disc_profile(od_mm, bore_mm, hub_half_mm, rim_half_mm, thick_mm,
     rim_junc = rim_r - rim_radial
     if hub_r >= rim_junc:  # 保证腹板存在
         hub_r = (bore_r + rim_junc) / 2.0
+    return {"bore_r": bore_r, "rim_r": rim_r, "hub_r": hub_r, "rim_junc": rim_junc,
+            "web_r": (hub_r + rim_junc) / 2.0,
+            "hub_radial": hub_radial, "rim_radial": rim_radial}
+
+
+def _transition_pts(rim_junc, z0, z1, t, kind, n=4) -> list:
+    """轮缘内壁 (rim_junc, z0)→(rim_junc, z1) 垂直台阶间插入过渡点（z 单调）。
+
+    complex_rim 族用多点逼近曲线过渡（取代单一 fillet 圆弧，满足论文"丰富过渡"）。
+    kind：linear=无插入 / arc_in=内凹弧 / arc_out=外凸弧 / s_curve=S形 /
+    power=幂曲线 / ellipse=椭圆弧。返回 [(r, z), ...]（不含两端）。
+    """
+    if t <= 0 or kind == "linear":
+        return []
+    out = []
+    for i in range(1, n + 1):
+        u = i / (n + 1)
+        z = z0 + (z1 - z0) * u
+        if kind == "arc_in":
+            r = rim_junc - t * math.sin(math.pi * u)
+        elif kind == "arc_out":
+            r = rim_junc + 0.5 * t * math.sin(math.pi * u)
+        elif kind == "s_curve":
+            r = rim_junc - t * math.sin(2 * math.pi * u)
+        elif kind == "power":
+            r = rim_junc - t * (1.0 - u) ** 1.5
+        elif kind == "ellipse":
+            r = rim_junc - t * math.cos(math.pi * u / 2.0)
+        else:
+            r = rim_junc
+        out.append((round(r, 3), round(z, 3)))
+    return out
+
+
+def disc_profile(od_mm, bore_mm, hub_half_mm, rim_half_mm, thick_mm,
+                 web_inner_half=None, web_outer_half=None, form="standard",
+                 transition="linear") -> dict:
+    """盘体 R-Z 轮廓（闭合顺序，关于 y=0 对称）→ {points, params}。
+
+    径向站：bore_r → hub_r → rim_junc → rim_r。形态决定 hub/rim 径向高度与 web 厚度，
+    使不同设计族（薄腹板/厚轮缘/大毂/锥形）轮廓结构可区分，而非仅尺寸参数不同。
+    """
+    _r = _disc_radii(od_mm, bore_mm, form)
+    bore_r, rim_r = _r["bore_r"], _r["rim_r"]
+    hub_r, rim_junc = _r["hub_r"], _r["rim_junc"]
+    hub_radial, rim_radial = _r["hub_radial"], _r["rim_radial"]
     if form == "thin_web":
         web_inner = web_inner_half if web_inner_half else _clamp(0.35 * hub_half_mm, 5.0, 22.0)
         web_outer = web_outer_half if web_outer_half else _clamp(0.3 * rim_half_mm, 4.0, 18.0)
     else:
         web_inner = web_inner_half if web_inner_half else _clamp(0.6 * hub_half_mm, 8.0, 40.0)
         web_outer = web_outer_half if web_outer_half else _clamp(0.5 * rim_half_mm, 6.0, 32.0)
+    # 复杂轮缘曲线过渡（transition != linear）：web-rim 台阶插入过渡点逼近曲线
+    trans_t = 0.0
+    if transition != "linear":
+        trans_t = _clamp(0.2 * rim_radial, 4.0, 20.0)
+
+    def _wr(z0, z1):
+        return _transition_pts(rim_junc, z0, z1, trans_t, transition)
+
     if form == "conical":
         # 锥形腹板：web 下表面从 hub 顶（z=-wi）连到 rim 内壁更高处（z=-wo_cone），斜面更陡
         wo_cone = _clamp(0.85 * rim_half_mm, 12.0, 40.0)
+        lo_ins = _wr(-wo_cone, -rim_half_mm)              # 下半过渡点（z 递减）
+        hi_ins = [(r, -z) for r, z in reversed(lo_ins)]    # 上半镜像（z 取正 + 反转，保证轮廓对称）
         pts = [
             (round(bore_r, 3), -hub_half_mm), (round(hub_r, 3), -hub_half_mm),
             (round(hub_r, 3), -web_inner), (round(rim_junc, 3), -wo_cone),
+            *lo_ins,
             (round(rim_junc, 3), -rim_half_mm), (round(rim_r, 3), -rim_half_mm),
             (round(rim_r, 3), rim_half_mm), (round(rim_junc, 3), rim_half_mm),
+            *hi_ins,
             (round(rim_junc, 3), wo_cone), (round(hub_r, 3), web_inner),
             (round(hub_r, 3), hub_half_mm), (round(bore_r, 3), hub_half_mm),
         ]
     else:
+        lo_ins = _wr(-web_outer, -rim_half_mm)
+        hi_ins = [(r, -z) for r, z in reversed(lo_ins)]
         pts = [
             (round(bore_r, 3), -hub_half_mm), (round(hub_r, 3), -hub_half_mm),
             (round(hub_r, 3), -web_inner), (round(rim_junc, 3), -web_outer),
+            *lo_ins,
             (round(rim_junc, 3), -rim_half_mm), (round(rim_r, 3), -rim_half_mm),
             (round(rim_r, 3), rim_half_mm), (round(rim_junc, 3), rim_half_mm),
+            *hi_ins,
             (round(rim_junc, 3), web_outer), (round(hub_r, 3), web_inner),
             (round(hub_r, 3), hub_half_mm), (round(bore_r, 3), hub_half_mm),
         ]
@@ -118,11 +180,13 @@ def slot_profile(teeth, depth_mm, mouth_half, neck_half, lobe_half,
         pts = [(0.0, mouth_half)]
         wedge = -3.0
         pts.append((wedge, neck_half))
-        tooth_end = -depth_mm + 3.0  # 槽底留 3mm：台阶(-depth+3)/边(-depth+2)/根(-depth)，x 单调
+        tooth_end = -depth_mm + 3.0  # 槽底留 3mm：喇叭口/斜面/平底，x 单调
         span = tooth_end - wedge  # 负值
         per = span / teeth
-        lobe_min = max(neck_half + 1.0, 2.0)
-        lobe_step = max((lobe_half - lobe_min) / teeth, 0.2)
+        # lobe 从外到内递减，最后一齿 lobe ≥ neck+2.0（枞树形齿清晰可见，齿不淹没在颈部——
+        # 此前衰减到 lobe_min=neck+1 导致 teeth≥3 时后几齿视觉上像两齿）。
+        final_lobe = max(neck_half + 2.0, lobe_half * 0.6)
+        lobe_step = max((lobe_half - final_lobe) / max(teeth - 1, 1), 0.5)
         for i in range(teeth):
             lobe = lobe_half - i * lobe_step
             base = wedge + i * per
@@ -130,10 +194,13 @@ def slot_profile(teeth, depth_mm, mouth_half, neck_half, lobe_half,
             pts.append((round(base + 0.40 * per, 3), round(lobe, 3)))      # 齿顶平台
             pts.append((round(base + 0.60 * per, 3), neck_half))           # 内斜面降
             pts.append((round(base + 0.85 * per, 3), neck_half))           # 颈部平台
-        # 槽底 3 点：台阶(-depth+3) → 槽底边(-depth+2) → 根(-depth)，x 单调递减
-        pts.append((round(tooth_end, 3), bottom_half))
-        pts.append((round(tooth_end - 1.0, 3), bottom_half))
-        pts.append((-depth_mm, round(max(bottom_half - 1.5, 1.0), 3)))
+        # 槽底：喇叭口(bottom) → 内斜面 → 平底(root_half)。平底半宽 ≥2mm
+        # （参考 mon_e2b035beb218 平底 + llm_free_select 槽底 ±2.5；此前收缩到
+        # max(bottom-1.5,1) 形成视觉尖底）。
+        root_half = max(bottom_half - 0.75, 2.0)
+        pts.append((round(tooth_end, 3), bottom_half))        # 喇叭口上沿
+        pts.append((round(tooth_end - 1.0, 3), root_half))    # 内斜面到平底
+        pts.append((-depth_mm, root_half))                    # 平底（镜像成 2·root_half 宽）
         return pts
     upper_pts = upper()
     # 迭代短边修正（仅上侧）：相邻点距离 <1mm 时把后一点沿 x 外推到前一点左侧 dx 处，
@@ -219,9 +286,11 @@ def _slot_cutter_nodes(teeth, slots, depth_mm, throat_half, fr_mm, rim_r,
     all_conn = _mirror(conn_idxs)
     root_idxs = sorted({n_upper - 1, n_upper})  # 仅槽底根点（对称 2 点），避免台阶点圆角产生小边
 
-    root_room = max(0.75 * float(throat_half) - 1.5, 0.3)
-    # connector（齿根连接处）可放半径：fr_mm 为齿根圆角参数，clamp 到 neck/root 可放空间
-    neck_rad = round(min(float(fr_mm), 0.8 * float(neck), root_room, 1.2), 3)
+    root_half = max(bottom - 0.75, 2.0)   # 与 slot_profile 平底半宽一致
+    root_room = max(root_half - 0.6, 0.5)  # 槽底圆角可放空间
+    # 齿根（connector）圆角：fr_mm 为齿根圆角参数，clamp 到 neck 可放空间 + 2.5 上限
+    # （可见圆角；此前 cap 到 1.2 且 root_room 过小 → R0.75 在整盘上不可见）
+    neck_rad = round(min(float(fr_mm), 0.8 * float(neck), 2.5), 3)
 
     cur = "n_close_cutter"
     fillet_nodes = []
@@ -231,7 +300,7 @@ def _slot_cutter_nodes(teeth, slots, depth_mm, throat_half, fr_mm, rim_r,
                           "edge_treatment", "sketch_profile")
     fillet_nodes.append(n_fillet_neck)
     cur = "n_fillet_neck"
-    fr = min(float(fr_mm), root_room)
+    fr = min(float(fr_mm) + 0.3, root_room)  # 槽底圆角略大于齿根（参考 mon 槽底 r0.8）
     n_fillet_root = _node("n_fillet_cutter_root", "slot_cutter", "fillet_sketch",
                           [_nref(cur, "profile")], [_out("profile", "profile")],
                           {"radius_mm": round(max(fr, 0.3), 3), "at_vertex_index": root_idxs},
@@ -254,7 +323,8 @@ def build_slot_disc(params: dict) -> dict:
     """榫槽盘 llm_raw。params 键：od_mm/bore_mm/thick_mm/hub_mm/rim_mm +
     slots/teeth/R_mm/depth_mm/throat_half_width_mm/fr_mm。"""
     dp = disc_profile(params["od_mm"], params["bore_mm"], params["hub_mm"], params["rim_mm"],
-                      params["thick_mm"], form=params.get("form", "standard"))
+                      params["thick_mm"], form=params.get("form", "standard"),
+                      transition=params.get("transition", "linear"))
     teeth = int(params.get("teeth", 2))
     slots = int(params.get("slots", 60))
     depth = params.get("depth_mm", 24.0)
@@ -269,9 +339,9 @@ def build_slot_disc(params: dict) -> dict:
     lobe = throat * 1.8
     bottom = throat * 0.75
 
-    # 盘体统一 sketch_profile 12 点轮廓 + fillet + revolve（与参考 mon_e2b035beb218 同架构）。
-    # complex_rim 的曲线过渡用大半径 fillet_sketch（web-rim 顶点 3/8）——避免
-    # add_line_segment/add_arc_segment 链式（runtime 每段独立存储不累积 → close 退化）。
+    # 盘体统一 sketch_profile 轮廓 + fillet + revolve（与参考 mon_e2b035beb218 同架构）。
+    # complex_rim 的曲线过渡由 disc_profile 插入点表达（transition 类型），不再用单一
+    # fillet_sketch 圆弧（圆弧无法表达 S/双圆弧/幂曲线等丰富过渡）。
     n_sketch_disc = _node("n_sketch_disc", "disc_body", "create_2d_sketch", [],
                           [_out("sketch", "sketch")],
                           {"plane": "XZ", "origin_x_mm": 0, "origin_y_mm": 0},
@@ -282,16 +352,16 @@ def build_slot_disc(params: dict) -> dict:
     n_close_disc = _node("n_close_disc", "disc_body", "close_profile",
                          [_nref("n_polyline_disc", "profile")], [_out("profile", "profile")],
                          {}, "profile", "sketch_profile")
-    # 盘体 4 个过渡圆角（顶点 2/3/8/9，hub-web 与 web-rim）
+    # 盘体过渡圆角：complex_rim 的 web-rim 过渡由插入点表达 → 仅 hub-web 圆角（索引 2/n_pts-3）；
+    # 非 complex_rim 保持 4 圆角（hub-web 2 处 + web-rim 2 处，索引 2/3/n_pts-4/n_pts-3）。
+    is_complex = params.get("category") == "complex_rim"
+    n_pts = len(dp["points"])
+    fillet_vidx = (2, n_pts - 3) if is_complex else (2, 3, n_pts - 4, n_pts - 3)
     disc_fillets = []
     cur = "n_close_disc"
-    for i, vidx in enumerate((2, 3, 8, 9)):
+    for i, vidx in enumerate(fillet_vidx):
         fid = f"n_fillet_disc_{i}"
-        if params.get("category") == "complex_rim":
-            # 复杂轮缘曲线过渡：web-rim(顶点3/8) 大半径圆弧；hub-web(顶点2/9) 常规（参考 r=12）
-            radius = params.get("rim_arc_radius_mm", 20.0) if vidx in (3, 8) else 12.0
-        else:
-            radius = params.get("disc_fillet_mm", 10.0)
+        radius = 12.0 if is_complex else params.get("disc_fillet_mm", 10.0)
         fil = _node(fid, "disc_body", "fillet_sketch", [_nref(cur, "profile")],
                     [_out("profile", "profile")],
                     {"radius_mm": radius, "at_vertex_index": [vidx]},
@@ -493,13 +563,9 @@ def build_axisym_disc(params: dict) -> dict:
     与参考 mon_e2b035beb218 同架构：盘体 12 点轮廓 + fillet + revolve；
     孔/环槽/减重孔/冷却孔/切槽/环形腔用独立 sketch_profile 切割组件（切除/旋转切除）+ composition 布尔。
     """
-    od, bore, thick = params["od_mm"], params["bore_mm"], params["thick_mm"]
-    rim_r = od / 2.0
-    rim_junc = rim_r - _clamp(0.12 * od, 25.0, 95.0)
-    hub_r = bore / 2.0 + _clamp(0.16 * od, 25.0, 100.0)
-    if hub_r >= rim_junc:
-        hub_r = (bore / 2.0 + rim_junc) / 2.0
-    web_r = (hub_r + rim_junc) / 2.0
+    od, bore = params["od_mm"], params["bore_mm"]
+    _r = _disc_radii(od, bore, params.get("form", "standard"))
+    rim_r, rim_junc, hub_r, web_r = _r["rim_r"], _r["rim_junc"], _r["hub_r"], _r["web_r"]
     rim_half = params.get("rim_mm", 30.0)
 
     disc_nodes = _sketch_disc_body(params)
@@ -540,17 +606,25 @@ def build_axisym_disc(params: dict) -> dict:
             n_pat = _asm_pattern(f"n_pat_cl_{k}", f"{cid}_extrude", int(params["cl_holes"]),
                                  cl_pcd, asm_nodes)
             cur_body = _asm_bool(f"n_bool_cl_{k}", cur_body, n_pat, asm_nodes)
-    # 环槽（旋转切除：环形截面 revolve → 布尔；轮缘内壁，从轮缘端面切入 gd）
+    # 环槽（轮缘内壁中段集气环槽——旋转切除，从轮缘内壁向实体 +r 方向挖 gd 深）。
+    # 截面 [r ∈ rim_junc, rim_junc+gd] × [z ∈ z_c−gw/2, z_c+gw/2]，z_c 沿轮缘轴向中段
+    # 分布（多道等距、留端面剩料），完全落在轮缘实体内（不再跨 web-rim 交界 → 无悬空退化）。
     if params.get("grooves"):
-        cid = "feat_groove"
-        feat_comp(cid, f"{cid}_revolve")
+        n = int(params["grooves"])
         gw = params.get("gw_mm", 14.0)
         gd = params.get("gd_mm", 8.0)
-        inner_dia = 2.0 * (rim_junc - gw / 2.0)
-        outer_dia = 2.0 * (rim_junc + gw / 2.0)
-        z_base = -rim_half  # 从轮缘下端面切入
-        all_nodes += _ring_cutter(cid, inner_dia, outer_dia, gd, z_base)
-        cur_body = _asm_bool("n_bool_groove", cur_body, f"{cid}_revolve", asm_nodes)
+        margin = 3.0  # 端面剩料
+        limit = max(rim_half - margin - gw / 2.0, 0.0)
+        if n == 1:
+            z_cs = [-0.4 * limit]  # 偏腹板侧一道
+        else:
+            z_cs = [-limit + 2.0 * limit * i / (n - 1) for i in range(n)]
+        for i, z_c in enumerate(z_cs):
+            cid = f"feat_groove_{i}"
+            feat_comp(cid, f"{cid}_revolve")
+            all_nodes += _ring_cutter(cid, 2.0 * rim_junc, 2.0 * (rim_junc + gd),
+                                      gw, z_c - gw / 2.0)
+            cur_body = _asm_bool(f"n_bool_groove_{i}", cur_body, f"{cid}_revolve", asm_nodes)
     # 径向局部切槽（轮缘外表面周向矩形槽）
     if params.get("rs_count"):
         cid = "feat_rimslot"
@@ -681,8 +755,9 @@ def _disc_params(params: dict) -> dict:
         "web_rim_fillet_mm": params.get("disc_fillet_mm", 10.0),
     }
     if params.get("category") == "complex_rim":
-        # 复杂轮缘：曲线过渡由圆弧段表达（论文 2.1），Agent B 需按此生成含圆弧盘体轮廓
+        # 复杂轮缘：曲线过渡由 disc_profile 插入点表达（论文 2.1，transition 类型族间不同）
         d["rim_transition_radius_mm"] = params.get("rim_arc_radius_mm", 20.0)
+        d["rim_transition_type"] = params.get("transition", "s_curve")
     return d
 
 
@@ -744,7 +819,8 @@ def build(params: dict) -> dict:
             points[pid] = disc_profile(params["od_mm"], params["bore_mm"],
                                        params.get("hub_mm", 38), params.get("rim_mm", 30),
                                        params["thick_mm"],
-                                       form=params.get("form", "standard"))["points"]
+                                       form=params.get("form", "standard"),
+                                       transition=params.get("transition", "linear"))["points"]
         elif prof["kind"] == "slot":
             teeth = int(params.get("teeth", 2))
             depth = params.get("depth_mm", 24.0)

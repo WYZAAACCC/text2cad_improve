@@ -101,19 +101,20 @@ DESIGN_FAMILIES: dict[str, dict] = {
             "features": {**SLOT_DEFAULTS, "slots": 84, "teeth": 3, "depth": 38, "holes": 16, "pcd": 260, "hdia": 16,
                          "grooves": 2, "gw": 20, "gd": 14}},
     # ── 6. 复杂轮缘过渡与榫槽组合盘（4：D29-D30 train, D31-D32 holdout）────────
-    # 曲线过渡：盘体 web-rim 交界用圆弧段（rim_arc_radius 过渡半径，论文 2.1 曲线过渡）。
+    # 曲线过渡：盘体 web-rim 交界用不同曲线族（transition，论文 2.1 曲线过渡）——
+    # D29 S形 / D30 椭圆弧 / D31 幂曲线 / D32 外凸弧，族间过渡结构不同（非仅半径不同）。
     "D29": {"form": "thick_rim", "category": "complex_rim", "split": "train", **{**_BASE, "rim": 40},
             "features": {**SLOT_DEFAULTS, "slots": 60, "teeth": 3, "depth": 32, "R": 225,
-                         "rim_arc_radius": 20}},
+                         "rim_arc_radius": 20, "transition": "s_curve"}},
     "D30": {"form": "thick_rim", "category": "complex_rim", "split": "train", **{**_BASE, "rim": 36, "od": 560},
             "features": {**SLOT_DEFAULTS, "slots": 72, "teeth": 3, "depth": 34, "R": 235,
-                         "rim_arc_radius": 24}},
+                         "rim_arc_radius": 24, "transition": "ellipse"}},
     "D31": {"form": "thick_rim", "category": "complex_rim", "split": "holdout", **{**_BASE_LARGE, "rim": 45, "od": 640},
             "features": {**SLOT_DEFAULTS, "slots": 84, "teeth": 3, "depth": 38, "R": 250,
-                         "rim_arc_radius": 28}},
+                         "rim_arc_radius": 28, "transition": "power"}},
     "D32": {"form": "thick_rim", "category": "complex_rim", "split": "holdout", **{**_BASE_LARGE, "rim": 48, "od": 680},
             "features": {**SLOT_DEFAULTS, "slots": 96, "teeth": 4, "depth": 42, "R": 260,
-                         "rim_arc_radius": 30}},
+                         "rim_arc_radius": 30, "transition": "arc_out"}},
 }
 
 CATEGORY_LABEL = {
@@ -152,7 +153,9 @@ def _family_text(fam: dict) -> str:
     if "cavity_width" in f:
         p.append(f"腹板处环形减重腔，腔宽{f['cavity_width']}mm，腔深{f['cavity_depth']}mm")
     if f.get("rim_arc_radius"):
-        p.append(f"轮缘与腹板交界采用圆弧曲线过渡，过渡半径{f['rim_arc_radius']}mm")
+        tr_label = {"s_curve": "S形曲线", "ellipse": "椭圆弧", "power": "幂函数曲线",
+                    "arc_out": "外凸圆弧", "arc_in": "内凹圆弧"}.get(f.get("transition"), "曲线")
+        p.append(f"轮缘与腹板交界采用{tr_label}过渡，过渡幅度{f['rim_arc_radius']}mm")
     return "，".join(p) + "。参考几何，非适航件。"
 
 

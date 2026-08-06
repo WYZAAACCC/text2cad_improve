@@ -88,24 +88,34 @@ def check_groove_depth(gd_mm: float, rim_radial_mm: float, mg_mm: float = 3.0) -
 
 
 def check_slot_root_fillet(fr_mm: float, throat_half_width_mm: float) -> dict:
-    """齿根圆角可放空间：root 半宽 = bottom − 1.5 = 0.75×throat − 1.5（模板 slot_profile 槽底根点）。
+    """齿根圆角可放空间：root 平底半宽 = max(bottom−0.75, 2.0) = max(0.75×throat−0.75, 2.0)
+    （与 param_templates.slot_profile 槽底平底一致）。
 
-    圆角半径须 ≤ root 半宽（否则圆角超出槽底可放空间 → BRep_API fillet 失败）。
-    模板 bottom = 0.75×throat，root 点半宽 = bottom − 1.5。
+    槽底圆角 = min(fr+0.3, root_room)，须 ≤ root_half（否则圆角超出槽底 → BRep_API fillet 失败）。
+    保守约束 fr ≤ root_half − 0.3。
     """
-    root_half = 0.75 * throat_half_width_mm - 1.5
-    return {"ok": fr_mm <= root_half + 0.05, "root_half_width_mm": round(root_half, 3),
-            "max_fr_mm": round(max(root_half, 0.3), 3)}
+    root_half = max(0.75 * throat_half_width_mm - 0.75, 2.0)
+    max_fr = max(root_half - 0.3, 0.3)
+    return {"ok": fr_mm <= max_fr + 0.05, "root_half_width_mm": round(root_half, 3),
+            "max_fr_mm": round(max_fr, 3)}
 
 
-def _axisym_radii(od_mm: float, bore_mm: float) -> dict:
-    """盘型（axisym）盘体半径推导（与 param_templates.build_axisym_disc 一致）。
+# 盘体形态系数（与 param_templates._RADIAL_FAC 一致，唯一真源在 param_templates；
+# 此处副本避免循环 import，改动须同步两边）。
+_RADIAL_FAC = {"standard": (0.16, 0.12), "thin_web": (0.16, 0.12),
+               "thick_rim": (0.14, 0.17), "large_hub": (0.22, 0.10),
+               "conical": (0.16, 0.12)}
+
+
+def _axisym_radii(od_mm: float, bore_mm: float, form: str = "standard") -> dict:
+    """盘体半径推导（与 param_templates._disc_radii 完全一致，按 form 系数）。
 
     返回 {rim_r, hub_r, rim_junc, web_r}。hub_r 保证腹板存在（hub_r < rim_junc）。
     """
     rim_r = od_mm / 2.0
-    hub_r = bore_mm / 2.0 + _clamp(0.16 * od_mm, 25.0, 100.0)
-    rim_junc = rim_r - _clamp(0.12 * od_mm, 25.0, 95.0)
+    h_fac, r_fac = _RADIAL_FAC.get(form, (0.16, 0.12))
+    hub_r = bore_mm / 2.0 + _clamp(h_fac * od_mm, 25.0, 100.0)
+    rim_junc = rim_r - _clamp(r_fac * od_mm, 25.0, 95.0)
     if hub_r >= rim_junc:
         hub_r = (bore_mm / 2.0 + rim_junc) / 2.0
     return {"rim_r": rim_r, "hub_r": hub_r, "rim_junc": rim_junc,
@@ -113,13 +123,14 @@ def _axisym_radii(od_mm: float, bore_mm: float) -> dict:
 
 
 def check_lightening_hole_bounds(pcd_mm: float, hdia_mm: float, od_mm: float,
-                                 bore_mm: float, cb_mm: float = 2.0) -> dict:
+                                 bore_mm: float, cb_mm: float = 2.0,
+                                 form: str = "standard") -> dict:
     """减重/冷却孔整体落在腹板段（论文 2.2 减重孔/冷却孔，通孔贯穿腹板）。
 
     内边界：rp − d/2 − cb ≥ hub_r（不穿轮毂）；外边界：rp + d/2 + cb ≤ rim_junc（不穿轮缘）。
     比 check_hole_bounds（相对中心孔/外径）更严——限死在腹板径向区间内。
     """
-    r = _axisym_radii(od_mm, bore_mm)
+    r = _axisym_radii(od_mm, bore_mm, form)
     inner_ok = pcd_mm - hdia_mm / 2.0 - cb_mm >= r["hub_r"]
     outer_ok = pcd_mm + hdia_mm / 2.0 + cb_mm <= r["rim_junc"]
     return {
@@ -144,14 +155,15 @@ def check_rim_slot_pitch(rs_count: int, rs_half_width_mm: float, od_mm: float,
 
 
 def check_annular_cavity(cavity_width_mm: float, cavity_depth_mm: float, od_mm: float,
-                         bore_mm: float, thick_mm: float, m: float = 2.0) -> dict:
+                         bore_mm: float, thick_mm: float, m: float = 2.0,
+                         form: str = "standard") -> dict:
     """腹板环形腔（论文 2.2 局部减重结构）：径向落在腹板段、轴向不切穿。
 
     径向：web_r ± cw/2 须在 hub_r 与 rim_junc 之间留剩料 m；
     轴向：腔深 ≤ 腹板轴向厚的一半（腹板 z 区间 z_web1→z_web2 = 0.2·thick→0.35·thick，
     轴向厚 0.15·thick，从端面切入 depth，留剩料 → depth ≤ 0.075·thick）。
     """
-    r = _axisym_radii(od_mm, bore_mm)
+    r = _axisym_radii(od_mm, bore_mm, form)
     max_width = 2.0 * min(r["web_r"] - r["hub_r"] - m, r["rim_junc"] - r["web_r"] - m)
     max_depth = 0.075 * thick_mm
     return {"ok": cavity_width_mm <= max_width + 1e-9 and cavity_depth_mm <= max_depth + 1e-9,
@@ -168,16 +180,18 @@ def check_double_row_spacing(pcd1_mm: float, pcd2_mm: float, hdia_mm: float,
             "min_sep_mm": hdia_mm + ch_mm}
 
 
-def check_slot_bottom(depth_mm: float, od_mm: float, mr_mm: float = 3.0) -> dict:
+def check_slot_bottom(depth_mm: float, od_mm: float, mr_mm: float = 3.0,
+                      form: str = "standard") -> dict:
     """榫槽 cutter 槽底不穿出轮缘（pattern radius = rim_r，槽口在轮缘外表面）。
 
     cutter 槽口在轮缘外表面 rim_r = od/2，槽底在 rim_r − depth；
-    轮缘内壁半径 rim_junc = od/2 − rim_radial（rim_radial ≈ 0.12·od）→ rim_junc = 0.38·od。
+    轮缘内壁半径 rim_junc 按 form 系数（与盘体轮廓一致）。
     要求 rim_r − depth ≥ rim_junc + mr（槽底剩料 ≥ mr，论文 5.3 hs+mr<=tr 的镜像），
     否则 cutter 切穿轮缘进入腹板、或槽底剩料为 0 导致布尔退化。
     """
     rim_r = od_mm / 2.0
-    rim_junc = 0.38 * od_mm
+    _, r_fac = _RADIAL_FAC.get(form, (0.16, 0.12))
+    rim_junc = max(rim_r - _clamp(r_fac * od_mm, 25.0, 95.0), 0.38 * od_mm)
     return {"ok": rim_r - depth_mm >= rim_junc + mr_mm, "rim_junc_mm": round(rim_junc, 3),
             "bottom_ligament_mm": round(rim_r - depth_mm - rim_junc, 3)}
 
@@ -192,6 +206,7 @@ def check_all(params: dict, cb: float = 2.0, ch: float = 2.0,
     checks = []
     od = params.get("od_mm")
     bore = params.get("bore_mm")
+    form = params.get("form", "standard")
     if od is None or bore is None:
         return {"ok": False, "checks": checks, "error": "缺 od_mm/bore_mm"}
     # 孔
@@ -212,7 +227,7 @@ def check_all(params: dict, cb: float = 2.0, ch: float = 2.0,
                            **check_slot_depth(params["depth_mm"], params["rim_radial_mm"], mr)})
         if params.get("depth_mm") is not None:
             checks.append({"name": "slot_bottom",
-                           **check_slot_bottom(params["depth_mm"], od)})
+                           **check_slot_bottom(params["depth_mm"], od, form=form)})
         if params.get("fr_mm") is not None:
             checks.append({"name": "slot_root_fillet",
                            **check_slot_root_fillet(params["fr_mm"], params["throat_half_width_mm"])})
@@ -220,18 +235,43 @@ def check_all(params: dict, cb: float = 2.0, ch: float = 2.0,
     if params.get("gd_mm") is not None and params.get("rim_radial_mm") is not None:
         checks.append({"name": "groove_depth",
                        **check_groove_depth(params["gd_mm"], params["rim_radial_mm"], mr)})
+    # 环槽-孔径向间隙：孔/冷却孔整体落在 rim_junc−gd−gap 内侧（不碰轮缘内壁环槽）。
+    # 否则孔 16 边形边与环槽台阶曲面布尔产生 <0.25mm 退化小边（MCP check_degenerate_geometry 拦截）。
+    if params.get("grooves") and params.get("gd_mm") is not None:
+        rim_junc = _axisym_radii(od, bore, form)["rim_junc"]
+        for key, dia_key in (("pcd_mm", "hdia_mm"), ("lh_pcd_mm", "lh_hdia_mm"),
+                             ("cl_pcd_mm", "cl_hdia_mm"), ("cl_pcd2_mm", "cl_hdia_mm")):
+            if params.get(key) is not None and params.get(dia_key):
+                dia = params[dia_key]
+                limit = rim_junc - params["gd_mm"] - dia / 2.0 - 2.0
+                checks.append({"name": f"{key}_groove_clearance",
+                               "ok": params[key] <= limit + 1e-9,
+                               "limit_mm": round(limit, 3)})
+    # 孔边避开 web-rim fillet 弧（r∈[rim_junc−12, rim_junc]，盘体 _sketch_disc_body 顶点 3/8
+    # r=10 fillet + 2 余量）。16 边形孔边与 fillet 曲面布尔产生 <0.25mm 退化小边
+    # （D23 孔 pcd=176 边缘 182 入弧 → 96 微边；pcd=170 边缘 176 无）。孔边缘 < rim_junc
+    # （腹板/轮缘内侧孔）时须 ≤ rim_junc−12；完全在轮缘的孔（inner ≥ rim_junc）不受限。
+    for key, dia_key in (("pcd_mm", "hdia_mm"), ("lh_pcd_mm", "lh_hdia_mm"),
+                         ("cl_pcd_mm", "cl_hdia_mm"), ("cl_pcd2_mm", "cl_hdia_mm")):
+        if params.get(key) is not None and params.get(dia_key):
+            rim_junc = _axisym_radii(od, bore, form)["rim_junc"]
+            outer = params[key] + params[dia_key] / 2.0
+            inner = params[key] - params[dia_key] / 2.0
+            ok = outer <= rim_junc - 12.0 or inner >= rim_junc
+            checks.append({"name": f"{key}_fillet_clearance", "ok": ok,
+                           "limit_mm": round(rim_junc - 12.0, 3)})
     # 减重孔/冷却孔（腹板段，论文 2.2）
     if params.get("lh_holes") is not None and params.get("lh_pcd_mm") is not None \
             and params.get("lh_hdia_mm") is not None:
         checks.append({"name": "lh_hole_bounds",
-                       **check_lightening_hole_bounds(params["lh_pcd_mm"], params["lh_hdia_mm"], od, bore, cb)})
+                       **check_lightening_hole_bounds(params["lh_pcd_mm"], params["lh_hdia_mm"], od, bore, cb, form)})
         checks.append({"name": "lh_hole_spacing",
                        **check_hole_spacing(int(params["lh_holes"]), params["lh_pcd_mm"],
                                             params["lh_hdia_mm"], ch)})
     if params.get("cl_holes") is not None and params.get("cl_pcd_mm") is not None \
             and params.get("cl_hdia_mm") is not None:
         checks.append({"name": "cl_hole_bounds",
-                       **check_lightening_hole_bounds(params["cl_pcd_mm"], params["cl_hdia_mm"], od, bore, cb)})
+                       **check_lightening_hole_bounds(params["cl_pcd_mm"], params["cl_hdia_mm"], od, bore, cb, form)})
         checks.append({"name": "cl_hole_spacing",
                        **check_hole_spacing(int(params["cl_holes"]), params["cl_pcd_mm"],
                                             params["cl_hdia_mm"], ch)})
@@ -251,7 +291,7 @@ def check_all(params: dict, cb: float = 2.0, ch: float = 2.0,
     if params.get("cavity_width_mm") is not None and params.get("cavity_depth_mm") is not None:
         checks.append({"name": "annular_cavity",
                        **check_annular_cavity(params["cavity_width_mm"], params["cavity_depth_mm"],
-                                              od, bore, params.get("thick_mm", 76.0))})
+                                              od, bore, params.get("thick_mm", 76.0), form=form)})
     # 基础盘无任何特征 → 无约束 → 视为可行（而非 bool([])=False 误判）
     if not checks:
         return {"ok": True, "checks": checks}
