@@ -97,6 +97,19 @@ def _pattern(ir):
     raise ValueError("未找到榫槽阵列 (circular_pattern_component)")
 
 
+def _no_slot_skip(ir) -> dict | None:
+    """IR 无榫槽（无 extrude_profile 工具体组件）→ 返回跳过 ok=True；有榫槽 → None。
+
+    盘型（basic/hole/groove）为 axisym 单组件（revolve + 孔/环槽/切槽），无榫槽 cutter，
+    榫槽检查（节距/周期性/STEP 回读）对它无意义，须跳过而非抛异常（否则 MCP 门误判失败）。
+    """
+    try:
+        _component_with_op(ir, "extrude_profile")
+        return None
+    except ValueError:
+        return {"ok": True, "skipped": True, "note": "无榫槽盘（无 extrude_profile 工具体），跳过榫槽检查"}
+
+
 def _slot_fillets(ir):
     """工具体组件的全部 fillet_sketch 节点（语义定位，不依赖节点命名）。"""
     comp = _component_with_op(ir, "extrude_profile")
@@ -432,6 +445,9 @@ def measure_fir_tree_slot_profile(args=None):
 def check_slot_pitch_and_ligament(args=None):
     base = _base_dir(args or {})
     ir = _load_ir(base)
+    skip = _no_slot_skip(ir)
+    if skip is not None:
+        return skip
     pat = _pattern(ir)
     pts = _slot_profile(ir)
     count, radius = pat["count"], pat["radius_mm"]
@@ -454,6 +470,9 @@ def check_slot_pitch_and_ligament(args=None):
 def check_slot_depth_and_rim(args=None):
     base = _base_dir(args or {})
     ir = _load_ir(base)
+    skip = _no_slot_skip(ir)
+    if skip is not None:
+        return skip
     stats = _profile_stats(_slot_profile(ir))
     disc = _disc_profile(ir)
     slot_depth = stats["slot_depth_mm"]
@@ -476,6 +495,9 @@ def check_slot_depth_and_rim(args=None):
 def check_adjacent_feature_clearance(args=None):
     base = _base_dir(args or {})
     ir = _load_ir(base)
+    skip = _no_slot_skip(ir)
+    if skip is not None:
+        return skip
     pat = _pattern(ir)
     pts = _slot_profile(ir)
     count, radius = pat["count"], pat["radius_mm"]
@@ -508,6 +530,9 @@ def check_adjacent_feature_clearance(args=None):
 def compare_slot_profile_to_requirement(args=None):
     base = _base_dir(args or {})
     ir = _load_ir(base)
+    skip = _no_slot_skip(ir)
+    if skip is not None:
+        return skip
     pts = _slot_profile(ir)
     actual = _profile_stats(pts)
     root = _root_fillet(ir)
@@ -576,6 +601,9 @@ def inspect_slot_root_fillet(args=None):
 def validate_slot_pattern_periodicity(args=None):
     base = _base_dir(args or {})
     ir = _load_ir(base)
+    skip = _no_slot_skip(ir)
+    if skip is not None:
+        return skip
     pat = _pattern(ir)
     pts = _slot_profile(ir)
     count, radius = pat["count"], pat["radius_mm"]

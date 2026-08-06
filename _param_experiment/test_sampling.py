@@ -17,7 +17,8 @@ sys.path.insert(0, str(_HERE))
 
 from sampling_constraints import (  # noqa: E402
     check_hole_bounds, check_hole_spacing, check_slot_pitch, check_slot_depth,
-    check_groove_depth,
+    check_groove_depth, check_lightening_hole_bounds, check_rim_slot_pitch,
+    check_annular_cavity, check_double_row_spacing, check_all,
 )
 
 
@@ -72,6 +73,60 @@ def test_groove_depth():
     assert r["ok"]
     r2 = check_groove_depth(gd_mm=20, rim_radial_mm=15)
     assert not r2["ok"]
+
+
+def test_lightening_hole_bounds():
+    # od=500 bore=120 → hub_r=140, rim_junc=190（_axisym_radii）
+    # 正常：减重孔落在腹板段
+    r = check_lightening_hole_bounds(pcd_mm=170, hdia_mm=16, od_mm=500, bore_mm=120)
+    assert r["ok"], f"腹板段减重孔应满足: {r}"
+    # 越内边界（落轮毂段）
+    r2 = check_lightening_hole_bounds(pcd_mm=120, hdia_mm=16, od_mm=500, bore_mm=120)
+    assert not r2["ok"] and not r2["inner_ok"], f"pcd 120 应在轮毂段: {r2}"
+    # 越外边界（落轮缘段）
+    r3 = check_lightening_hole_bounds(pcd_mm=185, hdia_mm=16, od_mm=500, bore_mm=120)
+    assert not r3["outer_ok"], f"185+8+2=195>190 应越界: {r3}"
+
+
+def test_rim_slot_pitch():
+    # 正常：60 槽 od=500（节距 26.18）槽宽 6+4=10
+    r = check_rim_slot_pitch(60, 3.0, 500)
+    assert r["ok"], f"正常切槽节距应满足: {r}"
+    # 过密：96 槽 od=360（节距 11.78）槽宽 12+4=16
+    r2 = check_rim_slot_pitch(96, 6.0, 360)
+    assert not r2["ok"], f"切槽节距应不足: {r2}"
+
+
+def test_annular_cavity():
+    # od=500 bore=120 thick=76 → web_r=165, max_width≈46, max_depth≈5.7
+    r = check_annular_cavity(40, 4, 500, 120, 76)
+    assert r["ok"], f"正常环形腔应满足: {r}"
+    r2 = check_annular_cavity(60, 6, 500, 120, 76)
+    assert not r2["ok"], f"腔宽 60 超 max_width 应不可行: {r2}"
+    r3 = check_annular_cavity(40, 12, 500, 120, 76)
+    assert not r3["ok"], f"腔深 12 超 max_depth 应不可行: {r3}"
+
+
+def test_double_row_spacing():
+    r = check_double_row_spacing(155, 180, 6)
+    assert r["ok"], f"双排间距 25 ≥ 6+2 应满足: {r}"
+    r2 = check_double_row_spacing(158, 162, 6)
+    assert not r2["ok"], f"间距 4 < 8 应重叠: {r2}"
+
+
+def test_check_all_new_features():
+    # groove 全减重结构参数向量 → check_all 全过
+    p = {"od_mm": 500, "bore_mm": 120, "thick_mm": 76, "rim_radial_mm": 60,
+         "grooves": 1, "gw_mm": 12, "gd_mm": 8,
+         "lh_holes": 12, "lh_pcd_mm": 170, "lh_hdia_mm": 16,
+         "cl_holes": 24, "cl_pcd_mm": 155, "cl_hdia_mm": 6, "cl_pcd2_mm": 180,
+         "rs_count": 60, "rs_depth_mm": 10, "rs_half_width_mm": 3.0,
+         "cavity_width_mm": 40, "cavity_depth_mm": 4}
+    r = check_all(p)
+    assert r["ok"], f"groove 全特征应满足约束: {r['checks']}"
+    names = {c["name"] for c in r["checks"]}
+    assert {"lh_hole_bounds", "lh_hole_spacing", "cl_hole_bounds",
+            "cl_double_row_spacing", "rim_slot_pitch", "annular_cavity"} <= names, names
 
 
 def test_sampler_zones_and_ranges():

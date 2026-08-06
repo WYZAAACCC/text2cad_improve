@@ -45,16 +45,26 @@ DESIGN_FAMILIES: dict[str, dict] = {
     "D09": {"category": "hole", "split": "holdout", **{**_BASE_LARGE, "od": 640},
             "features": {"holes": 20, "pcd": 270, "hdia": 18}},
     # ── 3. 环槽与减重结构盘（5：D10-D12 train, D13 val, D14 holdout）────────────
+    # 论文 2.2 减重结构：减重孔/冷却孔/环槽/径向局部切槽/局部减重（腹板环形腔）。
+    # 各族特征组合不同 → 族内多样性；pcd/hdia 落在论文范围（孔径 4-26、分布半径 80-310）。
     "D10": {"category": "groove", "split": "train", **_BASE,
-            "features": {"grooves": 1, "gw": 12, "gd": 8}},
+            "features": {"grooves": 1, "gw": 12, "gd": 8,
+                         "lh_holes": 12, "lh_pcd": 175, "lh_hdia": 16}},
     "D11": {"category": "groove", "split": "train", **{**_BASE, "od": 520},
-            "features": {"grooves": 2, "gw": 16, "gd": 10}},
+            "features": {"grooves": 2, "gw": 16, "gd": 10,
+                         "cl_holes": 24, "cl_pcd": 225, "cl_hdia": 6}},
     "D12": {"category": "groove", "split": "train", **{**_BASE, "od": 540},
-            "features": {"grooves": 1, "gw": 20, "gd": 12}},
+            "features": {"grooves": 1, "gw": 20, "gd": 12,
+                         "rs_count": 60, "rs_depth": 10, "rs_half_width": 3}},
     "D13": {"category": "groove", "split": "val", **{**_BASE, "od": 560},
-            "features": {"grooves": 2, "gw": 24, "gd": 14}},
+            "features": {"grooves": 2, "gw": 24, "gd": 14,
+                         "lh_holes": 16, "lh_pcd": 190, "lh_hdia": 14,
+                         "cl_holes": 30, "cl_pcd": 240, "cl_hdia": 5}},
     "D14": {"category": "groove", "split": "holdout", **{**_BASE, "od": 580},
-            "features": {"grooves": 3, "gw": 8, "gd": 6}},
+            "features": {"grooves": 3, "gw": 8, "gd": 6,
+                         "lh_holes": 24, "lh_pcd": 200, "lh_hdia": 12,
+                         "cl_holes": 36, "cl_pcd": 230, "cl_hdia": 5, "cl_pcd2": 250,
+                         "cavity_width": 50, "cavity_depth": 4}},
     # ── 4. 标准枞树形榫槽盘（8：D15-D19 train, D20 val, D21-D22 holdout）────────
     "D15": {"category": "slot", "split": "train", **_BASE,
             "features": {**SLOT_DEFAULTS}},
@@ -91,14 +101,19 @@ DESIGN_FAMILIES: dict[str, dict] = {
             "features": {**SLOT_DEFAULTS, "slots": 84, "teeth": 3, "depth": 38, "holes": 16, "pcd": 260, "hdia": 16,
                          "grooves": 2, "gw": 20, "gd": 14}},
     # ── 6. 复杂轮缘过渡与榫槽组合盘（4：D29-D30 train, D31-D32 holdout）────────
+    # 曲线过渡：盘体 web-rim 交界用圆弧段（rim_arc_radius 过渡半径，论文 2.1 曲线过渡）。
     "D29": {"category": "complex_rim", "split": "train", **{**_BASE, "rim": 40},
-            "features": {**SLOT_DEFAULTS, "slots": 60, "teeth": 3, "depth": 32, "R": 225}},
+            "features": {**SLOT_DEFAULTS, "slots": 60, "teeth": 3, "depth": 32, "R": 225,
+                         "rim_arc_radius": 20}},
     "D30": {"category": "complex_rim", "split": "train", **{**_BASE, "rim": 36, "od": 560},
-            "features": {**SLOT_DEFAULTS, "slots": 72, "teeth": 3, "depth": 34, "R": 235}},
+            "features": {**SLOT_DEFAULTS, "slots": 72, "teeth": 3, "depth": 34, "R": 235,
+                         "rim_arc_radius": 24}},
     "D31": {"category": "complex_rim", "split": "holdout", **{**_BASE_LARGE, "rim": 45, "od": 640},
-            "features": {**SLOT_DEFAULTS, "slots": 84, "teeth": 3, "depth": 38, "R": 250}},
+            "features": {**SLOT_DEFAULTS, "slots": 84, "teeth": 3, "depth": 38, "R": 250,
+                         "rim_arc_radius": 28}},
     "D32": {"category": "complex_rim", "split": "holdout", **{**_BASE_LARGE, "rim": 48, "od": 680},
-            "features": {**SLOT_DEFAULTS, "slots": 96, "teeth": 4, "depth": 42, "R": 260}},
+            "features": {**SLOT_DEFAULTS, "slots": 96, "teeth": 4, "depth": 42, "R": 260,
+                         "rim_arc_radius": 30}},
 }
 
 CATEGORY_LABEL = {
@@ -126,6 +141,18 @@ def _family_text(fam: dict) -> str:
         p.append(f"周向均布{f['holes']}个安装孔，孔径{f['hdia']}mm，分布半径{f['pcd']}mm")
     if "grooves" in f:
         p.append(f"轮缘内侧{f['grooves']}道环槽，槽宽{f['gw']}mm，槽深{f['gd']}mm")
+    if "lh_holes" in f:
+        p.append(f"腹板上{f['lh_holes']}个减重孔，孔径{f['lh_hdia']}mm，分布半径{f['lh_pcd']}mm")
+    if "cl_holes" in f:
+        p.append(f"腹板上{f['cl_holes']}个冷却孔，孔径{f['cl_hdia']}mm，分布半径{f['cl_pcd']}mm"
+                 + (f"，第二排分布半径{f['cl_pcd2']}mm" if f.get("cl_pcd2") else ""))
+    if "rs_count" in f:
+        p.append(f"轮缘外表面{f['rs_count']}个径向局部切槽，切槽深度{f['rs_depth']}mm，"
+                 f"槽宽{int(2 * f['rs_half_width'])}mm")
+    if "cavity_width" in f:
+        p.append(f"腹板处环形减重腔，腔宽{f['cavity_width']}mm，腔深{f['cavity_depth']}mm")
+    if f.get("rim_arc_radius"):
+        p.append(f"轮缘与腹板交界采用圆弧曲线过渡，过渡半径{f['rim_arc_radius']}mm")
     return "，".join(p) + "。参考几何，非适航件。"
 
 

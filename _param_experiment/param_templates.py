@@ -202,6 +202,125 @@ def _slot_cutter_nodes(teeth, slots, depth_mm, throat_half, fr_mm, rim_r,
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 复杂轮缘盘体轮廓（直线段 + 圆弧段曲线过渡，论文 2.1"由直线段、圆弧段组合构成"）
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _arc_transition(p2, p3, p4, radius_mm, max_frac=0.8):
+    """在顶点 p3 处（两侧线段 p2-p3 与 p3-p4）计算圆弧过渡切点与圆弧参数。
+
+    返回 (A, arc, B)：
+      A/B 为切点（分别落在 p2-p3 与 p3-p4 上），
+      arc = {start:{x,y}, end:{x,y}, center:{x,y}, direction: ccw/cw}（add_arc_segment 契约）。
+    当两线近共线/反向或可放空间过小时返回 None（调用方跳过该过渡，保留直角）。
+    radius_mm 为请求半径，clamp 到两侧线段长内可放空间后反算实际半径（避免圆弧越界/自交）。
+    """
+    import math
+    v1 = (p3[0] - p2[0], p3[1] - p2[1])           # P2→P3
+    v2 = (p4[0] - p3[0], p4[1] - p3[1])           # P3→P4
+    n1, n2 = math.hypot(*v1), math.hypot(*v2)
+    if n1 < 1e-6 or n2 < 1e-6:
+        return None
+    u1, u2 = (v1[0] / n1, v1[1] / n1), (v2[0] / n2, v2[1] / n2)
+    r1, r2 = (-u1[0], -u1[1]), u2                  # 从 P3 出发的两条射线方向（回 P2 / 去 P4）
+    cos_a = max(-1.0, min(1.0, r1[0] * r2[0] + r1[1] * r2[1]))
+    alpha = math.acos(cos_a)
+    if alpha < math.radians(10) or alpha > math.radians(170):
+        return None  # 近共线/近反向 → 无有效过渡
+    bis = (r1[0] + r2[0], r1[1] + r2[1])
+    nb = math.hypot(*bis)
+    b = (bis[0] / nb, bis[1] / nb)
+    L = radius_mm * math.cos(alpha / 2.0) / math.sin(alpha / 2.0)  # r·cot(α/2)：切点距顶点
+    L = min(L, max_frac * n1, max_frac * n2)      # 切点必须落在两侧线段内
+    r = L * math.tan(alpha / 2.0)                  # clamp 后的实际半径
+    A = (p3[0] + L * r1[0], p3[1] + L * r1[1])
+    B = (p3[0] + L * r2[0], p3[1] + L * r2[1])
+    s_inv = 1.0 / math.sin(alpha / 2.0)
+    C = (p3[0] + r * s_inv * b[0], p3[1] + r * s_inv * b[1])
+    # direction：圆心 C 在弦 AB 左侧（叉积>0）→ 逆时针弧经过 C 侧（实体内侧凸弧）
+    cross = (B[0] - A[0]) * (C[1] - A[1]) - (B[1] - A[1]) * (C[0] - A[0])
+    direction = "ccw" if cross > 0 else "cw"
+    return A, {"start": {"x_mm": round(A[0], 3), "y_mm": round(A[1], 3)},
+               "end": {"x_mm": round(B[0], 3), "y_mm": round(B[1], 3)},
+               "center": {"x_mm": round(C[0], 3), "y_mm": round(C[1], 3)},
+               "direction": direction}, B
+
+
+def _disc_arced_body(params: dict) -> list:
+    """复杂轮缘盘体轮廓节点链（disc_body 组件）：
+    create_2d_sketch → add_line_segment×N → add_arc_segment×M → close_profile → revolve_profile。
+    web-rim 交界（下侧 P3 / 上侧 P8）用圆弧段过渡，替代直线 12 点的直角 + 小圆角。
+
+    参数键：od_mm/bore_mm/thick_mm/hub_mm/rim_mm + rim_arc_radius_mm（过渡半径，论文曲线过渡）。
+    所有直线段/圆弧段坐标由模板确定性算出（骨架即最终几何，assemble 只填 add_polyline，不受影响）。
+    """
+    od, bore, thick = params["od_mm"], params["bore_mm"], params["thick_mm"]
+    hub_half, rim_half = params.get("hub_mm", 38), params.get("rim_mm", 30)
+    arc_r = float(params.get("rim_arc_radius_mm", 20.0))
+    bore_r, rim_r = bore / 2.0, od / 2.0
+    hub_radial = _clamp(0.16 * od, 25.0, 100.0)
+    rim_radial = _clamp(0.12 * od, 25.0, 95.0)
+    hub_r = bore_r + hub_radial
+    rim_junc = rim_r - rim_radial
+    if hub_r >= rim_junc:  # 保证腹板存在
+        hub_r = (bore_r + rim_junc) / 2.0
+    web_inner = _clamp(0.6 * hub_half, 8.0, 40.0)
+    web_outer = _clamp(0.5 * rim_half, 6.0, 32.0)
+    P = [(round(bore_r, 3), -hub_half), (round(hub_r, 3), -hub_half),
+         (round(hub_r, 3), -web_inner), (round(rim_junc, 3), -web_outer),
+         (round(rim_junc, 3), -rim_half), (round(rim_r, 3), -rim_half),
+         (round(rim_r, 3), rim_half), (round(rim_junc, 3), rim_half),
+         (round(rim_junc, 3), web_outer), (round(hub_r, 3), web_inner),
+         (round(hub_r, 3), hub_half), (round(bore_r, 3), hub_half)]
+    t1 = _arc_transition(P[2], P[3], P[4], arc_r)  # 下侧 web-rim 过渡
+    t2 = _arc_transition(P[7], P[8], P[9], arc_r)  # 上侧 web-rim 过渡
+    # 轮廓路径段：(seg_type, start, end, arc_params|None)
+    path = []
+    add_line = lambda a, b: path.append(("line", a, b, None))
+    add_arc = lambda a, b, arc: path.append(("arc", a, b, arc))
+    if t1:
+        A1, arc1, B1 = t1
+        add_line(P[0], P[1]); add_line(P[1], P[2]); add_line(P[2], A1)
+        add_arc(A1, B1, arc1); add_line(B1, P[4]); add_line(P[4], P[5])
+    else:
+        for i in range(5):
+            add_line(P[i], P[i + 1])
+    add_line(P[5], P[6]); add_line(P[6], P[7])
+    if t2:
+        A2, arc2, B2 = t2
+        add_line(P[7], A2); add_arc(A2, B2, arc2); add_line(B2, P[9])
+    else:
+        add_line(P[7], P[8]); add_line(P[8], P[9])
+    add_line(P[9], P[10]); add_line(P[10], P[11])
+    # 节点链（所有段的 input 0 都引用 sketch 的 workplane，last_point 由组件状态续接）
+    nodes = [_node("n_sketch_disc", "disc_body", "create_2d_sketch", [],
+                   [_out("sketch", "sketch")],
+                   {"plane": "XZ", "origin_x_mm": 0, "origin_y_mm": 0},
+                   "sketch", "sketch_profile")]
+    for i, (stype, a, b, arc) in enumerate(path):
+        nid = f"n_disc_{i}"
+        if stype == "line":
+            nodes.append(_node(nid, "disc_body", "add_line_segment",
+                               [_nref("n_sketch_disc", "sketch")], [_out("profile", "profile")],
+                               {"start": {"x_mm": round(a[0], 3), "y_mm": round(a[1], 3)},
+                                "end": {"x_mm": round(b[0], 3), "y_mm": round(b[1], 3)}},
+                               "profile", "sketch_profile"))
+        else:
+            nodes.append(_node(nid, "disc_body", "add_arc_segment",
+                               [_nref("n_sketch_disc", "sketch")], [_out("profile", "profile")],
+                               {"start": arc["start"], "end": arc["end"],
+                                "center": arc["center"], "direction": arc["direction"]},
+                               "profile", "sketch_profile"))
+    last_id = f"n_disc_{len(path) - 1}"
+    nodes.append(_node("n_close_disc", "disc_body", "close_profile",
+                       [_nref(last_id, "profile")], [_out("profile", "profile")],
+                       {}, "profile", "sketch_profile"))
+    nodes.append(_node("n_disc_revolve", "disc_body", "revolve_profile",
+                       [_nref("n_close_disc", "profile")], [_out("body", "solid")],
+                       {"axis": "Z", "angle_deg": 360}, "feature", "sketch_profile"))
+    return nodes
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 榫槽盘模板（sketch_profile 盘体 + slot_cutter + composition 布尔）
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -226,30 +345,38 @@ def build_slot_disc(params: dict) -> dict:
     lobe = throat * 1.8
     bottom = throat * 0.75
 
-    n_sketch_disc = _node("n_sketch_disc", "disc_body", "create_2d_sketch", [],
-                          [_out("sketch", "sketch")],
-                          {"plane": "XZ", "origin_x_mm": 0, "origin_y_mm": 0},
-                          "sketch", "sketch_profile")
-    n_polyline_disc = _node("n_polyline_disc", "disc_body", "add_polyline",
-                            [_nref("n_sketch_disc", "sketch")], [_out("profile", "profile")],
-                            {"points": dp["points"]}, "profile", "sketch_profile")
-    n_close_disc = _node("n_close_disc", "disc_body", "close_profile",
-                         [_nref("n_polyline_disc", "profile")], [_out("profile", "profile")],
-                         {}, "profile", "sketch_profile")
-    # 盘体 4 个过渡圆角（顶点 2/3/8/9，hub-web 与 web-rim）
-    disc_fillets = []
-    cur = "n_close_disc"
-    for i, vidx in enumerate((2, 3, 8, 9)):
-        fid = f"n_fillet_disc_{i}"
-        fil = _node(fid, "disc_body", "fillet_sketch", [_nref(cur, "profile")],
-                    [_out("profile", "profile")],
-                    {"radius_mm": params.get("disc_fillet_mm", 10.0), "at_vertex_index": [vidx]},
-                    "edge_treatment", "sketch_profile")
-        disc_fillets.append(fil)
-        cur = fid
-    n_disc_revolve = _node("n_disc_revolve", "disc_body", "revolve_profile",
-                           [_nref(cur, "profile")], [_out("body", "solid")],
-                           {"axis": "Z", "angle_deg": 360}, "feature", "sketch_profile")
+    if params.get("category") == "complex_rim":
+        # 复杂轮缘：直线段 + 圆弧段曲线过渡盘体（轮廓坐标模板确定性算出，
+        # 骨架即最终几何——assemble 只填 add_polyline，此盘体无 add_polyline，不受影响）
+        disc_nodes = _disc_arced_body(params)
+        n_disc_revolve = disc_nodes[-1]
+    else:
+        n_sketch_disc = _node("n_sketch_disc", "disc_body", "create_2d_sketch", [],
+                              [_out("sketch", "sketch")],
+                              {"plane": "XZ", "origin_x_mm": 0, "origin_y_mm": 0},
+                              "sketch", "sketch_profile")
+        n_polyline_disc = _node("n_polyline_disc", "disc_body", "add_polyline",
+                                [_nref("n_sketch_disc", "sketch")], [_out("profile", "profile")],
+                                {"points": dp["points"]}, "profile", "sketch_profile")
+        n_close_disc = _node("n_close_disc", "disc_body", "close_profile",
+                             [_nref("n_polyline_disc", "profile")], [_out("profile", "profile")],
+                             {}, "profile", "sketch_profile")
+        # 盘体 4 个过渡圆角（顶点 2/3/8/9，hub-web 与 web-rim）
+        disc_fillets = []
+        cur = "n_close_disc"
+        for i, vidx in enumerate((2, 3, 8, 9)):
+            fid = f"n_fillet_disc_{i}"
+            fil = _node(fid, "disc_body", "fillet_sketch", [_nref(cur, "profile")],
+                        [_out("profile", "profile")],
+                        {"radius_mm": params.get("disc_fillet_mm", 10.0), "at_vertex_index": [vidx]},
+                        "edge_treatment", "sketch_profile")
+            disc_fillets.append(fil)
+            cur = fid
+        n_disc_revolve = _node("n_disc_revolve", "disc_body", "revolve_profile",
+                               [_nref(cur, "profile")], [_out("body", "solid")],
+                               {"axis": "Z", "angle_deg": 360}, "feature", "sketch_profile")
+        disc_nodes = ([n_sketch_disc, n_polyline_disc, n_close_disc] + disc_fillets
+                      + [n_disc_revolve])
 
     cutter_nodes = _slot_cutter_nodes(teeth, slots, depth, throat, fr, R,
                                       params.get("axial_depth_mm", 80.0))
@@ -281,8 +408,7 @@ def build_slot_disc(params: dict) -> dict:
             {"id": "__assembly__", "owner_dialect": "composition",
              "kind_hint": "assembly", "root_node": "n_final_cut"},
         ],
-        "nodes": ([n_sketch_disc, n_polyline_disc, n_close_disc] + disc_fillets
-                  + [n_disc_revolve] + cutter_nodes + [n_pattern, n_final_cut]),
+        "nodes": (disc_nodes + cutter_nodes + [n_pattern, n_final_cut]),
         "constraints": {"require_step_file": True, "require_metadata_sidecar": True,
                         "require_closed_solid": True, "expected_body_count": 1},
         "safety": dict(_SAFETY),
@@ -355,6 +481,67 @@ def build_axisym_disc(params: dict) -> dict:
                             "hole_dia_mm": params["hdia_mm"], "axis": "Z", "through_all": True},
                            "pattern_cut", "axisymmetric"))
         cur = hid
+    # 减重结构（可选，论文 2.2：减重孔/冷却孔/径向局部切槽/局部减重结构）。
+    # 减重孔/冷却孔为通孔（through_all），位置在腹板段（hub_r..rim_junc）；
+    # 环形腔从腹板前端面切入不切穿。与孔/环槽独立叠加，链顺序：环槽→腔→孔→切槽。
+    hub_r = bore / 2.0 + _clamp(0.16 * od, 25.0, 100.0)
+    if hub_r >= rim_junc:
+        hub_r = (bore / 2.0 + rim_junc) / 2.0
+    web_r = (hub_r + rim_junc) / 2.0
+    z_web1 = 0.4 * (thick / 2.0)  # _axisym_stations 的 web 段 z_front
+    # 减重孔阵列（腹板大孔）
+    if params.get("lh_holes"):
+        nodes.append(_node("node_lh_hole", "disc_body", "cut_circular_hole_pattern",
+                           [_nref(cur, "body")], [_out("body", "solid")],
+                           {"count": int(params["lh_holes"]),
+                            "pcd_mm": round(params["lh_pcd_mm"] * 2, 3),
+                            "hole_dia_mm": params["lh_hdia_mm"],
+                            "axis": "Z", "through_all": True},
+                           "pattern_cut", "axisymmetric"))
+        cur = "node_lh_hole"
+    # 冷却孔阵列（小孔，支持双排：cl_pcd_mm + cl_pcd2_mm）
+    if params.get("cl_holes"):
+        for k, cl_pcd in enumerate((params["cl_pcd_mm"], params.get("cl_pcd2_mm"))):
+            if not cl_pcd:
+                break
+            nid = f"node_cl_hole_{k}"
+            nodes.append(_node(nid, "disc_body", "cut_circular_hole_pattern",
+                               [_nref(cur, "body")], [_out("body", "solid")],
+                               {"count": int(params["cl_holes"]),
+                                "pcd_mm": round(cl_pcd * 2, 3),
+                                "hole_dia_mm": params["cl_hdia_mm"],
+                                "axis": "Z", "through_all": True},
+                               "pattern_cut", "axisymmetric"))
+            cur = nid
+    # 径向局部切槽（轮缘外表面周向矩形槽阵列）
+    if params.get("rs_count"):
+        rs_d = params["rs_depth_mm"]
+        rs_hw = params["rs_half_width_mm"]
+        nodes.append(_node("node_rim_slot", "disc_body", "cut_rim_slot_pattern",
+                           [_nref(cur, "body")], [_out("body", "solid")],
+                           {"count": int(params["rs_count"]), "slot_depth_mm": rs_d,
+                            # stations depth 非递减且 >0：首个 =1mm 使剖面从外表面开口点
+                            # 起不产生零长线段（handler 在 depth=0 时开口点与剖面点重复 → 退化）
+                            "slot_profile": {"kind": "symmetric_station_profile",
+                                             "stations": [{"depth_mm": 1.0, "half_width_mm": rs_hw},
+                                                          {"depth_mm": rs_d, "half_width_mm": rs_hw}]}},
+                           "rim_detail", "axisymmetric"))
+        cur = "node_rim_slot"
+    # 局部减重结构：腹板环形腔（从腹板前端面切入，深度 ≤ 腹板轴向厚 → 不切穿）
+    if params.get("cavity_width_mm") and params.get("cavity_depth_mm"):
+        cw = params["cavity_width_mm"]
+        cd = params["cavity_depth_mm"]
+        cav_inner = max(2 * (web_r - cw / 2.0), bore + 2.0)   # 不越中心孔
+        cav_outer = min(2 * (web_r + cw / 2.0), 2 * rim_junc - 2.0)  # 不越轮缘内壁
+        if cav_outer > cav_inner:
+            nodes.append(_node("node_annular_cavity", "disc_body", "cut_annular_groove",
+                               [_nref(cur, "body")], [_out("body", "solid")],
+                               {"side": "front",
+                                "inner_dia_mm": round(cav_inner, 3),
+                                "outer_dia_mm": round(cav_outer, 3),
+                                "depth_mm": cd, "z_position_mm": round(z_web1, 3)},
+                               "annular_detail", "axisymmetric"))
+            cur = "node_annular_cavity"
     nodes.append(_node("node_chamfer", "disc_body", "apply_safe_chamfer",
                        [_nref(cur, "body")], [_out("body", "solid")],
                        {"distance_mm": 1.0, "target": "all_external_edges"},
@@ -457,13 +644,17 @@ def _skeletonize(raw: dict) -> dict:
 
 def _disc_params(params: dict) -> dict:
     """候选参数 → Agent A disc profile 参数（AGENT_A_ADDENDUM 契约）。"""
-    return {
+    d = {
         "outer_diameter_mm": params.get("od_mm"), "bore_diameter_mm": params.get("bore_mm"),
         "axial_thickness_mm": params.get("thick_mm"),
         "hub_half_thickness_mm": params.get("hub_mm"), "rim_half_thickness_mm": params.get("rim_mm"),
         "hub_web_fillet_mm": params.get("disc_fillet_mm", 10.0),
         "web_rim_fillet_mm": params.get("disc_fillet_mm", 10.0),
     }
+    if params.get("category") == "complex_rim":
+        # 复杂轮缘：曲线过渡由圆弧段表达（论文 2.1），Agent B 需按此生成含圆弧盘体轮廓
+        d["rim_transition_radius_mm"] = params.get("rim_arc_radius_mm", 20.0)
+    return d
 
 
 def _slot_params(params: dict) -> dict:
@@ -547,9 +738,20 @@ DEMO_HOLE = {"category": "hole", "od_mm": 500, "bore_mm": 120, "thick_mm": 76,
              "holes": 16, "pcd_mm": 180, "hdia_mm": 14, "_tag": "demo_hole"}
 DEMO_GROOVE = {"category": "groove", "od_mm": 500, "bore_mm": 120, "thick_mm": 76,
                "grooves": 2, "gw_mm": 14, "gd_mm": 8, "_tag": "demo_groove"}
+DEMO_GROOVE_LH = {"category": "groove", "od_mm": 500, "bore_mm": 120, "thick_mm": 76,
+                  "grooves": 1, "gw_mm": 12, "gd_mm": 8,
+                  "lh_holes": 12, "lh_pcd_mm": 175, "lh_hdia_mm": 16,
+                  "cl_holes": 24, "cl_pcd_mm": 225, "cl_hdia_mm": 6, "cl_pcd2_mm": 240,
+                  "rs_count": 60, "rs_depth_mm": 10, "rs_half_width_mm": 3.0,
+                  "cavity_width_mm": 40, "cavity_depth_mm": 4.0, "_tag": "demo_groove_lh"}
+DEMO_COMPLEX = {"category": "complex_rim", "od_mm": 500, "bore_mm": 120, "thick_mm": 76,
+                "hub_mm": 38, "rim_mm": 30, "slots": 60, "teeth": 3, "R_mm": 225,
+                "depth_mm": 32, "throat_half_width_mm": 4.0, "fr_mm": 1.0,
+                "rim_arc_radius_mm": 20.0, "_tag": "demo_complex"}
 
 
 if __name__ == "__main__":
-    for name, p in (("slot", DEMO_SLOT), ("hole", DEMO_HOLE), ("groove", DEMO_GROOVE)):
+    for name, p in (("slot", DEMO_SLOT), ("hole", DEMO_HOLE), ("groove", DEMO_GROOVE),
+                    ("groove_lh", DEMO_GROOVE_LH), ("complex", DEMO_COMPLEX)):
         doc = build(p)
         print(f"[{name}] nodes={len(doc['nodes'])} comps={len(doc['components'])} OK")

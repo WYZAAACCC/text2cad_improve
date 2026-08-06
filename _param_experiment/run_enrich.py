@@ -42,13 +42,19 @@ from mcp_tools import (  # noqa: E402
 from validate_req_params import extract_requirements  # noqa: E402
 
 # ⑦b 参数向量键（extract_requirements 的键，缺失补 None 抗漂移）。
-# 覆盖主体 + 榫槽 + 孔 + 环槽，使 6 类盘的 param_template_id/design_id 正确区分。
+# 覆盖主体 + 榫槽 + 孔 + 环槽 + 减重结构 + 轮缘过渡，使 6 类盘的
+# param_template_id/design_id 正确区分（含 groove 减重结构 / complex_rim 圆弧过渡）。
 PARAM_VECTOR_KEYS = ["outer_diameter_mm", "bore_diameter_mm", "axial_thickness_mm",
                      "hub_half_mm", "rim_half_mm",
                      "slots", "teeth_count", "slot_depth_mm",
                      "throat_half_width_mm", "root_fillet_mm",
                      "holes", "hdia_mm", "pcd_mm",
-                     "grooves", "gw_mm", "gd_mm"]
+                     "grooves", "gw_mm", "gd_mm",
+                     "lh_holes", "lh_hdia_mm", "lh_pcd_mm",
+                     "cl_holes", "cl_hdia_mm", "cl_pcd_mm", "cl_pcd2_mm",
+                     "rs_count", "rs_depth_mm",
+                     "cavity_width_mm", "cavity_depth_mm",
+                     "rim_arc_radius_mm"]
 
 # ④ 归一化参数注册表：(key, label, is_derived, expression)
 NORMALIZED_PARAMS = [
@@ -78,6 +84,17 @@ NORMALIZED_PARAMS = [
     ("gw_mm", "环槽槽宽", False, None),
     ("gd_mm", "环槽槽深", False, None),
     ("teeth_count", "齿数", False, None),
+    ("lh_holes", "减重孔数量", False, None),
+    ("lh_pcd_mm", "减重孔分布半径", False, None),
+    ("lh_hdia_mm", "减重孔径", False, None),
+    ("cl_holes", "冷却孔数量", False, None),
+    ("cl_pcd_mm", "冷却孔分布半径", False, None),
+    ("cl_hdia_mm", "冷却孔径", False, None),
+    ("rs_count", "径向切槽数量", False, None),
+    ("rs_depth_mm", "切槽深度", False, None),
+    ("cavity_width_mm", "环形腔宽", False, None),
+    ("cavity_depth_mm", "环形腔深", False, None),
+    ("rim_arc_radius_mm", "轮缘过渡半径", False, None),
 ]
 
 # design_family 匹配注册表（G1-G5 期望参数向量；离散键精确、连续键 tol）

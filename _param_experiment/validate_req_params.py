@@ -20,6 +20,7 @@ sys.path.insert(0, str(_HERE.parent / "integrations" / "engineering_tools" / "sr
 
 # (param_key, 正则, 类型, 容差)
 # 注意：环槽用"环槽槽宽/环槽槽深"措辞（candidate_sampler 文本一致），避免与榫槽"槽深"冲突。
+# 减重孔/冷却孔用"减重孔/冷却孔，孔径"限定，避免与安装孔"孔径"（hdia_mm）冲突。
 RE_PARAMS = [
     ("outer_diameter_mm",    r"外径[Φ]?(\d+)",        float, 5.0),
     ("bore_diameter_mm",     r"中心孔直径[Φ]?(\d+)",  float, 5.0),
@@ -33,14 +34,27 @@ RE_PARAMS = [
     # 主体：轮毂/轮缘半厚
     ("hub_half_mm",          r"轮毂半厚([\d.]+)",    float, 3.0),
     ("rim_half_mm",          r"轮缘半厚([\d.]+)",    float, 3.0),
-    # 孔阵列（"安装孔"限定避免与榫槽"分布半径"冲突）
+    # 孔阵列（"安装孔"限定避免与减重/冷却孔"孔径"冲突）
     ("holes",                r"(\d+)个安装孔",       int,   0),
-    ("hdia_mm",              r"孔径([\d.]+)",        float, 0.5),
+    ("hdia_mm",              r"安装孔，孔径([\d.]+)", float, 0.5),
     ("pcd_mm",               r"安装孔.*?分布半径([\d.]+)", float, 2.0),
     # 环槽
     ("grooves",              r"(\d+)道环槽",         int,   0),
     ("gw_mm",                r"环槽槽宽([\d.]+)",    float, 0.5),
     ("gd_mm",                r"环槽槽深([\d.]+)",    float, 0.5),
+    # 减重结构（论文 2.2）
+    ("lh_holes",             r"(\d+)个减重孔",       int,   0),
+    ("lh_hdia_mm",           r"减重孔，孔径([\d.]+)", float, 0.5),
+    ("lh_pcd_mm",            r"减重孔，孔径[\d.]+mm，分布半径([\d.]+)", float, 2.0),
+    ("cl_holes",             r"(\d+)个冷却孔",       int,   0),
+    ("cl_hdia_mm",           r"冷却孔，孔径([\d.]+)", float, 0.5),
+    ("cl_pcd_mm",            r"冷却孔，孔径[\d.]+mm，分布半径([\d.]+)", float, 2.0),
+    ("cl_pcd2_mm",           r"第二排分布半径([\d.]+)", float, 2.0),
+    ("rs_count",             r"(\d+)个径向局部切槽", int,   0),
+    ("rs_depth_mm",          r"切槽深度([\d.]+)",    float, 1.0),
+    ("cavity_width_mm",      r"环形减重腔，腔宽([\d.]+)", float, 1.0),
+    ("cavity_depth_mm",      r"环形减重腔，腔宽[\d.]+mm，腔深([\d.]+)", float, 0.5),
+    ("rim_arc_radius_mm",    r"过渡半径([\d.]+)",    float, 1.0),
 ]
 
 LABELS = {
@@ -51,6 +65,12 @@ LABELS = {
     "holes": "孔数量", "hdia_mm": "孔径", "pcd_mm": "孔分布半径",
     "grooves": "环槽数量", "gw_mm": "环槽槽宽", "gd_mm": "环槽槽深",
     "R_mm": "榫槽分布半径",
+    "lh_holes": "减重孔数", "lh_hdia_mm": "减重孔径", "lh_pcd_mm": "减重孔分布半径",
+    "cl_holes": "冷却孔数", "cl_hdia_mm": "冷却孔径", "cl_pcd_mm": "冷却孔分布半径",
+    "cl_pcd2_mm": "第二排冷却孔分布半径",
+    "rs_count": "径向切槽数", "rs_depth_mm": "切槽深度",
+    "cavity_width_mm": "环形腔宽", "cavity_depth_mm": "环形腔深",
+    "rim_arc_radius_mm": "轮缘过渡半径",
 }
 
 

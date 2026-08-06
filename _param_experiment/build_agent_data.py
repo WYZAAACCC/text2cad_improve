@@ -63,6 +63,38 @@ def _points_of(llm_raw: dict, comp_id: str) -> list:
     return []
 
 
+def _disc_contour(llm_raw: dict, comp_id: str) -> dict:
+    """盘体轮廓 → {points, arcs?}。complex_rim 盘体为 add_line_segment+add_arc_segment
+    混合（无 add_polyline），圆弧段坐标由模板确定性算出（论文 2.1 曲线过渡）。
+
+    - 标准榫槽盘（slot/coupled）：add_polyline 12 点 → {points}
+    - complex_rim：直线段终点序列 + 过渡弧参数 → {points, arcs}
+    """
+    pts = _points_of(llm_raw, comp_id)
+    if pts:
+        return {"points": pts}
+    lines, arcs = [], []
+    for n in llm_raw.get("nodes", []):
+        if n.get("component") != comp_id:
+            continue
+        op = n.get("op")
+        if op == "add_line_segment":
+            p = n.get("params", {})
+            lines.append((p.get("start", {}), p.get("end", {})))
+        elif op == "add_arc_segment":
+            p = n.get("params", {})
+            arcs.append({"start": p.get("start"), "end": p.get("end"),
+                         "center": p.get("center"), "direction": p.get("direction", "ccw")})
+    if not lines:
+        return {"points": []}
+    # 链式线段：points = 首段 start + 每段 end
+    points = [lines[0][0]] + [e for _, e in lines]
+    out = {"points": points}
+    if arcs:
+        out["arcs"] = arcs
+    return out
+
+
 def _profile_stations(llm_raw: dict) -> list:
     """axisym 盘体的盘体轮廓 = revolve_profile 的 profile_stations（无 add_polyline）。"""
     for n in llm_raw.get("nodes", []):
@@ -114,9 +146,11 @@ def build_samples(cand: dict) -> dict:
               f"轮廓参数: {', '.join(f'{k}={v}' for k, v in sorted(disc_params.items()))}\n"
               f"需求相关: {text[:800]}")
     if cat in SLOT_CATS:
-        # 榫槽类：盘体轮廓 = sketch_profile add_polyline 12 点
-        b_gold = {"profile_id": disc_pid, "kind": "disc",
-                  "points": _points_of(llm_raw, _disc_comp_id(llm_raw))}
+        # 榫槽类：盘体轮廓 = sketch_profile 轮廓（complex_rim 为直线+圆弧段混合，
+        # gold 含 arcs；其余为 add_polyline 12 点）
+        disc_comp = _disc_comp_id(llm_raw)
+        contour = _disc_contour(llm_raw, disc_comp)
+        b_gold = {"profile_id": disc_pid, "kind": "disc", **contour}
     else:
         # axisym 类：盘体轮廓 = revolve_profile profile_stations（无 add_polyline）
         b_gold = {"profile_id": disc_pid, "kind": "disc",

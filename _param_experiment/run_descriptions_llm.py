@@ -50,6 +50,12 @@ _PARAM_TOL = {
     "fr_mm": ("root_fillet_mm", 0.3), "holes": ("holes", 0), "pcd_mm": ("pcd_mm", 2.0),
     "hdia_mm": ("hdia_mm", 0.5), "grooves": ("grooves", 0), "gw_mm": ("gw_mm", 0.5),
     "gd_mm": ("gd_mm", 0.5), "R_mm": ("R_mm", 2.0),
+    "lh_holes": ("lh_holes", 0), "lh_pcd_mm": ("lh_pcd_mm", 2.0), "lh_hdia_mm": ("lh_hdia_mm", 0.5),
+    "cl_holes": ("cl_holes", 0), "cl_pcd_mm": ("cl_pcd_mm", 2.0), "cl_hdia_mm": ("cl_hdia_mm", 0.5),
+    "cl_pcd2_mm": ("cl_pcd2_mm", 2.0),
+    "rs_count": ("rs_count", 0), "rs_depth_mm": ("rs_depth_mm", 1.0),
+    "cavity_width_mm": ("cavity_width_mm", 1.0), "cavity_depth_mm": ("cavity_depth_mm", 0.5),
+    "rim_arc_radius_mm": ("rim_arc_radius_mm", 1.0),
 }
 
 _DISK_CN = {"basic": "基础轮毂-腹板-轮缘盘", "hole": "带周向孔阵列的轮毂-腹板-轮缘盘",
@@ -77,6 +83,16 @@ def _param_summary(params: dict) -> str:
         p.append(f"周向均布{params['holes']}个安装孔，孔径{params['hdia_mm']}mm，分布半径{params['pcd_mm']}mm")
     if params.get("grooves"):
         p.append(f"轮缘内侧{params['grooves']}道环槽，环槽槽宽{params['gw_mm']}mm，环槽槽深{params['gd_mm']}mm")
+    if params.get("lh_holes"):
+        p.append(f"腹板{params['lh_holes']}个减重孔，孔径{params['lh_hdia_mm']}mm，分布半径{params['lh_pcd_mm']}mm")
+    if params.get("cl_holes"):
+        p.append(f"腹板{params['cl_holes']}个冷却孔，孔径{params['cl_hdia_mm']}mm，分布半径{params['cl_pcd_mm']}mm")
+    if params.get("rs_count"):
+        p.append(f"轮缘外表面{params['rs_count']}个径向切槽，切槽深度{params['rs_depth_mm']}mm")
+    if params.get("cavity_width_mm"):
+        p.append(f"腹板环形减重腔，腔宽{params['cavity_width_mm']}mm，腔深{params['cavity_depth_mm']}mm")
+    if params.get("rim_arc_radius_mm"):
+        p.append(f"轮缘圆弧曲线过渡半径{params['rim_arc_radius_mm']}mm")
     return "，".join(p)
 
 

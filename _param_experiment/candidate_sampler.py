@@ -40,6 +40,12 @@ RANGES = {
     "grooves": (1, 3), "gw_mm": (4, 28), "gd_mm": (2, 20),
     "slots": (24, 96), "teeth": (2, 4), "R_mm": (180, 300),
     "depth_mm": (12, 45), "throat_half_width_mm": (2, 9), "fr_mm": (0.5, 4.0),
+    # 减重结构（论文 2.2）：减重孔/冷却孔复用孔阵列范围；切槽/环形腔为新增特征
+    "lh_holes": (6, 36), "lh_pcd_mm": (80, 310), "lh_hdia_mm": (4, 26),
+    "cl_holes": (6, 36), "cl_pcd_mm": (80, 310), "cl_hdia_mm": (4, 26),
+    "rs_count": (12, 96), "rs_depth_mm": (4, 20), "rs_half_width_mm": (1, 6),
+    "cavity_width_mm": (16, 60), "cavity_depth_mm": (2, 6),
+    "rim_arc_radius_mm": (12, 30),
 }
 BOUNDARY_MARGIN = 5.0  # 剩料 margin < 5mm 视为边界区（真实贴近约束边界）
 
@@ -85,12 +91,43 @@ _HOLE_VARIANTS = [
     {"holes": 30, "pcd_mm": 220, "hdia_mm": 16},     # 中高（margin 大 → feasible）
     {"holes": 24, "pcd_mm": 240, "hdia_mm": 12},     # 外边界（od 500: margin≈2 → boundary）
 ]
-_GROOVE_VARIANTS = [
-    {"grooves": 1, "gw_mm": 6, "gd_mm": 4},          # 低端
-    {"grooves": 2, "gw_mm": 14, "gd_mm": 10},        # 中
-    {"grooves": 3, "gw_mm": 24, "gd_mm": 18},        # 高
-    {"grooves": 3, "gw_mm": 28, "gd_mm": 20},        # 高深（环槽约束宽松 → 多 feasible）
+# groove 减重结构变体模板：环槽 + 减重孔/冷却孔/径向切槽/环形腔组合（论文 2.2）。
+# 减重孔/冷却孔 pcd 用"腹板段比例"（pcd_frac：hub_r + frac×(rim_junc−hub_r)），
+# 由 _resolve_groove_feats 按 subj 动态解析为绝对 pcd_mm —— 避免固定 pcd 对不同 od 越界。
+_GROOVE_LH_TEMPLATES = [
+    {"grooves": 1, "gw_mm": 6, "gd_mm": 4},                            # 低端（仅环槽）
+    {"grooves": 2, "gw_mm": 14, "gd_mm": 10},                          # 中（仅环槽）
+    {"grooves": 1, "gw_mm": 12, "gd_mm": 8, "lh_holes": 12,
+     "lh_hdia_mm": 16, "lh_pcd_frac": 0.35},                           # 环槽+减重孔
+    {"grooves": 2, "gw_mm": 16, "gd_mm": 10, "cl_holes": 24,
+     "cl_hdia_mm": 6, "cl_pcd_frac": 0.65},                            # 环槽+冷却孔
+    {"grooves": 1, "gw_mm": 20, "gd_mm": 12, "rs_count": 60,
+     "rs_depth_mm": 10, "rs_half_width_mm": 3},                        # 环槽+径向切槽
+    {"grooves": 2, "gw_mm": 24, "gd_mm": 14, "lh_holes": 16, "lh_hdia_mm": 14,
+     "lh_pcd_frac": 0.4, "cl_holes": 30, "cl_hdia_mm": 5,
+     "cl_pcd_frac": 0.75},                                             # 环槽+减重孔+冷却孔
+    {"grooves": 3, "gw_mm": 8, "gd_mm": 6, "lh_holes": 24, "lh_hdia_mm": 12,
+     "lh_pcd_frac": 0.45, "cl_holes": 36, "cl_hdia_mm": 5,
+     "cl_pcd_frac": 0.3, "cl_pcd2_frac": 0.8, "cavity_width_mm": 44,
+     "cavity_depth_mm": 4},                                            # 双环槽+双排孔+环形腔
 ]
+
+
+def _resolve_groove_feats(subj: dict, tpl: dict) -> dict:
+    """groove 减重模板：把 pcd_frac（腹板段比例）解析为绝对 pcd_mm（_axisym_radii）。"""
+    from sampling_constraints import _axisym_radii
+    r = _axisym_radii(subj["od_mm"], subj["bore_mm"])
+    f = dict(tpl)
+
+    def _resolve(key: str, frac_key: str):
+        if frac_key in f:
+            fr = f.pop(frac_key)
+            f[key] = round(r["hub_r"] + fr * (r["rim_junc"] - r["hub_r"]), 1)
+
+    _resolve("lh_pcd_mm", "lh_pcd_frac")
+    _resolve("cl_pcd_mm", "cl_pcd_frac")
+    _resolve("cl_pcd2_mm", "cl_pcd2_frac")
+    return f
 _SLOT_VARIANTS = [
     {"slots": 30, "teeth": 2, "R_mm": 210, "depth_mm": 15, "throat_half_width_mm": 3.0, "fr_mm": 1.0},
     {"slots": 48, "teeth": 2, "R_mm": 220, "depth_mm": 24, "throat_half_width_mm": 4.0, "fr_mm": 1.0},
@@ -103,7 +140,14 @@ _INFEASIBLE = {
     "hole": [
         {"holes": 36, "pcd_mm": 80, "hdia_mm": 26},      # 孔间剩料必负（pcd 下限+hdia 上限+n 上限）
     ],
-    "groove": [],  # 环槽在参数范围内约束宽松，无普遍不可行
+    "groove": [
+        # 减重孔 pcd 过低（落在轮毂段，check_lightening_hole_bounds 内边界必违，参数仍在论文范围）
+        {"grooves": 1, "gw_mm": 12, "gd_mm": 8, "lh_holes": 24,
+         "lh_pcd_mm": 80, "lh_hdia_mm": 20},
+        # 环形腔超宽（腹板径向放不下，check_annular_cavity 必违，cavity_width 在范围上限内）
+        {"grooves": 2, "gw_mm": 16, "gd_mm": 10, "cavity_width_mm": 60,
+         "cavity_depth_mm": 6},
+    ],
     "slot": [
         {"slots": 96, "teeth": 4, "R_mm": 200, "depth_mm": 24,
          "throat_half_width_mm": 6.0, "fr_mm": 2.0},     # 节距必不足（R 下限+throat 上限+slots 上限）
@@ -128,7 +172,7 @@ def _feat_variants(cat: str) -> list:
     if cat == "hole":
         return list(_HOLE_VARIANTS)
     if cat == "groove":
-        return list(_GROOVE_VARIANTS)
+        return list(_GROOVE_LH_TEMPLATES)
     if cat == "slot":
         return list(_SLOT_VARIANTS)
     if cat == "coupled":
@@ -141,10 +185,14 @@ def _feat_variants(cat: str) -> list:
              "grooves": 1, "gw_mm": 12, "gd_mm": 8},
         ]
     if cat == "complex_rim":
-        return list(_SLOT_VARIANTS) + [
-            {"slots": 84, "teeth": 3, "R_mm": 250, "depth_mm": 36,
-             "throat_half_width_mm": 5.0, "fr_mm": 2.0},
-        ]
+        # 圆弧曲线过渡盘体（论文 2.1）：各槽参数变体 + 圆弧过渡半径（12/20/28）
+        out = []
+        for t in _SLOT_VARIANTS + [
+                {"slots": 84, "teeth": 3, "R_mm": 250, "depth_mm": 36,
+                 "throat_half_width_mm": 5.0, "fr_mm": 2.0}]:
+            for arc in (12.0, 20.0, 28.0):
+                out.append({**t, "rim_arc_radius_mm": arc})
+        return out
     return []  # basic
 
 
@@ -173,6 +221,21 @@ def _make_text(params: dict, cat: str) -> str:
     if f.get("grooves"):
         p.append(f"轮缘内侧{f['grooves']}道环槽，环槽槽宽{f['gw_mm']}mm，"
                  f"环槽槽深{f['gd_mm']}mm")
+    if f.get("lh_holes"):
+        p.append(f"腹板上{f['lh_holes']}个减重孔，孔径{f['lh_hdia_mm']}mm，"
+                 f"分布半径{f['lh_pcd_mm']}mm")
+    if f.get("cl_holes"):
+        p.append(f"腹板上{f['cl_holes']}个冷却孔，孔径{f['cl_hdia_mm']}mm，"
+                 f"分布半径{f['cl_pcd_mm']}mm"
+                 + (f"，第二排分布半径{f['cl_pcd2_mm']}mm" if f.get("cl_pcd2_mm") else ""))
+    if f.get("rs_count"):
+        p.append(f"轮缘外表面{f['rs_count']}个径向局部切槽，切槽深度{f['rs_depth_mm']}mm，"
+                 f"槽宽{int(2 * f['rs_half_width_mm'])}mm")
+    if f.get("cavity_width_mm"):
+        p.append(f"腹板处环形减重腔，腔宽{f['cavity_width_mm']}mm，"
+                 f"腔深{f['cavity_depth_mm']}mm")
+    if f.get("rim_arc_radius_mm"):
+        p.append(f"轮缘与腹板交界采用圆弧曲线过渡，过渡半径{f['rim_arc_radius_mm']}mm")
     return "，".join(p) + "。参考几何，非适航件。"
 
 
@@ -198,6 +261,21 @@ def _margin(subj: dict, feat: dict | None) -> float:
             margins.append(c["tr"] - params["depth_mm"])
         elif n == "groove_depth":
             margins.append(c["tr"] - params["gd_mm"])
+        elif n in ("lh_hole_bounds", "cl_hole_bounds"):
+            key = {"lh_hole_bounds": "lh_pcd_mm", "cl_hole_bounds": "cl_pcd_mm"}[n]
+            margins.append(min(c["max_pcd_mm"] - params[key],
+                               params[key] - c["min_pcd_mm"]))
+        elif n in ("lh_hole_spacing", "cl_hole_spacing"):
+            margins.append(c["ligament"])
+        elif n == "cl_double_row_spacing":
+            margins.append(c["sep_mm"] - c["min_sep_mm"])
+        elif n == "rim_slot_depth":
+            margins.append(c["tr"] - params["rs_depth_mm"])
+        elif n == "rim_slot_pitch":
+            margins.append(c["pitch"] - c["width"])
+        elif n == "annular_cavity":
+            margins.append(min(c["max_width_mm"] - params["cavity_width_mm"],
+                               c["max_depth_mm"] - params["cavity_depth_mm"]))
     return min(margins) if margins else float("inf")
 
 
@@ -265,11 +343,12 @@ def _sample_family(fid: str, fam: dict, per_family: int) -> list:
         for f in feats:
             if used >= budget:
                 break
-            zone, _ch = _classify(s, f)
+            resolved = _resolve_groove_feats(s, f) if cat == "groove" else f
+            zone, _ch = _classify(s, resolved)
             if zone == "infeasible":
                 continue  # 不可行单独构造
             params = dict(s)
-            params.update(f)
+            params.update(resolved)
             push(params, zone)
             used += 1
     # 不可行（不再强制重标 boundary——边界区只保留真实 margin < BOUNDARY_MARGIN 的候选，
