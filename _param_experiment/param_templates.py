@@ -176,29 +176,42 @@ def _slot_cutter_nodes(teeth, slots, depth_mm, throat_half, fr_mm, rim_r,
                     [_nref("n_polyline_cutter", "profile")], [_out("profile", "profile")],
                     {}, "profile", "sketch_profile")
     n_upper = 2 + 4 * int(teeth) + 3
-    # 齿根圆角（论文 2.3：齿根圆角 + 槽底圆角组合）。覆盖齿根连接处 connector 顶点
-    # （平缓转角，CAD fillet 不产生小边——neck 尖角圆角会退化，经实测避免）。
-    # 上侧 (i-1)%4==3 且 i<n_upper-1（排除槽底根点，由 root fillet 覆盖）+ 镜像。
+    n_teeth = int(teeth)
+
+    # 齿根圆角（论文 2.3：齿根圆角 + 槽底圆角组合）。
+    # 只在平缓 connector 顶点（每齿颈部平台点，连接内斜面降与颈部平台）与槽底圆角——
+    # 避免在 lobe 尖角/齿面斜面上 fillet（CAD 在尖角圆角会批量产生 <0.25mm 小边，过不了 degenerate 门）。
+    def _mirror(idxs):
+        return sorted({int(i) for i in idxs} | {2 * n_upper - 1 - int(i) for i in idxs})
+
     conn_idxs = [i for i in range(1, n_upper - 1) if (i - 1) % 4 == 3]
-    all_conn = sorted(set(conn_idxs + [2 * n_upper - 1 - i for i in conn_idxs]))
-    root_room = max(0.75 * float(throat_half) - 1.5, 0.3)  # 槽底 root 可放半宽
-    neck_rad = round(min(float(fr_mm), 0.8 * float(neck), root_room), 3)  # connector 可放半径
+    all_conn = _mirror(conn_idxs)
+    root_idxs = sorted({n_upper - 1, n_upper})  # 仅槽底根点（对称 2 点），避免台阶点圆角产生小边
+
+    root_room = max(0.75 * float(throat_half) - 1.5, 0.3)
+    # connector（齿根连接处）可放半径：fr_mm 为齿根圆角参数，clamp 到 neck/root 可放空间
+    neck_rad = round(min(float(fr_mm), 0.8 * float(neck), root_room, 1.2), 3)
+
+    cur = "n_close_cutter"
+    fillet_nodes = []
     n_fillet_neck = _node("n_fillet_neck", "slot_cutter", "fillet_sketch",
-                          [_nref("n_close_cutter", "profile")], [_out("profile", "profile")],
-                          {"radius_mm": neck_rad, "at_vertex_index": all_conn},
+                          [_nref(cur, "profile")], [_out("profile", "profile")],
+                          {"radius_mm": max(neck_rad, 0.3), "at_vertex_index": all_conn},
                           "edge_treatment", "sketch_profile")
-    # 槽底 root 圆角（接在齿根圆角后），半径 clamp 到 root 半宽可放空间
-    root_idxs = sorted({n_upper - 1, n_upper})
+    fillet_nodes.append(n_fillet_neck)
+    cur = "n_fillet_neck"
     fr = min(float(fr_mm), root_room)
     n_fillet_root = _node("n_fillet_cutter_root", "slot_cutter", "fillet_sketch",
-                          [_nref("n_fillet_neck", "profile")], [_out("profile", "profile")],
-                          {"radius_mm": round(fr, 3), "at_vertex_index": root_idxs},
+                          [_nref(cur, "profile")], [_out("profile", "profile")],
+                          {"radius_mm": round(max(fr, 0.3), 3), "at_vertex_index": root_idxs},
                           "edge_treatment", "sketch_profile")
+    fillet_nodes.append(n_fillet_root)
+    cur = "n_fillet_cutter_root"
     n_extrude = _node("n_cutter_extrude", "slot_cutter", "extrude_profile",
-                      [_nref("n_fillet_cutter_root", "profile")], [_out("body", "solid")],
+                      [_nref(cur, "profile")], [_out("body", "solid")],
                       {"depth_mm": axial_depth_mm, "direction": "both", "taper_deg": 0},
                       "feature", "sketch_profile")
-    return [n_sketch, n_polyline, n_close, n_fillet_neck, n_fillet_root, n_extrude]
+    return [n_sketch, n_polyline, n_close] + fillet_nodes + [n_extrude]
 
 
 
