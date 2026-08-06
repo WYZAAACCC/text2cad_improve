@@ -168,17 +168,18 @@ def check_double_row_spacing(pcd1_mm: float, pcd2_mm: float, hdia_mm: float,
             "min_sep_mm": hdia_mm + ch_mm}
 
 
-def check_slot_bottom(R_mm: float, depth_mm: float, od_mm: float, mr_mm: float = 3.0) -> dict:
-    """榫槽 cutter 槽底不穿出轮缘（模板 pattern radius 用 R_mm 时的几何约束）。
+def check_slot_bottom(depth_mm: float, od_mm: float, mr_mm: float = 3.0) -> dict:
+    """榫槽 cutter 槽底不穿出轮缘（pattern radius = rim_r，槽口在轮缘外表面）。
 
-    cutter 从分布半径 R 切入到槽底 R-depth；轮缘内壁半径 rim_junc = od/2 − rim_radial，
-    其中 rim_radial ≈ 0.12·od（与模板 disc_profile/_axisym_stations 一致）→ rim_junc = 0.38·od。
-    要求 R − depth ≥ rim_junc + mr（槽底剩料 ≥ mr，论文 5.3 hs+mr<=tr 的镜像），
+    cutter 槽口在轮缘外表面 rim_r = od/2，槽底在 rim_r − depth；
+    轮缘内壁半径 rim_junc = od/2 − rim_radial（rim_radial ≈ 0.12·od）→ rim_junc = 0.38·od。
+    要求 rim_r − depth ≥ rim_junc + mr（槽底剩料 ≥ mr，论文 5.3 hs+mr<=tr 的镜像），
     否则 cutter 切穿轮缘进入腹板、或槽底剩料为 0 导致布尔退化。
     """
+    rim_r = od_mm / 2.0
     rim_junc = 0.38 * od_mm
-    return {"ok": R_mm - depth_mm >= rim_junc + mr_mm, "rim_junc_mm": round(rim_junc, 3),
-            "bottom_ligament_mm": round(R_mm - depth_mm - rim_junc, 3)}
+    return {"ok": rim_r - depth_mm >= rim_junc + mr_mm, "rim_junc_mm": round(rim_junc, 3),
+            "bottom_ligament_mm": round(rim_r - depth_mm - rim_junc, 3)}
 
 
 def check_all(params: dict, cb: float = 2.0, ch: float = 2.0,
@@ -211,7 +212,7 @@ def check_all(params: dict, cb: float = 2.0, ch: float = 2.0,
                            **check_slot_depth(params["depth_mm"], params["rim_radial_mm"], mr)})
         if params.get("depth_mm") is not None:
             checks.append({"name": "slot_bottom",
-                           **check_slot_bottom(params["R_mm"], params["depth_mm"], od)})
+                           **check_slot_bottom(params["depth_mm"], od)})
         if params.get("fr_mm") is not None:
             checks.append({"name": "slot_root_fillet",
                            **check_slot_root_fillet(params["fr_mm"], params["throat_half_width_mm"])})

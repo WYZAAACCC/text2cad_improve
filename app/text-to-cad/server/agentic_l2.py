@@ -348,7 +348,11 @@ def assemble(skeleton: dict, profiles: list, points_by_id: dict) -> dict:
         comp = next((c for c in raw.get("components", []) if c.get("id") == node.get("component")), None)
         kind = _kind_of(comp, node, kinds)
         if kind is None:
-            # 未标注 → 按 profile 顺序匹配（第一个未用 kind）
+            # 无 kind_hint 的组件（特征切割组件，如孔/环槽 cutter）不参与轮廓填充，
+            # 其 add_polyline 保留模板算好的最终坐标（否则会被按 profile 顺序误填成盘体点）。
+            if comp is None or not comp.get("kind_hint"):
+                continue
+            # 有 kind_hint 但映射不到的（历史任务）→ 按 profile 顺序匹配（第一个未用 kind）
             for k in kinds:
                 if used.get(k, 0) == 0:
                     kind = k
