@@ -88,13 +88,13 @@ def check_groove_depth(gd_mm: float, rim_radial_mm: float, mg_mm: float = 3.0) -
 
 
 def check_slot_root_fillet(fr_mm: float, throat_half_width_mm: float) -> dict:
-    """齿根圆角可放空间：root 平底半宽 = max(bottom−0.75, 2.0) = max(0.75×throat−0.75, 2.0)
-    （与 param_templates.slot_profile 槽底平底一致）。
+    """齿根圆角可放空间：root 平底半宽 = 0.875×throat（mon_e2b035beb218 槽底平底半宽 3.5，
+    与 param_templates.slot_profile 一致）。
 
-    槽底圆角 = min(fr+0.3, root_room)，须 ≤ root_half（否则圆角超出槽底 → BRep_API fillet 失败）。
+    槽底圆角须 ≤ root_half（否则圆角超出槽底 → BRep_API fillet 失败）。
     保守约束 fr ≤ root_half − 0.3。
     """
-    root_half = max(0.75 * throat_half_width_mm - 0.75, 2.0)
+    root_half = 0.875 * throat_half_width_mm
     max_fr = max(root_half - 0.3, 0.3)
     return {"ok": fr_mm <= max_fr + 0.05, "root_half_width_mm": round(root_half, 3),
             "max_fr_mm": round(max_fr, 3)}

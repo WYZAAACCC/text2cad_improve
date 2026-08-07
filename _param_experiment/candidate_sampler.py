@@ -87,20 +87,26 @@ def _subject(fam: dict) -> dict:
     thick = _clamp(fam.get("thick", 76), *RANGES["thick_mm"])
     hub = _clamp(fam.get("hub", 38), *RANGES["hub_mm"])
     rim = _clamp(fam.get("rim", 30), *RANGES["rim_mm"])
+    # rim_radial 按 form 系数（thick_rim=0.17 等，与盘体 _disc_radii 一致）——
+    # 此前固定 0.12 使 thick_rim 盘 rim_radial 低估（64.8 vs 实际 91.8）→ depth 约束误判。
+    from sampling_constraints import _axisym_radii
+    _r = _axisym_radii(od, bore, fam.get("form", "standard"))
     return {"od_mm": od, "bore_mm": bore, "thick_mm": thick,
             "hub_mm": hub, "rim_mm": rim,
-            "rim_radial_mm": _rim_radial(od),
+            "rim_radial_mm": round(_r["rim_r"] - _r["rim_junc"], 1),
             "form": fam.get("form", "standard")}
 
 
 def _subj_variants(subj: dict) -> list:
     """主体变体：base + od ±20% + bore ±20%（落范围），供少量覆盖。"""
+    from sampling_constraints import _axisym_radii
     base = dict(subj)
     out = [base]
     for key, scale in (("od_mm", 0.8), ("od_mm", 1.2), ("bore_mm", 0.7), ("bore_mm", 1.5)):
         v = dict(base)
         v[key] = round(_clamp(base[key] * scale, *RANGES[key]), 1)
-        v["rim_radial_mm"] = _rim_radial(v["od_mm"])
+        _rv = _axisym_radii(v["od_mm"], v["bore_mm"], subj.get("form", "standard"))
+        v["rim_radial_mm"] = round(_rv["rim_r"] - _rv["rim_junc"], 1)
         if v not in out:
             out.append(v)
     return out
@@ -318,14 +324,18 @@ def _normalize_slot(p: dict) -> dict:
     fr clamp 到 root 半宽（0.75×throat−1.5）可放空间。保证 classify/生成/文本一致。"""
     p = dict(p)
     if p.get("slots") and p.get("R_mm") is not None and p.get("depth_mm") is not None:
-        lo = max(0.38 * p["od_mm"] + p["depth_mm"] + 3.0, 180.0)  # 槽底剩料≥3，且论文 R 下限 180
+        # 槽底剩料≥3：R−depth ≥ rim_junc+3。rim_junc 按 form 系数（large_hub=0.40od > standard 0.38od，
+        # 否则 D21/D27 槽底穿轮缘内壁 → 布尔退化）。论文 R 下限 180。
+        from sampling_constraints import _axisym_radii
+        _r = _axisym_radii(p["od_mm"], p["bore_mm"], p.get("form", "standard"))
+        lo = max(_r["rim_junc"] + p["depth_mm"] + 3.0, 180.0)
         hi = min(p["od_mm"] / 2.0, 300.0)  # 论文 R 上限 300
         # min(max(v,lo),hi)：lo<=hi 时正常 clamp；lo>hi（无法同时满足剩料与论文 R 上限）→ 取 hi，
         # 由 check_slot_bottom 判该候选不可行（不产生超论文范围的 R）
         p["R_mm"] = round(min(max(p["R_mm"], lo), hi), 3)
     if p.get("slots") and p.get("fr_mm") is not None and p.get("throat_half_width_mm") is not None:
-        # 槽底平底半宽 = max(0.75×throat−0.75, 2.0)，圆角上限 = root_half−0.3（与模板一致）
-        root_half = max(0.75 * p["throat_half_width_mm"] - 0.75, 2.0)
+        # 槽底平底半宽 = 0.875×throat（mon 基准），圆角上限 = root_half−0.3（与模板一致）
+        root_half = 0.875 * p["throat_half_width_mm"]
         p["fr_mm"] = round(min(p["fr_mm"], max(root_half - 0.3, 0.3)), 3)
     return p
 
