@@ -340,8 +340,10 @@ def build_slot_disc(params: dict) -> dict:
     # circular_pattern 把 cutter 槽口(x=0)平移到 radius 处 → 槽口贴轮缘外表面，槽深 depth 切入轮缘。
     # 槽底剩料由 check_slot_depth 保证（depth + mr ≤ rim_radial，论文 5.3）。
     rim_r = params["od_mm"] / 2.0
-    # pattern radius = R_mm（参数控制槽分布半径/槽口位置；缺省=轮缘外径 → 槽口齐平外表面）
-    R = params.get("R_mm") or rim_r
+    # pattern radius = rim_r：槽口在轮缘外表面切开（标准涡轮盘结构，叶片从外缘径向装入；
+    # 此前 R_mm 作 pattern radius 使槽口内缩脱离外表面 → 用户反馈"没切开轮缘外部"）。
+    # R_mm 保留为分布半径参数：用于周向节距约束（check_slot_pitch: 2πR/slots）与论文标注。
+    R = rim_r
     throat = params.get("throat_half_width_mm", 4.0)
     fr = params.get("fr_mm", 1.0)
 
@@ -698,7 +700,7 @@ def build_coupled_disc(params: dict) -> dict:
     throat = params.get("throat_half_width_mm", 4.0)
     fr = params.get("fr_mm", 1.0)
     rim_r = params["od_mm"] / 2.0
-    R = params.get("R_mm") or rim_r  # R_mm 参数控制槽分布半径/槽口位置
+    R = rim_r  # 槽口在轮缘外表面（R_mm 为分布半径，节距约束/标注用，不移动槽口）
     cutter_nodes = _slot_cutter_nodes(teeth, slots, depth, throat, fr, R,
                                       params.get("axial_depth_mm", 80.0))
     all_nodes += cutter_nodes
