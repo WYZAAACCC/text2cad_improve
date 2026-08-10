@@ -100,6 +100,46 @@ def check_slot_root_fillet(fr_mm: float, throat_half_width_mm: float) -> dict:
             "max_fr_mm": round(max_fr, 3)}
 
 
+def check_slot_fillet_space(fr_mm, teeth, depth_mm, throat_half_width_mm,
+                            tfa_deg=80.0, ufa_deg=70.0) -> dict:
+    """5 组 fillet 全组切线空间约束（P6：覆盖 rad_tip/flank/neck/small，非仅 root）。
+
+    OCC fillet2D 失败判据：r·tan(θ/2) > min(L1,L2)。与 param_templates.slot_fillet_fr_limit
+    同一几何真源（函数内 import 避免模块级循环）。
+    """
+    from param_templates import slot_fillet_fr_limit
+    limit = slot_fillet_fr_limit(teeth, depth_mm, throat_half_width_mm, tfa_deg, ufa_deg)
+    return {"ok": fr_mm <= limit + 1e-9, "max_fr_mm": limit}
+
+
+def check_slot_teeth_space(teeth, depth_mm, throat_half_width_mm,
+                           tfa_deg=80.0, ufa_deg=70.0, spare_mm=9.0) -> dict:
+    """角度驱动齿区占用约束（P6 配套）：Σ(斜面 dx + 平台宽) ≤ depth−spare。
+
+    Tfa/Ufa 过浅（斜面平缓 dx 大）时齿区放不下 → 槽底肩平台越过平底 → 布尔退化。
+    与 slot_profile 的 x_last = −3 − Σ占用 一致（要求过渡段全在端面深处）。
+    连接线固定宽 conn=1.0，平台宽自适应（slot_profile 同公式）：w_plat = clamp((depth−9−occ−n·conn)/n)。
+    """
+    m = float(throat_half_width_mm)
+    n = int(teeth)
+    tfa = math.radians(max(30.0, min(float(tfa_deg), 89.0)))
+    ufa = math.radians(max(30.0, min(float(ufa_deg), 89.0)))
+    lobes = [2.25 * m - 0.25 * m * i for i in range(n)]
+    necks = [max(1.1 * m - 0.25 * m * (i + 1), 1.5) for i in range(n)]
+    neck_prev = 1.1 * m
+    occ_angle = 0.0
+    for i in range(n):
+        occ_angle += (lobes[i] - neck_prev) / math.tan(tfa) \
+            + (lobes[i] - necks[i]) / math.tan(ufa)
+        neck_prev = necks[i]
+    # 齿根共线斜线版（P6-2）：占用 depth−9（楔入3 + 槽底区6），平台宽平分剩余
+    w_plat = max(0.5 * m, min((depth_mm - 9.0 - occ_angle) / (2.0 * n), 1.6 * m))
+    used = occ_angle + 2.0 * n * w_plat
+    avail = depth_mm - spare_mm
+    return {"ok": used <= avail + 1e-6, "used_mm": round(used, 3),
+            "avail_mm": round(avail, 3)}
+
+
 # 盘体形态系数（与 param_templates._RADIAL_FAC 一致，唯一真源在 param_templates；
 # 此处副本避免循环 import，改动须同步两边）。
 _RADIAL_FAC = {"standard": (0.16, 0.12), "thin_web": (0.16, 0.12),
@@ -235,6 +275,20 @@ def check_all(params: dict, cb: float = 2.0, ch: float = 2.0,
         if params.get("fr_mm") is not None:
             checks.append({"name": "slot_root_fillet",
                            **check_slot_root_fillet(params["fr_mm"], params["throat_half_width_mm"])})
+        if params.get("fr_mm") is not None and params.get("teeth") is not None \
+                and params.get("depth_mm") is not None:
+            # P6：5 组 fillet 切线空间 + 角度驱动齿区占用（与 slot_fillet_fr_limit 同源）
+            checks.append({"name": "slot_fillet_space",
+                           **check_slot_fillet_space(params["fr_mm"], params["teeth"],
+                                                     params["depth_mm"],
+                                                     params["throat_half_width_mm"],
+                                                     params.get("tfa_deg", 80.0),
+                                                     params.get("ufa_deg", 70.0))})
+            checks.append({"name": "slot_teeth_space",
+                           **check_slot_teeth_space(params["teeth"], params["depth_mm"],
+                                                    params["throat_half_width_mm"],
+                                                    params.get("tfa_deg", 80.0),
+                                                    params.get("ufa_deg", 70.0))})
     # 环槽（起点=rim_junc 轮缘内壁表面，web-rim fillet 已减到 r=4 释放空间）
     if params.get("gd_mm") is not None and params.get("rim_radial_mm") is not None:
         checks.append({"name": "groove_depth",

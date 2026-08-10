@@ -330,10 +330,13 @@ def _normalize_slot(p: dict) -> dict:
         # min(max(v,lo),hi)：lo<=hi 时正常 clamp；lo>hi（无法同时满足剩料与论文 R 上限）→ 取 hi，
         # 由 check_slot_bottom 判该候选不可行（不产生超论文范围的 R）
         p["R_mm"] = round(min(max(p["R_mm"], lo), hi), 3)
-    if p.get("slots") and p.get("fr_mm") is not None and p.get("throat_half_width_mm") is not None:
-        # 槽底平底半宽 = 0.875×throat（mon 基准），圆角上限 = root_half−0.3（与模板一致）
-        root_half = 0.875 * p["throat_half_width_mm"]
-        p["fr_mm"] = round(min(p["fr_mm"], max(root_half - 0.3, 0.3)), 3)
+    if p.get("slots") and p.get("fr_mm") is not None and p.get("throat_half_width_mm") is not None \
+            and p.get("depth_mm") is not None and p.get("teeth") is not None:
+        # P6：fr clamp 用 5 组 fillet 全组切线空间上限（含 root，替代仅 root_half−0.3）
+        from param_templates import slot_fillet_fr_limit
+        limit = slot_fillet_fr_limit(p["teeth"], p["depth_mm"], p["throat_half_width_mm"],
+                                     p.get("tfa_deg", 80.0), p.get("ufa_deg", 70.0))
+        p["fr_mm"] = round(min(p["fr_mm"], limit), 3)
     return p
 
 
