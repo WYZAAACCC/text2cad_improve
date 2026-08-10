@@ -129,8 +129,9 @@ def disc_profile(od_mm, bore_mm, hub_half_mm, rim_half_mm, thick_mm,
         return _transition_pts(rim_junc, z0, z1, trans_t, transition)
 
     if form == "conical":
-        # 锥形腹板：web 下表面从 hub 顶（z=-wi）连到 rim 内壁更高处（z=-wo_cone），斜面更陡
-        wo_cone = _clamp(0.85 * rim_half_mm, 12.0, 40.0)
+        # 锥形腹板：web 越朝外越薄（hub 侧厚、rim 侧薄）——rim 侧半厚 wo_cone 小于 hub 侧 web_inner。
+        # 此前 0.85×rim_half 使 rim 侧比 hub 侧更厚（厚度方向反了，用户反馈）。
+        wo_cone = _clamp(0.4 * rim_half_mm, 8.0, 24.0)
         lo_ins = _wr(-wo_cone, -rim_half_mm)              # 下半过渡点（z 递减）
         hi_ins = [(r, -z) for r, z in reversed(lo_ins)]    # 上半镜像（z 取正 + 反转，保证轮廓对称）
         pts = [
@@ -449,6 +450,8 @@ def _axisym_stations(od_mm, bore_mm, thick_mm) -> list:
 def _sketch_disc_body(params: dict) -> list:
     """sketch_profile 盘体组件：12 点轮廓 + 4 fillet + revolve（参考 mon_e2b035beb218）。
     顶点 2/9(hub-web) fillet r=12，3/8(web-rim) fillet r=10。
+    有环槽时 web-rim fillet 减到 r=4（释放轮缘内壁轴向空间——否则 r=10 fillet 弧
+    覆盖内壁 z∈±(web_outer~web_outer+10)，环槽无法从内壁表面开口且避开 fillet）。
     """
     thick = params["thick_mm"]
     hub_half = params.get("hub_mm", round(thick * 0.5, 1))
@@ -465,8 +468,22 @@ def _sketch_disc_body(params: dict) -> list:
               {}, "profile", "sketch_profile"),
     ]
     cur = "n_disc_close"
-    for i, (vidx, r) in enumerate(((2, 12.0), (3, 10.0), (8, 10.0), (9, 12.0))):
+    n_grooves = int(params.get("grooves") or 0)
+    # web-rim fillet（顶点 3=下半/8=上半，r=10）按环槽位置取舍：
+    #   grooves=0 —— 两侧都保留（(2,3,8,9)）
+    #   grooves=1 —— 单道卡环槽在下端面（z<0），切除侧取消下半 web-rim fillet（顶点 3），
+    #                 未切除的上端面保留圆角（顶点 8）——fillet 弧与上端面无环槽交互。
+    #   grooves≥2 —— 上下两端面各一道环槽，两侧都切除 → web-rim fillet 全取消
+    #                 （否则 fillet 圆角环面与环槽开口交互产生旋转成形残留）。
+    if n_grooves >= 2:
+        _fillet_vidx = (2, 9)
+    elif n_grooves == 1:
+        _fillet_vidx = (2, 8, 9)
+    else:
+        _fillet_vidx = (2, 3, 8, 9)
+    for i, vidx in enumerate(_fillet_vidx):
         fid = f"n_disc_fillet_{i}"
+        r = 12.0 if vidx in (2, 9) else 10.0
         nodes.append(_node(fid, "disc_body", "fillet_sketch", [_nref(cur, "profile")],
                           [_out("profile", "profile")],
                           {"radius_mm": r, "at_vertex_index": [vidx]},
@@ -621,29 +638,54 @@ def build_axisym_disc(params: dict) -> dict:
             n_pat = _asm_pattern(f"n_pat_cl_{k}", f"{cid}_extrude", int(params["cl_holes"]),
                                  cl_pcd, asm_nodes)
             cur_body = _asm_bool(f"n_bool_cl_{k}", cur_body, n_pat, asm_nodes)
-    # 环槽（collar 卡环槽 / mid 中段集气环槽——旋转切除，从轮缘内壁向实体 +r 方向挖 gd 深）。
-    # 起点 rim_junc+12：避开盘体 web-rim fillet 弧（r=10 + 2 余量），消除"先圆角再切除"的
-    # 圆角旋转成形残留（D11/D13/D23-D28 用户反馈）。
-    # 截面 [r ∈ g_inner, g_inner+gd] × [z ∈ z_c−gw/2, z_c+gw/2]。
-    # collar（卡环/封严槽，US4247257）z_c 靠轮缘端面；mid（冷却集气）z_c 中段。
+    # 环槽（collar 卡环槽 / mid 中段集气环槽——旋转切除，从轮缘内壁表面向 +r 挖 gd 深）。
+    # 盘体 web-rim fillet 已在 _sketch_disc_body 取消（有环槽时）→ 无 fillet 环面可残留。
+    # 截面 [r ∈ rim_junc, rim_junc+gd] × [z ∈ z_c−gw/2, z_c+gw/2]。
+    # collar（卡环/封严槽，US4247257）z_c 靠轮缘下端面；mid（冷却集气）z_c 中段。
     if params.get("grooves"):
         n = int(params["grooves"])
         gw = params.get("gw_mm", 14.0)
         gd = params.get("gd_mm", 8.0)
-        gtype = params.get("groove_type", "mid")
-        margin = 3.0  # 端面剩料
-        limit = max(rim_half - margin - gw / 2.0, 0.0)
+        gtype = params.get("groove_type", "collar")  # 默认卡环槽（用户决策：集气槽全部停用）
+        margin = 3.0
+        # web_outer（web-rim 交界 z）——collar 卡环槽紧贴该处
+        _dp = disc_profile(params["od_mm"], params["bore_mm"], params.get("hub_mm", 38),
+                           params.get("rim_mm", 30), params["thick_mm"],
+                           form=params.get("form", "standard"))
+        wb = _dp["params"]["web_outer_half_mm"]
+        if params.get("form") == "conical":
+            # conical 盘体 web-rim 交界半厚 = wo_cone（disc_profile rim 侧用 wo_cone，
+            # 非 web_outer）——collar 卡环槽须贴该真实交界，否则环槽下缘与 WEB 之间留隙
+            # （此前用 web_outer=15 而实际交界 z=-wo_cone，D14 环槽悬空 3mm）。
+            wb = _clamp(0.4 * params.get("rim_mm", 30.0), 8.0, 24.0)
         if gtype == "collar":
-            z_cs = [-0.7 * limit] if n == 1 \
-                else [-0.7 * limit + (1.0 * limit) * i / (n - 1) for i in range(n)]
+            # 卡环槽：紧贴 web-rim 交界（槽下/上缘与 WEB 相接），向端面方向开槽。
+            # 单道 → 下端面一侧（未切除的上端面保留 web-rim fillet，_sketch_disc_body）；
+            # 多道 → 上下端面对称各一道（两侧都切除，两侧都无 fillet）。
+            A = wb + gw / 2.0  # 槽中心贴 web 交界（z=∓A → 槽内缘 z=∓wb）
+            z_cs = [-A] if n == 1 else [A * (2.0 * i / (n - 1) - 1.0) for i in range(n)]
         else:
+            # 中段集气环槽：轴向中段，z 避开 web 交界 ±web_edge（否则环槽口与 web 交界
+            # 几乎重合 → 布尔退化小边，D14 曾 r=220 z=-12 小边）
+            if params.get("form") == "conical":
+                web_edge = _clamp(0.4 * rim_half, 8.0, 24.0)  # wo_cone（conical web 交界）
+            else:
+                web_edge = _dp["params"]["web_outer_half_mm"]
+            z_lo = -web_edge + 2.0 + gw / 2.0
+            z_hi = +web_edge - 2.0 - gw / 2.0
+            if z_hi <= z_lo:
+                z_lo, z_hi = -gw / 2.0, gw / 2.0
             z_cs = [0.0] if n == 1 \
-                else [-limit + 2.0 * limit * i / (n - 1) for i in range(n)]
-        g_inner = rim_junc + 12.0  # 避开 web-rim fillet 弧
+                else [z_lo + (z_hi - z_lo) * i / (n - 1) for i in range(n)]
+        # 环槽从轮缘内壁表面开口（r=rim_junc）向 +r 挖。
+        # mid 集气槽 = 轮缘内壁**浅环形槽**（深度 ≤3mm 引导冷却空气，不深挖进轮缘实体——
+        # 真实集气腔是盘端面+静止件围成的轴向空腔，单盘用浅槽表达）；
+        # collar 卡环槽 = gd 全深（卡挡环需要）。
+        g_use = min(gd, 3.0) if gtype != "collar" else gd
         for i, z_c in enumerate(z_cs):
             cid = f"feat_groove_{i}"
             feat_comp(cid, f"{cid}_revolve")
-            all_nodes += _ring_cutter(cid, 2.0 * g_inner, 2.0 * (g_inner + gd),
+            all_nodes += _ring_cutter(cid, 2.0 * rim_junc, 2.0 * (rim_junc + g_use),
                                       gw, z_c - gw / 2.0)
             cur_body = _asm_bool(f"n_bool_groove_{i}", cur_body, f"{cid}_revolve", asm_nodes)
     # 径向局部切槽（轮缘外表面周向矩形槽）

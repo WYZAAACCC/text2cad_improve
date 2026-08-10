@@ -235,10 +235,10 @@ def check_all(params: dict, cb: float = 2.0, ch: float = 2.0,
         if params.get("fr_mm") is not None:
             checks.append({"name": "slot_root_fillet",
                            **check_slot_root_fillet(params["fr_mm"], params["throat_half_width_mm"])})
-    # 环槽（起点 rim_junc+12 避开 web-rim fillet 弧，故可用径向厚度减 12）
+    # 环槽（起点=rim_junc 轮缘内壁表面，web-rim fillet 已减到 r=4 释放空间）
     if params.get("gd_mm") is not None and params.get("rim_radial_mm") is not None:
         checks.append({"name": "groove_depth",
-                       **check_groove_depth(params["gd_mm"], params["rim_radial_mm"] - 12.0, mr)})
+                       **check_groove_depth(params["gd_mm"], params["rim_radial_mm"], mr)})
     # 环槽-孔径向间隙：孔/冷却孔整体落在 rim_junc−gd−gap 内侧（不碰轮缘内壁环槽）。
     # 否则孔 16 边形边与环槽台阶曲面布尔产生 <0.25mm 退化小边（MCP check_degenerate_geometry 拦截）。
     if params.get("grooves") and params.get("gd_mm") is not None:

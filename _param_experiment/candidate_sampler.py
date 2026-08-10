@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from collections import Counter
 from datetime import datetime
@@ -37,7 +38,7 @@ RANGES = {
     "od_mm": (360, 760), "bore_mm": (50, 200), "thick_mm": (30, 130),
     "hub_mm": (12, 65), "rim_mm": (10, 65),
     "holes": (6, 36), "hdia_mm": (4, 26), "pcd_mm": (80, 310),
-    "grooves": (1, 3), "gw_mm": (4, 28), "gd_mm": (2, 20),
+    "grooves": (1, 3), "gw_mm": (2, 10), "gd_mm": (6, 22),  # gw 上限 10：环槽轴向高度与轮缘整体（2×rim_half）适配；gd 下限 6：径向切除厚度适配
     "slots": (24, 96), "teeth": (2, 4), "R_mm": (180, 300),
     "depth_mm": (12, 60), "throat_half_width_mm": (2, 9), "fr_mm": (0.5, 4.0),
     # 减重结构（论文 2.2）：减重孔/冷却孔复用孔阵列范围；切槽/环形腔为新增特征
@@ -65,7 +66,7 @@ _FEAT_KEY_MAP = {
 def fam_features(fam: dict) -> dict:
     """设计族定义的 features → 模板参数键（族名义特征，candidate_sampler 优先采用）。
 
-    保证每族第一个候选 = 设计族定义的真实结构组合（D14 双排冷却孔+环形腔 /
+    保证每族第一个候选 = 设计族定义的真实结构组合（D14 双排冷却孔 /
     D19 三齿 / D23 榫槽+孔+环槽），而非通用变体的低端组合。
     """
     return {_FEAT_KEY_MAP.get(k, k): v for k, v in (fam.get("features") or {}).items()}
@@ -123,21 +124,20 @@ _HOLE_VARIANTS = [
 # 减重孔/冷却孔 pcd 用"腹板段比例"（pcd_frac：hub_r + frac×(rim_junc−hub_r)），
 # 由 _resolve_groove_feats 按 subj 动态解析为绝对 pcd_mm —— 避免固定 pcd 对不同 od 越界。
 _GROOVE_LH_TEMPLATES = [
-    {"grooves": 1, "gw_mm": 6, "gd_mm": 4},                            # 低端（仅环槽）
-    {"grooves": 2, "gw_mm": 14, "gd_mm": 10},                          # 中（仅环槽）
-    {"grooves": 1, "gw_mm": 12, "gd_mm": 8, "lh_holes": 12,
+    {"grooves": 1, "gw_mm": 6, "gd_mm": 7},                            # 低端（仅环槽）
+    {"grooves": 2, "gw_mm": 7, "gd_mm": 9},                            # 中（仅环槽）
+    {"grooves": 1, "gw_mm": 7, "gd_mm": 8, "lh_holes": 12,
      "lh_hdia_mm": 16, "lh_pcd_frac": 0.35},                           # 环槽+减重孔
-    {"grooves": 2, "gw_mm": 16, "gd_mm": 10, "cl_holes": 24,
+    {"grooves": 2, "gw_mm": 7, "gd_mm": 9, "cl_holes": 24,
      "cl_hdia_mm": 6, "cl_pcd_frac": 0.65},                            # 环槽+冷却孔
-    {"grooves": 1, "gw_mm": 20, "gd_mm": 12, "rs_count": 60,
+    {"grooves": 1, "gw_mm": 8, "gd_mm": 12, "rs_count": 60,
      "rs_depth_mm": 10, "rs_half_width_mm": 3},                        # 环槽+径向切槽
-    {"grooves": 2, "gw_mm": 24, "gd_mm": 14, "lh_holes": 16, "lh_hdia_mm": 14,
+    {"grooves": 2, "gw_mm": 8, "gd_mm": 12, "lh_holes": 16, "lh_hdia_mm": 14,
      "lh_pcd_frac": 0.4, "cl_holes": 30, "cl_hdia_mm": 5,
      "cl_pcd_frac": 0.75},                                             # 环槽+减重孔+冷却孔
-    {"grooves": 3, "gw_mm": 8, "gd_mm": 6, "lh_holes": 24, "lh_hdia_mm": 12,
+    {"grooves": 2, "gw_mm": 7, "gd_mm": 8, "lh_holes": 24, "lh_hdia_mm": 12,
      "lh_pcd_frac": 0.45, "cl_holes": 36, "cl_hdia_mm": 5,
-     "cl_pcd_frac": 0.3, "cl_pcd2_frac": 0.8, "cavity_width_mm": 44,
-     "cavity_depth_mm": 4},                                            # 双环槽+双排孔+环形腔
+     "cl_pcd_frac": 0.3, "cl_pcd2_frac": 0.8},                        # 环槽+减重孔+双排冷却孔
 ]
 
 
@@ -172,11 +172,8 @@ _INFEASIBLE = {
     ],
     "groove": [
         # 减重孔 pcd 过低（落在轮毂段，check_lightening_hole_bounds 内边界必违，参数仍在论文范围）
-        {"grooves": 1, "gw_mm": 12, "gd_mm": 8, "lh_holes": 24,
+        {"grooves": 1, "gw_mm": 4, "gd_mm": 8, "lh_holes": 24,
          "lh_pcd_mm": 80, "lh_hdia_mm": 20},
-        # 环形腔超宽（腹板径向放不下，check_annular_cavity 必违，cavity_width 在范围上限内）
-        {"grooves": 2, "gw_mm": 16, "gd_mm": 10, "cavity_width_mm": 60,
-         "cavity_depth_mm": 6},
     ],
     "slot": [
         {"slots": 96, "teeth": 4, "R_mm": 200, "depth_mm": 24,
@@ -213,11 +210,11 @@ def _feat_variants(cat: str) -> list:
              "holes": 12, "pcd_mm": 200, "hdia_mm": 12},
             {"slots": 60, "teeth": 3, "R_mm": 240, "depth_mm": 30,
              "throat_half_width_mm": 4.0, "fr_mm": 2.0,
-             "grooves": 1, "gw_mm": 12, "gd_mm": 8},
+             "grooves": 1, "gw_mm": 4, "gd_mm": 6},
             {"slots": 60, "teeth": 2, "R_mm": 230, "depth_mm": 28,
              "throat_half_width_mm": 4.0, "fr_mm": 2.0,
              "holes": 16, "pcd_mm": 210, "hdia_mm": 12,
-             "grooves": 1, "gw_mm": 10, "gd_mm": 6},
+             "grooves": 1, "gw_mm": 4, "gd_mm": 6},
         ]
     if cat == "complex_rim":
         # 曲线过渡盘体（论文 2.1）：各槽参数变体 + 过渡类型/幅度（族间曲线结构不同）
@@ -383,7 +380,7 @@ def _sample_family(fid: str, fam: dict, per_family: int) -> list:
     budget = max(per_family - infeas_n - 1, 2)
     used = 0
     # 0. 族名义候选（优先）：设计族定义的真实特征组合 → 每族第一个候选 = 完整结构
-    #    （D14 双排冷却孔+环形腔 / D19 三齿 / D23 榫槽+孔+环槽），preview 取第一候选时即展示完整特征。
+    #    （D14 双排冷却孔 / D19 三齿 / D23 榫槽+孔+环槽），preview 取第一候选时即展示完整特征。
     fam_feat = fam_features(fam)
     if fam_feat and cat in ("groove", "coupled"):
         # 族名义孔 pcd 固定值可能越腹板段/碰轮缘内壁环槽 → clamp 到 rim_junc−gd−gap 内侧
@@ -395,7 +392,9 @@ def _sample_family(fid: str, fam: dict, per_family: int) -> list:
 
         # 孔/冷却孔避开 web-rim fillet 弧（rim_junc−12）+ 环槽（gd+2）——取较严边界，
         # 避免 16 边形孔边与 fillet/环槽曲面布尔退化小边。
-        gap = max(gd + 2.0, 12.0)
+        # gap≥14：孔外缘距 rim_junc ≥14mm。原 gap=12 时 outer=rim_junc−12 恰为
+        # fillet_clearance 精确边界 → D26 孔边与上端面 fillet 弧边界布尔产生 0.2mm 微边。
+        gap = max(gd + 2.0, 14.0)
 
         def _clamp_pcd(key, dia):
             if fam_feat.get(key) is not None and dia:
@@ -430,10 +429,12 @@ def _sample_family(fid: str, fam: dict, per_family: int) -> list:
                 fam_feat["cavity_width_mm"] = round(min(fam_feat["cavity_width_mm"],
                                                         max(max_w, 0.0)), 1)
     if fam_feat:
-        # 族名义榫槽深度提高：≥ 0.55×rim_radial（深窄型，槽切透轮缘；上限 rim_radial−3）
+        # 族名义榫槽深度提高：≥ 0.55×rim_radial（深窄型，槽切透轮缘；上限 rim_radial−3）。
+        # 用 ceil 到 0.1 避免舍入后 < 0.55×rim_radial（D24 34.32→round 34.3 < 34.32 被 slot_depth_ratio 拒）。
         if fam_feat.get("depth_mm") and subj.get("rim_radial_mm"):
             rr = subj["rim_radial_mm"]
-            fam_feat["depth_mm"] = round(max(0.55 * rr, min(fam_feat["depth_mm"], rr - 3.0)), 1)
+            d = max(0.55 * rr, min(fam_feat["depth_mm"], rr - 3.0))
+            fam_feat["depth_mm"] = math.ceil(round(d * 10, 3)) / 10.0
         zone, _ch = _classify(subj, fam_feat)
         if zone == "infeasible" and fam_feat.get("slots"):
             # 族名义不可行（如 96 槽节距不足）：递减 slots 到可行，保持 teeth/depth 族名义
