@@ -58,10 +58,6 @@ TAG_EVOLUTION_RELATIONS = FEATURE_TAG_RELATION_METADATA
 TAG_CONSTRUCTION_ROLES = FEATURE_TAG_CONSTRUCTION_ROLES
 TAG_REVISION_AUDIT = FEATURE_TAG_REVISION_AUDIT
 
-# Relation labels start at ROLE_TAG_BASE under ResultRoot
-_RELATION_TAG_BASE = ROLE_TAG_BASE
-
-
 # ---------------------------------------------------------------------------
 # TopologyNamingWriter
 # ---------------------------------------------------------------------------
@@ -189,35 +185,38 @@ class TopologyNamingWriter:
     ) -> int:
         """Write every LiveEvolutionRelation under Tag 3.
 
-        Creates a child label at Tag 1001+idx within TAG_EVOLUTION_RELATIONS.
+        Each relation gets a stable Index-allocated tag (v6.0 §11.2 — no
+        position fallback), so the same relation_id maps to the same tag
+        regardless of list order.
         Returns the number of TNaming calls written (1 per shape).
         """
         container = feat_label.FindChild(TAG_EVOLUTION_RELATIONS, True)
+        component_tag, feature_tag = self._component_feature_tags(feat_label)
         written = 0
 
-        for idx, rel in enumerate(relations):
+        for rel in relations:
             # ★ Fail-closed: validate contract before writing
             rel.validate()
 
             if rel.kind == EvolutionKind.PRIMITIVE:
-                written += self._write_primitive(container, idx, rel)
+                written += self._write_primitive(container, rel, component_tag, feature_tag)
 
             elif rel.kind == EvolutionKind.GENERATED:
-                written += self._write_generated(container, idx, rel)
+                written += self._write_generated(container, rel, component_tag, feature_tag)
 
             elif rel.kind == EvolutionKind.MODIFIED:
-                written += self._write_modified(container, idx, rel)
+                written += self._write_modified(container, rel, component_tag, feature_tag)
 
             elif rel.kind == EvolutionKind.DELETED:
-                written += self._write_deleted(container, idx, rel)
+                written += self._write_deleted(container, rel, component_tag, feature_tag)
 
         return written
 
     # ── Per-kind writers ────────────────────────────────────────────────
 
-    def _write_primitive(self, container, idx: int, rel: LiveEvolutionRelation) -> int:
+    def _write_primitive(self, container, rel, component_tag, feature_tag) -> int:
         """PRIMITIVE: Generated(new_shape) — one call per new_shape."""
-        tag = self._relation_tag(rel, idx)
+        tag = self._relation_tag(rel, component_tag, feature_tag)
         written = 0
         for si, new_shape in enumerate(rel.new_shapes):
             label = self._relation_label(container, tag, si)
@@ -225,31 +224,31 @@ class TopologyNamingWriter:
             written += 1
         return written
 
-    def _write_generated(self, container, idx: int, rel: LiveEvolutionRelation) -> int:
+    def _write_generated(self, container, rel, component_tag, feature_tag) -> int:
         """GENERATED: one Builder writes all old→new pairs (v6.0 §11.3).
 
         Uses a single TNaming_Builder on one label for 1→N relations.
         Multiple Generated calls on the same builder → one NamedShape with SET.
         """
-        tag = self._relation_tag(rel, idx)
+        tag = self._relation_tag(rel, component_tag, feature_tag)
         label = self._relation_label(container, tag)  # same label for all
         builder = TNaming_Builder(label)
         for new_shape in rel.new_shapes:
             builder.Generated(rel.old_shape, new_shape)
         return len(rel.new_shapes)
 
-    def _write_modified(self, container, idx: int, rel: LiveEvolutionRelation) -> int:
+    def _write_modified(self, container, rel, component_tag, feature_tag) -> int:
         """MODIFIED: one Builder writes all old→new pairs (v6.0 §11.3)."""
-        tag = self._relation_tag(rel, idx)
+        tag = self._relation_tag(rel, component_tag, feature_tag)
         label = self._relation_label(container, tag)
         builder = TNaming_Builder(label)
         for new_shape in rel.new_shapes:
             builder.Modify(rel.old_shape, new_shape)
         return len(rel.new_shapes)
 
-    def _write_deleted(self, container, idx: int, rel: LiveEvolutionRelation) -> int:
+    def _write_deleted(self, container, rel, component_tag, feature_tag) -> int:
         """DELETED: Delete(old_shape) — single call."""
-        tag = self._relation_tag(rel, idx)
+        tag = self._relation_tag(rel, component_tag, feature_tag)
         label = self._relation_label(container, tag, 0)
         TNaming_Builder(label).Delete(rel.old_shape)
         return 1
@@ -276,24 +275,25 @@ class TopologyNamingWriter:
 
     # ── Label helpers ───────────────────────────────────────────────────
 
-    def _relation_tag(self, rel: LiveEvolutionRelation, rel_idx: int) -> int:
-        """Get a stable tag for a relation.
+    def _relation_tag(self, rel: LiveEvolutionRelation, component_tag: int, feature_tag: int) -> int:
+        """Allocate (or recover) a stable Index-based tag for a relation.
 
-        v5.0 §8.3: When Index allocation is explicitly enabled (via session
-        flag or RelationKey), uses the StableLabelIndex. Otherwise falls back
-        to position-based tag (1001 + idx) for backward compatibility.
+        v6.0 §11.2: the tag is keyed by the relation's content identity
+        (feature namespace + relation_id), never by list position.
         """
-        # Index-based path: only when explicitly requested
-        if self._session is not None and hasattr(self._session, 'label_index'):
-            index = self._session.label_index
-            # Check if already in index (recovery), but don't auto-allocate
-            existing = index.resolve_key(
-                "relation", f"feature:{rel.operation_id}", rel.relation_id,
-            )
-            if existing is not None:
-                return existing.tags[-1]
-        # Default: position-based (backward compatible)
-        return _RELATION_TAG_BASE + rel_idx
+        index = self._session.label_index
+        entry = index.allocate_relation(
+            component_tag, feature_tag,
+            f"feature:{rel.operation_id}", rel.relation_id,
+            self._session.revision_number,
+        )
+        return entry.tag_path.tags[-1]
+
+    def _component_feature_tags(self, feat_label):
+        """Return (component_tag, feature_tag) by walking the label parents."""
+        feature_tag = feat_label.Tag()
+        component_label = feat_label.Father().Father()
+        return component_label.Tag(), feature_tag
 
     @staticmethod
     def _relation_label(container, rel_tag: int, sub_idx: int = 0):

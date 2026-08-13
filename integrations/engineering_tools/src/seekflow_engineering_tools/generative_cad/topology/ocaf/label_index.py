@@ -46,6 +46,8 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.schema import (
     TAG_SELECTIONS,
     TAG_REVISIONS,
     TAG_CAE_BINDINGS,
+    COMPONENT_TAG_FEATURES,
+    FEATURE_TAG_RELATION_METADATA,
     TAGPATH_STABLE_ID_INDEX,
     TagPath,
     make_component_tagpath,
@@ -203,12 +205,15 @@ class StableLabelIndex:
     # ------------------------------------------------------------------
 
     def allocate_relation(
-        self, feature_namespace: str, relation_id: str, revision: int,
+        self, component_tag: int, feature_tag: int,
+        feature_namespace: str, relation_id: str, revision: int,
     ) -> IndexEntry:
         """Allocate a stable tag for an evolution relation within a feature.
 
-        v5.0 §8.3: Relation labels must not depend on list position.
-        Each relation gets a unique tag via the Index, keyed by feature namespace.
+        v5.0 §8.3 / v6.0 §11.2: Relation labels must not depend on list
+        position. The tag is allocated via the Index from a stable content key
+        (feature namespace + relation_id), and the tag_path points to the real
+        relation label under the owning feature.
         """
         key = StableObjectKey("relation", feature_namespace, relation_id)
         key_str = str(key)
@@ -219,14 +224,11 @@ class StableLabelIndex:
 
         tag = self._next_tags.get("relation", DYNAMIC_TAG_START)
         self._next_tags["relation"] = tag + 1
-        # Relations live under DesignRoot/Components/<ctag>/Features/<ftag>/EvolutionRelations/
-        # Use a minimal valid TagPath: DesignRoot(100) → Components(2) → dummy → Features(2) → Relations(3)
-        from seekflow_engineering_tools.generative_cad.topology.ocaf.schema import (
-            DESIGN_ROOT_TAG, TAG_COMPONENTS, COMPONENT_TAG_FEATURES,
-            FEATURE_TAG_EVOLUTION_RELATIONS,
-        )
-        tag_path = TagPath((DESIGN_ROOT_TAG, TAG_COMPONENTS, DYNAMIC_TAG_START,
-                           COMPONENT_TAG_FEATURES, tag))
+        tag_path = TagPath((
+            DESIGN_ROOT_TAG, TAG_COMPONENTS, component_tag,
+            COMPONENT_TAG_FEATURES, feature_tag,
+            FEATURE_TAG_RELATION_METADATA, tag,
+        ))
 
         entry = IndexEntry(key=key, tag_path=tag_path, created_revision=revision)
         self._by_key[key_str] = entry

@@ -163,20 +163,20 @@ class TestCaeEntityKindCheck:
 class TestRelationLabelStability:
 
     def test_relation_tag_infrastructure_exists(self):
-        """allocate_relation() exists and produces valid TagPaths."""
+        """allocate_relation() produces a correct feature-scoped TagPath."""
         session = OcafDocumentSession.create()
-        # allocate_relation should work without crashing
         entry = session.label_index.allocate_relation(
-            "feature:test_node", "test_node/specific_face", 1,
+            1000, 1001, "feature:test_node", "test_node/specific_face", 1,
         )
         assert entry is not None
         assert entry.key.object_kind == "relation"
         assert entry.key.object_id == "test_node/specific_face"
-        # TagPath must start with DESIGN_ROOT_TAG
-        assert entry.tag_path.tags[0] == 100
+        # 100 -> Components(2) -> component_tag -> Features(2) -> feature_tag
+        # -> EvolutionRelations(3) -> relation_tag
+        assert entry.tag_path.tags == (100, 2, 1000, 2, 1001, 3, entry.tag_path.tags[-1])
 
-    def test_writer_uses_position_fallback(self):
-        """Writer defaults to position-based tags (backward compatible)."""
+    def test_writer_allocates_index_based_tags(self):
+        """Writer allocates relation tags via the Index (no position fallback)."""
         session = OcafDocumentSession.create()
         box = cq.Workplane("XY").box(10, 10, 10).val()
 
@@ -193,11 +193,23 @@ class TestRelationLabelStability:
         )
         written = TopologyNamingWriter(session).write_batch(batch)
         assert written >= 2  # 1 result shape + 1 face relation
-        # Writer does NOT auto-add to index by default (backward compat)
-        # The feature+component entries exist, but relations use position tags
+        # The relation must now be recorded in the StableLabelIndex.
+        entry = session.label_index.get_existing(
+            "relation", "feature:test_node", "test_node/face_0",
+        )
+        assert entry is not None, "relation should be Index-allocated by the writer"
+
+    def test_relation_tag_stable_and_distinct(self):
+        """Same relation_id → same tag; different relation_id → different tag."""
+        session = OcafDocumentSession.create()
+        e1 = session.label_index.allocate_relation(1000, 1001, "feature:n", "rel_a", 1)
+        e2 = session.label_index.allocate_relation(1000, 1001, "feature:n", "rel_b", 1)
+        e3 = session.label_index.allocate_relation(1000, 1001, "feature:n", "rel_a", 1)
+        assert e1.tag_path.tags[-1] != e2.tag_path.tags[-1]
+        assert e1.tag_path.tags[-1] == e3.tag_path.tags[-1]
 
     def test_multiple_relations_no_collision(self):
-        """5 relations written with position-based tags don't collide."""
+        """5 relations written with Index-allocated tags don't collide."""
         session = OcafDocumentSession.create()
         box = cq.Workplane("XY").box(10, 10, 10).val()
 
