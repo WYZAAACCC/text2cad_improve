@@ -8,6 +8,20 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.pattern
 from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     TopologyCaptureScope, EvolutionKind,
 )
+from seekflow_engineering_tools.generative_cad.topology.ocaf.history_graph import (
+    HistoryGraph,
+    HistoryComposer,
+)
+
+
+def _area_centroid(shape) -> tuple:
+    """Return (area, centroid) for a TopoDS_Face — for stable assertions."""
+    from OCP.BRepGProp import BRepGProp
+    from OCP.GProp import GProp_GProps
+    props = GProp_GProps()
+    BRepGProp.SurfaceProperties_s(shape, props)
+    c = props.CentreOfMass()
+    return (round(props.Mass(), 2), (round(c.X(), 2), round(c.Y(), 2), round(c.Z(), 2)))
 
 
 class TestT7PatternIdentity:
@@ -47,3 +61,25 @@ class TestT7PatternIdentity:
         # At minimum, GENERATED from transform
         assert EvolutionKind.GENERATED in kinds or EvolutionKind.MODIFIED in kinds, \
             f"Pattern should produce history: got {kinds}"
+
+    def test_compose_original_face_to_final(self):
+        """HistoryComposer traces an original face to a final result face."""
+        box = cq.Workplane("XY").box(20, 10, 5).val()
+        result = tracked_linear_pattern(
+            box, direction=(1, 0, 0), count=3, spacing=30,
+            scope=TopologyCaptureScope(node_id="compose"),
+        )
+        top = box.faces(">Z").wrapped
+
+        graph = HistoryGraph.from_relations(result.batch.relations)
+        finals = HistoryComposer().compose(
+            graph, [top], follow_tokens=("_arg_",),
+        )
+        assert len(finals) >= 1, "original top face should trace to a final face"
+
+        target = _area_centroid(top)
+        assert any(_area_centroid(f) == target for f in finals), \
+            "composed final face should match the original top face area/centroid"
+
+        # The multi-stage history must be composable -> history_complete=True.
+        assert result.batch.history_complete is True

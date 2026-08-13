@@ -18,9 +18,13 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     EvolutionKind, TopologyEntityKind, ProofClass,
     TopologyCaptureScope, LiveEvolutionBatch, LiveEvolutionRelation, TrackedShapeResult,
 )
+from seekflow_engineering_tools.generative_cad.topology.ocaf.history_graph import (
+    HistoryGraph,
+    HistoryComposer,
+)
 
 
-def _capture_fuse_face(relations, scope, fhist, face, si, fi, role):
+def _capture_fuse_face(relations, scope, fhist, face, si, fi, role, result_shape=None):
     """Query fuse history for one input face (v6.0 §10.1: input, not output).
     Returns (has_gen, has_mod) flags."""
     has_gen = False
@@ -67,7 +71,24 @@ def _capture_fuse_face(relations, scope, fhist, face, si, fi, role):
             new_shapes=(),
             proof=ProofClass.EXACT_KERNEL_HISTORY,
         ))
+    # v7 Phase 3: BOPAlgo_BOP does NOT populate History() for a disjoint fuse
+    # (faces are carried through unchanged). Recognize carry-through as a valid,
+    # identity-preserving history instead of flagging the fuse step incomplete.
+    # No TNaming relation is written — the face's TShape is unchanged, so its
+    # persistent identity already survives.
+    if not gen_shapes and not mod_shapes and not fhist.IsRemoved(face.wrapped):
+        if result_shape is not None and _find_partner_face(result_shape, face.wrapped) is not None:
+            has_mod = True
     return has_gen, has_mod
+
+
+def _find_partner_face(result_shape, face):
+    """Return a face in result_shape sharing the same TShape as ``face``."""
+    import cadquery as cq
+    for rf in cq.Shape.cast(result_shape).Faces():
+        if rf.wrapped.IsPartner(face) or rf.wrapped.IsSame(face):
+            return rf.wrapped
+    return None
 
 
 def tracked_linear_pattern(
@@ -162,11 +183,11 @@ def tracked_linear_pattern(
                 has_mod = False
                 # Query on argument (previous_fused) faces
                 for fi, face in enumerate(cq.Shape.cast(fused).Faces()):
-                    g, m = _capture_fuse_face(relations, scope, fhist, face, si, fi, "arg")
+                    g, m = _capture_fuse_face(relations, scope, fhist, face, si, fi, "arg", new_fused)
                     has_gen = has_gen or g; has_mod = has_mod or m
                 # Query on tool faces
                 for fi, face in enumerate(cq.Shape.cast(s).Faces()):
-                    g, m = _capture_fuse_face(relations, scope, fhist, face, si, fi, "tool")
+                    g, m = _capture_fuse_face(relations, scope, fhist, face, si, fi, "tool", new_fused)
                     has_gen = has_gen or g; has_mod = has_mod or m
                 if not has_gen and not has_mod:
                     history_complete = False
@@ -176,6 +197,26 @@ def tracked_linear_pattern(
                 missing_phases.append(f"fuse_step_{si}")
             fused = new_fused
         result = cq.Shape.cast(fused)
+
+        # v7 Phase 3: history is only "complete" if every original face can be
+        # traced through the arg chain to a final output (or is explicitly
+        # deleted). A dangling face means the multi-stage fuse history cannot
+        # be composed into original->final, so the CAE complete-history gate
+        # must not pass.
+        graph = HistoryGraph.from_relations(relations)
+        composer = HistoryComposer()
+        for fi, face in enumerate(body.Faces()):
+            finals = composer.compose(
+                graph, [face.wrapped], follow_tokens=("_arg_",),
+            )
+            deleted = graph.successors(
+                face.wrapped,
+                follow_kinds=(EvolutionKind.DELETED,),
+                follow_tokens=("_arg_",),
+            )
+            if not finals and not deleted:
+                history_complete = False
+                missing_phases.append(f"face_{fi}_not_composable")
     else:
         result = body
 

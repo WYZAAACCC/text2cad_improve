@@ -473,6 +473,35 @@ def validate_semantics(
                         f"{prefix}: normal mismatch (dot={dot:.4f})"
                     )
 
+        # Curve type check (for edges)
+        if contract.curve_type is not None:
+            actual_curve = _get_curve_type(shape)
+            if actual_curve is not None and actual_curve != contract.curve_type:
+                errors.append(
+                    f"{prefix}: expected curve_type={contract.curve_type}, "
+                    f"got {actual_curve}"
+                )
+
+        # Radius range check (for circular edges)
+        if contract.radius_range is not None:
+            actual_radius = _get_edge_radius(shape)
+            if actual_radius is not None:
+                lo, hi = contract.radius_range
+                if actual_radius < lo or actual_radius > hi:
+                    errors.append(
+                        f"{prefix}: radius {actual_radius:.2f} not in [{lo}, {hi}]"
+                    )
+
+        # Axis check (line direction / circle axis)
+        if contract.expected_axis is not None:
+            actual_axis = _get_edge_axis(shape)
+            if actual_axis is not None:
+                dot = sum(a * b for a, b in zip(actual_axis, contract.expected_axis))
+                if abs(abs(dot) - 1.0) > 0.01:
+                    errors.append(
+                        f"{prefix}: axis mismatch (dot={dot:.4f})"
+                    )
+
         # Area range check (v5.0 §9.5)
         if contract.area_range is not None:
             lo, hi = contract.area_range
@@ -539,6 +568,50 @@ def _get_normal(shape: Any) -> tuple[float, float, float] | None:
     except Exception:
         pass
     return None
+
+
+def _get_curve_type(shape: Any) -> str | None:
+    """Get the OCCT curve type name for a TopoDS_Edge (e.g. Line, Circle)."""
+    from OCP.BRepAdaptor import BRepAdaptor_Curve
+
+    _NAMES = {
+        0: "Line", 1: "Circle", 2: "Ellipse", 3: "Hyperbola",
+        4: "Parabola", 5: "Bezier", 6: "BSpline", 7: "Offset", 8: "Other",
+    }
+    try:
+        adaptor = BRepAdaptor_Curve(shape)
+        return _NAMES.get(int(adaptor.GetType()), "Other")
+    except Exception:
+        return None
+
+
+def _get_edge_radius(shape: Any) -> float | None:
+    """Return the radius of a circular TopoDS_Edge, or None if not a circle."""
+    from OCP.BRepAdaptor import BRepAdaptor_Curve
+    try:
+        adaptor = BRepAdaptor_Curve(shape)
+        if int(adaptor.GetType()) == 1:  # GeomAbs_Circle
+            return float(adaptor.Circle().Radius())
+    except Exception:
+        pass
+    return None
+
+
+def _get_edge_axis(shape: Any) -> tuple[float, float, float] | None:
+    """Return line direction or circle axis for a TopoDS_Edge."""
+    from OCP.BRepAdaptor import BRepAdaptor_Curve
+    try:
+        adaptor = BRepAdaptor_Curve(shape)
+        t = int(adaptor.GetType())
+        if t == 0:  # GeomAbs_Line — direction
+            d = adaptor.Line().Direction()
+        elif t == 1:  # GeomAbs_Circle — axis normal
+            d = adaptor.Circle().Axis().Direction()
+        else:
+            return None
+        return (float(d.X()), float(d.Y()), float(d.Z()))
+    except Exception:
+        return None
 
 
 # ---------------------------------------------------------------------------

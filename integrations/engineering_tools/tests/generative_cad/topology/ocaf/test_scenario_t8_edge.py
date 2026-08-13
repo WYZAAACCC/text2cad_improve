@@ -8,6 +8,10 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.chamfer
 from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     TopologyCaptureScope, EvolutionKind,
 )
+from seekflow_engineering_tools.generative_cad.topology.ocaf.selection_service import (
+    validate_semantics,
+)
+from seekflow_engineering_tools.generative_cad.topology.ocaf.models import SemanticContract
 
 
 class TestT8EdgeSelection:
@@ -63,3 +67,46 @@ class TestT8EdgeSelection:
         )
         assert result.result is not None
         assert result.result.Volume() > 0
+
+    def test_edge_contract_line_passes(self):
+        """Line edge + curve_type=Line → no errors."""
+        box = cq.Workplane("XY").box(20, 20, 10).val()
+        edge = TopoDS.Edge_s(list(box.edges())[0].wrapped)
+        errors = validate_semantics([edge], SemanticContract(curve_type="Line"))
+        assert errors == [], f"Unexpected errors: {errors}"
+
+    def test_edge_contract_wrong_curve_type_fails(self):
+        """Line edge + curve_type=Circle → error."""
+        box = cq.Workplane("XY").box(20, 20, 10).val()
+        edge = TopoDS.Edge_s(list(box.edges())[0].wrapped)
+        errors = validate_semantics([edge], SemanticContract(curve_type="Circle"))
+        assert len(errors) >= 1
+        assert "Circle" in errors[0]
+
+    def test_edge_contract_radius_range(self):
+        """Circular edge radius falls inside/outside radius_range correctly."""
+        from OCP.BRepAdaptor import BRepAdaptor_Curve
+        cyl = cq.Workplane("XY").cylinder(5, 10).val()
+        circle = [x for x in cyl.edges() if x.geomType() == "CIRCLE"][0]
+        edge = TopoDS.Edge_s(circle.wrapped)
+        r = BRepAdaptor_Curve(circle.wrapped).Circle().Radius()
+
+        assert validate_semantics(
+            [edge], SemanticContract(radius_range=(r - 1, r + 1)),
+        ) == []
+        assert len(validate_semantics(
+            [edge], SemanticContract(radius_range=(r + 5, r + 10)),
+        )) >= 1
+
+    def test_edge_contract_expected_axis(self):
+        """Circular edge axis matches/mismatches expected_axis correctly."""
+        cyl = cq.Workplane("XY").cylinder(5, 10).val()
+        circle = [x for x in cyl.edges() if x.geomType() == "CIRCLE"][0]
+        edge = TopoDS.Edge_s(circle.wrapped)
+
+        assert validate_semantics(
+            [edge], SemanticContract(expected_axis=(0, 0, 1)),
+        ) == []
+        assert len(validate_semantics(
+            [edge], SemanticContract(expected_axis=(1, 0, 0)),
+        )) >= 1
