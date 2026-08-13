@@ -190,7 +190,7 @@ def handle_extrude_profile(node, ctx) -> dict:
                 operation_version=node.op_version,
             )
             tracked = tracked_extrude(profile, (0, 0, extrude_depth), scope=scope)
-            ctx.capture_session.stage(tracked)
+            ctx.capture_session.stage(tracked.batch)
             solid = cq.Workplane("XY").newObject([tracked.result])
         elif direction == "both":
             half = depth / 2.0
@@ -259,7 +259,7 @@ def handle_revolve_profile(node, ctx) -> dict:
         tracked = tracked_revolve(
             cq.Shape.cast(face), (0, 0, 0), (0, 0, 1), angle, scope=scope
         )
-        ctx.capture_session.stage(tracked)
+        ctx.capture_session.stage(tracked.batch)
         cad_solid = tracked.result
         # Apply ShapeFix post-processing (same as original path)
         try:

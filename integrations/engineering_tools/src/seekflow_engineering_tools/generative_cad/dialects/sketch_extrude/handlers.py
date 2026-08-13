@@ -88,7 +88,7 @@ def handle_extrude_rectangle(node: CanonicalNode, ctx: RuntimeContext) -> dict[s
                 operation_version=node.op_version,
             )
             tracked = tracked_extrude(profile, (0, 0, d), scope=scope)
-            ctx.capture_session.stage(tracked)
+            ctx.capture_session.stage(tracked.batch)
             solid = cq.Workplane(plane).newObject([tracked.result])
         elif abs(draft) > 0.01:
             solid = wp.rect(w, h).taperedExtrude(d, draft)
@@ -136,7 +136,7 @@ def handle_cut_rectangular_pocket(node: CanonicalNode, ctx: RuntimeContext) -> d
                 operation_version=node.op_version,
             )
             tracked = tracked_cut(body.val(), cutter.val(), scope=scope)
-            ctx.capture_session.stage(tracked)
+            ctx.capture_session.stage(tracked.batch)
             result = cq.Workplane(plane).newObject([tracked.result])
         else:
             result = body.cut(cutter)
@@ -205,7 +205,7 @@ def handle_cut_hole(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
                 operation_version=node.op_version,
             )
             tracked = tracked_cut(body.val(), cutter.val(), scope=scope)
-            ctx.capture_session.stage(tracked)
+            ctx.capture_session.stage(tracked.batch)
             result = cq.Workplane("XY").newObject([tracked.result])
         else:
             result = body.cut(cutter)

@@ -423,7 +423,7 @@ def _tracked_boolean_fuse(a, b, node, ctx):
         operation_version=node.op_version,
     )
     tracked = tracked_fuse(a.val(), b.val(), scope=scope)
-    ctx.capture_session.stage(tracked)
+    ctx.capture_session.stage(tracked.batch)
     return cq.Workplane("XY").newObject([tracked.result])
 
 
@@ -445,7 +445,7 @@ def _tracked_boolean_cut(target, tool, node, ctx):
         operation_version=node.op_version,
     )
     tracked = tracked_cut(target.val(), tool.val(), scope=scope)
-    ctx.capture_session.stage(tracked)
+    ctx.capture_session.stage(tracked.batch)
     return cq.Workplane("XY").newObject([tracked.result])
 
 

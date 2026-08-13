@@ -755,6 +755,80 @@ def run_canonical_gcad(
         )
 
 
+def run_lineage_revisions(
+    *,
+    lineage_id: str,
+    output_root: str | Path,
+    revisions: list[dict],
+) -> list[GcadRunResult]:
+    """Run a design lineage across multiple revisions with immutable snapshots.
+
+    Each ``revisions`` entry is a dict:
+      - ``canonical``: CanonicalGcadDocument for this revision.
+      - ``validation_seed``: dict — the validation proof for this canonical.
+      - ``selection_specs``: optional iterable of SelectionSpec (Rev1 creates;
+        later revisions typically omit it and solve existing selections).
+
+    The same lineage_id/output_root is used for every revision so the OCAF
+    document evolves in place (open previous -> Modify). Each successful
+    revision is published to an immutable RevisionStore snapshot.
+    """
+    import shutil
+
+    from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+        TopologyRunConfig,
+    )
+    from seekflow_engineering_tools.generative_cad.topology.ocaf.revision_store import (
+        RevisionStore,
+    )
+
+    output_root = Path(output_root)
+    store = RevisionStore(output_root, lineage_id)
+    store.init_lineage()
+
+    results: list[GcadRunResult] = []
+    for i, rev in enumerate(revisions, 1):
+        canonical = rev["canonical"]
+        validation_seed = rev["validation_seed"]
+        selection_specs = tuple(rev.get("selection_specs", ()))
+
+        staging = store.staging_dir(i)
+        staging.mkdir(parents=True, exist_ok=True)
+        out_step = staging / "model.step"
+        metadata_path = staging / "metadata.json"
+
+        config = TopologyRunConfig(
+            mode="enforce",
+            lineage_id=lineage_id,
+            revision_id=store.format_revision_id(i),
+            parent_revision_id=store.format_revision_id(i - 1) if i > 1 else None,
+            output_root=output_root,
+            selection_specs=selection_specs,
+            verify_in_subprocess=False,
+        )
+
+        result = run_canonical_gcad(
+            canonical,
+            out_step=out_step,
+            metadata_path=metadata_path,
+            validation_seed=validation_seed,
+            topology=config,
+        )
+        results.append(result)
+        if not result.ok:
+            continue
+
+        # Snapshot the evolving OCAF XBF into the immutable revision bundle.
+        evolving_xbf = config.ocaf_path
+        if evolving_xbf is not None and evolving_xbf.exists():
+            shutil.copy2(str(evolving_xbf), str(staging / "design.xbf"))
+        store.publish_revision(
+            staging, i, step_path=out_step, metadata_path=metadata_path,
+        )
+
+    return results
+
+
 # ── Internal helpers ──
 
 def _load_spatial_contract(ctx) -> "SpatialConstraintGraph | None":
