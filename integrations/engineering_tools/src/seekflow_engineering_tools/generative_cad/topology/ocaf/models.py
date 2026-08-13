@@ -434,6 +434,23 @@ class CaePreflightResult:
     warnings: list[str] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class SelectionSpec:
+    """A pipeline-level spec for creating a persistent topology selection.
+
+    selection_id: stable business identifier for the selection.
+    component_id: owning component whose "body" output contains the target face.
+    face_selector: CadQuery face selector string (e.g. ">Z" for the top face).
+    policy: optional SelectionPolicy (defaults to FACE / EXACT_ONE).
+    contract: optional SemanticContract for post-solve validation.
+    """
+    selection_id: str
+    component_id: str
+    face_selector: str
+    policy: SelectionPolicy | None = None
+    contract: SemanticContract | None = None
+
+
 # ---------------------------------------------------------------------------
 # Pipeline configuration — v5.0 §6.2
 # ---------------------------------------------------------------------------
@@ -459,6 +476,7 @@ class TopologyRunConfig:
     required_selection_ids: tuple[str, ...] = ()
     required_cae_binding_ids: tuple[str, ...] = ()
     cae_bindings: tuple[Any, ...] = ()  # tuple[CaeBinding, ...] — v6.0 §8.3
+    selection_specs: tuple[Any, ...] = ()  # tuple[SelectionSpec, ...] — v7 T12-a
     verify_in_subprocess: bool = True
 
     @property

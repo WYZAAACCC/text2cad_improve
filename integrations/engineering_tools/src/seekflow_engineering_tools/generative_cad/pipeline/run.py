@@ -122,6 +122,43 @@ def run_gcad_core(
 
 # ── Canonical entrypoints (pre-validated) ──
 
+def _create_selections_from_specs(
+    ctx: RuntimeContext,
+    ocaf_session: Any,
+    selection_specs: list,
+) -> Any:
+    """Create persistent topology selections from SelectionSpec objects.
+
+    Resolves each spec's component "body" output from the runtime object store,
+    selects the target face via a CadQuery selector, and registers it as a
+    persistent TNaming selection. Returns the PersistentSelectionService used,
+    so the caller can reuse the same instance for CAE preflight solve.
+    """
+    from seekflow_engineering_tools.generative_cad.topology.ocaf.selection_service import (
+        PersistentSelectionService,
+    )
+
+    svc = PersistentSelectionService(ocaf_session)
+    created = 0
+    for spec in selection_specs:
+        try:
+            handle_id = ctx.resolve_component_output(spec.component_id, "body")
+            body = ctx.object_store.get(handle_id)
+            face = body.faces(spec.face_selector)
+            svc.create(
+                spec.selection_id, face.wrapped, body.wrapped,
+                spec.policy, spec.contract,
+            )
+            created += 1
+        except Exception as exc:
+            ctx.warnings.append(
+                f"selection create failed for {spec.selection_id}: {exc}"
+            )
+    if created:
+        ctx.warnings.append(f"created {created} persistent selection(s)")
+    return svc
+
+
 def _run_ocaf_write_and_save(
     ctx: RuntimeContext,
     ocaf_session: Any,
@@ -149,6 +186,15 @@ def _run_ocaf_write_and_save(
             feat_label = writer._ensure_feature_label(scope.component_id, scope.node_id)
             prev = ocaf_session.get_current_result_shape(feat_label)
             writer.write_batch(batch, previous_result=prev)
+
+        # 2.5 v7 T12-a: create persistent selections from specs (inside txn)
+        selection_svc = None
+        if topology_config is not None:
+            selection_specs = list(getattr(topology_config, 'selection_specs', ()))
+            if selection_specs:
+                selection_svc = _create_selections_from_specs(
+                    ctx, ocaf_session, selection_specs,
+                )
 
         # 3. Persist StableLabelIndex to OCAF (P0-02)
         ocaf_session.label_index.save_to_ocaf(ocaf_session.main_label)
@@ -179,7 +225,7 @@ def _run_ocaf_write_and_save(
                     from seekflow_engineering_tools.generative_cad.topology.ocaf.selection_service import (
                         PersistentSelectionService,
                     )
-                    svc = PersistentSelectionService(ocaf_session)
+                    svc = selection_svc or PersistentSelectionService(ocaf_session)
                     from seekflow_engineering_tools.generative_cad.topology.ocaf.compat import (
                         collect_tnaming_labels,
                     )
