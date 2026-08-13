@@ -218,16 +218,33 @@ class OcafDocumentSession:
         self._attach_name(label, f"Component:{component_id}")
         return label
 
-    def ensure_feature(self, component_label, feature_id: str):
+    def ensure_feature(
+        self, component_label, feature_id: str, component_id: str | None = None,
+    ):
         """Get or create a feature label within a component.
 
-        Uses StableLabelIndex.allocate_feature() with namespace="component:<id>".
-        The component_label must be the result of ensure_component().
+        Uses StableLabelIndex.allocate_feature(). The feature namespace is
+        ``component:<component_id>`` — derived from the explicit component_id
+        argument, or reverse-looked-up from the component label's index entry.
+        This makes feature identity semantic (and consistent with
+        ensure_component), falling back to the component Tag only when the
+        component has no index entry.
         """
         component_tag = component_label.Tag()
-        # v6.0 §6.1 note: ideally use semantic component_id, but ensure_feature
-        # doesn't receive it. Tag-based namespace is stable within one lineage.
-        namespace = f"component:{component_tag}"
+        if component_id is None:
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.schema import (
+                make_component_tagpath,
+            )
+            comp_entry = self._label_index.resolve_path(
+                make_component_tagpath(component_tag),
+            )
+            if comp_entry is not None:
+                component_id = comp_entry.key.object_id
+
+        namespace = (
+            f"component:{component_id}" if component_id is not None
+            else f"component:{component_tag}"
+        )
         existing = self._label_index.resolve_key("feature", namespace, feature_id)
         if existing is not None:
             label = existing.resolve_or_create(self.main_label)

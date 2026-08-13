@@ -90,3 +90,36 @@ class TestMultiComponentSameName:
         f1 = reopened.ensure_feature(c1, "extrude_1")
         f2 = reopened.ensure_feature(c2, "extrude_1")
         assert f1.Tag() != f2.Tag()
+
+
+class TestSemanticFeatureNamespace:
+
+    def test_semantic_component_id_namespace(self):
+        """ensure_feature(component_id=...) uses a semantic namespace."""
+        session = OcafDocumentSession.create()
+        comp = session.ensure_component("disk")
+        feat = session.ensure_feature(comp, "extrude_1", component_id="disk")
+        assert feat is not None
+
+        entry = session.label_index.get_existing(
+            "feature", "component:disk", "extrude_1",
+        )
+        assert entry is not None, "semantic feature namespace should be indexed"
+        assert entry.key.namespace == "component:disk"
+
+    def test_semantic_namespace_isolates_same_name(self):
+        """Same feature name under different semantic components → distinct keys."""
+        session = OcafDocumentSession.create()
+        disk = session.ensure_component("disk")
+        shaft = session.ensure_component("shaft")
+        session.ensure_feature(disk, "extrude_1", component_id="disk")
+        session.ensure_feature(shaft, "extrude_1", component_id="shaft")
+
+        e_disk = session.label_index.get_existing(
+            "feature", "component:disk", "extrude_1",
+        )
+        e_shaft = session.label_index.get_existing(
+            "feature", "component:shaft", "extrude_1",
+        )
+        assert e_disk is not None and e_shaft is not None
+        assert e_disk.tag_path != e_shaft.tag_path

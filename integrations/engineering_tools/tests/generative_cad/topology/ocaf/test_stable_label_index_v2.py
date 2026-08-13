@@ -118,14 +118,14 @@ class TestIndex1ReadOnlyRecovery:
             "Different components must have different paths"
 
         # Features
-        fe_disk = idx.get_existing("feature", "component:1000", "extrude_base")
+        fe_disk = idx.get_existing("feature", "component:disk", "extrude_base")
         assert fe_disk is not None, "disk/extrude_base not in index"
-        fe_shaft = idx.get_existing("feature", "component:1001", "extrude_base")
+        fe_shaft = idx.get_existing("feature", "component:shaft", "extrude_base")
         assert fe_shaft is not None, "shaft/extrude_base not in index"
         assert fe_disk.tag_path != fe_shaft.tag_path, \
             "Same feature name in different components must have different paths"
 
-        fe_cut = idx.get_existing("feature", "component:1000", "cut_bore")
+        fe_cut = idx.get_existing("feature", "component:disk", "cut_bore")
         assert fe_cut is not None, "disk/cut_bore not in index"
 
         # Selection
@@ -268,8 +268,8 @@ class TestIndex3SameNameDifferentComponent:
         assert not f1.IsEqual(f2)
 
         # Verify index has separate entries
-        e1 = session.label_index.get_existing("feature", "component:1000", "extrude_1")
-        e2 = session.label_index.get_existing("feature", "component:1001", "extrude_1")
+        e1 = session.label_index.get_existing("feature", "component:disk", "extrude_1")
+        e2 = session.label_index.get_existing("feature", "component:shaft", "extrude_1")
         assert e1 is not None
         assert e2 is not None
         assert e1.tag_path != e2.tag_path
@@ -295,8 +295,8 @@ class TestIndex3SameNameDifferentComponent:
         reopened = OcafDocumentSession.open(xbf_path_ascii)
 
         # Index-1 style: get_existing without ensure_*()
-        e_disk = reopened.label_index.get_existing("feature", "component:1000", "extrude_1")
-        e_shaft = reopened.label_index.get_existing("feature", "component:1001", "extrude_1")
+        e_disk = reopened.label_index.get_existing("feature", "component:disk", "extrude_1")
+        e_shaft = reopened.label_index.get_existing("feature", "component:shaft", "extrude_1")
         assert e_disk is not None
         assert e_shaft is not None
         assert e_disk.tag_path != e_shaft.tag_path
@@ -525,7 +525,7 @@ idx = session.label_index
 
 # Verify existing entries WITHOUT ensure_*()
 c_entry = idx.get_existing("component", "lineage", "comp_a")
-f_entry = idx.get_existing("feature", "component:1000", "box_node")
+f_entry = idx.get_existing("feature", "component:comp_a", "box_node")
 s_entry = idx.get_existing("selection", "lineage", "top_face")
 
 # Add new component
@@ -559,7 +559,7 @@ idx = session.label_index
 
 c_a = idx.get_existing("component", "lineage", "comp_a")
 c_b = idx.get_existing("component", "lineage", "comp_b")
-f_entry = idx.get_existing("feature", "component:1000", "box_node")
+f_entry = idx.get_existing("feature", "component:comp_a", "box_node")
 s_entry = idx.get_existing("selection", "lineage", "top_face")
 
 result = {{
