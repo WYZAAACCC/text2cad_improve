@@ -70,6 +70,20 @@ class CaptureSession:
         return sum(len(b.relations) for b in self._batches)
 
     @property
+    def history_complete(self) -> bool:
+        """True only if every staged batch reports complete history."""
+        return all(b.history_complete for b in self._batches)
+
+    @property
+    def missing_history_phases(self) -> list[str]:
+        """Collect missing_phases from batches with incomplete history."""
+        missing: list[str] = []
+        for b in self._batches:
+            if not b.history_complete:
+                missing.extend(b.missing_phases)
+        return missing
+
+    @property
     def node_order(self) -> list[str]:
         """Node IDs in the order they were staged."""
         return list(self._node_order)

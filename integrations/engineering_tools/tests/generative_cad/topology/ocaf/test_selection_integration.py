@@ -217,8 +217,46 @@ class TestDelete:
         generated = [r for r in cut_result.batch.relations if r.kind == EvolutionKind.GENERATED]
         assert len(deleted) + len(generated) > 0, "Cut should produce face relations"
 
-        # Verify labels were collected (don't crash during collection)
+        # v7 T4: pre-judge DELETED via relations (skip the crashing Solve).
         label_map = collect_tnaming_labels(session.design_root_label)
-        # Solve skipped — OCP 7.8.1.1 ACCESS VIOLATES on deleted-face Solve.
-        # This is a known limitation: solved = service.solve("top", label_map)
-        # would crash.
+        deleted_shapes = tuple(
+            r.old_shape for r in cut_result.batch.relations
+            if r.kind == EvolutionKind.DELETED and r.old_shape is not None
+        )
+        resolution = service.solve("top", label_map, deleted_shapes=deleted_shapes)
+        assert resolution.status == SelectionResolutionStatus.DELETED, \
+            f"Expected DELETED, got {resolution.status}: {resolution.detail}"
+
+    def test_delete_without_allow_deleted_returns_unresolved(self):
+        """Face deleted + allow_deleted=False → UNRESOLVED (fail-closed)."""
+        session = OcafDocumentSession.create()
+        service = PersistentSelectionService(session)
+        writer = TopologyNamingWriter(session)
+
+        box = cq.Workplane("XY").box(10, 10, 20).val()
+        face = box.faces(">Z")
+
+        body_batch = _make_body_batch(box, "box", "comp_a")
+        writer.write_batch(body_batch)
+        comp = session.ensure_component("comp_a")
+        feat = session.ensure_feature(comp, "box_feat")
+        TNaming_Builder(feat.FindChild(2, True)).Generated(box.wrapped)
+
+        service.create("top", face.wrapped, box.wrapped,
+                       SelectionPolicy(entity_kind=TopologyEntityKind.FACE,
+                                       allow_deleted=False))
+
+        tool = cq.Workplane("XY").transformed(offset=(0, 0, 10)).box(12, 12, 15).val()
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.boolean import tracked_cut
+        cut_result = tracked_cut(box, tool,
+                                 scope=TopologyCaptureScope(node_id="delete_op", component_id="comp_a"))
+        writer.write_batch(cut_result.batch)
+
+        label_map = collect_tnaming_labels(session.design_root_label)
+        deleted_shapes = tuple(
+            r.old_shape for r in cut_result.batch.relations
+            if r.kind == EvolutionKind.DELETED and r.old_shape is not None
+        )
+        resolution = service.solve("top", label_map, deleted_shapes=deleted_shapes)
+        assert resolution.status == SelectionResolutionStatus.UNRESOLVED, \
+            f"Expected UNRESOLVED, got {resolution.status}: {resolution.detail}"

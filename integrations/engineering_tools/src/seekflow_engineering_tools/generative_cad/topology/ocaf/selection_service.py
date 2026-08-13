@@ -67,6 +67,12 @@ class PersistentSelectionService:
     def __init__(self, session):
         """session: OcafDocumentSession from PR-1."""
         self._session = session
+        # v7 T4: same-process map of selection_id -> originally-selected shape.
+        # Used to pre-judge DELETED before Solve because OCP 7.8.1.1 ACCESS
+        # VIOLATES inside TNaming_Selector.Solve() when the selected face was
+        # fully deleted. This is intentionally process-local for the minimal
+        # fix; cross-revision identity persistence is a later phase.
+        self._selected_shapes: dict[str, Any] = {}
 
     # ------------------------------------------------------------------
     # Create
@@ -115,6 +121,9 @@ class PersistentSelectionService:
                 selection_id=selection_id,
             )
 
+        # v7 T4: remember the originally-selected shape for DELETED pre-judgment.
+        self._selected_shapes[selection_id] = selected_shape
+
         # Tag 2: Metadata (policy)
         if policy is not None:
             self._write_policy(sel_label, policy)
@@ -131,6 +140,8 @@ class PersistentSelectionService:
         self,
         selection_id: str,
         valid_labels: TDF_LabelMap | None = None,
+        *,
+        deleted_shapes: tuple[Any, ...] = (),
     ) -> SelectionResolution:
         """Solve a previously created selection against current geometry.
 
@@ -158,6 +169,33 @@ class PersistentSelectionService:
 
         # Recover policy
         policy = self._read_policy(sel_label)
+
+        # ── v7 T4: pre-judge DELETED before Solve ─────────────────────────
+        # OCP 7.8.1.1 ACCESS VIOLATES inside TNaming_Selector.Solve() when the
+        # selected face has been fully deleted by a later boolean cut. We can
+        # decide DELETED without Solve by matching the originally-selected shape
+        # against the DELETED relations captured by tracked_ops (same process).
+        target = self._selected_shapes.get(selection_id)
+        if target is not None and deleted_shapes:
+            for dshape in deleted_shapes:
+                if dshape is None:
+                    continue
+                try:
+                    same = target.IsSame(dshape)
+                except Exception:
+                    continue
+                if same:
+                    if policy is not None and policy.allow_deleted:
+                        return SelectionResolution(
+                            status=SelectionResolutionStatus.DELETED,
+                            selection_id=selection_id,
+                            detail="Selection target deleted (pre-judged via DELETED relation)",
+                        )
+                    return SelectionResolution(
+                        status=SelectionResolutionStatus.UNRESOLVED,
+                        selection_id=selection_id,
+                        detail="Selection target deleted (pre-judged via DELETED relation)",
+                    )
 
         # Run Solve
         selector = TNaming_Selector(native_label)

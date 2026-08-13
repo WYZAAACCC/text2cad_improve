@@ -101,3 +101,36 @@ class TestCaeGate:
         assert solver_start_count == 0, \
             "Solver must NOT start when required CAE binding fails"
         session.close()
+
+    def test_require_complete_history_rejects_incomplete(self):
+        """history_complete=False → required binding fails."""
+        session = OcafDocumentSession.create()
+        service = _setup_selection(session)
+        label_map = collect_tnaming_labels(session.design_root_label)
+
+        binding = CaeBinding(
+            binding_id="b1", selection_id="top", analysis_role="load",
+            required=True, allowed_entity_kinds=(TopologyEntityKind.FACE,),
+            cardinality=SelectionCardinality.SET_ALLOWED,
+            require_complete_history=True,
+        )
+        result = run_cae_preflight([binding], service, label_map, history_complete=False)
+        assert not result.ok
+        assert len(result.errors) >= 1
+        session.close()
+
+    def test_require_complete_history_passes_when_complete(self):
+        """history_complete=True → required binding passes."""
+        session = OcafDocumentSession.create()
+        service = _setup_selection(session)
+        label_map = collect_tnaming_labels(session.design_root_label)
+
+        binding = CaeBinding(
+            binding_id="b1", selection_id="top", analysis_role="load",
+            required=True, allowed_entity_kinds=(TopologyEntityKind.FACE,),
+            cardinality=SelectionCardinality.SET_ALLOWED,
+            require_complete_history=True,
+        )
+        result = run_cae_preflight([binding], service, label_map, history_complete=True)
+        assert result.ok, f"Should pass with complete history: {result.errors}"
+        session.close()

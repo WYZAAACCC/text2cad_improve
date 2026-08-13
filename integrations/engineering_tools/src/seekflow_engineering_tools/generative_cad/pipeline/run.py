@@ -183,8 +183,21 @@ def _run_ocaf_write_and_save(
                     from seekflow_engineering_tools.generative_cad.topology.ocaf.compat import (
                         collect_tnaming_labels,
                     )
+                    from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                        EvolutionKind,
+                    )
                     label_map = collect_tnaming_labels(ocaf_session.design_root_label)
-                    preflight = run_cae_preflight(bindings, svc, label_map)
+                    deleted_shapes = tuple(
+                        r.old_shape
+                        for b in ctx.capture_session.iter_batches()
+                        for r in b.relations
+                        if r.kind == EvolutionKind.DELETED and r.old_shape is not None
+                    )
+                    preflight = run_cae_preflight(
+                        bindings, svc, label_map,
+                        deleted_shapes=deleted_shapes,
+                        history_complete=ctx.capture_session.history_complete,
+                    )
                     if not preflight.ok:
                         cae_ok = False
                         for err in preflight.errors:

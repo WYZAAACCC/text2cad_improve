@@ -184,3 +184,27 @@ class TestValidateAll:
         errors = session.validate_all()
         assert len(errors) == 1
         assert "DELETED" in errors[0]
+
+
+class TestHistoryCompleteness:
+    """history_complete aggregation for the CAE preflight gate."""
+
+    def test_all_complete_true(self):
+        session = CaptureSession()
+        session.stage(make_batch("A"))
+        session.stage(make_batch("B"))
+        assert session.history_complete is True
+        assert session.missing_history_phases == []
+
+    def test_incomplete_reported(self):
+        session = CaptureSession()
+        session.stage(make_batch("ok"))
+        incomplete = LiveEvolutionBatch(
+            scope=TopologyCaptureScope(node_id="bad"),
+            builder_kind="Test",
+            history_complete=False,
+            missing_phases=["fuse2"],
+        )
+        session.stage(incomplete)
+        assert session.history_complete is False
+        assert session.missing_history_phases == ["fuse2"]

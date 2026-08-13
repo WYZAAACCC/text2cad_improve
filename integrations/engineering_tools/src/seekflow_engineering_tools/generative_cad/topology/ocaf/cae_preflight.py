@@ -42,6 +42,9 @@ def run_cae_preflight(
     bindings: list[CaeBinding],
     selection_service: Any,        # PersistentSelectionService
     valid_labels: TDF_LabelMap | None = None,
+    *,
+    deleted_shapes: tuple[Any, ...] = (),
+    history_complete: bool | None = None,
 ) -> CaePreflightResult:
     """Solve all CAE bindings and produce a preflight report.
 
@@ -73,7 +76,9 @@ def run_cae_preflight(
         }
 
         try:
-            resolution = selection_service.solve(binding.selection_id, valid_labels)
+            resolution = selection_service.solve(
+                binding.selection_id, valid_labels, deleted_shapes=deleted_shapes,
+            )
             report["resolution_status"] = resolution.status.value
             report["resolved_entity_count"] = len(resolution.resolved_shapes)
             report["detail"] = resolution.detail
@@ -120,10 +125,12 @@ def run_cae_preflight(
                     report["detail"] = f"Rejected: heuristic proof not allowed for {binding.binding_id}"
 
         # v5.0 §10.3: History complete gate
-        if report["ok"] and binding.require_complete_history:
-            # If the selection service or context indicates incomplete history, fail
-            # This requires the capture session to provide history_complete info
-            pass  # gate is in place; activation requires Pipeline context
+        # Activated only when the caller explicitly reports history completeness.
+        # history_complete=False -> fail; None -> unknown (gate not enforced),
+        # preserving backward compatibility for callers without capture context.
+        if report["ok"] and binding.require_complete_history and history_complete is False:
+            report["ok"] = False
+            report["detail"] = f"Rejected: history incomplete for {binding.binding_id}"
 
         if not report["ok"]:
             msg = (
