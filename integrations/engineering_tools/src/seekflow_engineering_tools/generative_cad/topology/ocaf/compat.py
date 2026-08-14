@@ -226,6 +226,39 @@ def collect_tnaming_labels(root_label, *, restrict_to: Any = None) -> Any:
     return label_map
 
 
+def collect_deleted_shapes(root_label) -> list[Any]:
+    """Collect TopoDS shapes that were deleted (TNaming_DELETE evolution).
+
+    Used for cross-process DELETED detection: after reopening a document, the
+    process-local selected-shape map is gone, but the DELETED relations are
+    persisted in OCAF. This helper recovers the deleted shapes so Solve can
+    pre-judge DELETED without calling the OCP 7.8.1.1 crashing Solve.
+    """
+    from OCP.TNaming import TNaming_NamedShape, TNaming_Evolution, TNaming_Tool
+    from OCP.TDF import TDF_AttributeIterator, TDF_ChildIterator
+
+    deleted: list[Any] = []
+
+    def _walk(label):
+        it = TDF_AttributeIterator(label)
+        while it.More():
+            attr = it.Value()
+            if attr.DynamicType().Name() == "TNaming_NamedShape":
+                if attr.Evolution() == TNaming_Evolution.TNaming_DELETE:
+                    shape = TNaming_Tool.OriginalShape_s(attr)
+                    if shape is not None and not shape.IsNull():
+                        deleted.append(shape)
+                break
+            it.Next()
+        child_it = TDF_ChildIterator(label)
+        while child_it.More():
+            _walk(child_it.Value())
+            child_it.Next()
+
+    _walk(root_label)
+    return deleted
+
+
 # ---------------------------------------------------------------------------
 # TopTools_ListOfShape helpers
 # ---------------------------------------------------------------------------

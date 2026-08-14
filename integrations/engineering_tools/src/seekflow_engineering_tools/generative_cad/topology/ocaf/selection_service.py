@@ -42,6 +42,7 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.schema import (
     SELECTION_TAG_METADATA,
     SELECTION_TAG_SEMANTIC_CONTRACT,
     SELECTION_TAG_AUDIT,
+    SELECTION_TAG_FINGERPRINT,
 )
 
 
@@ -123,6 +124,8 @@ class PersistentSelectionService:
 
         # v7 T4: remember the originally-selected shape for DELETED pre-judgment.
         self._selected_shapes[selection_id] = selected_shape
+        # Persist a geometric fingerprint for cross-process DELETED detection.
+        self._store_fingerprint(sel_label, self._shape_fingerprint(selected_shape))
 
         # Tag 2: Metadata (policy)
         if policy is not None:
@@ -175,13 +178,27 @@ class PersistentSelectionService:
         # selected face has been fully deleted by a later boolean cut. We can
         # decide DELETED without Solve by matching the originally-selected shape
         # against the DELETED relations captured by tracked_ops (same process).
-        target = self._selected_shapes.get(selection_id)
-        if target is not None and deleted_shapes:
+        target_fp = self._read_fingerprint(sel_label)
+
+        # Cross-process: if deleted_shapes wasn't passed, recover them from the
+        # persisted OCAF document so the DELETED pre-judgment still works.
+        if not deleted_shapes:
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.compat import (
+                collect_deleted_shapes,
+            )
+            try:
+                deleted_shapes = tuple(
+                    collect_deleted_shapes(self._session.design_root_label)
+                )
+            except Exception:
+                deleted_shapes = ()
+
+        if target_fp is not None and deleted_shapes:
             for dshape in deleted_shapes:
                 if dshape is None:
                     continue
                 try:
-                    same = target.IsSame(dshape)
+                    same = self._shape_fingerprint(dshape) == target_fp
                 except Exception:
                     continue
                 if same:
@@ -342,6 +359,47 @@ class PersistentSelectionService:
                 return TDF_Label()  # Null → INVALID_SELECTION_ID
             sel_label = entry.tag_path.resolve(self._session.main_label)
         return sel_label.FindChild(SELECTION_TAG_NATIVE_NAMING, False)
+
+    @staticmethod
+    def _shape_fingerprint(shape):
+        """Geometric fingerprint of a face: (area, cx, cy, cz)."""
+        from OCP.BRepGProp import BRepGProp
+        from OCP.GProp import GProp_GProps
+
+        props = GProp_GProps()
+        BRepGProp.SurfaceProperties_s(shape, props)
+        c = props.CentreOfMass()
+        return (
+            round(float(props.Mass()), 4),
+            round(c.X(), 4),
+            round(c.Y(), 4),
+            round(c.Z(), 4),
+        )
+
+    def _store_fingerprint(self, sel_label, fingerprint) -> None:
+        import json
+        from OCP.TDataStd import TDataStd_AsciiString
+        from OCP.TCollection import TCollection_AsciiString as TCAscii
+
+        fp_label = sel_label.FindChild(SELECTION_TAG_FINGERPRINT, True)
+        TDataStd_AsciiString.Set_s(fp_label, TCAscii(json.dumps(fingerprint)))
+
+    def _read_fingerprint(self, sel_label):
+        import json
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.compat import (
+            read_ascii_string,
+        )
+
+        fp_label = sel_label.FindChild(SELECTION_TAG_FINGERPRINT, False)
+        if fp_label.IsNull():
+            return None
+        raw = read_ascii_string(fp_label)
+        if raw is None:
+            return None
+        try:
+            return tuple(json.loads(raw))
+        except (json.JSONDecodeError, TypeError):
+            return None
 
     # ------------------------------------------------------------------
     # Policy/Contract persistence (simplified for PR-4)

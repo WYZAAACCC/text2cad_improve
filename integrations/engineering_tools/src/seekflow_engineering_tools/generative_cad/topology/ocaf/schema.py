@@ -109,6 +109,7 @@ SELECTION_TAG_NATIVE_NAMING = 1    # TNaming_Selector exclusive — must NOT hol
 SELECTION_TAG_METADATA = 2
 SELECTION_TAG_SEMANTIC_CONTRACT = 3
 SELECTION_TAG_AUDIT = 4
+SELECTION_TAG_FINGERPRINT = 5      # geometric fingerprint for cross-process DELETED detection
 
 # ---------------------------------------------------------------------------
 # StableIdIndex sub-tags (v5.0 §5.4)
