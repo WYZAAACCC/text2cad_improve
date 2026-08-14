@@ -121,7 +121,8 @@ class RawSelectionSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
     selection_id: str = Field(description="Stable business identifier for this selection.")
     component_id: str = Field(description="Owning component whose 'body' output contains the target face.")
-    face_selector: str = Field(description='CadQuery face selector string (e.g. ">Z" for the top face).')
+    face_selector: str = Field(default="", description='CadQuery face selector string (e.g. ">Z" for the top face). Optional when role_key is set.')
+    role_key: str | None = Field(default=None, description='Semantic face role (e.g. "rim", "bore", "start_cap", "end_cap", "+X"). Takes precedence over face_selector when set.')
     entity_kind: Literal["face", "edge"] = Field(default="face", description='"face" or "edge".')
     cardinality: Literal["exact_one", "set_allowed"] = Field(default="exact_one", description='"exact_one" or "set_allowed".')
 

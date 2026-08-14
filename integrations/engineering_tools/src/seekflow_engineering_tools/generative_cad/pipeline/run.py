@@ -143,6 +143,7 @@ def _selections_from_canonical(canonical):
             selection_id=s.selection_id,
             component_id=s.component_id,
             face_selector=s.face_selector,
+            role_key=getattr(s, "role_key", None),
             policy=SelectionPolicy(entity_kind=ek, cardinality=card),
         ))
     return tuple(specs)
