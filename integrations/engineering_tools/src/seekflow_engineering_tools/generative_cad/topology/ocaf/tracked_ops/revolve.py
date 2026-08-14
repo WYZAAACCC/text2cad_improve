@@ -68,6 +68,7 @@ def tracked_revolve(
 
     result = _compound_or_shape(results)
     start_cap, end_cap = _find_cap_faces(result, axis_dir)
+    side_roles = _find_revolve_side_faces(result)
 
     batch = LiveEvolutionBatch(
         scope=scope,
@@ -80,10 +81,43 @@ def tracked_revolve(
         result_shape=result.wrapped,
         context_shape=result.wrapped,
         relations=relations,
-        construction_roles={"start_cap": start_cap, "end_cap": end_cap},
+        construction_roles={
+            "start_cap": start_cap,
+            "end_cap": end_cap,
+            **side_roles,
+        },
         history_complete=True,
     )
     return TrackedShapeResult(result=result, batch=batch)
+
+
+def _find_revolve_side_faces(result: Any):
+    """Classify full-revolution cylindrical side faces into rim and bore.
+
+    For a 360-degree revolve around Z, cylindrical faces are the radial
+    surfaces. The one with the largest radius is the rim; the one with the
+    smallest radius is the bore (present only when the profile has a center
+    hole). Conical/planar side faces are left unnamed for now.
+    """
+    from OCP.BRepAdaptor import BRepAdaptor_Surface
+
+    cylinders: list[tuple[float, Any]] = []
+    for f in result.Faces():
+        try:
+            adaptor = BRepAdaptor_Surface(f.wrapped)
+            if adaptor.GetType() == 1:  # GeomAbs_Cylinder
+                radius = float(adaptor.Cylinder().Radius())
+                cylinders.append((radius, f.wrapped))
+        except Exception:
+            continue
+
+    if not cylinders:
+        return {"rim": None, "bore": None}
+
+    cylinders.sort(key=lambda p: p[0])
+    rim = cylinders[-1][1]
+    bore = cylinders[0][1] if len(cylinders) >= 2 else None
+    return {"rim": rim, "bore": bore}
 
 
 def _capture_generated(relations, scope, builder, element, source_role):

@@ -435,6 +435,46 @@ class PersistentSelectionService:
             return None
 
 
+def create_selection_from_role(
+    session,
+    selection_id: str,
+    component_id: str,
+    feature_id: str,
+    role_key: str,
+    policy=None,
+    contract=None,
+):
+    """Create a persistent selection on a named face role after generation.
+
+    Unlike the in-run creation path (which uses a live TopoDS_Face), this
+    resolves the role face and body from the already-persisted OCAF document,
+    so it can be called after the document has been saved and reopened.
+    """
+    from seekflow_engineering_tools.generative_cad.topology.ocaf.writer import (
+        role_tag_for_key,
+    )
+
+    comp = session.ensure_component(component_id)
+    feat = session.ensure_feature(comp, feature_id)
+    role_tag = role_tag_for_key(role_key)
+    face = session.get_current_role_result(feat, role_tag)
+    if face is None:
+        raise KeyError(
+            f"role {role_key!r} not found for feature {feature_id!r} "
+            f"in component {component_id!r}"
+        )
+    body = session.get_current_result_shape(feat)
+    if body is None:
+        raise KeyError(
+            f"no current result shape for feature {feature_id!r} "
+            f"in component {component_id!r}"
+        )
+
+    service = PersistentSelectionService(session)
+    service.create(selection_id, face, body, policy, contract)
+    return service
+
+
 # ---------------------------------------------------------------------------
 # Semantic validation — §10.4 of v3.0 guide
 # ---------------------------------------------------------------------------
