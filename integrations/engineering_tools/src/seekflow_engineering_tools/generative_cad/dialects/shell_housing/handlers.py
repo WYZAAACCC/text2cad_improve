@@ -18,10 +18,35 @@ def handle_shell_body(node, ctx) -> dict:
     if thickness <= 0:
         raise ValueError("thickness_mm must be positive")
     try:
-        solid = body.faces("<Z").shell(thickness)
-        # If that fails, try shelling all faces
-        if solid is None:
-            solid = body.shell(thickness)
+        if (
+            getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        ):
+            import cadquery as cq
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.offset_sweep import (
+                tracked_shell,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            scope = TopologyCaptureScope(
+                node_id=node.id, component_id=node.component,
+                dialect=node.dialect, operation=node.op,
+                operation_version=node.op_version,
+            )
+            body_shape = body.val() if hasattr(body, "val") else body
+            tracked = tracked_shell(
+                body_shape, thickness,
+                faces_to_remove=list(body.faces("<Z")),
+                scope=scope,
+            )
+            ctx.capture_session.stage(tracked.batch)
+            solid = cq.Workplane("XY").newObject([tracked.result])
+        else:
+            solid = body.faces("<Z").shell(thickness)
+            # If that fails, try shelling all faces
+            if solid is None:
+                solid = body.shell(thickness)
     except Exception:
         try:
             solid = body.shell(thickness)

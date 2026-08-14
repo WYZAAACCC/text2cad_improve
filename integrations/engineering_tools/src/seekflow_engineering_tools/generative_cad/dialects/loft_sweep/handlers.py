@@ -160,6 +160,33 @@ def handle_loft_sections(node, ctx) -> dict:
 
     # ── v6.3: Preferred path — native OCP loft ──
     try:
+        if (
+            getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        ):
+            from seekflow_engineering_tools.generative_cad.dialects.geometry_utils.ocp_loft import (
+                sample_section,
+                make_closed_wire,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.offset_sweep import (
+                tracked_loft,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            scope = TopologyCaptureScope(
+                node_id=node.id, component_id=node.component,
+                dialect=node.dialect, operation=node.op,
+                operation_version=node.op_version,
+            )
+            section_wires = [
+                make_closed_wire(sample_section(sec, sample_n))
+                for sec in sections
+            ]
+            tracked = tracked_loft(section_wires, ruled=ruled, scope=scope)
+            ctx.capture_session.stage(tracked.batch)
+            return {"body": _store_solid(node, ctx, cq.Workplane("XY").newObject([tracked.result]))}
+
         from seekflow_engineering_tools.generative_cad.dialects.geometry_utils.ocp_loft import (
             native_loft_sections,
         )
@@ -307,26 +334,48 @@ def handle_helix_sweep(node, ctx) -> dict:
             sample_n = max(360, int(math.ceil(turns * 60)))
             helix_wire = _build_helix_wire_ocp(radius, total_z, turns, sample_n)
             profile_shape = profile_face.wrapped if hasattr(profile_face, 'wrapped') else profile_face
-            pipe = BRepOffsetAPI_MakePipe(helix_wire, profile_shape)
-            pipe.Build()
+            solid = None
+            if (
+                getattr(ctx, "enable_topology_capture", False)
+                and ctx.capture_session is not None
+            ):
+                try:
+                    from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.offset_sweep import (
+                        tracked_sweep,
+                    )
+                    from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                        TopologyCaptureScope,
+                    )
+                    scope = TopologyCaptureScope(
+                        node_id=node.id, component_id=node.component,
+                        dialect=node.dialect, operation=node.op,
+                        operation_version=node.op_version,
+                    )
+                    tracked = tracked_sweep(profile_face, helix_wire, scope=scope)
+                    ctx.capture_session.stage(tracked.batch)
+                    solid = cq.Workplane("XY").newObject([tracked.result])
+                except Exception:
+                    solid = None
 
-            if pipe.IsDone():
-                solid = cq.Solid(pipe.Shape())
-            else:
-                # Fallback: CadQuery parametricCurve sweep
-                ctx.warnings.append(
-                    f"helix_sweep on '{node.id}': OCP MakePipe failed, "
-                    f"falling back to CadQuery sweep (may have reduced volume)"
-                )
-                helix = cq.Workplane("XY").parametricCurve(
-                    lambda t: (
-                        radius * math.cos(2.0 * math.pi * turns * t),
-                        radius * math.sin(2.0 * math.pi * turns * t),
-                        total_z * t,
-                    ),
-                    N=max(200, int(math.ceil(turns * 25))),
-                )
-                solid = profile.sweep(helix)
+            if solid is None:
+                pipe = BRepOffsetAPI_MakePipe(helix_wire, profile_shape)
+                pipe.Build()
+                if pipe.IsDone():
+                    solid = cq.Solid(pipe.Shape())
+                else:
+                    ctx.warnings.append(
+                        f"helix_sweep on '{node.id}': OCP MakePipe failed, "
+                        f"falling back to CadQuery sweep (may have reduced volume)"
+                    )
+                    helix = cq.Workplane("XY").parametricCurve(
+                        lambda t: (
+                            radius * math.cos(2.0 * math.pi * turns * t),
+                            radius * math.sin(2.0 * math.pi * turns * t),
+                            total_z * t,
+                        ),
+                        N=max(200, int(math.ceil(turns * 25))),
+                    )
+                    solid = profile.sweep(helix)
         else:
             # ── v6.1: Segmented sweep for long helices ──
             n_segs = int(math.ceil(turns / MAX_TURNS_PER_SEG))

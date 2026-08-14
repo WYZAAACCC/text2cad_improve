@@ -11,8 +11,10 @@ from __future__ import annotations
 
 from typing import Any
 
+import math
+
 from OCP.BRepBuilderAPI import BRepBuilderAPI_Transform
-from OCP.gp import gp_Trsf, gp_Vec
+from OCP.gp import gp_Trsf, gp_Vec, gp_Pnt, gp_Dir, gp_Ax1
 
 from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     EvolutionKind, TopologyEntityKind, ProofClass,
@@ -233,5 +235,106 @@ def tracked_linear_pattern(
         relations=relations,
         history_complete=history_complete,
         missing_phases=missing_phases,
+    )
+    return TrackedShapeResult(result=result, batch=batch)
+
+
+def tracked_circular_pattern(
+    body: Any,
+    axis_origin: tuple[float, float, float],
+    axis_dir: tuple[float, float, float],
+    count: int,
+    *,
+    radius_mm: float = 0.0,
+    start_angle_deg: float = 0.0,
+    rotate_copies: bool = True,
+    scope: TopologyCaptureScope | None = None,
+) -> TrackedShapeResult:
+    """Create ``count`` copies on a circle and fuse them with history capture.
+
+    Each copy is rotate-then-translate transformed; per-face history records
+    source face -> copy face, then all instances are fused with BOPAlgo_FUSE.
+    """
+    import cadquery as cq
+
+    scope = scope or TopologyCaptureScope()
+    relations: list[LiveEvolutionRelation] = []
+
+    if count < 2:
+        batch = LiveEvolutionBatch(
+            scope=scope, builder_kind="CircularPattern",
+            result_shape=body.wrapped if hasattr(body, "wrapped") else body,
+            context_shape=body.wrapped if hasattr(body, "wrapped") else body,
+            relations=[], history_complete=True,
+        )
+        return TrackedShapeResult(result=cq.Shape.cast(body) if hasattr(body, "wrapped") else body, batch=batch)
+
+    instance_shapes: list[Any] = [body.wrapped if hasattr(body, "wrapped") else body]
+
+    for i in range(1, count):
+        angle_deg = start_angle_deg + i * (360.0 / count)
+        angle = math.radians(angle_deg)
+        x = radius_mm * math.cos(angle)
+        y = radius_mm * math.sin(angle)
+
+        rot = gp_Trsf()
+        rot.SetRotation(gp_Ax1(gp_Pnt(*axis_origin), gp_Dir(*axis_dir)), angle)
+        combined = gp_Trsf()
+        if rotate_copies:
+            combined.SetTranslation(gp_Vec(x, y, 0.0))  # combined = T
+            combined.Multiply(rot)  # T * R: rotate first, then translate
+        else:
+            combined.SetTranslation(gp_Vec(x, y, 0.0))
+
+        builder = BRepBuilderAPI_Transform(instance_shapes[0], combined)
+        builder.Build()
+        if not builder.IsDone():
+            raise RuntimeError(f"circular_pattern instance {i} transform failed")
+        copy_shape = builder.Shape()
+        instance_shapes.append(copy_shape)
+
+        for fi, face in enumerate(cq.Shape.cast(instance_shapes[0]).Faces()):
+            mod_list = builder.Modified(face.wrapped)
+            mod_shapes = tuple(mod_list)
+            if mod_shapes:
+                relations.append(LiveEvolutionRelation(
+                    relation_id=f"{scope.node_id}/circular/inst_{i}/face_{fi}",
+                    operation_id=scope.node_id,
+                    kind=EvolutionKind.MODIFIED,
+                    entity_kind=TopologyEntityKind.FACE,
+                    source_key=f"face_{fi}_inst_{i}",
+                    old_shape=face.wrapped,
+                    new_shapes=mod_shapes,
+                    proof=ProofClass.EXACT_KERNEL_HISTORY,
+                ))
+
+    # Fuse all instances with history.
+    from OCP.BOPAlgo import BOPAlgo_BOP, BOPAlgo_FUSE
+    fused = instance_shapes[0]
+    for si, s in enumerate(instance_shapes[1:]):
+        fuser = BOPAlgo_BOP()
+        fuser.SetOperation(BOPAlgo_FUSE)
+        fuser.SetToFillHistory(True)
+        fuser.AddArgument(fused)
+        fuser.AddTool(s)
+        fuser.Perform()
+        new_fused = fuser.Shape()
+        fhist = fuser.History()
+        if fhist is not None:
+            for fi, face in enumerate(cq.Shape.cast(fused).Faces()):
+                _capture_fuse_face(relations, scope, fhist, face, si, fi, "arg", new_fused)
+            for fi, face in enumerate(cq.Shape.cast(s).Faces()):
+                _capture_fuse_face(relations, scope, fhist, face, si, fi, "tool", new_fused)
+        fused = new_fused
+
+    result = cq.Shape.cast(fused)
+    batch = LiveEvolutionBatch(
+        scope=scope,
+        builder_kind="CircularPattern",
+        builder_options={"count": count, "radius_mm": radius_mm, "start_angle_deg": start_angle_deg, "rotate_copies": rotate_copies},
+        result_shape=result.wrapped,
+        context_shape=result.wrapped,
+        relations=relations,
+        history_complete=True,
     )
     return TrackedShapeResult(result=result, batch=batch)

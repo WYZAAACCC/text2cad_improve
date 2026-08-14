@@ -28,6 +28,12 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.mirror 
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.pattern import (
     tracked_linear_pattern,
+    tracked_circular_pattern,
+)
+from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.offset_sweep import (
+    tracked_shell,
+    tracked_sweep,
+    tracked_loft,
 )
 
 __all__ = [
@@ -35,4 +41,5 @@ __all__ = [
     "tracked_extrude", "tracked_revolve",
     "tracked_fillet", "tracked_chamfer", "tracked_unify",
     "tracked_mirror", "tracked_linear_pattern",
+    "tracked_circular_pattern", "tracked_shell", "tracked_sweep", "tracked_loft",
 ]

@@ -1,0 +1,201 @@
+"""Tracked shell / sweep / loft — offset and swept-solid history capture."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+    EvolutionKind,
+    LiveEvolutionBatch,
+    LiveEvolutionRelation,
+    ProofClass,
+    TopologyCaptureScope,
+    TopologyEntityKind,
+    TrackedShapeResult,
+)
+
+
+def _capture_generated_modified(
+    relations: list[LiveEvolutionRelation],
+    scope: TopologyCaptureScope,
+    builder: Any,
+    input_shape: Any,
+    source_key: str,
+) -> None:
+    gen_list = builder.Generated(input_shape)
+    gen_shapes = tuple(gen_list)
+    if gen_shapes:
+        relations.append(LiveEvolutionRelation(
+            relation_id=f"{scope.node_id}/{source_key}/gen/{len(relations)}",
+            operation_id=scope.node_id,
+            kind=EvolutionKind.GENERATED,
+            entity_kind=TopologyEntityKind.FACE,
+            source_key=source_key,
+            old_shape=input_shape,
+            new_shapes=gen_shapes,
+            proof=ProofClass.EXACT_KERNEL_HISTORY,
+        ))
+
+    mod_list = builder.Modified(input_shape)
+    mod_shapes = tuple(mod_list)
+    if mod_shapes:
+        relations.append(LiveEvolutionRelation(
+            relation_id=f"{scope.node_id}/{source_key}/mod/{len(relations)}",
+            operation_id=scope.node_id,
+            kind=EvolutionKind.MODIFIED,
+            entity_kind=TopologyEntityKind.FACE,
+            source_key=source_key,
+            old_shape=input_shape,
+            new_shapes=mod_shapes,
+            proof=ProofClass.EXACT_KERNEL_HISTORY,
+        ))
+
+
+def tracked_shell(
+    body: Any,
+    thickness: float,
+    *,
+    faces_to_remove: list[Any] | None = None,
+    scope: TopologyCaptureScope | None = None,
+) -> TrackedShapeResult:
+    """Shell a solid via BRepOffsetAPI_MakeThickSolid with history capture."""
+    import cadquery as cq
+    from OCP.BRepOffsetAPI import BRepOffsetAPI_MakeThickSolid
+    from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeSolid
+    from OCP.GeomAbs import GeomAbs_JoinType
+    from OCP.TopTools import TopTools_ListOfShape
+
+    scope = scope or TopologyCaptureScope()
+    occ_faces = TopTools_ListOfShape()
+    for f in (faces_to_remove or []):
+        occ_faces.Append(f.wrapped if hasattr(f, "wrapped") else f)
+
+    builder = BRepOffsetAPI_MakeThickSolid()
+    builder.MakeThickSolidByJoin(
+        body.wrapped, occ_faces, thickness, 0.0001,
+        Intersection=True, Join=GeomAbs_JoinType.GeomAbs_Arc,
+    )
+    builder.Build()
+    if not builder.IsDone():
+        raise RuntimeError("BRepOffsetAPI_MakeThickSolid failed")
+
+    faces = list(faces_to_remove or [])
+    if faces:
+        result = cq.Shape.cast(builder.Shape())
+    else:
+        # Match CadQuery's watertight-solid construction for the no-opening case.
+        s1 = cq.Shape.cast(builder.Shape()).Shells()[0].wrapped
+        s2 = body.Shells()[0].wrapped
+        if thickness > 0:
+            solid = BRepBuilderAPI_MakeSolid(s1, s2)
+        else:
+            solid = BRepBuilderAPI_MakeSolid(s2, s1)
+        result = cq.Solid(solid.Shape()).fix()
+
+    relations: list[LiveEvolutionRelation] = []
+    for i, face in enumerate(body.Faces()):
+        _capture_generated_modified(relations, scope, builder, face.wrapped, f"face_{i}")
+
+    batch = LiveEvolutionBatch(
+        scope=scope,
+        builder_kind="BRepOffsetAPI_MakeThickSolid",
+        builder_options={"thickness": thickness},
+        result_shape=result.wrapped,
+        context_shape=result.wrapped,
+        relations=relations,
+        history_complete=True,
+    )
+    return TrackedShapeResult(result=result, batch=batch)
+
+
+def tracked_sweep(
+    profile: Any,
+    path_wire: Any,
+    *,
+    scope: TopologyCaptureScope | None = None,
+) -> TrackedShapeResult:
+    """Sweep a face/wire profile along a wire via BRepOffsetAPI_MakePipe."""
+    import cadquery as cq
+    from OCP.BRepOffsetAPI import BRepOffsetAPI_MakePipe
+    from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeFace
+    from OCP.TopAbs import TopAbs_WIRE
+
+    scope = scope or TopologyCaptureScope()
+    profile_wrapped = profile.wrapped if hasattr(profile, "wrapped") else profile
+    if profile_wrapped.ShapeType() == TopAbs_WIRE:
+        fb = BRepBuilderAPI_MakeFace(profile_wrapped, False)
+        fb.Build()
+        profile_wrapped = fb.Face()
+
+    builder = BRepOffsetAPI_MakePipe(path_wire, profile_wrapped)
+    builder.Build()
+    if not builder.IsDone():
+        raise RuntimeError("BRepOffsetAPI_MakePipe failed")
+
+    result = cq.Shape.cast(builder.Shape())
+    relations: list[LiveEvolutionRelation] = []
+    if profile_wrapped.ShapeType() == 5:  # TopAbs_FACE
+        _capture_generated_modified(relations, scope, builder, profile_wrapped, "profile")
+    else:
+        # Wire/edge profile: capture per edge.
+        from OCP.TopExp import TopExp_Explorer
+        from OCP.TopAbs import TopAbs_EDGE
+        exp = TopExp_Explorer(profile_wrapped, TopAbs_EDGE)
+        idx = 0
+        while exp.More():
+            _capture_generated_modified(relations, scope, builder, exp.Current(), f"edge_{idx}")
+            idx += 1
+            exp.Next()
+
+    batch = LiveEvolutionBatch(
+        scope=scope,
+        builder_kind="BRepOffsetAPI_MakePipe",
+        result_shape=result.wrapped,
+        context_shape=result.wrapped,
+        relations=relations,
+        history_complete=True,
+    )
+    return TrackedShapeResult(result=result, batch=batch)
+
+
+def tracked_loft(
+    section_wires: list[Any],
+    *,
+    ruled: bool = False,
+    scope: TopologyCaptureScope | None = None,
+) -> TrackedShapeResult:
+    """Loft through section wires via BRepOffsetAPI_ThruSections."""
+    import cadquery as cq
+    from OCP.BRepOffsetAPI import BRepOffsetAPI_ThruSections
+    from OCP.TopExp import TopExp_Explorer
+    from OCP.TopAbs import TopAbs_EDGE
+
+    scope = scope or TopologyCaptureScope()
+    builder = BRepOffsetAPI_ThruSections(True, ruled)
+    for w in section_wires:
+        builder.AddWire(w.wrapped if hasattr(w, "wrapped") else w)
+    builder.Build()
+    if not builder.IsDone():
+        raise RuntimeError("BRepOffsetAPI_ThruSections failed")
+
+    result = cq.Shape.cast(builder.Shape())
+    relations: list[LiveEvolutionRelation] = []
+    for i, w in enumerate(section_wires):
+        ww = w.wrapped if hasattr(w, "wrapped") else w
+        exp = TopExp_Explorer(ww, TopAbs_EDGE)
+        idx = 0
+        while exp.More():
+            _capture_generated_modified(relations, scope, builder, exp.Current(), f"section_{i}_edge_{idx}")
+            idx += 1
+            exp.Next()
+
+    batch = LiveEvolutionBatch(
+        scope=scope,
+        builder_kind="BRepOffsetAPI_ThruSections",
+        builder_options={"ruled": ruled},
+        result_shape=result.wrapped,
+        context_shape=result.wrapped,
+        relations=relations,
+        history_complete=True,
+    )
+    return TrackedShapeResult(result=result, batch=batch)

@@ -192,6 +192,26 @@ def handle_circular_pattern_component(node: CanonicalNode, ctx: RuntimeContext) 
     rotate = bool(node.params.get("rotate_copies", True))
     try:
         import cadquery as cq
+        if _use_tracked(ctx):
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.pattern import (
+                tracked_circular_pattern,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            scope = TopologyCaptureScope(
+                node_id=node.id, component_id=node.component,
+                dialect=node.dialect, operation=node.op,
+                operation_version=node.op_version,
+            )
+            body_shape = body.val() if hasattr(body, "val") else body
+            tracked = tracked_circular_pattern(
+                body_shape, (0, 0, 0), (0, 0, 1), count,
+                radius_mm=radius, start_angle_deg=start_angle,
+                rotate_copies=rotate, scope=scope,
+            )
+            ctx.capture_session.stage(tracked.batch)
+            return {"body": _store_solid(node, ctx, cq.Workplane("XY").newObject([tracked.result]))}
         result = None
         for i in range(count):  # include i=0, all copies properly placed
             angle_deg = start_angle + i * 360.0 / count
