@@ -122,6 +122,46 @@ def run_gcad_core(
 
 # ── Canonical entrypoints (pre-validated) ──
 
+def _selections_from_canonical(canonical):
+    """Convert canonical IR selections to OCAF SelectionSpec objects."""
+    if not getattr(canonical, "selections", None):
+        return ()
+    from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+        SelectionSpec,
+        SelectionPolicy,
+        TopologyEntityKind,
+        SelectionCardinality,
+    )
+    specs = []
+    for s in canonical.selections:
+        ek = TopologyEntityKind.FACE if s.entity_kind == "face" else TopologyEntityKind.EDGE
+        card = (
+            SelectionCardinality.EXACT_ONE if s.cardinality == "exact_one"
+            else SelectionCardinality.SET_ALLOWED
+        )
+        specs.append(SelectionSpec(
+            selection_id=s.selection_id,
+            component_id=s.component_id,
+            face_selector=s.face_selector,
+            policy=SelectionPolicy(entity_kind=ek, cardinality=card),
+        ))
+    return tuple(specs)
+
+
+def _bindings_from_canonical(canonical):
+    """Convert canonical IR cae_bindings to OCAF CaeBinding objects."""
+    if not getattr(canonical, "cae_bindings", None):
+        return ()
+    from seekflow_engineering_tools.generative_cad.topology.ocaf.models import CaeBinding
+    return tuple(
+        CaeBinding(
+            binding_id=b.binding_id, selection_id=b.selection_id,
+            analysis_role=b.analysis_role, required=b.required,
+        )
+        for b in canonical.cae_bindings
+    )
+
+
 def _create_selections_from_specs(
     ctx: RuntimeContext,
     ocaf_session: Any,
@@ -365,6 +405,18 @@ def run_canonical_gcad(
             verify_in_subprocess=False,
         )
         _ocaf_target = Path(ocaf_path)
+
+    # v7 IR integration: canonical IR selections/bindings override the config.
+    if _topology_config is not None and _topology_config.mode != "off":
+        from dataclasses import replace
+        canon_sels = _selections_from_canonical(canonical)
+        canon_binds = _bindings_from_canonical(canonical)
+        if canon_sels or canon_binds:
+            _topology_config = replace(
+                _topology_config,
+                selection_specs=(canon_sels if canon_sels else _topology_config.selection_specs),
+                cae_bindings=(canon_binds if canon_binds else _topology_config.cae_bindings),
+            )
 
     if _topology_config is not None and _topology_config.mode != "off":
         if _ocaf_target is None:

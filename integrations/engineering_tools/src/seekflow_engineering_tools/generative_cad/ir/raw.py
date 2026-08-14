@@ -109,6 +109,32 @@ class RawSafety(BaseModel):
         return self
 
 
+class RawSelectionSpec(BaseModel):
+    """A persistent topology selection the LLM may declare in the IR.
+
+    selection_id: stable business identifier.
+    component_id: owning component whose "body" output contains the target face.
+    face_selector: CadQuery face selector string (e.g. ">Z").
+    entity_kind: "face" or "edge".
+    cardinality: "exact_one" or "set_allowed".
+    """
+    model_config = ConfigDict(extra="forbid")
+    selection_id: str
+    component_id: str
+    face_selector: str
+    entity_kind: Literal["face", "edge"] = "face"
+    cardinality: Literal["exact_one", "set_allowed"] = "exact_one"
+
+
+class RawCaeBinding(BaseModel):
+    """A CAE binding from a topology selection to an analysis role."""
+    model_config = ConfigDict(extra="forbid")
+    binding_id: str
+    selection_id: str
+    analysis_role: str
+    required: bool = True
+
+
 class RawGcadDocument(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -124,6 +150,9 @@ class RawGcadDocument(BaseModel):
 
     constraints: RawConstraints
     safety: RawSafety
+
+    selections: list[RawSelectionSpec] = Field(default_factory=list)
+    cae_bindings: list[RawCaeBinding] = Field(default_factory=list)
 
     llm_validation_hints: dict[str, Any] = Field(default_factory=dict)
 

@@ -154,6 +154,7 @@ def canonicalize(raw: RawGcadDocument) -> tuple[CanonicalGcadDocument | None, Va
         selected_dialects=resolved_dialects,
         components=canonical_components, nodes=canonical_nodes,
         constraints=raw.constraints, safety=raw.safety,
+        selections=raw.selections, cae_bindings=raw.cae_bindings,
         canonical_graph_hash=cgh, raw_graph_hash=raw_hash,
     )
     return canonical, ValidationReport.ok_report("canonicalize")

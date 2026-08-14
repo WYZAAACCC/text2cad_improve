@@ -113,3 +113,46 @@ class TestLineageRevisions:
             f"expected UNIQUE, got {resolution.status}: {resolution.detail}"
         )
         final.close()
+
+    def test_ir_selections_are_used(self, tmp_path):
+        """Selections declared in the IR are read by the pipeline."""
+        pytest.importorskip("cadquery")
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+            SelectionResolutionStatus,
+        )
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.selection_service import (
+            PersistentSelectionService,
+        )
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.compat import (
+            collect_tnaming_labels,
+        )
+
+        raw = json.loads((FIXTURES / "sketch_extrude_minimal.json").read_text(encoding="utf-8"))
+        raw["selections"] = [{
+            "selection_id": "top_face",
+            "component_id": "plate",
+            "face_selector": ">Z",
+            "entity_kind": "face",
+            "cardinality": "exact_one",
+        }]
+        canonical, report, bundle = validate_and_canonicalize_with_bundle(raw)
+        assert canonical is not None and report.ok
+        assert len(canonical.selections) == 1
+
+        results = run_lineage_revisions(
+            lineage_id="ir_lineage",
+            output_root=tmp_path,
+            revisions=[{"canonical": canonical, "validation_seed": bundle.to_metadata_dict()}],
+        )
+        assert all(r.ok for r in results), [r.error for r in results if not r.ok]
+
+        store = RevisionStore(tmp_path, "ir_lineage")
+        final = OcafDocumentSession.open(store.revision_dir(1) / "design.xbf")
+        svc = PersistentSelectionService(final)
+        label_map = collect_tnaming_labels(final.design_root_label)
+        resolution = svc.solve("top_face", label_map)
+        assert resolution.status in (
+            SelectionResolutionStatus.UNIQUE,
+            SelectionResolutionStatus.AMBIGUOUS,
+        )
+        final.close()

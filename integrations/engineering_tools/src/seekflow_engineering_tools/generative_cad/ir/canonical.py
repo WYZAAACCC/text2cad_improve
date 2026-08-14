@@ -6,7 +6,12 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from seekflow_engineering_tools.generative_cad.ir.raw import RawConstraints, RawSafety
+from seekflow_engineering_tools.generative_cad.ir.raw import (
+    RawConstraints,
+    RawSafety,
+    RawSelectionSpec,
+    RawCaeBinding,
+)
 from seekflow_engineering_tools.generative_cad.ir.values import ValueType
 
 
@@ -83,6 +88,9 @@ class CanonicalGcadDocument(BaseModel):
 
     constraints: RawConstraints
     safety: RawSafety
+
+    selections: list[RawSelectionSpec] = Field(default_factory=list)
+    cae_bindings: list[RawCaeBinding] = Field(default_factory=list)
 
     canonical_graph_hash: str
     raw_graph_hash: str | None = None
