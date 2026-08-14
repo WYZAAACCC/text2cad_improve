@@ -88,24 +88,23 @@ def check_groove_depth(gd_mm: float, rim_radial_mm: float, mg_mm: float = 3.0) -
 
 
 def check_slot_root_fillet(fr_mm: float, throat_half_width_mm: float) -> dict:
-    """齿根圆角可放空间：root 平底半宽 = 0.875×throat（mon_e2b035beb218 槽底平底半宽 3.5，
-    与 param_templates.slot_profile 一致）。
+    """槽底圆角可放空间：卡榫收窄后平底半宽 = 0.24×throat（fir_tree_slot2d 磨好比例）。
 
-    槽底圆角须 ≤ root_half（否则圆角超出槽底 → BRep_API fillet 失败）。
-    保守约束 fr ≤ root_half − 0.3。
+    槽底圆角须 ≤ 平底半宽（否则圆角超出槽底 → BRep_API fillet 失败）。
+    保守约束 fr ≤ 平底半宽 − 0.1（磨好 rad_tip 系数 0.3×fr）。
     """
-    root_half = 0.875 * throat_half_width_mm
-    max_fr = max(root_half - 0.3, 0.3)
+    root_half = 0.24 * throat_half_width_mm
+    # 槽底收窄圆角 rad_tip = min(fr×0.5, 1.0) 须 ≤ 平底半宽 → fr ≤ root_half/0.5
+    max_fr = max(root_half / 0.5 - 0.1, 0.15)
     return {"ok": fr_mm <= max_fr + 0.05, "root_half_width_mm": round(root_half, 3),
             "max_fr_mm": round(max_fr, 3)}
 
 
 def check_slot_fillet_space(fr_mm, teeth, depth_mm, throat_half_width_mm,
-                            tfa_deg=80.0, ufa_deg=70.0) -> dict:
-    """5 组 fillet 全组切线空间约束（P6：覆盖 rad_tip/flank/neck/small，非仅 root）。
+                            tfa_deg=45.0, ufa_deg=75.0) -> dict:
+    """7 组 fillet 全组切线空间约束（OCC fillet2D 失败判据：r·tan(θ/2) > min(L1,L2)）。
 
-    OCC fillet2D 失败判据：r·tan(θ/2) > min(L1,L2)。与 param_templates.slot_fillet_fr_limit
-    同一几何真源（函数内 import 避免模块级循环）。
+    与 param_templates.slot_fillet_fr_limit 同一几何真源（函数内 import 避免模块级循环）。
     """
     from param_templates import slot_fillet_fr_limit
     limit = slot_fillet_fr_limit(teeth, depth_mm, throat_half_width_mm, tfa_deg, ufa_deg)
@@ -113,31 +112,29 @@ def check_slot_fillet_space(fr_mm, teeth, depth_mm, throat_half_width_mm,
 
 
 def check_slot_teeth_space(teeth, depth_mm, throat_half_width_mm,
-                           tfa_deg=80.0, ufa_deg=70.0, spare_mm=9.0) -> dict:
-    """角度驱动齿区占用约束（P6 配套）：Σ(斜面 dx + 平台宽) ≤ depth−spare。
+                           tfa_deg=45.0, ufa_deg=75.0, spare_mm=0.0) -> dict:
+    """深度可行范围：槽深须在连接线 neck_platform 可填范围内 [min, max]。
 
-    Tfa/Ufa 过浅（斜面平缓 dx 大）时齿区放不下 → 槽底肩平台越过平底 → 布尔退化。
-    与 slot_profile 的 x_last = −3 − Σ占用 一致（要求过渡段全在端面深处）。
-    连接线固定宽 conn=1.0，平台宽自适应（slot_profile 同公式）：w_plat = clamp((depth−9−occ−n·conn)/n)。
+    新几何（fir_tree_slot2d 磨好比例）：深度 = H_neck + 齿区占用 + n×neck_platform + 卡榫底；
+    neck_platform 可调 [0.3, 15] 填满深度 → 深度精确匹配（slot_profile._slot2d_solve_depth）。
+    超出范围则槽深无法达到 depth_mm → 不可行。与 _slot2d_params 同源。
     """
     m = float(throat_half_width_mm)
     n = int(teeth)
-    tfa = math.radians(max(30.0, min(float(tfa_deg), 89.0)))
-    ufa = math.radians(max(30.0, min(float(ufa_deg), 89.0)))
-    lobes = [2.25 * m - 0.25 * m * i for i in range(n)]
-    necks = [max(1.1 * m - 0.25 * m * (i + 1), 1.5) for i in range(n)]
-    neck_prev = 1.1 * m
-    occ_angle = 0.0
-    for i in range(n):
-        occ_angle += (lobes[i] - neck_prev) / math.tan(tfa) \
-            + (lobes[i] - necks[i]) / math.tan(ufa)
-        neck_prev = necks[i]
-    # 齿根共线斜线版（P6-2）：占用 depth−9（楔入3 + 槽底区6），平台宽平分剩余
-    w_plat = max(0.5 * m, min((depth_mm - 9.0 - occ_angle) / (2.0 * n), 1.6 * m))
-    used = occ_angle + 2.0 * n * w_plat
-    avail = depth_mm - spare_mm
-    return {"ok": used <= avail + 1e-6, "used_mm": round(used, 3),
-            "avail_mm": round(avail, 3)}
+    beta = 90.0 - tfa_deg
+    gamma = 90.0 - ufa_deg
+    tanb = math.tan(math.radians(beta))
+    tang = math.tan(math.radians(gamma))
+    h = [(0.36 - 0.08 * i / max(n - 1, 1)) * m for i in range(n)]
+    thick = 0.30 * m
+    occ = sum(x * tanb + thick + x * tang for x in h)     # 齿区固定占用（不含连接线）
+    H_neck = 0.6 * m
+    bd = 0.24 * m + 0.16 * m + (0.44 * m - 0.2 * m) / math.tan(math.radians(60.0))
+    min_depth = H_neck + occ + n * 0.3 + bd
+    max_depth = H_neck + occ + n * 15.0 + bd
+    ok = (min_depth - 0.05) <= depth_mm <= (max_depth + 0.05)
+    return {"ok": ok, "min_depth_mm": round(min_depth, 3), "max_depth_mm": round(max_depth, 3),
+            "used_mm": round(H_neck + occ + n * 0.8 + bd, 3), "avail_mm": depth_mm}
 
 
 # 盘体形态系数（与 param_templates._RADIAL_FAC 一致，唯一真源在 param_templates；

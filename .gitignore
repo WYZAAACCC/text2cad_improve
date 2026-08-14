@@ -78,3 +78,5 @@ demo_output/
 seekflow_workspace/
 # ANSYS solver scratch files (large binaries, regenerable)
 app/text-to-cad/server/output/fea3d_jobs/*/turbine3d.*
+_p8_envs/
+_param_experiment/slot_deep_test/

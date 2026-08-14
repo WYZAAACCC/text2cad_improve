@@ -24,6 +24,8 @@ import math
 import sys
 from pathlib import Path
 
+import fir_tree_slot2d as _fir   # 榫槽几何（连接线共线/角度/卡榫底）复用
+
 _HERE = Path(__file__).resolve().parent
 ROOT = _HERE.parent
 sys.path.insert(0, str(ROOT / "app" / "text-to-cad" / "server"))
@@ -72,28 +74,33 @@ def _disc_radii(od_mm, bore_mm, form="standard") -> dict:
 
 
 def _transition_pts(rim_junc, z0, z1, t, kind, n=4) -> list:
-    """轮缘内壁 (rim_junc, z0)→(rim_junc, z1) 垂直台阶间插入过渡点（z 单调）。
+    """轮缘-腹板过渡：在**腹板端面转角**（z0 附近）用**各自复杂曲线**过渡到轮缘内壁。
 
-    complex_rim 族用多点逼近曲线过渡（取代单一 fillet 圆弧，满足论文"丰富过渡"）。
-    kind：linear=无插入 / arc_in=内凹弧 / arc_out=外凸弧 / s_curve=S形 /
-    power=幂曲线 / ellipse=椭圆弧。返回 [(r, z), ...]（不含两端）。
+    取代单一 fillet 圆弧（论文"丰富过渡"）——**D29-D32 各用不同曲线**（s_curve/ellipse/
+    power/arc_out），不能统一成圆角式。曲线平滑外凸（r ≥ rim_junc，不削内壁），过渡带限于
+    顶部 z0→z0+t（轮缘内壁下半垂直），幅度 t 适中（0.5×rim_arc_radius）避免外凸凸台被
+    榫槽贯穿轮缘时切离主体（此前全幅 30mm 使 D32 solid_count=4 → roundtrip fail）。
+    各曲线 r(z) 形状（0→t→0，顶点位置/曲率不同）：
+      arc_out 对称凸弧（sin）｜s_curve S形（sin²，顶点更圆）｜ellipse 椭圆（缓起缓落，幂 0.7）
+      power 幂曲线（不对称，先快后缓）｜arc_in 浅外凸（0.5×sin）。
+    返回 [(r, z), ...]（不含两端）。
     """
     if t <= 0 or kind == "linear":
         return []
     out = []
     for i in range(1, n + 1):
         u = i / (n + 1)
-        z = z0 + (z1 - z0) * u
-        if kind == "arc_in":
-            r = rim_junc - t * math.sin(math.pi * u)
-        elif kind == "arc_out":
-            r = rim_junc + 0.5 * t * math.sin(math.pi * u)
+        z = z0 + t * u                       # 过渡带仅顶部 z0→z0+t，内壁下半垂直
+        if kind == "arc_out":
+            r = rim_junc + t * math.sin(math.pi * u)                    # 外凸弧（对称）
         elif kind == "s_curve":
-            r = rim_junc - t * math.sin(2 * math.pi * u)
-        elif kind == "power":
-            r = rim_junc - t * (1.0 - u) ** 1.5
+            r = rim_junc + t * math.sin(math.pi * u) ** 2               # S形（顶点圆滑）
         elif kind == "ellipse":
-            r = rim_junc - t * math.cos(math.pi * u / 2.0)
+            r = rim_junc + t * math.sin(math.pi * u) ** 0.7             # 椭圆弧（缓起缓落）
+        elif kind == "power":
+            r = rim_junc + t * math.sin(math.pi * u) * math.sqrt(u)     # 幂曲线（先快后缓）
+        elif kind == "arc_in":
+            r = rim_junc + t * math.sin(math.pi * u) * 0.5              # 内凹→浅外凸
         else:
             r = rim_junc
         out.append((round(r, 3), round(z, 3)))
@@ -102,7 +109,7 @@ def _transition_pts(rim_junc, z0, z1, t, kind, n=4) -> list:
 
 def disc_profile(od_mm, bore_mm, hub_half_mm, rim_half_mm, thick_mm,
                  web_inner_half=None, web_outer_half=None, form="standard",
-                 transition="linear") -> dict:
+                 transition="linear", rim_arc_radius_mm=None) -> dict:
     """盘体 R-Z 轮廓（闭合顺序，关于 y=0 对称）→ {points, params}。
 
     径向站：bore_r → hub_r → rim_junc → rim_r。形态决定 hub/rim 径向高度与 web 厚度，
@@ -118,12 +125,13 @@ def disc_profile(od_mm, bore_mm, hub_half_mm, rim_half_mm, thick_mm,
     else:
         web_inner = web_inner_half if web_inner_half else _clamp(0.6 * hub_half_mm, 8.0, 40.0)
         web_outer = web_outer_half if web_outer_half else _clamp(0.5 * rim_half_mm, 6.0, 32.0)
-    # 复杂轮缘曲线过渡（transition != linear）：web-rim 台阶插入过渡点逼近曲线。
-    # 幅度 ≤6mm（0.06×rim_radial）：过渡点 r 限制在 rim_junc±6 内，不深入腹板
-    # （此前 0.2×rim_radial 使 D29 s_curve 点 r_min=148.8 深陷腹板 → 过渡完全错误）。
+    # 复杂轮缘曲线过渡（transition != linear）：web-rim 台阶插入过渡点逼近曲线（圆角式）。
+    # 幅度 = 0.5×rim_arc_radius（10-15mm）：全幅 20-30mm 使轮缘内壁外凸成高凸台，
+    # 榫槽贯穿轮缘时把凸台切离主体（D32 solid_count=4 → roundtrip fail）。
     trans_t = 0.0
     if transition != "linear":
-        trans_t = _clamp(0.06 * rim_radial, 2.0, 6.0)
+        trans_t = float(rim_arc_radius_mm) * 0.5 if rim_arc_radius_mm \
+            else _clamp(0.12 * rim_radial, 6.0, 15.0)
 
     def _wr(z0, z1):
         return _transition_pts(rim_junc, z0, z1, trans_t, transition)
@@ -169,25 +177,134 @@ def disc_profile(od_mm, bore_mm, hub_half_mm, rim_half_mm, thick_mm,
 # 榫槽轮廓（2×(2+4×teeth+3) 点，XY 平面，x 0→-depth）
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def slot_profile(teeth, depth_mm, mouth_half, neck_half, lobe_half,
-                 bottom_half, tfa_deg=80.0, ufa_deg=70.0) -> list:
-    """榫槽轮廓点（上侧 2+4×teeth+3 点 + 下侧镜像）。以 mon_e2b035beb218 为基准。
+def _slot2d_params(mouth_half, teeth, tfa_deg, ufa_deg, depth_mm=None) -> dict:
+    """由标量派生 fir_tree_slot2d 参数（借鉴已认可的 slot2d 组合比例，mouth 缩放）。
 
-    mon 正确构造特征（throat=4 归一化）：
-      - 口部 mouth=throat；楔入点 neck0=0.625×throat
-      - 每齿 4 点：外斜面升 / 齿顶平台 / 内斜面降 / 颈部平台
-      - neck 逐齿收窄（mon 2.5→2.0，step 0.125×throat）
-      - lobe 逐齿平缓衰减（mon 7.5→6.5，step 0.25×throat）
-      - 槽底：槽底肩 shoulder=1.25×throat → 平底 root=0.875×throat
-        （平底而非圆弧/尖底；mon 槽底根半宽 3.5）
-
-    齿面角由参数驱动（P6 修复，原 flank_angle_deg 死参数）：
-      - tfa_deg：外斜面（承力面）与径向 x 夹角，默认 80°（mon 实测 78.7-82.9°）
-      - ufa_deg：内斜面（非工作面）与径向 x 夹角，默认 70°（mon 实测 68.2-71.6°）
-      - 斜面 x 跨度 dx = Δy / tan(θ)（参照 fir_tree_parametric.py）；齿顶/颈平台宽 = 0.5×mouth
-
-    硬性要求（保证无退化）：x 单调递减到 -depth；相邻点距离 ≥1mm。
+    每齿数用已人工认可的 slot2d 组合比例（combo_slot2d 的 N2/N3/N4）：
+      N2 neck=[0.84,0.64,0.44]m h=[0.36,0.30]m thick=0.16m
+      N3 neck=[0.90,0.68,0.46,0.24]m h=[0.36,0.32,0.28]m thick=0.16m（磨好基准）
+      N4 neck=[0.84,0.70,0.56,0.42,0.28]m h=[0.28,0.26,0.24,0.22]m thick=0.12m
+    保持：连接线共线（颈部斜线）、升面(非承力)与半宽夹角 β=90-tfa、降面(承力)
+    γ=90-ufa（承力边较非承力边更缓）、卡榫状槽底。
+    平台厚 thick 反推：depth 浅时减薄（留足连接线段 neckp≥0.5，圆角弧不产生短边）。
     """
+    n = int(teeth)
+    m = float(mouth_half)
+    # 用户认可的 slot2d 组合比例（slot2d_N2_两齿.png 基准）。neck last 保留认可值
+    # （N2=0.44m），卡榫底半宽取 max(0.44m, neck_last+0.10m)：N2 时 0.54m 让卡榫有轻微
+    # 外扩落差（原 0.44m 扁平卡榫在 OCC fillet2D 下肩→外扩段仅 ~0.26mm，圆角放不下 → MCP
+    # check_degenerate_geometry 短边）；N3/N4 不受影响（neck_last 0.24/0.28 < 0.44）。
+    _NECK = {2: [0.84, 0.64, 0.44], 3: [0.90, 0.68, 0.46, 0.24],
+             4: [0.84, 0.70, 0.56, 0.42, 0.28]}
+    _H = {2: [0.36, 0.30], 3: [0.36, 0.32, 0.28], 4: [0.28, 0.26, 0.24, 0.22]}
+    _TH = {2: 0.16, 3: 0.20, 4: 0.20}   # N2 用用户认可的 thick=0.16m
+    neck_half = [r * m for r in _NECK[n]]
+    h = [r * m for r in _H[n]]
+    beta = 90.0 - tfa_deg                       # 升面(非承力)与半宽夹角
+    alpha = 90.0 + ufa_deg                      # 降面(承力)与半宽夹角(>90)
+    thick = _TH[n] * m
+    bottom_half = max(0.44 * m, neck_half[-1] + 0.10 * m)
+    if depth_mm:
+        for _ in range(8):
+            P = dict(
+                N=n, W_open=2 * m, H_neck=0.6 * m, R_neck=0.6,
+                tooth_height=h, tooth_thickness=[thick] * n, neck_platform=1.2,
+                beta=[beta] * n, alpha=[alpha] * n,
+                Rc=[0.6] * n, Rt=[0.4] * n, Rr=[0.5] * n,
+                bottom_half_width=bottom_half, bottom_flare_angle=60.0,
+                bottom_platform=0.24 * m, bottom_tip_half=0.24 * m, bottom_tip_depth=0.16 * m,
+                R_shoulder=0.4, R_flare=0.4, R_plat=0.4, R_tip=0.3,
+                neck_half=neck_half)
+            sk = _fir._tooth_skeleton(P)
+            span = abs(sk["ys_under"][-1] - sk["ys_root"][0])
+            bd = 0.24 * m + 0.16 * m + (bottom_half - 0.2 * m) / math.tan(math.radians(60.0))
+            neckp_est = (depth_mm - 0.6 * m - span - bd) / n
+            if neckp_est >= 0.5 or thick <= 0.14 * m:
+                break
+            thick -= 0.02 * m
+    return dict(
+        N=n, W_open=2 * m, H_neck=0.6 * m, R_neck=0.6,
+        tooth_height=h, tooth_thickness=[round(thick, 3)] * n, neck_platform=1.2,
+        beta=[beta] * n, alpha=[alpha] * n,
+        Rc=[0.6] * n, Rt=[0.4] * n, Rr=[0.5] * n,
+        bottom_half_width=bottom_half, bottom_flare_angle=60.0,
+        bottom_platform=0.24 * m, bottom_tip_half=0.24 * m, bottom_tip_depth=0.16 * m,
+        R_shoulder=0.4, R_flare=0.4, R_plat=0.4, R_tip=0.3,
+        neck_half=neck_half)
+
+
+def _slot2d_solve_depth(P: dict, depth_mm: float) -> dict:
+    """自然深度，**不强行撑满**。连接线/卡榫底保持 slot2d 协调形状（紧凑），
+    深度由 mouth/齿数比例自然决定（参考 slot2d_N2/N3/N4 图：卡榫段 1-2mm、连接线 <1mm）。
+
+    用户明确指正：为拉深而强行拉长榫底（卡榫平台段）或榫齿间连接线会破坏榫槽整体协调、
+    使槽完全不可用。因此本版**绝不因 depth_mm 增大而加长卡榫平台或连接线**：
+      - 自然深度 > depth_mm：轻微收紧连接线（neck_platform 下限 0.3）适配
+      - 自然深度 < depth_mm：保持自然（多余深度忽略），宁可 depth 不精确也不破坏形状
+    各族 depth_mm 应取 slot2d 自然值（由 mouth 决定）。
+    """
+    n = P["N"]
+    P = dict(P)
+    for _ in range(40):
+        verts, _sk = _fir._build_half_vertices(P)
+        d = abs(verts[-1][1])
+        err = d - depth_mm
+        if abs(err) < 0.05:
+            break
+        if err > 0:
+            # 太深（natural > target）：收紧连接线，不碰卡榫
+            P["neck_platform"] = max(0.3, P["neck_platform"] - err / n)
+        else:
+            # 太浅（natural < target）：保持自然，不拉长榫底/连接线
+            break
+    return P
+
+
+def slot_profile(teeth, depth_mm, mouth_half, neck_half, lobe_half,
+                 bottom_half, tfa_deg=45.0, ufa_deg=75.0) -> list:
+    """榫槽轮廓点（上侧 2+4×teeth+3 点 + 下侧镜像）。
+
+    几何复用 fir_tree_slot2d（连接线共线、升/降面角、卡榫状槽底），坐标转置：
+    fir(X=半宽, Y=径向) → param(x=径向 0→-depth, y=半宽)，即 x=Y, y=X。
+
+    点序（上侧）：
+      0 口部、1 楔入（第一齿根）｜齿 i: 2+4i 齿顶(外斜面升) 3+4i 平台终点
+        4+4i 降面终点(连接线上端) 5+4i 连接线终点(下一齿根)｜
+      卡榫底: n_upper-4 连接线终点 n_upper-3 外扩 n_upper-2 平台 n_upper-1 收窄(平底镜像)。
+
+    齿面角（默认磨好）：tfa_deg=45°（升面/非承力与径向）、ufa_deg=75°（降面/承力与径向）。
+    """
+    n = int(teeth)
+    P = _slot2d_params(mouth_half, n, tfa_deg, ufa_deg, depth_mm)
+    P = _slot2d_solve_depth(P, depth_mm)
+    verts, _sk = _fir._build_half_vertices(P)
+    # 上侧点（fir 坐标 X=半宽/Y=径向）：A0, root0, 每齿(crest,plat,under,next_root), 卡榫底
+    fir = [verts[0], verts[1]]
+    for i in range(n):
+        b = 1 + 4 * i
+        fir += [verts[b + 1], verts[b + 2], verts[b + 3]]
+        fir.append(verts[b + 4] if i < n - 1 else verts[1 + 4 * n])
+    fir += [verts[1 + 4 * n + 1], verts[1 + 4 * n + 2], verts[1 + 4 * n + 3]]
+    upper = [(round(Y, 3), round(X, 3)) for (X, Y) in fir]   # 转置 x=径向, y=半宽
+    # 迭代短边修正（MCP 退化阈值 0.25mm；首点口部固定，下侧对称继承）
+    for _ in range(40):
+        changed = False
+        for i in range(1, len(upper)):
+            px, py = upper[i - 1]
+            x, y = upper[i]
+            if math.hypot(x - px, y - py) < 0.5:
+                dx = math.sqrt(max(0.25 - (y - py) ** 2, 0.0))
+                nx = px - dx
+                if nx < x:
+                    upper[i] = (nx, y)
+                    changed = True
+        if not changed:
+            break
+    # 下侧 = 上侧关于 y=0 镜像并**反转**：upper 末(卡榫收窄 B_tip) → 下侧首(B_tip') 平底横跨，
+    # 下侧末(口部 A0') → 首(口部 A0) 闭合。不反转则口部下侧接 B_tip → close 对角自交。
+    lower = [(p[0], -p[1]) for p in upper if abs(p[1]) > 1e-6]
+    return [{"x_mm": round(p[0], 3), "y_mm": round(p[1], 3)}
+            for p in upper + list(reversed(lower))]
     def upper():
         m = float(mouth_half)
         n = int(teeth)
@@ -283,13 +400,56 @@ def slot_profile(teeth, depth_mm, mouth_half, neck_half, lobe_half,
             for p in pts + list(reversed(lower))]
 
 
-def slot_fillet_fr_limit(teeth, depth_mm, throat_half, tfa_deg=80.0, ufa_deg=70.0) -> float:
-    """5 组 fillet 全组安全的 fr 上限（OCC fillet2D 切线空间）。
+def _tangent_fillet_radii(pts, idxs, resid=0.26, max_iter=60):
+    """圆角**尽量相切**半径迭代求解（替代固定系数）。
+
+    对每个有圆角的顶点 idx，半径 r 从单角上限开始；每条共享段（相邻两顶点都圆角），
+    两端切点距离之和 ≤ 段长−resid（残留 ≥0.26 无短边），超了等比缩小两端。
+    收敛后每角半径 = 受所有共享段约束的**最大相切半径**（齿顶/齿根/卡榫自动独立）。
+    返回 {idx: radius}。若某角切点无法放下（半径→0），该组合不可行。
+    """
+    n = len(pts)
+
+    def _th(i):
+        p0, p1, p2 = pts[i - 1], pts[i], pts[(i + 1) % n]
+        v1 = (p1[0] - p0[0], p1[1] - p0[1])
+        v2 = (p2[0] - p1[0], p2[1] - p1[1])
+        d = (v1[0] * v2[0] + v1[1] * v2[1]) / (math.hypot(*v1) * math.hypot(*v2) + 1e-9)
+        return math.acos(max(-1.0, min(1.0, d)))
+
+    def _rmax(i):
+        p0, p1, p2 = pts[i - 1], pts[i], pts[(i + 1) % n]
+        L1 = math.hypot(p0[0] - p1[0], p0[1] - p1[1])
+        L2 = math.hypot(p2[0] - p1[0], p2[1] - p1[1])
+        th = _th(i)
+        return min(L1, L2) / math.tan(th / 2.0 + 1e-9)
+
+    r = {i: _rmax(i) for i in idxs}
+    for _ in range(max_iter):
+        changed = False
+        for k in range(n):
+            i, j = k, (k + 1) % n
+            if i not in r or j not in r:
+                continue
+            L = math.hypot(pts[j][0] - pts[i][0], pts[j][1] - pts[i][1])
+            s = math.tan(_th(i) / 2.0 + 1e-9) * r[i] + math.tan(_th(j) / 2.0 + 1e-9) * r[j]
+            if s > L - resid:
+                sc = (L - resid) / s
+                r[i] *= sc
+                r[j] *= sc
+                changed = True
+        if not changed:
+            break
+    return r
+
+
+def slot_fillet_fr_limit(teeth, depth_mm, throat_half, tfa_deg=45.0, ufa_deg=75.0) -> float:
+    """7 组 fillet 全组安全的 fr 上限（OCC fillet2D 切线空间 + 共享段联合约束）。
 
     失败判据（实测）：r·tan(θ/2) > min(L1, L2) 时 fillet2D 抛 FILLET_SKETCH_FAILED。
-    每组 fillet 半径 r_g = clamp(fr·factor, …, cap…)，要求对组内每个顶点 v：
-        r_g ≤ min(L1_v, L2_v)/tan(θ_v/2)   →  fr ≤ r_max_v/factor 且 ≤ cap/factor
-    返回 5 组中最小 fr 上限（采样 clamp 与 check_all 共用同一几何真源）。
+    另：链式 fillet 在**共享段**上，两端圆角切点距离之和 ≤ 段长（如齿顶平台段被齿顶与
+    齿根平台两个圆角共享）。用二分法数值求满足所有单角 + 共享段约束的最大 fr
+    （cap 生效时半径非线性于 fr，数值法直接校验）。
     """
     m = float(throat_half)
     neck = round(1.1 * m, 3)
@@ -297,42 +457,75 @@ def slot_fillet_fr_limit(teeth, depth_mm, throat_half, tfa_deg=80.0, ufa_deg=70.
     bottom = round(0.875 * m, 3)
     sp = slot_profile(int(teeth), depth_mm, m, neck, lobe, bottom, tfa_deg, ufa_deg)
     pts = [(p["x_mm"], p["y_mm"]) for p in sp]
-    n_upper = 2 + 4 * int(teeth) + 2
-
-    def _r_max(idx):
-        # 顶点 idx 两邻边长度与轮廓内角 θ（沿轮廓进入方向 p1−p0、离开方向 p2−p1）
-        # → 单角可放最大半径 min(L1,L2)/tan(θ/2)（OCC fillet2D 失败判据）
-        p0, p1, p2 = pts[idx - 1], pts[idx], pts[idx + 1]
-        L1 = math.hypot(p0[0] - p1[0], p0[1] - p1[1])
-        L2 = math.hypot(p2[0] - p1[0], p2[1] - p1[1])
-        v1 = (p1[0] - p0[0], p1[1] - p0[1])
-        v2 = (p2[0] - p1[0], p2[1] - p1[1])
-        d = (v1[0] * v2[0] + v1[1] * v2[1]) / (math.hypot(*v1) * math.hypot(*v2) + 1e-9)
-        theta = math.acos(max(-1.0, min(1.0, d)))
-        return min(L1, L2) / math.tan(theta / 2.0 + 1e-9)
-
+    n_upper = 2 + 4 * int(teeth) + 3
     n = int(teeth)
-    # 与 _slot_cutter_nodes 分组一致（每齿 4 点，齿顶两端 fillet）：(factor, cap, 上侧目标顶点)
-    _tfa_r = math.radians(max(30.0, min(float(tfa_deg), 89.0)))
-    _ufa_r = math.radians(max(30.0, min(float(ufa_deg), 89.0)))
-    w_tips = [abs(sp[3 + 4 * i]['x_mm'] - sp[2 + 4 * i]['x_mm']) for i in range(n)]
-    r_tip = max(w_tips) / (math.tan(_tfa_r / 2.0) + math.tan(_ufa_r / 2.0))
+
+    # 每角独立半径系数（×m×fr）：齿顶>凹口>齿根>卡榫（磨好相切比例；fr_limit≈1.35 放大逼近相切）
     groups = [
-        (3.0, r_tip * 0.8, [2 + 4 * i for i in range(n)] + [3 + 4 * i for i in range(n)]),  # 齿顶圆弧
-        (1.2, 2.0, [4 + 4 * i for i in range(n)]),                                          # 内斜面降（圆角加大）
-        (1.0, 1.6, [1] + [5 + 4 * i for i in range(n)]),                                    # 楔入/连接线（圆角加大）
-        (3.0, bottom * 0.9, [n_upper - 1]),                                                 # 槽底圆弧
+        (0.12, [2 + 4 * i for i in range(n)]),
+        (0.08, [3 + 4 * i for i in range(n)]),
+        (0.10, [1] + [4 + 4 * i for i in range(n)]
+         + [5 + 4 * i for i in range(n - 1)]),
+        (0.08, [n_upper - 4]), (0.08, [n_upper - 3]),
+        (0.08, [n_upper - 2]), (0.10, [n_upper - 1]),
     ]
-    limit = float("inf")
-    for factor, cap, idxs in groups:
+    idx_meta = {}
+    for coef, idxs in groups:
         for idx in idxs:
-            if idx == 0 or idx >= n_upper - 1:
-                continue  # 口部不 fillet
-            # rad = min(fr×factor, cap)：fr 增大时 rad 被 cap 固定（≤r_max 则安全）。
-            # 故 fr 上限只由 fr×factor ≤ r_max 决定（cap 不限制 fr 名义值）。
-            fr_lim = _r_max(idx) / factor
-            limit = min(limit, fr_lim)
-    return round(limit, 3) if limit < float("inf") else 3.0
+            if idx > 0:
+                idx_meta[idx] = coef * m
+
+    def _all_ok(fr):
+        # 单角：rad ≤ min(L1,L2)/tan(θ/2)（留 0.9 裕量，OCC 链式 fillet 浮点/连续性）
+        for idx, rc in idx_meta.items():
+            rad = fr * rc
+            p0, p1, p2 = pts[idx - 1], pts[idx], pts[idx + 1]
+            L1 = math.hypot(p0[0] - p1[0], p0[1] - p1[1])
+            L2 = math.hypot(p2[0] - p1[0], p2[1] - p1[1])
+            v1 = (p1[0] - p0[0], p1[1] - p0[1])
+            v2 = (p2[0] - p1[0], p2[1] - p1[1])
+            d = (v1[0] * v2[0] + v1[1] * v2[1]) / (math.hypot(*v1) * math.hypot(*v2) + 1e-9)
+            th = math.acos(max(-1.0, min(1.0, d)))
+            if rad * math.tan(th / 2.0 + 1e-9) > 0.9 * min(L1, L2) + 1e-9:
+                return False
+        # 共享段：两端切点之和 ≤ 段长−0.26（残留 ≥0.25 无短边）
+        for k in range(n_upper):
+            i1, i2 = k, k + 1
+            if i2 >= len(pts):
+                break
+            L = math.hypot(pts[i2][0] - pts[i1][0], pts[i2][1] - pts[i1][1])
+            s = 0.0
+            for idx in (i1, i2):
+                if idx in idx_meta and 0 < idx < n_upper:
+                    p0, p1, p2 = pts[idx - 1], pts[idx], pts[idx + 1]
+                    v1 = (p1[0] - p0[0], p1[1] - p0[1])
+                    v2 = (p2[0] - p1[0], p2[1] - p1[1])
+                    d = (v1[0] * v2[0] + v1[1] * v2[1]) / (math.hypot(*v1) * math.hypot(*v2) + 1e-9)
+                    th = math.acos(max(-1.0, min(1.0, d)))
+                    s += fr * idx_meta[idx] * math.tan(th / 2.0 + 1e-9)
+            if s > L - 0.26 + 1e-9:
+                return False
+        return True
+
+    lo, hi = 0.1, 10.0
+    for _ in range(45):
+        mid = (lo + hi) / 2.0
+        if _all_ok(mid):
+            lo = mid
+        else:
+            hi = mid
+    fr_hi = lo
+    # 弧长下限 fr_lo：圆角弧 rad×arc ≥0.25 才无短边（缓角弧短）；fr_hi<fr_lo 判不可行
+    fr_lo = 0.0
+    for idx, rc in idx_meta.items():
+        g = _fir._fillet_geom(pts[idx - 1], pts[idx], pts[idx + 1], 1.0)
+        if g is None:
+            continue
+        da = abs(g[6])
+        fr_lo = max(fr_lo, 0.25 / max(da, 1e-3) / rc)
+    if fr_hi < fr_lo:
+        return 0.1
+    return round(fr_hi, 3)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -367,9 +560,7 @@ _SAFETY = {
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _slot_cutter_nodes(teeth, slots, depth_mm, throat_half, fr_mm, rim_r,
-                       axial_depth_mm=80.0, tfa_deg=80.0, ufa_deg=70.0) -> list:
-    # mon_e2b035beb218 尺寸比例（throat=4 归一化：neck0=2.5/0.625m, lobe1=7.5/1.875m,
-    # 槽底平底=3.5/0.875m）
+                       axial_depth_mm=80.0, tfa_deg=45.0, ufa_deg=75.0) -> list:
     m = float(throat_half)
     neck = round(1.1 * m, 3)
     lobe = round(2.25 * m, 3)
@@ -385,35 +576,33 @@ def _slot_cutter_nodes(teeth, slots, depth_mm, throat_half, fr_mm, rim_r,
     n_close = _node("n_close_cutter", "slot_cutter", "close_profile",
                     [_nref("n_polyline_cutter", "profile")], [_out("profile", "profile")],
                     {}, "profile", "sketch_profile")
-    n_upper = 2 + 4 * int(teeth) + 2
+    n_upper = 2 + 4 * int(teeth) + 3          # 0口 1楔入 | 齿4×teeth | 卡榫底 3 点
     n = int(teeth)
 
     def _mirror(idxs):
         return sorted({int(i) for i in idxs} | {2 * n_upper - 1 - int(i) for i in idxs})
 
-    # 点索引（每齿 4 点，齿根共线 P6-2）：0口 1楔入 | 齿 i: 2+4i(外斜面升=齿顶)
-    #   3+4i(齿顶平台) 4+4i(内斜面降) 5+4i(连接线)
-    #   | 槽底: n_upper-2(肩起点) n_upper-1(平底，大圆弧圆底)
-    # 齿顶圆顶（P6-2）：两端 fillet 半径用数学公式 r_tip = w_tip/(tan(Tfa/2)+tan(Ufa/2))
-    #   ×0.93 留 ~7% 平台——polyline 曲线在轮缘端面 z=−rim_half 处布尔产生 <0.25mm 微边，
-    #   平台直线段使端面交线平直；圆角由 OCC fillet2D 真圆弧生成（端面无微边）。
-    # 槽底圆底：平底点大半径 fillet（直线过渡段长 → r_max 大，真圆弧端面无微边）。
+    # 点索引（复用 fir_tree_slot2d 骨架）：0口 1楔入 | 齿 i: 2+4i(齿顶=外斜面升)
+    #   3+4i(齿顶平台终点) 4+4i(降面终点=连接线上端) 5+4i(连接线终点=下一齿根)
+    #   | 卡榫底: n_upper-4(连接线终点) n_upper-3(外扩) n_upper-2(平台) n_upper-1(收窄→平底)
+    # 圆角由 OCC fillet2D 真圆弧生成（端面无微边）；fr 驱动半径。
     _f = float(fr_mm)
-    w_tips = [abs(sp[3 + 4 * i]['x_mm'] - sp[2 + 4 * i]['x_mm']) for i in range(n)]
-    _tfa_r = math.radians(max(30.0, min(float(tfa_deg), 89.0)))
-    _ufa_r = math.radians(max(30.0, min(float(ufa_deg), 89.0)))
-    r_tip = max(w_tips) / (math.tan(_tfa_r / 2.0) + math.tan(_ufa_r / 2.0))
-    rad_dome = round(max(min(_f * 3.0, r_tip * 0.8), 0.5), 3)   # 齿顶圆弧（公式×0.8 留平台防端面微边）
-    rad_bottom = round(max(min(_f * 3.0, bottom * 0.9), 0.5), 3)  # 槽底圆弧（大，U 形圆底）
-    rad_flank = round(max(min(_f * 1.2, 2.0), 0.3), 3)   # 内斜面降（点4/8，圆角加大）
-    rad_neck = round(max(min(_f * 1.0, 1.6), 0.3), 3)    # 楔入、连接线（点5/9，圆角加大）
-    rad_shoulder = 0.3                                    # 槽底肩起点小圆角（r_max 小，固定）
+    # 每角独立半径（磨好相切比例 × mouth × fr）：齿顶>凹口>齿根>卡榫，差异明显；
+    # fr_limit(≈1.35) 允许 fr 放大逼近相切，圆角大。
+    rad_dome = round(0.12 * m * _f, 3)        # 齿顶
+    rad_flank = round(0.08 * m * _f, 3)       # 齿根平台
+    rad_neck = round(0.10 * m * _f, 3)        # 齿根凹口
+    rad_shoulder = round(0.08 * m * _f, 3)    # 卡榫连接线终点→外扩
+    rad_flare = round(0.08 * m * _f, 3)       # 外扩→平台
+    rad_plat = round(0.08 * m * _f, 3)        # 平台→收窄
+    rad_tip = round(0.10 * m * _f, 3)         # 收窄→平底
     groups = [
-        (rad_dome, [2 + 4 * i for i in range(n)] + [3 + 4 * i for i in range(n)]),
-        (rad_flank, [4 + 4 * i for i in range(n)]),
-        (rad_neck, [1] + [5 + 4 * i for i in range(n)]),
-        (rad_shoulder, [n_upper - 2]),
-        (rad_bottom, [n_upper - 1]),
+        (rad_dome, [2 + 4 * i for i in range(n)]),
+        (rad_flank, [3 + 4 * i for i in range(n)]),
+        (rad_neck, [1] + [4 + 4 * i for i in range(n)]
+         + [5 + 4 * i for i in range(n - 1)]),
+        (rad_shoulder, [n_upper - 4]), (rad_flare, [n_upper - 3]),
+        (rad_plat, [n_upper - 2]), (rad_tip, [n_upper - 1]),
     ]
     cur = "n_close_cutter"
     fillet_nodes = []
@@ -443,10 +632,11 @@ def build_slot_disc(params: dict) -> dict:
     slots/teeth/R_mm/depth_mm/throat_half_width_mm/fr_mm。"""
     dp = disc_profile(params["od_mm"], params["bore_mm"], params["hub_mm"], params["rim_mm"],
                       params["thick_mm"], form=params.get("form", "standard"),
-                      transition=params.get("transition", "linear"))
+                      transition=params.get("transition", "linear"),
+                      rim_arc_radius_mm=params.get("rim_arc_radius_mm"))
     teeth = int(params.get("teeth", 2))
     slots = int(params.get("slots", 60))
-    depth = params.get("depth_mm", 24.0)
+    depth = params.get("depth_mm", 21.2)
     # 榫槽 cutter 从轮缘外表面(rim_r = od/2)切入（参考 mon_e2b035beb218 pattern radius=rim_r）。
     # circular_pattern 把 cutter 槽口(x=0)平移到 radius 处 → 槽口贴轮缘外表面，槽深 depth 切入轮缘。
     # 槽底剩料由 check_slot_depth 保证（depth + mr ≤ rim_radial，论文 5.3）。
@@ -455,8 +645,8 @@ def build_slot_disc(params: dict) -> dict:
     # 此前 R_mm 作 pattern radius 使槽口内缩脱离外表面 → 用户反馈"没切开轮缘外部"）。
     # R_mm 保留为分布半径参数：用于周向节距约束（check_slot_pitch: 2πR/slots）与论文标注。
     R = rim_r
-    throat = params.get("throat_half_width_mm", 4.0)
-    fr = params.get("fr_mm", 1.0)
+    throat = params.get("throat_half_width_mm", 8.0)
+    fr = params.get("fr_mm", 0.97)
 
     # 盘体统一 sketch_profile 轮廓 + fillet + revolve（与参考 mon_e2b035beb218 同架构）。
     # complex_rim 的曲线过渡由 disc_profile 插入点表达（transition 类型），不再用单一
@@ -495,8 +685,8 @@ def build_slot_disc(params: dict) -> dict:
 
     cutter_nodes = _slot_cutter_nodes(teeth, slots, depth, throat, fr, R,
                                       params.get("axial_depth_mm", 80.0),
-                                      params.get("tfa_deg", 80.0),
-                                      params.get("ufa_deg", 70.0))
+                                      params.get("tfa_deg", 45.0),
+                                      params.get("ufa_deg", 75.0))
     n_cutter_extrude = cutter_nodes[-1]
 
     # assembly：周向阵列 + 布尔切除
@@ -850,15 +1040,15 @@ def build_coupled_disc(params: dict) -> dict:
                       "n_disc_revolve")
     teeth = int(params.get("teeth", 2))
     slots = int(params.get("slots", 60))
-    depth = params.get("depth_mm", 24.0)
-    throat = params.get("throat_half_width_mm", 4.0)
-    fr = params.get("fr_mm", 1.0)
+    depth = params.get("depth_mm", 21.2)
+    throat = params.get("throat_half_width_mm", 8.0)
+    fr = params.get("fr_mm", 0.97)
     rim_r = params["od_mm"] / 2.0
     R = rim_r  # 槽口在轮缘外表面（R_mm 为分布半径，节距约束/标注用，不移动槽口）
     cutter_nodes = _slot_cutter_nodes(teeth, slots, depth, throat, fr, R,
                                       params.get("axial_depth_mm", 80.0),
-                                      params.get("tfa_deg", 80.0),
-                                      params.get("ufa_deg", 70.0))
+                                      params.get("tfa_deg", 45.0),
+                                      params.get("ufa_deg", 75.0))
     all_nodes += cutter_nodes
     n_pattern = _node("n_pattern_cutters", "__assembly__", "circular_pattern_component",
                       [_nref("n_cutter_extrude", "body")], [_out("body", "solid")],
@@ -941,15 +1131,15 @@ def _disc_params(params: dict) -> dict:
 
 def _slot_params(params: dict) -> dict:
     """候选参数 → Agent C slot profile 参数（AGENT_A_ADDENDUM 契约）。"""
-    throat = params.get("throat_half_width_mm", 4.0)
-    fr = params.get("fr_mm", 1.0)
+    throat = params.get("throat_half_width_mm", 8.0)
+    fr = params.get("fr_mm", 0.97)
     return {
         "teeth_count": params.get("teeth"), "slots": params.get("slots"),
         "slot_depth_mm": params.get("depth_mm"),
         "mouth_half_width_mm": throat, "neck_half_width_mm": round(1.1 * throat, 3),
         "lobe_half_width_mm": round(2.25 * throat, 3),
         "bottom_half_width_mm": round(0.875 * throat, 3),
-        "tfa_deg": params.get("tfa_deg", 80.0), "ufa_deg": params.get("ufa_deg", 70.0),
+        "tfa_deg": params.get("tfa_deg", 45.0), "ufa_deg": params.get("ufa_deg", 75.0),
         "root_fillet_mm": fr, "bottom_fillet_mm": round(0.8 * fr, 3),
     }
 
@@ -998,16 +1188,17 @@ def build(params: dict) -> dict:
                                        params.get("hub_mm", 38), params.get("rim_mm", 30),
                                        params["thick_mm"],
                                        form=params.get("form", "standard"),
-                                       transition=params.get("transition", "linear"))["points"]
+                                       transition=params.get("transition", "linear"),
+                                       rim_arc_radius_mm=params.get("rim_arc_radius_mm"))["points"]
         elif prof["kind"] == "slot":
             teeth = int(params.get("teeth", 2))
-            depth = params.get("depth_mm", 24.0)
-            throat = params.get("throat_half_width_mm", 4.0)
+            depth = params.get("depth_mm", 21.2)
+            throat = params.get("throat_half_width_mm", 8.0)
             neck = round(1.1 * throat, 3)
             lobe = round(2.25 * throat, 3)
             bottom = round(0.875 * throat, 3)
             points[pid] = slot_profile(teeth, depth, throat, neck, lobe, bottom,
-                                       params.get("tfa_deg", 80.0), params.get("ufa_deg", 70.0))
+                                       params.get("tfa_deg", 45.0), params.get("ufa_deg", 75.0))
     return assemble(ap["gcad_skeleton"], ap["profiles"], points)
 
 

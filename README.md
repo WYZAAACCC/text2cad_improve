@@ -2,11 +2,6 @@
 
 **DeepSeek-native zero-trust tool gateway — run DeepSeek agents in production without leaking secrets, escaping sandboxes, or blowing budgets.**
 
-> **本仓库同时包含：NL2DiskCAD 涡轮盘参数化数据集基础设施**（`_param_experiment/`）
-> —— 面向论文《面向航空发动机涡轮盘的自然语言参数化 CAD 建模》的 32 设计族
-> 确定性参数化模板（非 LLM）、三区采样、DiskCAD-MCP 几何质量门与预览/采集管线。
-> 详见 [_param_experiment/README.md](_param_experiment/README.md)。
-
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/seekflow.svg)](https://pypi.org/project/seekflow/)
