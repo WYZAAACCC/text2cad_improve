@@ -54,7 +54,6 @@ from seekflow_engineering_tools.generative_cad.authoring.strict_schema import ( 
 )
 
 MODEL_CONFIG = LlmModelConfig(model="deepseek-v4-pro", base_url="https://api.deepseek.com/beta")
-API_KEY_FILE = ROOT / "_archive" / "apikey.txt"
 DEFAULT_BASE = ROOT / "app" / "text-to-cad" / "server" / "output" / "b572661c219c4952"
 DEFAULT_OUT = _HERE / "output" / "fillet_select"
 
@@ -296,7 +295,7 @@ def apply_llm_fillet_selection(
 
     # API key
     if llm_fillets is None:
-        key = API_KEY_FILE.read_text(encoding="utf-8").strip()
+        key = os.environ.get("DEEPSEEK_API_KEY", "")
         os.environ["DEEPSEEK_API_KEY"] = key
 
     result = {"ok": True, "base_dir": str(base), "components": {}}

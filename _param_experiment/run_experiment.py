@@ -44,7 +44,6 @@ OUT_ROOT = Path(__file__).resolve().parent / "output"
 DEFAULT_OUTDIR = "solutionA_round2"
 OUT = OUT_ROOT / DEFAULT_OUTDIR
 
-API_KEY_FILE = ROOT / "_archive" / "apikey.txt"
 
 MODEL_CONFIG = LlmModelConfig(
     model="deepseek-v4-pro",
@@ -176,9 +175,9 @@ def main(combos: list[str], smoke: bool = False, outdir: str | None = None) -> N
         OUT = OUT_ROOT / outdir
     OUT.mkdir(parents=True, exist_ok=True)
 
-    key = API_KEY_FILE.read_text(encoding="utf-8").strip()
+    key = os.environ.get("DEEPSEEK_API_KEY", "")
     if not key:
-        print("!! _archive/apikey.txt 为空")
+        print("!! DEEPSEEK_API_KEY 未设置")
         sys.exit(1)
     os.environ["DEEPSEEK_API_KEY"] = key
     print(f"API key loaded: {key[:6]}...")

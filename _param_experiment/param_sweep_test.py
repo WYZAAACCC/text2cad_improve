@@ -232,7 +232,7 @@ def run_case(case: dict, no_run: bool, force_route: str | None = None) -> tuple:
     out_dir = ROOT / "app" / "text-to-cad" / "server" / "output" / task_id
 
     if not no_run:
-        key = (ROOT / "_archive" / "apikey.txt").read_text(encoding="utf-8").strip()
+        key = os.environ.get("DEEPSEEK_API_KEY", "")
         os.environ["DEEPSEEK_API_KEY"] = key
         import main
         main._tasks[task_id] = {"status": "pending"}

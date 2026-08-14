@@ -30,7 +30,6 @@ from seekflow_engineering_tools.generative_cad.authoring.strict_schema import to
 from mcp_tools import TOOLS
 
 MODEL_CONFIG = LlmModelConfig(model="deepseek-v4-pro", base_url="https://api.deepseek.com/beta")
-API_KEY_FILE = ROOT / "_archive" / "apikey.txt"
 
 BASE_DIR = (ROOT / "app" / "text-to-cad" / "server" / "output" / "b572661c219c4952")
 
@@ -97,7 +96,7 @@ def _system_prompt(base_dir) -> str:
 def run_quality_assurance(task_nl: str, base_dir=None, max_rounds: int = 16) -> dict:
     """执行一次端到端 MCP 质量检查任务。返回工具调用序列 + 最终报告。"""
     base_dir = str(base_dir or BASE_DIR)
-    api_key = API_KEY_FILE.read_text(encoding="utf-8").strip()
+    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
     os.environ["DEEPSEEK_API_KEY"] = api_key
 
     client = OpenAI(api_key=api_key, base_url=MODEL_CONFIG.base_url)

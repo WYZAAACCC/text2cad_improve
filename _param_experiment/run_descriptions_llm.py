@@ -65,11 +65,8 @@ _DISK_CN = {"basic": "基础轮毂-腹板-轮缘盘", "hole": "带周向孔阵�
 
 
 def _key():
-    for cand in (ROOT / "_archive" / "apikey.txt", Path(r"E:\auto_detection_process\_archive\apikey.txt")):
-        if cand.exists():
-            os.environ["DEEPSEEK_API_KEY"] = cand.read_text(encoding="utf-8").strip()
-            return
-    raise SystemExit("未找到 apikey.txt")
+    if not os.environ.get("DEEPSEEK_API_KEY", ""):
+        raise SystemExit("DEEPSEEK_API_KEY not set")
 
 
 def _param_summary(params: dict) -> str:

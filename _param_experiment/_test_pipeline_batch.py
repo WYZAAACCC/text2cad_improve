@@ -13,11 +13,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 ROOT = _HERE.parent
-for cand in (_HERE.parent / "_archive" / "apikey.txt",
-             Path(r"E:\auto_detection_process\_archive\apikey.txt")):
-    if cand.exists():
-        os.environ["DEEPSEEK_API_KEY"] = cand.read_text().strip()
-        break
+# DEEPSEEK_API_KEY must be set in the environment.
 sys.path.insert(0, str(ROOT / "app" / "text-to-cad" / "server"))
 sys.path.insert(0, str(ROOT / "integrations" / "engineering_tools" / "src"))
 sys.path.insert(0, str(_HERE))

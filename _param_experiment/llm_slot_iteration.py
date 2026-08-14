@@ -34,7 +34,6 @@ OUT = Path(__file__).resolve().parent / "output" / "llm_slot_rounds"
 OUT.mkdir(parents=True, exist_ok=True)
 
 MODEL_CONFIG = LlmModelConfig(model="deepseek-v4-pro", base_url="https://api.deepseek.com/beta")
-API_KEY_FILE = ROOT / "_archive" / "apikey.txt"
 
 
 # ── Prompt 模板（迭代更新）──────────────────────────────────────────────────
@@ -990,7 +989,7 @@ def call_llm_retry(prompt: str, gt: list, max_attempts: int = 3) -> tuple:
 
 
 def main(combos: list, prompt_name: str, repeat: int = 1, retry: int = 1):
-    key = API_KEY_FILE.read_text(encoding="utf-8").strip()
+    key = os.environ.get("DEEPSEEK_API_KEY", "")
     os.environ["DEEPSEEK_API_KEY"] = key
     print(f"=== 榫槽 LLM 迭代实验 [round={prompt_name}] combos={combos} repeat={repeat} retry={retry} ===")
 

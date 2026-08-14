@@ -20,7 +20,6 @@ from fir_tree_parametric import FirTreeParams, generate_profile
 from fillet_corners import list_required_corners, llm_schema, verify_coverage
 
 MODEL_CONFIG = LlmModelConfig(model="deepseek-v4-pro", base_url="https://api.deepseek.com/beta")
-API_KEY_FILE = ROOT / "_archive" / "apikey.txt"
 
 ROLE_HINT = {
     "tip_flank_top": "齿顶外斜面端",
@@ -58,7 +57,7 @@ def call_llm(prompt: str) -> list:
 
 
 def main():
-    key = API_KEY_FILE.read_text(encoding="utf-8").strip()
+    key = os.environ.get("DEEPSEEK_API_KEY", "")
     os.environ["DEEPSEEK_API_KEY"] = key
 
     print("=== 圆角 LLM 指定测试 ===\n")

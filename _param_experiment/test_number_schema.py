@@ -26,7 +26,6 @@ from seekflow_engineering_tools.generative_cad.authoring.strict_schema import (
     to_deepseek_strict_schema,
 )
 
-API_KEY_FILE = ROOT / "_archive" / "apikey.txt"
 MODEL_CONFIG = LlmModelConfig(model="deepseek-v4-pro", base_url="https://api.deepseek.com/beta")
 
 TOOL_NAME = "emit_coords"
@@ -106,7 +105,7 @@ def call(variant_name: str, schema: dict) -> dict | str:
 
 
 def main():
-    key = API_KEY_FILE.read_text(encoding="utf-8").strip()
+    key = os.environ.get("DEEPSEEK_API_KEY", "")
     os.environ["DEEPSEEK_API_KEY"] = key
 
     variants = build_variants()

@@ -7,14 +7,8 @@ from pathlib import Path
 import pytest
 
 
-# API key for DeepSeek v4 Pro (for LLM calls in real text-to-CAD tests)
-API_KEY_FILE = Path(r"E:\auto_detection_process\_archive\apikey.txt")
-
-
 def _load_api_key() -> str:
-    """Load DeepSeek API key from file."""
-    if API_KEY_FILE.exists():
-        return API_KEY_FILE.read_text(encoding="utf-8").strip()
+    """Load DeepSeek API key from the environment only."""
     return os.environ.get("DEEPSEEK_API_KEY", "")
 
 

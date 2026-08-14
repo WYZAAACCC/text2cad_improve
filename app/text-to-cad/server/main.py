@@ -488,10 +488,6 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
         _update_task(task_id, status="processing", progress=10)
 
         api_key = os.environ.get("DEEPSEEK_API_KEY", "")
-        if not api_key:
-            f = Path(r"E:\auto_detection_process\_archive\apikey.txt")
-            if f.exists():
-                os.environ["DEEPSEEK_API_KEY"] = f.read_text().strip()
 
         from seekflow_engineering_tools.generative_cad.llm.models import LlmModelConfig
         from seekflow_engineering_tools.generative_cad.llm.deepseek_client import DeepSeekToolCaller
@@ -855,9 +851,6 @@ def api_poll(task_id: str):
 def api_spatial_start(req: SpatialStartRequest):
     try:
         api_key = os.environ.get("DEEPSEEK_API_KEY", "")
-        if not api_key:
-            f = Path(r"E:\auto_detection_process\_archive\apikey.txt")
-            if f.exists(): os.environ["DEEPSEEK_API_KEY"] = f.read_text().strip()
 
         from seekflow_engineering_tools.generative_cad.llm.models import AuthoringLlmConfig, LlmModelConfig
         from seekflow_engineering_tools.generative_cad.llm.deepseek_client import DeepSeekToolCaller
@@ -941,9 +934,6 @@ def api_spatial_continue(req: SpatialContinueRequest):
         if not sd: raise HTTPException(404, "Session not found")
 
         api_key = os.environ.get("DEEPSEEK_API_KEY", "")
-        if not api_key:
-            f = Path(r"E:\auto_detection_process\_archive\apikey.txt")
-            if f.exists(): os.environ["DEEPSEEK_API_KEY"] = f.read_text().strip()
 
         from seekflow_engineering_tools.generative_cad.llm.models import AuthoringLlmConfig, LlmModelConfig
         from seekflow_engineering_tools.generative_cad.llm.deepseek_client import DeepSeekToolCaller

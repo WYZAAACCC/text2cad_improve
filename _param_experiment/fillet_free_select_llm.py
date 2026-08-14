@@ -31,7 +31,6 @@ from fillet_free_select import (build_candidate_table, free_select_schema,
 from fillet_corners import execute_fillets
 
 MODEL_CONFIG = LlmModelConfig(model="deepseek-v4-pro", base_url="https://api.deepseek.com/beta")
-API_KEY_FILE = ROOT / "_archive" / "apikey.txt"
 
 
 def build_wire(pts):
@@ -69,7 +68,7 @@ def make_params(n: int) -> FirTreeParams:
 
 
 def main():
-    key = API_KEY_FILE.read_text(encoding="utf-8").strip()
+    key = os.environ.get("DEEPSEEK_API_KEY", "")
     os.environ["DEEPSEEK_API_KEY"] = key
 
     print("=== LLM 自由选择圆角 — 真实 DeepSeek 测试 ===\n")

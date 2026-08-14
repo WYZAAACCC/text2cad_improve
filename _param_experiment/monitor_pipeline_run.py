@@ -82,7 +82,7 @@ def plot_profiles(ir: dict, out_png: Path, title: str):
 
 def run_pipeline(task_id: str, text: str, force_route: str | None = None) -> dict:
     """调用主流程 _run_pipeline，监控状态与产物。"""
-    key = (ROOT / "_archive" / "apikey.txt").read_text(encoding="utf-8").strip()
+    key = os.environ.get("DEEPSEEK_API_KEY", "")
     os.environ["DEEPSEEK_API_KEY"] = key
     import main
 

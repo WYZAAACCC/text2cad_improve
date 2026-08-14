@@ -45,7 +45,6 @@ OUT = Path(__file__).resolve().parent / "output" / "llm_free_select_full"
 OUT.mkdir(parents=True, exist_ok=True)
 
 MODEL_CONFIG = LlmModelConfig(model="deepseek-v4-pro", base_url="https://api.deepseek.com/beta")
-API_KEY_FILE = ROOT / "_archive" / "apikey.txt"
 
 # (组合名, prompt版本, 标签)
 COMBOS = [
@@ -90,7 +89,7 @@ def plot_wire(ax, w, color="#1f77b4", lw=1.8, alpha=1.0):
 
 
 def main():
-    key = API_KEY_FILE.read_text(encoding="utf-8").strip()
+    key = os.environ.get("DEEPSEEK_API_KEY", "")
     os.environ["DEEPSEEK_API_KEY"] = key
 
     print("=== LLM 全程真实链路：生成轮廓 → 自由选圆角 → 执行 ===\n")
