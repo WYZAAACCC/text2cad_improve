@@ -277,6 +277,19 @@ class OcafDocumentSession:
         self._attach_name(label, f"Selection:{selection_id}")
         return label
 
+    def collect_component_tnaming_labels(self, component_id: str):
+        """Collect TNaming labels for a component's dependency closure.
+
+        Scopes valid_labels to one component's feature subtree, avoiding the
+        global (whole-document) collection for multi-component models.
+        """
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.compat import (
+            collect_tnaming_labels,
+        )
+
+        comp_label = self.ensure_component(component_id)
+        return collect_tnaming_labels(comp_label)
+
     # ------------------------------------------------------------------
     # DesignRoot Metadata — v5.0 §7.2
     # ------------------------------------------------------------------

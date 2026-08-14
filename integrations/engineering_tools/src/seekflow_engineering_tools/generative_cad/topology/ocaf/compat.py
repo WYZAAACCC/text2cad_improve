@@ -217,7 +217,12 @@ def collect_tnaming_labels(root_label, *, restrict_to: Any = None) -> Any:
             _walk(child_it.Value())
             child_it.Next()
 
-    _walk(root_label)
+    if restrict_to is None:
+        _walk(root_label)
+    else:
+        subtrees = restrict_to if isinstance(restrict_to, (list, tuple)) else [restrict_to]
+        for subtree in subtrees:
+            _walk(subtree)
     return label_map
 
 

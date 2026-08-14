@@ -304,7 +304,25 @@ def _run_ocaf_write_and_save(
                     from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
                         EvolutionKind,
                     )
-                    label_map = collect_tnaming_labels(ocaf_session.design_root_label)
+                    selection_component_map = {
+                        spec.selection_id: spec.component_id
+                        for spec in selection_specs
+                    }
+                    relevant_components = {
+                        selection_component_map[b.selection_id]
+                        for b in bindings
+                        if b.selection_id in selection_component_map
+                    }
+                    if relevant_components:
+                        label_map = collect_tnaming_labels(
+                            ocaf_session.design_root_label,
+                            restrict_to=[
+                                ocaf_session.ensure_component(cid)
+                                for cid in relevant_components
+                            ],
+                        )
+                    else:
+                        label_map = collect_tnaming_labels(ocaf_session.design_root_label)
                     deleted_shapes = tuple(
                         r.old_shape
                         for b in ctx.capture_session.iter_batches()
