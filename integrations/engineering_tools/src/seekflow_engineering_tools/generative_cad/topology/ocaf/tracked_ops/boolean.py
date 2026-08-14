@@ -203,6 +203,26 @@ def _export_bopalgo_history(
                     )
                 )
 
+            # ── Carry-through: the face is unchanged by this boolean op (its
+            #    TShape survives in the result). OCCT History does not report
+            #    these, but a persistent TNaming chain still needs an explicit
+            #    edge so cross-feature Solve can keep following the face. ──
+            if not gen_shapes and not mod_shapes and not history.IsRemoved(fw):
+                partner = _find_partner_face(result, fw)
+                if partner is not None:
+                    relations.append(
+                        LiveEvolutionRelation(
+                            relation_id=f"{scope.node_id}/{source_key}/carry/{len(relations)}",
+                            operation_id=scope.node_id,
+                            kind=EvolutionKind.MODIFIED,
+                            entity_kind=TopologyEntityKind.FACE,
+                            source_key=source_key,
+                            old_shape=fw,
+                            new_shapes=(partner,),
+                            proof=ProofClass.EXACT_KERNEL_HISTORY,
+                        )
+                    )
+
     batch = LiveEvolutionBatch(
         scope=scope,
         builder_kind=builder_kind,
@@ -232,3 +252,14 @@ def _face_evidence(face: Any) -> dict:
         }
     except Exception:
         return {}
+
+
+def _find_partner_face(result_shape: Any, face: Any):
+    """Return a face in result_shape sharing the same TShape as ``face``."""
+    try:
+        for rf in result_shape.Faces():
+            if rf.wrapped.IsPartner(face) or rf.wrapped.IsSame(face):
+                return rf.wrapped
+    except Exception:
+        pass
+    return None
