@@ -160,3 +160,49 @@ def _count_edges(shape: Any) -> int:
             return len(list(shape))
         except Exception:
             return 0
+
+
+def select_edge_shapes(solid: Any, selector: str) -> list[Any]:
+    """Resolve edges to actual TopoDS_Edge shapes by selector string.
+
+    Unlike select_edges (which returns EdgeHandle indices), this returns the
+    actual TopoDS_Edge shapes suitable for TNaming-tracked fillet/chamfer.
+    Returns [] if no edges match.
+    """
+    edges = _edge_selector(solid, selector)
+    if edges is None:
+        return []
+    return [e.wrapped for e in edges]
+
+
+def _edge_selector(solid: Any, selector: str):
+    """Return a CadQuery edge selector matching a target string."""
+    if selector == "all_external_edges":
+        return solid.edges()
+    if selector in ("top", "bottom"):
+        face = _extreme_face(solid, z_max=(selector == "top"))
+        return face.edges() if face is not None else solid.edges()
+    if selector in (">Z", "<Z"):
+        try:
+            return solid.faces(selector).edges()
+        except Exception:
+            return solid.edges()
+    if selector.startswith("sharp:"):
+        return solid.edges()  # CadQuery has no native sharp-edge filter
+    return solid.edges()
+
+
+def _extreme_face(solid: Any, z_max: bool):
+    """Return the face with the highest (or lowest) Z centroid, or None."""
+    try:
+        faces = solid.faces(">Z" if z_max else "<Z")
+        best_face = None
+        best_z = float("-inf") if z_max else float("inf")
+        for f in faces:
+            z = f.Center().z
+            if (z_max and z > best_z) or (not z_max and z < best_z):
+                best_z = z
+                best_face = f
+        return best_face
+    except Exception:
+        return None

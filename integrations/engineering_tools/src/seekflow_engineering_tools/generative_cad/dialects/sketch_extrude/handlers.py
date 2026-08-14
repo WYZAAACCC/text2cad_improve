@@ -362,6 +362,35 @@ def handle_se_fillet(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]
     r = float(node.typed_params.get("radius_mm", node.params.get("radius_mm", 0))) if node.typed_params else float(node.params.get("radius_mm", 0))
     if r > 0:
         target = node.params.get("target", "all_external_edges")
+        if (
+            getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        ):
+            import cadquery as cq
+            from seekflow_engineering_tools.generative_cad.runtime.topology import (
+                select_edge_shapes,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+                tracked_fillet,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            edge_shapes = select_edge_shapes(body, target)
+            if edge_shapes:
+                try:
+                    scope = TopologyCaptureScope(
+                        node_id=node.id, component_id=node.component,
+                        dialect=node.dialect, operation=node.op,
+                        operation_version=node.op_version,
+                    )
+                    body_shape = body.val() if hasattr(body, "val") else body
+                    tracked = tracked_fillet(body_shape, edge_shapes, r, scope=scope)
+                    ctx.capture_session.stage(tracked.batch)
+                    body = cq.Workplane("XY").newObject([tracked.result])
+                    return {"body": _store_solid(node, ctx, body)}
+                except Exception:
+                    pass  # fall back to non-tracked path below
         from seekflow_engineering_tools.generative_cad.dialects.axisymmetric.handlers import _fillet_by_target
         try:
             body = _fillet_by_target(body, r, target)
@@ -382,6 +411,35 @@ def handle_se_chamfer(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str
     d = float(node.typed_params.get("distance_mm", node.params.get("distance_mm", 0))) if node.typed_params else float(node.params.get("distance_mm", 0))
     if d > 0:
         target = node.params.get("target", "all_external_edges")
+        if (
+            getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        ):
+            import cadquery as cq
+            from seekflow_engineering_tools.generative_cad.runtime.topology import (
+                select_edge_shapes,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+                tracked_chamfer,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            edge_shapes = select_edge_shapes(body, target)
+            if edge_shapes:
+                try:
+                    scope = TopologyCaptureScope(
+                        node_id=node.id, component_id=node.component,
+                        dialect=node.dialect, operation=node.op,
+                        operation_version=node.op_version,
+                    )
+                    body_shape = body.val() if hasattr(body, "val") else body
+                    tracked = tracked_chamfer(body_shape, edge_shapes, d, scope=scope)
+                    ctx.capture_session.stage(tracked.batch)
+                    body = cq.Workplane("XY").newObject([tracked.result])
+                    return {"body": _store_solid(node, ctx, body)}
+                except Exception:
+                    pass  # fall back to non-tracked path below
         from seekflow_engineering_tools.generative_cad.dialects.axisymmetric.handlers import _chamfer_by_target
         try:
             body = _chamfer_by_target(body, d, target)

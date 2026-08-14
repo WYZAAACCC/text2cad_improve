@@ -24,6 +24,24 @@ def _store_solid(node: CanonicalNode, ctx: RuntimeContext, obj) -> str:
     return sid
 
 
+def _revolve_profile_tracked(profile_wp, ctx, scope):
+    """Revolve a 2D profile wire around Z with tracked history capture."""
+    import cadquery as cq
+    from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeFace
+    from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+        tracked_revolve,
+    )
+
+    wire = profile_wp.wire().val()
+    fb = BRepBuilderAPI_MakeFace(wire.wrapped, False)
+    fb.Build()
+    tracked = tracked_revolve(
+        cq.Shape.cast(fb.Face()), (0, 0, 0), (0, 0, 1), 360, scope=scope,
+    )
+    ctx.capture_session.stage(tracked.batch)
+    return cq.Workplane("XY").newObject([tracked.result])
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Geometry creation
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -34,6 +52,20 @@ def handle_revolve_profile(node: CanonicalNode, ctx: RuntimeContext) -> dict[str
     if not stations or len(stations) < 1:
         raise ValueError("Need at least 1 profile station")
 
+    tracked_enabled = (
+        getattr(ctx, "enable_topology_capture", False)
+        and ctx.capture_session is not None
+    )
+    if tracked_enabled:
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+            TopologyCaptureScope,
+        )
+        scope = TopologyCaptureScope(
+            node_id=node.id, component_id=node.component,
+            dialect=node.dialect, operation=node.op,
+            operation_version=node.op_version,
+        )
+
     # ── Single station: simple cylinder ──
     if len(stations) == 1:
         s = stations[0]
@@ -42,16 +74,18 @@ def handle_revolve_profile(node: CanonicalNode, ctx: RuntimeContext) -> dict[str
         zr = float(s.get("z_rear_mm", 0))
         if zr <= zf:
             raise ValueError(f"z_rear_mm ({zr}) must be > z_front_mm ({zf})")
-        result = (
+        profile_wp = (
             cq.Workplane("XZ")
             .moveTo(r, zf)
             .lineTo(r, zr)
             .lineTo(0, zr)
             .lineTo(0, zf)
             .close()
-            .revolve(360)
         )
-        solid = result
+        if tracked_enabled:
+            solid = _revolve_profile_tracked(profile_wp, ctx, scope)
+        else:
+            solid = profile_wp.revolve(360)
     else:
         # ── Multi station: piecewise linear profile ──
         # 检测"区域描述"风格：多个 station 的 Z 区间重叠
@@ -89,11 +123,14 @@ def handle_revolve_profile(node: CanonicalNode, ctx: RuntimeContext) -> dict[str
 
         z_min = unique_pts[0][1]
         z_max = unique_pts[-1][1]
-        result = cq.Workplane("XZ").moveTo(0, z_min)
+        profile_wp = cq.Workplane("XZ").moveTo(0, z_min)
         for (r, z) in unique_pts:
-            result = result.lineTo(r, z)
-        result = result.lineTo(0, z_max).close()
-        solid = result.revolve(360)
+            profile_wp = profile_wp.lineTo(r, z)
+        profile_wp = profile_wp.lineTo(0, z_max).close()
+        if tracked_enabled:
+            solid = _revolve_profile_tracked(profile_wp, ctx, scope)
+        else:
+            solid = profile_wp.revolve(360)
 
     result_map = {"body": _store_solid(node, ctx, solid)}
 
@@ -415,6 +452,35 @@ def handle_apply_safe_chamfer(node: CanonicalNode, ctx: RuntimeContext) -> dict[
     distance = float(node.typed_params.get("distance_mm", node.params.get("distance_mm", 0)))
     if distance > 0:
         target = node.params.get("target", "all_external_edges")
+        if (
+            getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        ):
+            import cadquery as cq
+            from seekflow_engineering_tools.generative_cad.runtime.topology import (
+                select_edge_shapes,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+                tracked_chamfer,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            edge_shapes = select_edge_shapes(body, target)
+            if edge_shapes:
+                try:
+                    scope = TopologyCaptureScope(
+                        node_id=node.id, component_id=node.component,
+                        dialect=node.dialect, operation=node.op,
+                        operation_version=node.op_version,
+                    )
+                    body_shape = body.val() if hasattr(body, "val") else body
+                    tracked = tracked_chamfer(body_shape, edge_shapes, distance, scope=scope)
+                    ctx.capture_session.stage(tracked.batch)
+                    body = cq.Workplane("XY").newObject([tracked.result])
+                    return {"body": _store_solid(node, ctx, body)}
+                except Exception:
+                    pass  # fall back to non-tracked path below
         try:
             body = _chamfer_by_target(body, distance, target)
         except Exception:
