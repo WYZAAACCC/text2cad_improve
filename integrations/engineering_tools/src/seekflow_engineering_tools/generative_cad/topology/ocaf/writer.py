@@ -256,22 +256,38 @@ class TopologyNamingWriter:
     # ── Construction roles ──────────────────────────────────────────────
 
     def _write_construction_roles(self, feat_label, roles: dict) -> int:
-        """Write first_shape/last_shape etc. under Tag 4."""
+        """Write start_cap/end_cap role faces under ResultRoot (v7 T12-c).
+
+        Role faces are written as children of ResultRoot (Tag 2) so
+        TNaming_Selector can find them during Solve. Cross-revision roles are
+        written as Modify(prev_face, new_face).
+        """
         first_shape = roles.get("start_cap")
         last_shape = roles.get("end_cap")
         written = 0
 
         if first_shape is not None:
-            label = feat_label.FindChild(TAG_CONSTRUCTION_ROLES, True).FindChild(1, True)
-            TNaming_Builder(label).Generated(first_shape)
+            prev = self._get_previous_role_result(feat_label, ROLE_TAG_BASE)
+            self.write_role_result(
+                feat_label, ROLE_TAG_BASE, first_shape, previous_face=prev,
+            )
             written += 1
 
         if last_shape is not None and first_shape is not None and not last_shape.IsSame(first_shape):
-            label = feat_label.FindChild(TAG_CONSTRUCTION_ROLES, True).FindChild(2, True)
-            TNaming_Builder(label).Generated(last_shape)
+            prev = self._get_previous_role_result(feat_label, ROLE_TAG_BASE + 1)
+            self.write_role_result(
+                feat_label, ROLE_TAG_BASE + 1, last_shape, previous_face=prev,
+            )
             written += 1
 
         return written
+
+    def _get_previous_role_result(self, feat_label, role_tag: int):
+        """Return the previous revision's role face, or None (first revision)."""
+        getter = getattr(self._session, "get_current_role_result", None)
+        if getter is None:
+            return None
+        return getter(feat_label, role_tag)
 
     # ── Label helpers ───────────────────────────────────────────────────
 

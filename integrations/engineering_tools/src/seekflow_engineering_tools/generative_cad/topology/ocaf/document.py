@@ -358,6 +358,32 @@ class OcafDocumentSession:
             it.Next()
         return None
 
+    def get_current_role_result(self, feature_label, role_tag: int):
+        """Read a role face's TNaming_NamedShape under ResultRoot (Tag 2).
+
+        Returns the TopoDS_Shape stored at ResultRoot/<role_tag>, or None.
+        Used to retrieve the previous revision's role face for Modify(old,new).
+        """
+        from OCP.TNaming import TNaming_Tool
+        from OCP.TDF import TDF_AttributeIterator
+
+        result_root = feature_label.FindChild(2, False)  # TAG_CURRENT_RESULT
+        if result_root.IsNull():
+            return None
+        role_label = result_root.FindChild(role_tag, False)
+        if role_label.IsNull():
+            return None
+
+        it = TDF_AttributeIterator(role_label)
+        while it.More():
+            attr = it.Value()
+            if attr.DynamicType().Name() == "TNaming_NamedShape":
+                current = TNaming_Tool.CurrentShape_s(attr)
+                if current is not None:
+                    return current
+            it.Next()
+        return None
+
     # ------------------------------------------------------------------
     # Transaction helpers
     # ------------------------------------------------------------------

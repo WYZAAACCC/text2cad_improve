@@ -66,3 +66,50 @@ class TestLineageRevisions:
         current = final.get_current_result_shape(feat)
         assert current is not None, "final revision should have a CurrentResult"
         final.close()
+
+    def test_selection_survives_across_revisions(self, tmp_path):
+        pytest.importorskip("cadquery")
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+            SelectionSpec,
+            SelectionPolicy,
+            TopologyEntityKind,
+            SelectionResolutionStatus,
+        )
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.selection_service import (
+            PersistentSelectionService,
+        )
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.compat import (
+            collect_tnaming_labels,
+        )
+
+        rev1 = _make_revision(12)
+        rev2 = _make_revision(20)
+        rev3 = _make_revision(30)
+
+        spec = SelectionSpec(
+            selection_id="top_face",
+            component_id="plate",
+            face_selector=">Z",
+            policy=SelectionPolicy(entity_kind=TopologyEntityKind.FACE),
+        )
+
+        results = run_lineage_revisions(
+            lineage_id="sel_lineage",
+            output_root=tmp_path,
+            revisions=[
+                {"canonical": rev1[0], "validation_seed": rev1[1], "selection_specs": [spec]},
+                {"canonical": rev2[0], "validation_seed": rev2[1]},
+                {"canonical": rev3[0], "validation_seed": rev3[1]},
+            ],
+        )
+        assert all(r.ok for r in results), [r.error for r in results if not r.ok]
+
+        store = RevisionStore(tmp_path, "sel_lineage")
+        final = OcafDocumentSession.open(store.revision_dir(3) / "design.xbf")
+        svc = PersistentSelectionService(final)
+        label_map = collect_tnaming_labels(final.design_root_label)
+        resolution = svc.solve("top_face", label_map)
+        assert resolution.status == SelectionResolutionStatus.UNIQUE, (
+            f"expected UNIQUE, got {resolution.status}: {resolution.detail}"
+        )
+        final.close()

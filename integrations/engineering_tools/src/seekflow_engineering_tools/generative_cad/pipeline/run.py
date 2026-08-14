@@ -144,6 +144,9 @@ def _create_selections_from_specs(
         try:
             handle_id = ctx.resolve_component_output(spec.component_id, "body")
             body = ctx.object_store.get(handle_id)
+            # Normalize a Workplane to its underlying Shape/Solid.
+            if hasattr(body, "val") and not hasattr(body, "wrapped"):
+                body = body.val()
             face = body.faces(spec.face_selector)
             svc.create(
                 spec.selection_id, face.wrapped, body.wrapped,

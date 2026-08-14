@@ -41,33 +41,34 @@ def tracked_extrude(
     """Drop-in replacement for shapes.extrude() with History capture."""
     results: list[Any] = []
     relations: list[LiveEvolutionRelation] = []
-    first_shape = None
-    last_shape = None
 
     scope = scope or TopologyCaptureScope()
 
     for el in _get(profile, ("Vertex", "Edge", "Wire", "Face")):
-        builder = BRepPrimAPI_MakePrism(el.wrapped, Vector(vector).wrapped)
+        el_type = el.ShapeType()
+        profile_shape = el.wrapped
+
+        if el_type == "Wire":
+            # CadQuery's extrude makes a face from a closed wire first; without
+            # this, MakePrism would produce an open shell (no caps) instead of
+            # a solid.
+            from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeFace
+            fb = BRepBuilderAPI_MakeFace(el.wrapped)
+            fb.Build()
+            profile_shape = fb.Face()
+            el_type = "Face"
+
+        builder = BRepPrimAPI_MakePrism(profile_shape, Vector(vector).wrapped)
         builder.Build()
         result_shape = builder.Shape()
         results.append(result_shape)
 
-        el_type = el.ShapeType()
-
-        if el_type == "Wire":
-            for edge in el.Edges():
-                _capture_generated(relations, scope, builder, edge, "profile_edge")
-                _capture_modified(relations, scope, builder, edge, "profile_edge")
-
-        elif el_type == "Face":
-            _capture_generated(relations, scope, builder, el, "profile_face")
-            _capture_modified(relations, scope, builder, el, "profile_face")
-
-        if first_shape is None:
-            first_shape = builder.FirstShape()
-        last_shape = builder.LastShape()
+        if el_type == "Face":
+            _capture_generated(relations, scope, builder, profile_shape, "profile_face")
+            _capture_modified(relations, scope, builder, profile_shape, "profile_face")
 
     result = _compound_or_shape(results)
+    start_cap, end_cap = _find_cap_faces(result, vector)
 
     batch = LiveEvolutionBatch(
         scope=scope,
@@ -76,13 +77,41 @@ def tracked_extrude(
         result_shape=result.wrapped,
         context_shape=result.wrapped,
         relations=relations,
-        construction_roles={
-            "start_cap": first_shape,
-            "end_cap": last_shape,
-        },
+        construction_roles={"start_cap": start_cap, "end_cap": end_cap},
         history_complete=True,
     )
     return TrackedShapeResult(result=result, batch=batch)
+
+
+def _find_cap_faces(result: Any, direction: tuple[float, float, float] | list[float]):
+    """Return (start_cap, end_cap) faces whose normal is parallel to direction."""
+    from OCP.BRepAdaptor import BRepAdaptor_Surface
+
+    dx, dy, dz = direction
+    length = (dx * dx + dy * dy + dz * dz) ** 0.5
+    if length < 1e-9:
+        return None, None
+    ux, uy, uz = dx / length, dy / length, dz / length
+
+    caps: list[tuple[float, Any]] = []
+    for f in result.Faces():
+        try:
+            adaptor = BRepAdaptor_Surface(f.wrapped)
+            if adaptor.GetType() == 0:  # GeomAbs_Plane
+                n = adaptor.Plane().Position().Direction()
+                dot = n.X() * ux + n.Y() * uy + n.Z() * uz
+                if abs(abs(dot) - 1.0) < 0.01:
+                    c = f.Center()
+                    caps.append((c.x * ux + c.y * uy + c.z * uz, f.wrapped))
+        except Exception:
+            continue
+
+    caps.sort(key=lambda p: p[0])
+    if len(caps) >= 2:
+        return caps[0][1], caps[-1][1]
+    if len(caps) == 1:
+        return caps[0][1], None
+    return None, None
 
 
 # ---------------------------------------------------------------------------
@@ -94,10 +123,10 @@ def _capture_generated(
     relations: list[LiveEvolutionRelation],
     scope: TopologyCaptureScope,
     builder: Any,
-    element: Any,
+    shape: Any,
     source_role: str,
 ) -> None:
-    gen_list = builder.Generated(element.wrapped)
+    gen_list = builder.Generated(shape)
     gen_shapes = tuple(gen_list)
     if gen_shapes:
         relations.append(
@@ -107,7 +136,7 @@ def _capture_generated(
                 kind=EvolutionKind.GENERATED,
                 entity_kind=TopologyEntityKind.FACE,
                 source_key=source_role,
-                old_shape=element.wrapped,
+                old_shape=shape,
                 new_shapes=gen_shapes,
                 proof=ProofClass.EXACT_KERNEL_HISTORY,
             )
@@ -118,10 +147,10 @@ def _capture_modified(
     relations: list[LiveEvolutionRelation],
     scope: TopologyCaptureScope,
     builder: Any,
-    element: Any,
+    shape: Any,
     source_role: str,
 ) -> None:
-    mod_list = builder.Modified(element.wrapped)
+    mod_list = builder.Modified(shape)
     mod_shapes = tuple(mod_list)
     if mod_shapes:
         relations.append(
@@ -131,7 +160,7 @@ def _capture_modified(
                 kind=EvolutionKind.MODIFIED,
                 entity_kind=TopologyEntityKind.FACE,
                 source_key=source_role,
-                old_shape=element.wrapped,
+                old_shape=shape,
                 new_shapes=mod_shapes,
                 proof=ProofClass.EXACT_KERNEL_HISTORY,
             )
