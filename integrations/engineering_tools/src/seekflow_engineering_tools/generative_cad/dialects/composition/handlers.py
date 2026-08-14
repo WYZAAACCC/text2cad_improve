@@ -233,10 +233,27 @@ def handle_linear_pattern_component(node: CanonicalNode, ctx: RuntimeContext) ->
     dir_vec = dir_map.get(direction, (1, 0, 0))
 
     try:
-        result = body
-        for i in range(1, count):
-            vec = tuple(spacing * i * d for d in dir_vec)
-            result = result.union(body.translate(vec))
+        if _use_tracked(ctx):
+            import cadquery as cq
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+                tracked_linear_pattern,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            scope = TopologyCaptureScope(
+                node_id=node.id, component_id=node.component,
+                dialect=node.dialect, operation=node.op,
+                operation_version=node.op_version,
+            )
+            tracked = tracked_linear_pattern(body.val(), dir_vec, count, spacing, scope=scope)
+            ctx.capture_session.stage(tracked.batch)
+            result = cq.Workplane("XY").newObject([tracked.result])
+        else:
+            result = body
+            for i in range(1, count):
+                vec = tuple(spacing * i * d for d in dir_vec)
+                result = result.union(body.translate(vec))
         return {"body": _store_solid(node, ctx, result)}
     except Exception as e:
         if getattr(node, "required", True):

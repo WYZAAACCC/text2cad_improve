@@ -239,7 +239,26 @@ def handle_cut_hole_pattern_linear(node: CanonicalNode, ctx: RuntimeContext) -> 
         combined = cutters[0]
         for c in cutters[1:]:
             combined = combined.union(c)
-        result = body.cut(combined)
+        if (
+            getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        ):
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+                tracked_cut,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            scope = TopologyCaptureScope(
+                node_id=node.id, component_id=node.component,
+                dialect=node.dialect, operation=node.op,
+                operation_version=node.op_version,
+            )
+            tracked = tracked_cut(body.val(), combined.val(), scope=scope)
+            ctx.capture_session.stage(tracked.batch)
+            result = cq.Workplane("XY").newObject([tracked.result])
+        else:
+            result = body.cut(combined)
     except Exception:
         return {"body": _degrade(node, ctx, body, "cut_hole_pattern_linear")}
     return {"body": _store_solid(node, ctx, result)}
@@ -263,7 +282,26 @@ def handle_add_rectangular_boss(node: CanonicalNode, ctx: RuntimeContext) -> dic
     y = pos[1] if len(pos) > 1 else 0
     try:
         boss = cq.Workplane("XY").center(x, y).rect(w, h).extrude(d)
-        result = body.union(boss)
+        if (
+            getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        ):
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+                tracked_fuse,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            scope = TopologyCaptureScope(
+                node_id=node.id, component_id=node.component,
+                dialect=node.dialect, operation=node.op,
+                operation_version=node.op_version,
+            )
+            tracked = tracked_fuse(body.val(), boss.val(), scope=scope)
+            ctx.capture_session.stage(tracked.batch)
+            result = cq.Workplane("XY").newObject([tracked.result])
+        else:
+            result = body.union(boss)
     except Exception:
         return {"body": _degrade(node, ctx, body, "add_rectangular_boss")}
     return {"body": _store_solid(node, ctx, result)}
@@ -290,7 +328,26 @@ def handle_add_rib(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
         else:
             ctx.warnings.append(f"add_rib on '{node.id}': invalid direction '{direction}', using X")
             rib = cq.Workplane("YZ").center(y, 0).rect(t, h).extrude(length)
-        result = body.union(rib)
+        if (
+            getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        ):
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+                tracked_fuse,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            scope = TopologyCaptureScope(
+                node_id=node.id, component_id=node.component,
+                dialect=node.dialect, operation=node.op,
+                operation_version=node.op_version,
+            )
+            tracked = tracked_fuse(body.val(), rib.val(), scope=scope)
+            ctx.capture_session.stage(tracked.batch)
+            result = cq.Workplane("XY").newObject([tracked.result])
+        else:
+            result = body.union(rib)
     except Exception:
         return {"body": _degrade(node, ctx, body, "add_rib")}
     return {"body": _store_solid(node, ctx, result)}
@@ -401,7 +458,27 @@ def handle_cut_hole_v2(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, st
     )
 
     try:
-        result = body.cut(cutter)
+        if (
+            getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        ):
+            import cadquery as cq
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+                tracked_cut,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            scope = TopologyCaptureScope(
+                node_id=node.id, component_id=node.component,
+                dialect=node.dialect, operation=node.op,
+                operation_version=node.op_version,
+            )
+            tracked = tracked_cut(body.val(), cq.Shape.cast(cutter.val()), scope=scope)
+            ctx.capture_session.stage(tracked.batch)
+            result = cq.Workplane("XY").newObject([tracked.result])
+        else:
+            result = body.cut(cutter)
     except Exception as exc:
         if getattr(node, "required", True):
             raise RuntimeError(
@@ -451,6 +528,7 @@ def handle_cut_hole_pattern_linear_v2(node: CanonicalNode, ctx: RuntimeContext) 
     )
     from seekflow_engineering_tools.generative_cad.dialects.geometry_utils.boolean_batch import (
         batch_cut,
+        make_compound,
     )
 
     bb = body.val().BoundingBox()
@@ -476,7 +554,28 @@ def handle_cut_hole_pattern_linear_v2(node: CanonicalNode, ctx: RuntimeContext) 
         ))
 
     try:
-        result = batch_cut(body, cutters)
+        if (
+            getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        ):
+            import cadquery as cq
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+                tracked_cut,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            scope = TopologyCaptureScope(
+                node_id=node.id, component_id=node.component,
+                dialect=node.dialect, operation=node.op,
+                operation_version=node.op_version,
+            )
+            compound = make_compound([cq.Shape.cast(c.val()) for c in cutters])
+            tracked = tracked_cut(body.val(), cq.Shape.cast(compound.val()), scope=scope)
+            ctx.capture_session.stage(tracked.batch)
+            result = cq.Workplane("XY").newObject([tracked.result])
+        else:
+            result = batch_cut(body, cutters)
     except Exception as exc:
         if getattr(node, "required", True):
             raise RuntimeError(
@@ -529,7 +628,27 @@ def handle_drill_hole_3d(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, 
     )
 
     try:
-        result = body.cut(cutter)
+        if (
+            getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        ):
+            import cadquery as cq
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+                tracked_cut,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            scope = TopologyCaptureScope(
+                node_id=node.id, component_id=node.component,
+                dialect=node.dialect, operation=node.op,
+                operation_version=node.op_version,
+            )
+            tracked = tracked_cut(body.val(), cq.Shape.cast(cutter.val()), scope=scope)
+            ctx.capture_session.stage(tracked.batch)
+            result = cq.Workplane("XY").newObject([tracked.result])
+        else:
+            result = body.cut(cutter)
     except Exception as exc:
         if getattr(node, "required", True):
             raise RuntimeError(

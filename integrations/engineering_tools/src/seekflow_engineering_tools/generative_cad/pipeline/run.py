@@ -170,9 +170,10 @@ def _create_selections_from_specs(
     """Create persistent topology selections from SelectionSpec objects.
 
     Resolves each spec's component "body" output from the runtime object store,
-    selects the target face via a CadQuery selector, and registers it as a
-    persistent TNaming selection. Returns the PersistentSelectionService used,
-    so the caller can reuse the same instance for CAE preflight solve.
+    selects the target face via a CadQuery selector or a named role, and
+    registers it as a persistent TNaming selection. Returns the
+    PersistentSelectionService used, so the caller can reuse the same instance
+    for CAE preflight solve.
     """
     from seekflow_engineering_tools.generative_cad.topology.ocaf.selection_service import (
         PersistentSelectionService,
@@ -187,9 +188,15 @@ def _create_selections_from_specs(
             # Normalize a Workplane to its underlying Shape/Solid.
             if hasattr(body, "val") and not hasattr(body, "wrapped"):
                 body = body.val()
-            face = body.faces(spec.face_selector)
+
+            role_key = getattr(spec, "role_key", None)
+            if role_key:
+                face_wrapped = _resolve_role_face(ctx, spec.component_id, role_key)
+            else:
+                face_wrapped = body.faces(spec.face_selector).wrapped
+
             svc.create(
-                spec.selection_id, face.wrapped, body.wrapped,
+                spec.selection_id, face_wrapped, body.wrapped,
                 spec.policy, spec.contract,
             )
             created += 1
@@ -200,6 +207,27 @@ def _create_selections_from_specs(
     if created:
         ctx.warnings.append(f"created {created} persistent selection(s)")
     return svc
+
+
+def _resolve_role_face(ctx: RuntimeContext, component_id: str, role_key: str):
+    """Resolve a named role face from the captured batches of a component.
+
+    The role face is a live TopoDS_Shape stored in a tracked batch's
+    construction_roles. It is only available while the capture session is still
+    alive in the current run (selection creation happens inside the same run).
+    """
+    if ctx.capture_session is None:
+        raise KeyError("no capture session available for role resolution")
+    for batch in ctx.capture_session.iter_batches():
+        if batch.scope.component_id != component_id:
+            continue
+        roles = batch.construction_roles or {}
+        face = roles.get(role_key)
+        if face is not None:
+            return face
+    raise KeyError(
+        f"role {role_key!r} not found for component {component_id!r}"
+    )
 
 
 def _run_ocaf_write_and_save(

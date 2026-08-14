@@ -441,12 +441,15 @@ class SelectionSpec:
     selection_id: stable business identifier for the selection.
     component_id: owning component whose "body" output contains the target face.
     face_selector: CadQuery face selector string (e.g. ">Z" for the top face).
+    role_key: optional named role (e.g. "+X", "start_cap") resolved from the
+        captured feature's construction_roles; takes precedence over face_selector.
     policy: optional SelectionPolicy (defaults to FACE / EXACT_ONE).
     contract: optional SemanticContract for post-solve validation.
     """
     selection_id: str
     component_id: str
-    face_selector: str
+    face_selector: str = ""
+    role_key: str | None = None
     policy: SelectionPolicy | None = None
     contract: SemanticContract | None = None
 

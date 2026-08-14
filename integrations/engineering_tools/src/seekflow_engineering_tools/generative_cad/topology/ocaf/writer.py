@@ -58,6 +58,11 @@ TAG_EVOLUTION_RELATIONS = FEATURE_TAG_RELATION_METADATA
 TAG_CONSTRUCTION_ROLES = FEATURE_TAG_CONSTRUCTION_ROLES
 TAG_REVISION_AUDIT = FEATURE_TAG_REVISION_AUDIT
 
+# Stable order of named face roles under ResultRoot. Each key maps to
+# ROLE_TAG_BASE + index, so a role keeps the same label tag across revisions.
+# start_cap/end_cap retain their historical tags 1001/1002.
+ROLE_KEY_ORDER = ("start_cap", "end_cap", "+X", "-X", "+Y", "-Y")
+
 # ---------------------------------------------------------------------------
 # TopologyNamingWriter
 # ---------------------------------------------------------------------------
@@ -256,28 +261,29 @@ class TopologyNamingWriter:
     # ── Construction roles ──────────────────────────────────────────────
 
     def _write_construction_roles(self, feat_label, roles: dict) -> int:
-        """Write start_cap/end_cap role faces under ResultRoot (v7 T12-c).
+        """Write named role faces under ResultRoot (v7 T12-c / role registry).
 
         Role faces are written as children of ResultRoot (Tag 2) so
         TNaming_Selector can find them during Solve. Cross-revision roles are
-        written as Modify(prev_face, new_face).
+        written as Modify(prev_face, new_face). The tag for each role is
+        derived from its position in ROLE_KEY_ORDER so it is stable across
+        revisions.
         """
-        first_shape = roles.get("start_cap")
-        last_shape = roles.get("end_cap")
         written = 0
-
-        if first_shape is not None:
-            prev = self._get_previous_role_result(feat_label, ROLE_TAG_BASE)
+        written_faces: list[Any] = []
+        for index, role_key in enumerate(ROLE_KEY_ORDER):
+            face = roles.get(role_key)
+            if face is None:
+                continue
+            # Guard against the same TShape being written under two roles.
+            if any(face.IsSame(prev_face) for prev_face in written_faces):
+                continue
+            role_tag = ROLE_TAG_BASE + index
+            previous_face = self._get_previous_role_result(feat_label, role_tag)
             self.write_role_result(
-                feat_label, ROLE_TAG_BASE, first_shape, previous_face=prev,
+                feat_label, role_tag, face, previous_face=previous_face,
             )
-            written += 1
-
-        if last_shape is not None and first_shape is not None and not last_shape.IsSame(first_shape):
-            prev = self._get_previous_role_result(feat_label, ROLE_TAG_BASE + 1)
-            self.write_role_result(
-                feat_label, ROLE_TAG_BASE + 1, last_shape, previous_face=prev,
-            )
+            written_faces.append(face)
             written += 1
 
         return written

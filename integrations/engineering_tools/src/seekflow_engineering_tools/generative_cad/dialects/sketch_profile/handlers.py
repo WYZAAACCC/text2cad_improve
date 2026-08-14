@@ -447,7 +447,28 @@ def handle_cut_profile(node, ctx) -> dict:
     direction = params.get("direction", "-")
     cut_depth = depth if direction == "+" else -depth
     try:
-        result = target.cut(wp.extrude(cut_depth))
+        cutter = wp.extrude(cut_depth)
+        if (
+            getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        ):
+            import cadquery as cq
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+                tracked_cut,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            scope = TopologyCaptureScope(
+                node_id=node.id, component_id=cid,
+                dialect=node.dialect, operation=node.op,
+                operation_version=node.op_version,
+            )
+            tracked = tracked_cut(target.val(), cutter.val(), scope=scope)
+            ctx.capture_session.stage(tracked.batch)
+            result = cq.Workplane("XY").newObject([tracked.result])
+        else:
+            result = target.cut(cutter)
     except Exception as e:
         if getattr(node, "required", True):
             raise RuntimeError(

@@ -69,6 +69,13 @@ def tracked_extrude(
 
     result = _compound_or_shape(results)
     start_cap, end_cap = _find_cap_faces(result, vector)
+    side_roles = _classify_side_faces(result, vector)
+
+    construction_roles = {
+        "start_cap": start_cap,
+        "end_cap": end_cap,
+        **side_roles,
+    }
 
     batch = LiveEvolutionBatch(
         scope=scope,
@@ -77,7 +84,7 @@ def tracked_extrude(
         result_shape=result.wrapped,
         context_shape=result.wrapped,
         relations=relations,
-        construction_roles={"start_cap": start_cap, "end_cap": end_cap},
+        construction_roles=construction_roles,
         history_complete=True,
     )
     return TrackedShapeResult(result=result, batch=batch)
@@ -112,6 +119,49 @@ def _find_cap_faces(result: Any, direction: tuple[float, float, float] | list[fl
     if len(caps) == 1:
         return caps[0][1], None
     return None, None
+
+
+def _classify_side_faces(result: Any, direction: tuple[float, float, float] | list[float]):
+    """Classify axis-aligned side faces of an extruded prism by their normal.
+
+    Only faces whose plane normal is axis-aligned (within tolerance) and
+    perpendicular to the extrude direction are named. The +X/-X/+Y/-Y sign is
+    determined from the face centroid relative to the body bounding-box center
+    (plane-normal sign is orientation-dependent in OCCT and therefore not used).
+    This is reliable for the rectangular/box case; arbitrary profiles simply
+    leave the roles as None.
+    """
+    from OCP.BRepAdaptor import BRepAdaptor_Surface
+
+    dx, dy, dz = direction
+    length = (dx * dx + dy * dy + dz * dz) ** 0.5
+    if length < 1e-9:
+        return {}
+    ux, uy, uz = dx / length, dy / length, dz / length
+
+    roles = {"+X": None, "-X": None, "+Y": None, "-Y": None}
+    for f in result.Faces():
+        try:
+            adaptor = BRepAdaptor_Surface(f.wrapped)
+            if adaptor.GetType() != 0:  # GeomAbs_Plane only
+                continue
+            n = adaptor.Plane().Position().Direction()
+            nx, ny, nz = n.X(), n.Y(), n.Z()
+            # Skip cap faces whose normal is parallel to the extrude direction.
+            dot = abs(nx * ux + ny * uy + nz * uz)
+            if dot > 0.99:
+                continue
+            ax = abs(nx)
+            ay = abs(ny)
+            fc = f.Center()
+            center = result.BoundingBox().center
+            if ax > 0.99 and ay < 0.01:
+                roles["+X" if fc.x > center.x else "-X"] = f.wrapped
+            elif ay > 0.99 and ax < 0.01:
+                roles["+Y" if fc.y > center.y else "-Y"] = f.wrapped
+        except Exception:
+            continue
+    return roles
 
 
 # ---------------------------------------------------------------------------
