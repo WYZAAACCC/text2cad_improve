@@ -18,6 +18,9 @@ from cadquery.occ_impl.shapes import (
 from OCP.BRepPrimAPI import BRepPrimAPI_MakeRevol
 from OCP.gp import gp_Ax1
 
+from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.extrude import (
+    _find_cap_faces,
+)
 from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     EvolutionKind,
     LiveEvolutionBatch,
@@ -42,8 +45,6 @@ def tracked_revolve(
 
     results: list[Any] = []
     relations: list[LiveEvolutionRelation] = []
-    first_shape = None
-    last_shape = None
 
     scope = scope or TopologyCaptureScope()
     ax = gp_Ax1(Vector(axis_origin).toPnt(), Vector(axis_dir).toDir())
@@ -65,11 +66,8 @@ def tracked_revolve(
             _capture_generated(relations, scope, builder, el, "profile_face")
             _capture_modified(relations, scope, builder, el, "profile_face")
 
-        if first_shape is None:
-            first_shape = builder.FirstShape()
-        last_shape = builder.LastShape()
-
     result = _compound_or_shape(results)
+    start_cap, end_cap = _find_cap_faces(result, axis_dir)
 
     batch = LiveEvolutionBatch(
         scope=scope,
@@ -82,7 +80,7 @@ def tracked_revolve(
         result_shape=result.wrapped,
         context_shape=result.wrapped,
         relations=relations,
-        construction_roles={"start_cap": first_shape, "end_cap": last_shape},
+        construction_roles={"start_cap": start_cap, "end_cap": end_cap},
         history_complete=True,
     )
     return TrackedShapeResult(result=result, batch=batch)
