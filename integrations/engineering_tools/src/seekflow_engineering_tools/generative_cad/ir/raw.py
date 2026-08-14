@@ -119,20 +119,20 @@ class RawSelectionSpec(BaseModel):
     cardinality: "exact_one" or "set_allowed".
     """
     model_config = ConfigDict(extra="forbid")
-    selection_id: str
-    component_id: str
-    face_selector: str
-    entity_kind: Literal["face", "edge"] = "face"
-    cardinality: Literal["exact_one", "set_allowed"] = "exact_one"
+    selection_id: str = Field(description="Stable business identifier for this selection.")
+    component_id: str = Field(description="Owning component whose 'body' output contains the target face.")
+    face_selector: str = Field(description='CadQuery face selector string (e.g. ">Z" for the top face).')
+    entity_kind: Literal["face", "edge"] = Field(default="face", description='"face" or "edge".')
+    cardinality: Literal["exact_one", "set_allowed"] = Field(default="exact_one", description='"exact_one" or "set_allowed".')
 
 
 class RawCaeBinding(BaseModel):
     """A CAE binding from a topology selection to an analysis role."""
     model_config = ConfigDict(extra="forbid")
-    binding_id: str
-    selection_id: str
-    analysis_role: str
-    required: bool = True
+    binding_id: str = Field(description="Stable identifier for this CAE binding.")
+    selection_id: str = Field(description="References a RawSelectionSpec.selection_id.")
+    analysis_role: str = Field(description='CAE analysis role, e.g. "load_face", "constraint_surface", "bore_contact".')
+    required: bool = Field(default=True, description="Whether this binding must resolve for CAE to start.")
 
 
 class RawGcadDocument(BaseModel):

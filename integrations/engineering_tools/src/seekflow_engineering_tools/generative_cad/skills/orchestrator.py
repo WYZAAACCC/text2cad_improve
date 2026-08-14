@@ -555,6 +555,23 @@ def build_level2_tool(contracts: dict[str, dict] | None = None) -> dict:
             "composition节点通过inputs引用其他组件的最终节点来实现跨组件合并。"
         )
 
+    selections_prop = schema.get("properties", {}).get("selections", {})
+    if selections_prop:
+        selections_prop["description"] = (
+            "持久化拓扑选择列表(可选)。当需要把某个面/边绑定给CAE分析时声明。"
+            "selection_id=稳定标识; component_id=所在组件; face_selector=CadQuery选面串"
+            "(如'>Z'选顶面,'<Z'选底面); entity_kind='face'或'edge'; cardinality='exact_one'或'set_allowed'。"
+            "示例: {selection_id:'load_face', component_id:'plate', face_selector:'>Z'}。"
+        )
+
+    cae_bindings_prop = schema.get("properties", {}).get("cae_bindings", {})
+    if cae_bindings_prop:
+        cae_bindings_prop["description"] = (
+            "CAE绑定列表(可选)。binding_id=稳定标识; selection_id=引用上面的selection_id; "
+            "analysis_role=分析角色(如'load_face'加载面、'constraint_surface'约束面); "
+            "required=该绑定是否必须解析成功才允许CAE求解。"
+        )
+
     return {
         "type": "function",
         "function": {
