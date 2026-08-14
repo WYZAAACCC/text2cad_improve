@@ -344,6 +344,21 @@ def handle_boolean_union(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, 
             boolean_union_safe,
         )
         result, _strategy = boolean_union_safe(a, b, ctx.tolerance, allow_compound=False)
+        if _use_tracked(ctx):
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                LiveEvolutionBatch,
+                TopologyCaptureScope,
+            )
+            ctx.capture_session.stage(LiveEvolutionBatch(
+                scope=TopologyCaptureScope(
+                    node_id=node.id, component_id=node.component,
+                    dialect=node.dialect, operation=node.op,
+                    operation_version=node.op_version,
+                ),
+                builder_kind="fuzzy_fuse_untracked",
+                history_complete=False,
+                missing_phases=["fuzzy_fuse_untracked"],
+            ))
         ctx.warnings.append(
             f"boolean_union: fuzzy fuse succeeded "
             f"(clearance={_fmt_clr(pre.clearance_mm)})"

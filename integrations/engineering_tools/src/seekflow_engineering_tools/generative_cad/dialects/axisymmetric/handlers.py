@@ -118,7 +118,26 @@ def handle_cut_center_bore(node: CanonicalNode, ctx: RuntimeContext) -> dict[str
     try:
         bb = body.val().BoundingBox()
         bore = cq.Workplane("XY").circle(dia / 2.0).extrude(bb.zlen + 10, both=True)
-        result = body.cut(bore)
+        if (
+            getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        ):
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+                tracked_cut,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            scope = TopologyCaptureScope(
+                node_id=node.id, component_id=node.component,
+                dialect=node.dialect, operation=node.op,
+                operation_version=node.op_version,
+            )
+            tracked = tracked_cut(body.val(), bore.val(), scope=scope)
+            ctx.capture_session.stage(tracked.batch)
+            result = cq.Workplane("XY").newObject([tracked.result])
+        else:
+            result = body.cut(bore)
     except Exception as e:
         return handle_feature_failure(
             node=node, ctx=ctx, original_body=body,
@@ -162,6 +181,23 @@ def handle_cut_circular_hole_pattern(node: CanonicalNode, ctx: RuntimeContext) -
         except Exception:
             is_narrow_body = False
 
+        tracked_enabled = (
+            getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        )
+        if tracked_enabled:
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+                tracked_cut,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            scope = TopologyCaptureScope(
+                node_id=node.id, component_id=node.component,
+                dialect=node.dialect, operation=node.op,
+                operation_version=node.op_version,
+            )
+
         # For narrow/complex bodies, cut each hole individually to avoid OCCT instability
         if is_narrow_body or count > 6:
             result = body
@@ -172,7 +208,12 @@ def handle_cut_circular_hole_pattern(node: CanonicalNode, ctx: RuntimeContext) -
                 cy = (pcd / 2.0) * _math.sin(angle)
                 try:
                     hole = cq.Workplane("XY").center(cx, cy).circle(hole_radius).extrude(z_len, both=True)
-                    result = result.cut(hole)
+                    if tracked_enabled:
+                        tracked = tracked_cut(result.val(), hole.val(), scope=scope)
+                        ctx.capture_session.stage(tracked.batch)
+                        result = cq.Workplane("XY").newObject([tracked.result])
+                    else:
+                        result = result.cut(hole)
                 except Exception:
                     ctx.warnings.append(
                         f"circular_hole_pattern on '{node.id}': hole {k} at "
@@ -181,7 +222,12 @@ def handle_cut_circular_hole_pattern(node: CanonicalNode, ctx: RuntimeContext) -
         else:
             wp = cq.Workplane("XY").polarArray(pcd / 2.0, 0, 360, count)
             holes = wp.circle(hole_radius).extrude(z_len, both=True)
-            result = body.cut(holes)
+            if tracked_enabled:
+                tracked = tracked_cut(body.val(), holes.val(), scope=scope)
+                ctx.capture_session.stage(tracked.batch)
+                result = cq.Workplane("XY").newObject([tracked.result])
+            else:
+                result = body.cut(holes)
     except Exception as e:
         return handle_feature_failure(
             node=node, ctx=ctx, original_body=body,
@@ -217,7 +263,26 @@ def handle_cut_annular_groove(node: CanonicalNode, ctx: RuntimeContext) -> dict[
             cq.Workplane("XY").workplane(offset=z_pos)
             .circle(outer / 2.0).circle(inner / 2.0).extrude(extrude_dir)
         )
-        result = body.cut(ring)
+        if (
+            getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        ):
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+                tracked_cut,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            scope = TopologyCaptureScope(
+                node_id=node.id, component_id=node.component,
+                dialect=node.dialect, operation=node.op,
+                operation_version=node.op_version,
+            )
+            tracked = tracked_cut(body.val(), ring.val(), scope=scope)
+            ctx.capture_session.stage(tracked.batch)
+            result = cq.Workplane("XY").newObject([tracked.result])
+        else:
+            result = body.cut(ring)
     except Exception as e:
         return handle_feature_failure(
             node=node, ctx=ctx, original_body=body,
@@ -265,6 +330,23 @@ def handle_cut_rim_slot_pattern(node: CanonicalNode, ctx: RuntimeContext) -> dic
             wp = wp.moveTo(r, w) if i == 0 else wp.lineTo(r, w)
         base_cutter = wp.close().extrude(bb.zlen + 10, both=True)
 
+        tracked_enabled = (
+            getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        )
+        if tracked_enabled:
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+                tracked_cut,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            scope = TopologyCaptureScope(
+                node_id=node.id, component_id=node.component,
+                dialect=node.dialect, operation=node.op,
+                operation_version=node.op_version,
+            )
+
         if count <= 6:
             # 小 count: union-then-cut 策略（性能最优）
             # 6 个槽的 union 约 48 条边，远低于 OCCT 崩溃阈值
@@ -272,7 +354,12 @@ def handle_cut_rim_slot_pattern(node: CanonicalNode, ctx: RuntimeContext) -> dic
             for i in range(1, count):
                 angle = math.degrees(i * 2 * math.pi / count)
                 combined = combined.union(base_cutter.rotate((0, 0, 0), (0, 0, 1), angle))
-            result = body.cut(combined)
+            if tracked_enabled:
+                tracked = tracked_cut(body.val(), combined.val(), scope=scope)
+                ctx.capture_session.stage(tracked.batch)
+                result = cq.Workplane("XY").newObject([tracked.result])
+            else:
+                result = body.cut(combined)
         else:
             # 大 count: sequential cut 策略（稳健性最优）
             # 避免 union 拓扑累积导致 OCP 崩溃（60 槽 union 需处理 ~480 条交线）
@@ -283,7 +370,12 @@ def handle_cut_rim_slot_pattern(node: CanonicalNode, ctx: RuntimeContext) -> dic
                 angle = math.degrees(i * 2 * math.pi / count)
                 try:
                     cutter = base_cutter.rotate((0, 0, 0), (0, 0, 1), angle)
-                    result = result.cut(cutter)
+                    if tracked_enabled:
+                        tracked = tracked_cut(result.val(), cutter.val(), scope=scope)
+                        ctx.capture_session.stage(tracked.batch)
+                        result = cq.Workplane("XY").newObject([tracked.result])
+                    else:
+                        result = result.cut(cutter)
                     success_count += 1
                 except Exception as slot_e:
                     ctx.warnings.append(
@@ -421,7 +513,26 @@ def handle_cut_internal_thread(node: CanonicalNode, ctx: RuntimeContext) -> dict
         # Triangular cutter profile
         cutter = cq.Workplane("XZ").moveTo(0, 0).lineTo(thread_depth, pitch / 4.0).lineTo(-thread_depth, pitch / 4.0).close()
         thread_solid = cutter.sweep(helix)
-        result = body.cut(thread_solid)
+        if (
+            getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        ):
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+                tracked_cut,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            scope = TopologyCaptureScope(
+                node_id=node.id, component_id=node.component,
+                dialect=node.dialect, operation=node.op,
+                operation_version=node.op_version,
+            )
+            tracked = tracked_cut(body.val(), thread_solid.val(), scope=scope)
+            ctx.capture_session.stage(tracked.batch)
+            result = cq.Workplane("XY").newObject([tracked.result])
+        else:
+            result = body.cut(thread_solid)
     except Exception as e:
         return handle_feature_failure(
             node=node, ctx=ctx, original_body=body,
@@ -461,7 +572,26 @@ def handle_cut_external_thread(node: CanonicalNode, ctx: RuntimeContext) -> dict
         )
         cutter = cq.Workplane("XZ").moveTo(0, 0).lineTo(thread_depth, pitch / 4.0).lineTo(-thread_depth, pitch / 4.0).close()
         thread_solid = cutter.sweep(helix)
-        result = body.cut(thread_solid)
+        if (
+            getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        ):
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+                tracked_cut,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            scope = TopologyCaptureScope(
+                node_id=node.id, component_id=node.component,
+                dialect=node.dialect, operation=node.op,
+                operation_version=node.op_version,
+            )
+            tracked = tracked_cut(body.val(), thread_solid.val(), scope=scope)
+            ctx.capture_session.stage(tracked.batch)
+            result = cq.Workplane("XY").newObject([tracked.result])
+        else:
+            result = body.cut(thread_solid)
     except Exception as e:
         return handle_feature_failure(
             node=node, ctx=ctx, original_body=body,

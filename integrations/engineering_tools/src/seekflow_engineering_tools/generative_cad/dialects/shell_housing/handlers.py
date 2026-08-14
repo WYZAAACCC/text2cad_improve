@@ -39,15 +39,49 @@ def handle_hollow_body(node, ctx) -> dict:
     bottom = float(node.params.get("bottom_thickness_mm", wall))
     if wall <= 0:
         raise ValueError("wall_thickness_mm must be positive")
+    # Normalize Workplane input to its underlying Shape/Solid so Shape-level
+    # translate/scale/cut operations work uniformly below.
+    if hasattr(body, "val") and not hasattr(body, "wrapped"):
+        body = body.val()
     try:
-        bb = body.val().BoundingBox()
-        # Create inner cavity by offsetting
-        inner = body.translate((0, 0, bottom)).scale((
-            (bb.xlen - 2 * wall) / bb.xlen if bb.xlen > 2 * wall else 0.5,
-            (bb.ylen - 2 * wall) / bb.ylen if bb.ylen > 2 * wall else 0.5,
-            (bb.zlen - wall - bottom) / bb.zlen if bb.zlen > wall + bottom else 0.5,
-        ))
-        solid = body.cut(inner)
+        bb = body.BoundingBox()
+        sx = (bb.xlen - 2 * wall) / bb.xlen if bb.xlen > 2 * wall else 0.5
+        sy = (bb.ylen - 2 * wall) / bb.ylen if bb.ylen > 2 * wall else 0.5
+        sz = (bb.zlen - wall - bottom) / bb.zlen if bb.zlen > wall + bottom else 0.5
+
+        # Create the inner cavity by raising its bottom and applying a
+        # non-uniform scale about the origin. CadQuery Shape.scale() is uniform
+        # only, so use OCCT's general transform for per-axis scaling.
+        from OCP.BRepBuilderAPI import BRepBuilderAPI_GTransform
+        from OCP.gp import gp_GTrsf
+        gtrsf = gp_GTrsf()
+        gtrsf.SetValue(1, 1, sx)
+        gtrsf.SetValue(2, 2, sy)
+        gtrsf.SetValue(3, 3, sz)
+        translated = body.translate((0, 0, bottom))
+        gbuilder = BRepBuilderAPI_GTransform(translated.wrapped, gtrsf)
+        gbuilder.Build()
+        inner = cq.Shape.cast(gbuilder.Shape())
+        if (
+            getattr(ctx, "enable_topology_capture", False)
+            and ctx.capture_session is not None
+        ):
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+                tracked_cut,
+            )
+            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                TopologyCaptureScope,
+            )
+            scope = TopologyCaptureScope(
+                node_id=node.id, component_id=node.component,
+                dialect=node.dialect, operation=node.op,
+                operation_version=node.op_version,
+            )
+            tracked = tracked_cut(body, inner, scope=scope)
+            ctx.capture_session.stage(tracked.batch)
+            solid = cq.Workplane("XY").newObject([tracked.result])
+        else:
+            solid = body.cut(inner)
     except Exception as e:
         raise RuntimeError(f"hollow_body failed on '{node.id}': {e}")
     return {"body": _store_solid(node, ctx, solid)}
