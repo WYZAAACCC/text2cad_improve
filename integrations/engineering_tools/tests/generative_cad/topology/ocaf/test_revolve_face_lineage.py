@@ -209,3 +209,33 @@ class TestRevolveFaceLineage:
         assert len(resolution.resolved_shapes) == 1
         radius = _face_cylinder_radius(resolution.resolved_shapes[0])
         assert radius == 55.0, f"expected rim radius 55.0, got {radius}"
+
+    def test_revolve_web_role_for_conical_side(self):
+        pytest.importorskip("cadquery")
+        import cadquery as cq
+        from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeFace
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.revolve import (
+            tracked_revolve,
+        )
+
+        wp = (
+            cq.Workplane("XZ")
+            .moveTo(10, 0)
+            .lineTo(30, 10)
+            .lineTo(30, 20)
+            .lineTo(10, 20)
+            .close()
+        )
+        wire = wp.wire().val()
+        fb = BRepBuilderAPI_MakeFace(wire.wrapped, False)
+        fb.Build()
+        profile = cq.Shape.cast(fb.Face())
+        tracked = tracked_revolve(
+            profile, (0, 0, 0), (0, 0, 1), 360,
+            scope=TopologyCaptureScope(node_id="n_revolve", component_id="disk"),
+        )
+
+        roles = tracked.batch.construction_roles
+        assert roles["rim"] is not None
+        assert roles["bore"] is not None
+        assert roles["web"] is not None

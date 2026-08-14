@@ -163,24 +163,17 @@ def _make_swept_pipe_bspline(
     return cq.Solid(pipe.Shape())
 
 
-def _make_swept_pipe(
+def build_pipe_wire_and_profile(
     path_points: list[tuple[float, float, float]],
     radius_mm: float,
 ):
-    """Build a smooth swept pipe using OCP BRepOffsetAPI_MakePipe.
-
-    1. Build 3D wire from path points
-    2. Create circular profile face perpendicular to start tangent
-    3. Sweep profile along wire using MakePipe
-    """
-    import cadquery as cq
+    """Build a 3D pipe wire and a perpendicular circular profile face."""
     from OCP.gp import gp_Pnt, gp_Dir, gp_Ax2, gp_Circ
     from OCP.BRepBuilderAPI import (
         BRepBuilderAPI_MakeEdge,
         BRepBuilderAPI_MakeWire,
         BRepBuilderAPI_MakeFace,
     )
-    from OCP.BRepOffsetAPI import BRepOffsetAPI_MakePipe
 
     # Build 3D wire
     wb = BRepBuilderAPI_MakeWire()
@@ -206,20 +199,36 @@ def _make_swept_pipe(
     z_ref = gp_Dir(0, 0, 1)
     if abs(tangent.Dot(z_ref)) > 0.99:
         z_ref = gp_Dir(1, 0, 0)
-    # Cross product to get a perpendicular direction
     x_dir = gp_Dir(
         tangent.Y() * z_ref.Z() - tangent.Z() * z_ref.Y(),
         tangent.Z() * z_ref.X() - tangent.X() * z_ref.Z(),
         tangent.X() * z_ref.Y() - tangent.Y() * z_ref.X(),
     )
 
-    # Create circular profile face at path start, perpendicular to tangent
+    # Circular profile face at path start, perpendicular to tangent
     ax2 = gp_Ax2(gp_Pnt(p0[0], p0[1], p0[2]), tangent, x_dir)
     circ = gp_Circ(ax2, radius_mm)
     circ_edge = BRepBuilderAPI_MakeEdge(circ).Edge()
     circ_wb = BRepBuilderAPI_MakeWire()
     circ_wb.Add(circ_edge)
     profile_face = BRepBuilderAPI_MakeFace(circ_wb.Wire()).Face()
+    return wire, profile_face
+
+
+def _make_swept_pipe(
+    path_points: list[tuple[float, float, float]],
+    radius_mm: float,
+):
+    """Build a smooth swept pipe using OCP BRepOffsetAPI_MakePipe.
+
+    1. Build 3D wire from path points
+    2. Create circular profile face perpendicular to start tangent
+    3. Sweep profile along wire using MakePipe
+    """
+    import cadquery as cq
+    from OCP.BRepOffsetAPI import BRepOffsetAPI_MakePipe
+
+    wire, profile_face = build_pipe_wire_and_profile(path_points, radius_mm)
 
     # True OCP sweep
     pipe = BRepOffsetAPI_MakePipe(wire, profile_face)

@@ -92,32 +92,36 @@ def tracked_revolve(
 
 
 def _find_revolve_side_faces(result: Any):
-    """Classify full-revolution cylindrical side faces into rim and bore.
+    """Classify full-revolution side faces into rim, bore, and web.
 
     For a 360-degree revolve around Z, cylindrical faces are the radial
     surfaces. The one with the largest radius is the rim; the one with the
     smallest radius is the bore (present only when the profile has a center
-    hole). Conical/planar side faces are left unnamed for now.
+    hole). Conical side faces are the web (single-web semantic for now).
     """
     from OCP.BRepAdaptor import BRepAdaptor_Surface
 
     cylinders: list[tuple[float, Any]] = []
+    cones: list[Any] = []
     for f in result.Faces():
         try:
             adaptor = BRepAdaptor_Surface(f.wrapped)
             if adaptor.GetType() == 1:  # GeomAbs_Cylinder
                 radius = float(adaptor.Cylinder().Radius())
                 cylinders.append((radius, f.wrapped))
+            elif adaptor.GetType() == 2:  # GeomAbs_Cone
+                cones.append(f.wrapped)
         except Exception:
             continue
 
-    if not cylinders:
-        return {"rim": None, "bore": None}
-
-    cylinders.sort(key=lambda p: p[0])
-    rim = cylinders[-1][1]
-    bore = cylinders[0][1] if len(cylinders) >= 2 else None
-    return {"rim": rim, "bore": bore}
+    rim = None
+    bore = None
+    if cylinders:
+        cylinders.sort(key=lambda p: p[0])
+        rim = cylinders[-1][1]
+        bore = cylinders[0][1] if len(cylinders) >= 2 else None
+    web = cones[0] if cones else None
+    return {"rim": rim, "bore": bore, "web": web}
 
 
 def _capture_generated(relations, scope, builder, element, source_role):

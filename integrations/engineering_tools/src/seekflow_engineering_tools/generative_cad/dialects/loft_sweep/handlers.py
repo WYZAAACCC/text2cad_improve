@@ -113,6 +113,31 @@ def handle_sweep_profile(node, ctx) -> dict:
 
     try:
         if shape == "circle":
+            if (
+                getattr(ctx, "enable_topology_capture", False)
+                and ctx.capture_session is not None
+            ):
+                try:
+                    from seekflow_engineering_tools.generative_cad.dialects.geometry_utils.ocp_pipe import (
+                        build_pipe_wire_and_profile,
+                    )
+                    from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.offset_sweep import (
+                        tracked_sweep,
+                    )
+                    from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+                        TopologyCaptureScope,
+                    )
+                    wire, profile_face = build_pipe_wire_and_profile(pts, radius)
+                    scope = TopologyCaptureScope(
+                        node_id=node.id, component_id=node.component,
+                        dialect=node.dialect, operation=node.op,
+                        operation_version=node.op_version,
+                    )
+                    tracked = tracked_sweep(profile_face, wire, scope=scope)
+                    ctx.capture_session.stage(tracked.batch)
+                    return {"body": _store_solid(node, ctx, cq.Workplane("XY").newObject([tracked.result]))}
+                except Exception:
+                    pass  # fall back to the existing swept-pipe path below
             # v6.1: OCP-native 3D pipe (handles vertical/horizontal/angled)
             from seekflow_engineering_tools.generative_cad.dialects.geometry_utils.ocp_pipe import (
                 make_circular_pipe_along_path,
