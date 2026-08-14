@@ -52,12 +52,15 @@ def tracked_chamfer(
     result = cq.Shape.cast(result_shape)
 
     relations: list[LiveEvolutionRelation] = []
+    chamfer_face = None
 
     for i, edge_shape in enumerate(edge_shapes):
         edge = TopoDS.Edge_s(edge_shape)
         gen_list = builder.Generated(edge)
         gen_shapes = tuple(gen_list)
         if gen_shapes:
+            if chamfer_face is None:
+                chamfer_face = gen_shapes[0]
             relations.append(LiveEvolutionRelation(
                 relation_id=f"{scope.node_id}/chamfer/gen/edge_{i}",
                 operation_id=scope.node_id,
@@ -91,6 +94,7 @@ def tracked_chamfer(
         result_shape=result.wrapped,
         context_shape=result.wrapped,
         relations=relations,
+        construction_roles={"chamfer": chamfer_face},
         history_complete=True,
     )
     return TrackedShapeResult(result=result, batch=batch)

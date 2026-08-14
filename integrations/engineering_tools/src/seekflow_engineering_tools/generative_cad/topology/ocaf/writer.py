@@ -61,7 +61,7 @@ TAG_REVISION_AUDIT = FEATURE_TAG_REVISION_AUDIT
 # Stable order of named face roles under ResultRoot. Each key maps to
 # ROLE_TAG_BASE + index, so a role keeps the same label tag across revisions.
 # start_cap/end_cap retain their historical tags 1001/1002.
-ROLE_KEY_ORDER = ("start_cap", "end_cap", "+X", "-X", "+Y", "-Y", "rim", "bore", "web")
+ROLE_KEY_ORDER = ("start_cap", "end_cap", "+X", "-X", "+Y", "-Y", "rim", "bore", "web", "fillet", "chamfer")
 
 
 def role_tag_for_key(role_key: str) -> int:

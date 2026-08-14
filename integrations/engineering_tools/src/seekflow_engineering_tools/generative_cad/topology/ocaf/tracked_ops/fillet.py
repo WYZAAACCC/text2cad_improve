@@ -53,6 +53,7 @@ def tracked_fillet(
     result = cq.Shape.cast(result_shape)
 
     relations: list[LiveEvolutionRelation] = []
+    fillet_face = None
 
     # Generated: each filleted edge produces a fillet face
     for i, edge_shape in enumerate(edge_shapes):
@@ -60,6 +61,8 @@ def tracked_fillet(
         gen_list = builder.Generated(edge)
         gen_shapes = tuple(gen_list)
         if gen_shapes:
+            if fillet_face is None:
+                fillet_face = gen_shapes[0]
             relations.append(LiveEvolutionRelation(
                 relation_id=f"{scope.node_id}/fillet/gen/edge_{i}",
                 operation_id=scope.node_id,
@@ -94,6 +97,7 @@ def tracked_fillet(
         result_shape=result.wrapped,
         context_shape=result.wrapped,
         relations=relations,
+        construction_roles={"fillet": fillet_face},
         history_complete=True,
     )
     return TrackedShapeResult(result=result, batch=batch)

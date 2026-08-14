@@ -62,3 +62,27 @@ class TestTierBTrackedOps:
         tracked = tracked_loft([w1, w2], scope=_scope("lo"))
         assert tracked.result.Volume() > 0
         assert len(tracked.batch.relations) > 0
+
+    def test_fillet_role(self):
+        pytest.importorskip("cadquery")
+        import cadquery as cq
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.fillet import (
+            tracked_fillet,
+        )
+
+        box = cq.Workplane("XY").box(20, 20, 20)
+        edge = box.edges(">Z").val()
+        tracked = tracked_fillet(box.val(), [edge.wrapped], 2.0, scope=_scope("f"))
+        assert tracked.batch.construction_roles["fillet"] is not None
+
+    def test_chamfer_role(self):
+        pytest.importorskip("cadquery")
+        import cadquery as cq
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.chamfer import (
+            tracked_chamfer,
+        )
+
+        box = cq.Workplane("XY").box(20, 20, 20)
+        edge = box.edges(">Z").val()
+        tracked = tracked_chamfer(box.val(), [edge.wrapped], 2.0, scope=_scope("c"))
+        assert tracked.batch.construction_roles["chamfer"] is not None
