@@ -173,9 +173,9 @@ def _create_selections_from_specs(
 
     Resolves each spec's component "body" output from the runtime object store,
     selects the target face via a CadQuery selector or a named role, and
-    registers it as a persistent TNaming selection. Returns the
-    PersistentSelectionService used, so the caller can reuse the same instance
-    for CAE preflight solve.
+    registers it as a persistent TNaming selection. The returned service has a
+    ``selection_feature_map`` attribute so CAE preflight can build a
+    feature-level Solve scope where possible.
     """
     from seekflow_engineering_tools.generative_cad.topology.ocaf.selection_service import (
         PersistentSelectionService,
@@ -186,6 +186,7 @@ def _create_selections_from_specs(
 
     svc = PersistentSelectionService(ocaf_session)
     created = 0
+    selection_feature_map: dict[str, tuple[str, str]] = {}
     for spec in selection_specs:
         try:
             handle_id = ctx.resolve_component_output(spec.component_id, "body")
@@ -207,8 +208,14 @@ def _create_selections_from_specs(
             else:
                 role_key = getattr(spec, "role_key", None)
                 if role_key:
+                    feature_node_id = _resolve_role_node(
+                        ctx, spec.component_id, role_key,
+                    )
                     selected_wrapped = _resolve_role_face(
                         ctx, spec.component_id, role_key
+                    )
+                    selection_feature_map[spec.selection_id] = (
+                        spec.component_id, feature_node_id,
                     )
                 else:
                     selected_wrapped = body.faces(spec.face_selector).wrapped
@@ -224,6 +231,7 @@ def _create_selections_from_specs(
             )
     if created:
         ctx.warnings.append(f"created {created} persistent selection(s)")
+    svc.selection_feature_map = selection_feature_map
     return svc
 
 
@@ -248,6 +256,21 @@ def _resolve_role_face(ctx: RuntimeContext, component_id: str, role_key: str):
     )
 
 
+def _resolve_role_node(ctx: RuntimeContext, component_id: str, role_key: str):
+    """Return the feature node id that owns a named role face."""
+    if ctx.capture_session is None:
+        raise KeyError("no capture session available for role resolution")
+    for batch in ctx.capture_session.iter_batches():
+        if batch.scope.component_id != component_id:
+            continue
+        roles = batch.construction_roles or {}
+        if roles.get(role_key) is not None:
+            return batch.scope.node_id
+    raise KeyError(
+        f"role {role_key!r} not found for component {component_id!r}"
+    )
+
+
 def _resolve_edge_role(ctx: RuntimeContext, component_id: str, edge_role_key: str):
     """Resolve a named edge role from the captured batches of a component."""
     if ctx.capture_session is None:
@@ -264,12 +287,30 @@ def _resolve_edge_role(ctx: RuntimeContext, component_id: str, edge_role_key: st
     )
 
 
+def _build_feature_dependency_map(canonical: Any) -> dict:
+    """Build (component_id, feature_id) -> upstream feature refs from IR."""
+    if canonical is None:
+        return {}
+    nodes = getattr(canonical, "nodes", ()) or ()
+    ref_by_node = {n.id: (n.component, n.id) for n in nodes}
+    dependency_map: dict[tuple[str, str], list[tuple[str, str]]] = {}
+    for node in nodes:
+        deps: list[tuple[str, str]] = []
+        for inp in getattr(node, "inputs", ()) or ():
+            producer_node = getattr(inp, "producer_node", None)
+            if producer_node and producer_node in ref_by_node:
+                deps.append(ref_by_node[producer_node])
+        dependency_map[(node.component, node.id)] = deps
+    return dependency_map
+
+
 def _run_ocaf_write_and_save(
     ctx: RuntimeContext,
     ocaf_session: Any,
     ocaf_path: Path,
     *,
     topology_config: Any = None,
+    canonical: Any = None,
 ) -> bool:
     """Write captured topology batches to OCAF, persist index, verify, and save.
 
@@ -300,6 +341,13 @@ def _run_ocaf_write_and_save(
                 selection_svc = _create_selections_from_specs(
                     ctx, ocaf_session, selection_specs,
                 )
+                selection_feature_map = getattr(
+                    selection_svc, "selection_feature_map", {},
+                )
+            else:
+                selection_feature_map = {}
+        else:
+            selection_feature_map = {}
 
         # 3. Persist StableLabelIndex to OCAF (P0-02)
         ocaf_session.label_index.save_to_ocaf(ocaf_session.main_label)
@@ -346,7 +394,24 @@ def _run_ocaf_write_and_save(
                         for b in bindings
                         if b.selection_id in selection_component_map
                     }
-                    if relevant_components:
+                    seed_refs: list[tuple[str, str]] = []
+                    missing_feature_ref = False
+                    for binding in bindings:
+                        component_id = selection_component_map.get(binding.selection_id)
+                        if component_id is None:
+                            continue
+                        feature_ref = selection_feature_map.get(binding.selection_id)
+                        if feature_ref and feature_ref[0] == component_id and feature_ref[1]:
+                            seed_refs.append(feature_ref)
+                        else:
+                            missing_feature_ref = True
+
+                    dependency_map = _build_feature_dependency_map(canonical)
+                    if seed_refs and dependency_map and not missing_feature_ref:
+                        label_map = ocaf_session.collect_feature_dependency_labels(
+                            seed_refs, dependency_map,
+                        )
+                    elif relevant_components:
                         label_map = collect_tnaming_labels(
                             ocaf_session.design_root_label,
                             restrict_to=[
@@ -748,6 +813,7 @@ def run_canonical_gcad(
             ocaf_ok = _run_ocaf_write_and_save(
                 ctx, _ocaf_session, _ocaf_target or Path("design.xbf"),
                 topology_config=_topology_config,
+                canonical=canonical,
             )
             if not ocaf_ok and ctx.topology_mode == "enforce":
                 return _fail_result(

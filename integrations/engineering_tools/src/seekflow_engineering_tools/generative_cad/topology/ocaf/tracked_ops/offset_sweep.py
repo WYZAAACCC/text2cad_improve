@@ -12,6 +12,12 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     TopologyCaptureScope,
     TopologyEntityKind,
     TrackedShapeResult,
+    FaceRoleSpec,
+)
+from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops._carry import (
+    all_faces_accounted,
+    carry_unchanged_faces,
+    find_partner_face,
 )
 
 
@@ -21,6 +27,8 @@ def _capture_generated_modified(
     builder: Any,
     input_shape: Any,
     source_key: str,
+    *,
+    face_roles: dict[str, FaceRoleSpec] | None = None,
 ) -> None:
     gen_list = builder.Generated(input_shape)
     gen_shapes = tuple(gen_list)
@@ -35,6 +43,15 @@ def _capture_generated_modified(
             new_shapes=gen_shapes,
             proof=ProofClass.EXACT_KERNEL_HISTORY,
         ))
+        if face_roles is not None:
+            for j, new_shape in enumerate(gen_shapes):
+                role_key = f"{source_key}/gen/{j}"
+                face_roles[role_key] = FaceRoleSpec(
+                    role_key=role_key,
+                    shape=new_shape,
+                    source_shape=input_shape,
+                    first_evolution=EvolutionKind.GENERATED,
+                )
 
     mod_list = builder.Modified(input_shape)
     mod_shapes = tuple(mod_list)
@@ -49,6 +66,15 @@ def _capture_generated_modified(
             new_shapes=mod_shapes,
             proof=ProofClass.EXACT_KERNEL_HISTORY,
         ))
+        if face_roles is not None:
+            for j, new_shape in enumerate(mod_shapes):
+                role_key = f"{source_key}/mod/{j}"
+                face_roles[role_key] = FaceRoleSpec(
+                    role_key=role_key,
+                    shape=new_shape,
+                    source_shape=input_shape,
+                    first_evolution=EvolutionKind.MODIFIED,
+                )
 
 
 def tracked_shell(
@@ -93,8 +119,28 @@ def tracked_shell(
         result = cq.Solid(solid.Shape()).fix()
 
     relations: list[LiveEvolutionRelation] = []
+    face_roles: dict[str, FaceRoleSpec] = {}
+    face_roles: dict[str, FaceRoleSpec] = {}
     for i, face in enumerate(body.Faces()):
-        _capture_generated_modified(relations, scope, builder, face.wrapped, f"face_{i}")
+        _capture_generated_modified(
+            relations, scope, builder, face.wrapped, f"face_{i}",
+            face_roles=face_roles,
+        )
+
+    carry_unchanged_faces(relations, scope, result.wrapped, list(body.Faces()), "shell")
+    for i, face in enumerate(body.Faces()):
+        role_key = f"face_{i}/carry"
+        if any(key == role_key for key in face_roles):
+            continue
+        partner = find_partner_face(result.wrapped, face.wrapped)
+        if partner is not None:
+            face_roles[role_key] = FaceRoleSpec(
+                role_key=role_key,
+                shape=partner,
+                source_shape=face.wrapped,
+                first_evolution=EvolutionKind.MODIFIED,
+            )
+    history_complete = all_faces_accounted(relations, list(body.Faces()))
 
     batch = LiveEvolutionBatch(
         scope=scope,
@@ -103,7 +149,9 @@ def tracked_shell(
         result_shape=result.wrapped,
         context_shape=result.wrapped,
         relations=relations,
-        history_complete=True,
+        face_roles=face_roles,
+        history_complete=history_complete,
+        missing_phases=[] if history_complete else ["some input faces are not accounted for"],
     )
     return TrackedShapeResult(result=result, batch=batch)
 
@@ -134,8 +182,12 @@ def tracked_sweep(
 
     result = cq.Shape.cast(builder.Shape())
     relations: list[LiveEvolutionRelation] = []
+    face_roles: dict[str, FaceRoleSpec] = {}
     if profile_wrapped.ShapeType() == 5:  # TopAbs_FACE
-        _capture_generated_modified(relations, scope, builder, profile_wrapped, "profile")
+        _capture_generated_modified(
+            relations, scope, builder, profile_wrapped, "profile",
+            face_roles=face_roles,
+        )
     else:
         # Wire/edge profile: capture per edge.
         from OCP.TopExp import TopExp_Explorer
@@ -143,9 +195,13 @@ def tracked_sweep(
         exp = TopExp_Explorer(profile_wrapped, TopAbs_EDGE)
         idx = 0
         while exp.More():
-            _capture_generated_modified(relations, scope, builder, exp.Current(), f"edge_{idx}")
+            _capture_generated_modified(
+                relations, scope, builder, exp.Current(), f"edge_{idx}",
+                face_roles=face_roles,
+            )
             idx += 1
             exp.Next()
+    history_complete = len(relations) > 0
 
     batch = LiveEvolutionBatch(
         scope=scope,
@@ -153,7 +209,9 @@ def tracked_sweep(
         result_shape=result.wrapped,
         context_shape=result.wrapped,
         relations=relations,
-        history_complete=True,
+        face_roles=face_roles,
+        history_complete=history_complete,
+        missing_phases=[] if history_complete else ["no profile history captured"],
     )
     return TrackedShapeResult(result=result, batch=batch)
 
@@ -180,14 +238,19 @@ def tracked_loft(
 
     result = cq.Shape.cast(builder.Shape())
     relations: list[LiveEvolutionRelation] = []
+    face_roles: dict[str, FaceRoleSpec] = {}
     for i, w in enumerate(section_wires):
         ww = w.wrapped if hasattr(w, "wrapped") else w
         exp = TopExp_Explorer(ww, TopAbs_EDGE)
         idx = 0
         while exp.More():
-            _capture_generated_modified(relations, scope, builder, exp.Current(), f"section_{i}_edge_{idx}")
+            _capture_generated_modified(
+                relations, scope, builder, exp.Current(), f"section_{i}_edge_{idx}",
+                face_roles=face_roles,
+            )
             idx += 1
             exp.Next()
+    history_complete = len(relations) > 0
 
     batch = LiveEvolutionBatch(
         scope=scope,
@@ -196,6 +259,8 @@ def tracked_loft(
         result_shape=result.wrapped,
         context_shape=result.wrapped,
         relations=relations,
-        history_complete=True,
+        face_roles=face_roles,
+        history_complete=history_complete,
+        missing_phases=[] if history_complete else ["no section history captured"],
     )
     return TrackedShapeResult(result=result, batch=batch)

@@ -19,6 +19,7 @@ from OCP.gp import gp_Trsf, gp_Vec, gp_Pnt, gp_Dir, gp_Ax1
 from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     EvolutionKind, TopologyEntityKind, ProofClass,
     TopologyCaptureScope, LiveEvolutionBatch, LiveEvolutionRelation, TrackedShapeResult,
+    FaceRoleSpec,
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.history_graph import (
     HistoryGraph,
@@ -119,6 +120,7 @@ def tracked_linear_pattern(
 
     scope = scope or TopologyCaptureScope()
     relations: list[LiveEvolutionRelation] = []
+    face_roles: dict[str, FaceRoleSpec] = {}
 
     # Compute direction vector
     dx, dy, dz = direction
@@ -219,6 +221,14 @@ def tracked_linear_pattern(
             if not finals and not deleted:
                 history_complete = False
                 missing_phases.append(f"face_{fi}_not_composable")
+            for j, final_shape in enumerate(finals):
+                role_key = f"face_{fi}/final/{j}"
+                face_roles[role_key] = FaceRoleSpec(
+                    role_key=role_key,
+                    shape=final_shape,
+                    source_shape=face.wrapped,
+                    first_evolution=EvolutionKind.MODIFIED,
+                )
     else:
         result = body
 
@@ -233,6 +243,7 @@ def tracked_linear_pattern(
         result_shape=result.wrapped,
         context_shape=result.wrapped,
         relations=relations,
+        face_roles=face_roles,
         history_complete=history_complete,
         missing_phases=missing_phases,
     )
@@ -259,6 +270,7 @@ def tracked_circular_pattern(
 
     scope = scope or TopologyCaptureScope()
     relations: list[LiveEvolutionRelation] = []
+    face_roles: dict[str, FaceRoleSpec] = {}
 
     if count < 2:
         batch = LiveEvolutionBatch(
@@ -357,6 +369,14 @@ def tracked_circular_pattern(
         if not finals and not deleted:
             history_complete = False
             missing_phases.append(f"face_{fi}_not_composable")
+        for j, final_shape in enumerate(finals):
+            role_key = f"face_{fi}/final/{j}"
+            face_roles[role_key] = FaceRoleSpec(
+                role_key=role_key,
+                shape=final_shape,
+                source_shape=face.wrapped,
+                first_evolution=EvolutionKind.MODIFIED,
+            )
 
     batch = LiveEvolutionBatch(
         scope=scope,
@@ -365,6 +385,7 @@ def tracked_circular_pattern(
         result_shape=result.wrapped,
         context_shape=result.wrapped,
         relations=relations,
+        face_roles=face_roles,
         history_complete=history_complete,
         missing_phases=missing_phases,
     )

@@ -290,6 +290,49 @@ class OcafDocumentSession:
         comp_label = self.ensure_component(component_id)
         return collect_tnaming_labels(comp_label)
 
+    def collect_feature_dependency_labels(
+        self,
+        seed_refs: list[tuple[str, str]],
+        dependency_map: dict[tuple[str, str], list[tuple[str, str]]],
+    ):
+        """Collect TNaming labels for a feature-level dependency closure.
+
+        ``seed_refs`` and ``dependency_map`` use ``(component_id, feature_id)``
+        pairs. The returned label map contains only the transitive feature
+        dependencies of the seed features, which is a much tighter Solve scope
+        than the whole component subtree.
+        """
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.compat import (
+            collect_tnaming_labels,
+        )
+
+        closure: set[tuple[str, str]] = set()
+        stack = list(seed_refs)
+        while stack:
+            ref = stack.pop()
+            if ref in closure:
+                continue
+            closure.add(ref)
+            for dep in dependency_map.get(ref, ()):
+                stack.append(dep)
+
+        labels = []
+        for component_id, feature_id in sorted(closure):
+            entry = self.label_index.resolve_key(
+                "feature", f"component:{component_id}", feature_id,
+            )
+            if entry is not None:
+                label = entry.resolve(self.main_label)
+                if not label.IsNull():
+                    labels.append(label)
+                    continue
+            comp_label = self.ensure_component(component_id)
+            labels.append(
+                self.ensure_feature(comp_label, feature_id, component_id=component_id),
+            )
+
+        return collect_tnaming_labels(self.design_root_label, restrict_to=labels)
+
     # ------------------------------------------------------------------
     # DesignRoot Metadata — v5.0 §7.2
     # ------------------------------------------------------------------
