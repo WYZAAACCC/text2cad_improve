@@ -105,6 +105,8 @@ class LiveEvolutionRelation:
     new_shapes: tuple[Any, ...] = ()     # tuple of TopoDS_Shape (live!)
     proof: ProofClass = ProofClass.EXACT_KERNEL_HISTORY
     diagnostics: tuple[str, ...] = ()
+    source_ref: SourceEntityRef | None = None
+    relation_key: RelationKey | None = None
 
     def validate(self) -> None:
         """Enforce the shape contract. Raises InvalidEvolutionRelationError.

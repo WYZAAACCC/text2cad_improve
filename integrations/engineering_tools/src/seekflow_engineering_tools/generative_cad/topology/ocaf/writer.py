@@ -103,6 +103,20 @@ def edge_tag_for_key(edge_key: str) -> int:
     return EDGE_ROLE_TAG_BASE + index
 
 
+def _stable_relation_id(rel: LiveEvolutionRelation) -> str:
+    """Prefer a semantic RelationKey when present, else keep the legacy id."""
+    if rel.relation_key is None:
+        return rel.relation_id
+    ref = rel.relation_key.source_entity_ref
+    return (
+        f"rk:{rel.relation_key.feature_id}"
+        f":{ref.component_id}:{ref.feature_id}:{ref.selection_id or ''}"
+        f":{ref.construction_role or ''}:{ref.entity_kind.value}"
+        f":{rel.relation_key.evolution_kind.value}"
+        f":{rel.relation_key.relation_role}"
+    )
+
+
 # ---------------------------------------------------------------------------
 # TopologyNamingWriter
 # ---------------------------------------------------------------------------
@@ -440,7 +454,7 @@ class TopologyNamingWriter:
         index = self._session.label_index
         entry = index.allocate_relation(
             component_tag, feature_tag,
-            f"feature:{rel.operation_id}", rel.relation_id,
+            f"feature:{rel.operation_id}", _stable_relation_id(rel),
             self._session.revision_number,
         )
         return entry.tag_path.tags[-1]

@@ -190,3 +190,16 @@ class TestMergeEndToEnd:
         assert abs(merged.Center().z - 10) < 1e-4
         assert abs(merged.Area() - 400.0) < 0.01
         session.close()
+
+    def test_merge_batch_populates_face_roles(self):
+        pytest.importorskip("cadquery")
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.unify import (
+            tracked_unify,
+        )
+
+        solid = _seam_solid()
+        unified = tracked_unify(
+            solid,
+            scope=TopologyCaptureScope(node_id="n_unify", component_id="comp"),
+        )
+        assert unified.batch.face_roles
