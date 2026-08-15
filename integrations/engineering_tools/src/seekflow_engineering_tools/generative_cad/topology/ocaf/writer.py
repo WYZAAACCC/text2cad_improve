@@ -73,6 +73,35 @@ def role_tag_for_key(role_key: str) -> int:
     return ROLE_TAG_BASE + index
 
 
+EDGE_ROLE_TAG_BASE = 2001
+
+# Axis-aligned box edges derived from adjacent face roles. Each edge is the
+# intersection of exactly two of the six box faces; the stable key is the
+# sorted pair of face role keys.
+_BOX_EDGE_FACE_PAIRS = (
+    ("start_cap", "+X"), ("start_cap", "-X"), ("start_cap", "+Y"), ("start_cap", "-Y"),
+    ("end_cap", "+X"), ("end_cap", "-X"), ("end_cap", "+Y"), ("end_cap", "-Y"),
+    ("+X", "+Y"), ("+X", "-Y"), ("-X", "+Y"), ("-X", "-Y"),
+)
+
+
+def edge_role_key(face_a: str, face_b: str) -> str:
+    """Return the stable key for an edge shared by two face roles."""
+    return "/".join(sorted((face_a, face_b)))
+
+
+EDGE_ROLE_KEYS = tuple(edge_role_key(a, b) for a, b in _BOX_EDGE_FACE_PAIRS)
+
+
+def edge_tag_for_key(edge_key: str) -> int:
+    """Return the stable ResultRoot child tag for a named box edge role."""
+    try:
+        index = EDGE_ROLE_KEYS.index(edge_key)
+    except ValueError as exc:
+        raise ValueError(f"unknown edge role key: {edge_key!r}") from exc
+    return EDGE_ROLE_TAG_BASE + index
+
+
 # ---------------------------------------------------------------------------
 # TopologyNamingWriter
 # ---------------------------------------------------------------------------
@@ -127,6 +156,9 @@ class TopologyNamingWriter:
 
         # 3. Write construction roles (first/last) to Tag 4
         written += self._write_construction_roles(feat_label, batch.construction_roles)
+
+        # 4. Write derived edge roles under ResultRoot (v8 Stage 1)
+        written += self._write_edge_roles(feat_label, getattr(batch, "edge_roles", {}))
 
         return written
 
@@ -294,6 +326,31 @@ class TopologyNamingWriter:
                 feat_label, role_tag, face, previous_face=previous_face,
             )
             written_faces.append(face)
+            written += 1
+
+        return written
+
+    def _write_edge_roles(self, feat_label, edge_roles: dict) -> int:
+        """Write derived box edge roles under ResultRoot (v8 Stage 1).
+
+        Edge tags use EDGE_ROLE_TAG_BASE + index in EDGE_ROLE_KEYS so the same
+        edge keeps the same label across revisions. Subsequent revisions write
+        Modify(prev_edge, new_edge) via the shared write_role_result helper.
+        """
+        written = 0
+        written_edges: list[Any] = []
+        for index, edge_key in enumerate(EDGE_ROLE_KEYS):
+            edge = edge_roles.get(edge_key)
+            if edge is None:
+                continue
+            if any(edge.IsSame(prev_edge) for prev_edge in written_edges):
+                continue
+            edge_tag = EDGE_ROLE_TAG_BASE + index
+            previous_edge = self._get_previous_role_result(feat_label, edge_tag)
+            self.write_role_result(
+                feat_label, edge_tag, edge, previous_face=previous_edge,
+            )
+            written_edges.append(edge)
             written += 1
 
         return written

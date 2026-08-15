@@ -30,6 +30,9 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     TopologyEntityKind,
     TrackedShapeResult,
 )
+from seekflow_engineering_tools.generative_cad.topology.ocaf.writer import (
+    edge_role_key,
+)
 
 
 def tracked_extrude(
@@ -76,6 +79,7 @@ def tracked_extrude(
         "end_cap": end_cap,
         **side_roles,
     }
+    edge_roles = _derive_box_edges(construction_roles)
 
     batch = LiveEvolutionBatch(
         scope=scope,
@@ -85,6 +89,7 @@ def tracked_extrude(
         context_shape=result.wrapped,
         relations=relations,
         construction_roles=construction_roles,
+        edge_roles=edge_roles,
         history_complete=True,
     )
     return TrackedShapeResult(result=result, batch=batch)
@@ -162,6 +167,60 @@ def _classify_side_faces(result: Any, direction: tuple[float, float, float] | li
         except Exception:
             continue
     return roles
+
+
+def _derive_box_edges(construction_roles: dict) -> dict[str, Any]:
+    """Derive stable edge roles for an axis-aligned box.
+
+    Each box edge is shared by exactly two of the six named role faces. The
+    stable key is the sorted pair of face role keys. Returns {} when the six
+    face roles are not all present (non-rectangular profile).
+
+    Matching is geometric (edge midpoint), NOT TShape-based: OCCT prism caps
+    can share the same TShape (top and bottom faces are IsPartner), so TShape
+    identity cannot distinguish adjacent vs opposite edges.
+    """
+    face_keys = ("start_cap", "end_cap", "+X", "-X", "+Y", "-Y")
+    faces = {k: construction_roles.get(k) for k in face_keys}
+    if any(v is None for v in faces.values()):
+        return {}
+
+    by_midpoint: dict[tuple, list[tuple[str, Any]]] = {}
+    for role_key, face in faces.items():
+        for edge in _edges_of(face):
+            mid = _edge_midpoint(edge)
+            by_midpoint.setdefault(mid, []).append((role_key, edge))
+
+    edge_roles: dict[str, Any] = {}
+    for entries in by_midpoint.values():
+        if len(entries) != 2:
+            continue
+        (a, edge_a), (b, _edge_b) = entries
+        edge_roles[edge_role_key(a, b)] = edge_a
+    return edge_roles
+
+
+def _edges_of(shape: Any) -> list[Any]:
+    from OCP.TopAbs import TopAbs_EDGE
+    from OCP.TopExp import TopExp_Explorer
+
+    exp = TopExp_Explorer(shape, TopAbs_EDGE)
+    edges: list[Any] = []
+    while exp.More():
+        edges.append(exp.Current())
+        exp.Next()
+    return edges
+
+
+def _edge_midpoint(edge: Any) -> tuple[float, float, float]:
+    from OCP.BRepAdaptor import BRepAdaptor_Curve
+    from OCP.TopoDS import TopoDS
+
+    adaptor = BRepAdaptor_Curve(TopoDS.Edge_s(edge))
+    f = adaptor.FirstParameter()
+    l = adaptor.LastParameter()
+    p = adaptor.Value((f + l) / 2.0)
+    return (round(p.X(), 4), round(p.Y(), 4), round(p.Z(), 4))
 
 
 # ---------------------------------------------------------------------------

@@ -173,6 +173,7 @@ class LiveEvolutionBatch:
     context_shape: Any = None              # TopoDS_Shape — context for Selector
     relations: list[LiveEvolutionRelation] = field(default_factory=list)
     construction_roles: dict[str, Any] = field(default_factory=dict)
+    edge_roles: dict[str, Any] = field(default_factory=dict)
     history_complete: bool = True
     missing_phases: list[str] = field(default_factory=list)
     diagnostics: list[str] = field(default_factory=list)

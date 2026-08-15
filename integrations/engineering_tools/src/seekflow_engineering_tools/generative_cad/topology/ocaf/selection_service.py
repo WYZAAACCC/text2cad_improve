@@ -577,6 +577,41 @@ def create_selection_from_role(
     return service
 
 
+def create_selection_from_edge_role(
+    session,
+    selection_id: str,
+    component_id: str,
+    feature_id: str,
+    edge_role_key: str,
+    policy=None,
+    contract=None,
+):
+    """Create a persistent selection on a named edge role after generation."""
+    from seekflow_engineering_tools.generative_cad.topology.ocaf.writer import (
+        edge_tag_for_key,
+    )
+
+    comp = session.ensure_component(component_id)
+    feat = session.ensure_feature(comp, feature_id)
+    edge_tag = edge_tag_for_key(edge_role_key)
+    edge = session.get_current_role_result(feat, edge_tag)
+    if edge is None:
+        raise KeyError(
+            f"edge role {edge_role_key!r} not found for feature {feature_id!r} "
+            f"in component {component_id!r}"
+        )
+    body = session.get_current_result_shape(feat)
+    if body is None:
+        raise KeyError(
+            f"no current result shape for feature {feature_id!r} "
+            f"in component {component_id!r}"
+        )
+
+    service = PersistentSelectionService(session)
+    service.create(selection_id, edge, body, policy, contract)
+    return service
+
+
 # ---------------------------------------------------------------------------
 # Semantic validation — §10.4 of v3.0 guide
 # ---------------------------------------------------------------------------
