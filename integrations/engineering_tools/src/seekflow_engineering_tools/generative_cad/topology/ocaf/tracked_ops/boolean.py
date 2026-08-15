@@ -36,6 +36,7 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops._carry import (
     all_faces_accounted,
+    find_partner_edge,
 )
 
 
@@ -152,6 +153,7 @@ def _export_bopalgo_history(
     """
     relations: list[LiveEvolutionRelation] = []
     all_input_faces: list[Any] = []
+    all_input_edges: list[Any] = []
 
     for role_name, shape in [("target", target), ("tool", tool)]:
         for i, face in enumerate(shape.Faces()):
@@ -228,7 +230,77 @@ def _export_bopalgo_history(
                         )
                     )
 
-    history_complete = all_faces_accounted(relations, all_input_faces)
+    for role_name, shape in [("target", target), ("tool", tool)]:
+        for i, edge in enumerate(shape.Edges()):
+            ew = edge.wrapped
+            all_input_edges.append(edge)
+            source_key = f"{role_name}_edge_{i}"
+
+            gen_list = history.Generated(ew)
+            gen_shapes = tuple(gen_list)
+            if gen_shapes:
+                relations.append(
+                    LiveEvolutionRelation(
+                        relation_id=f"{scope.node_id}/{source_key}/gen/{len(relations)}",
+                        operation_id=scope.node_id,
+                        kind=EvolutionKind.GENERATED,
+                        entity_kind=TopologyEntityKind.EDGE,
+                        source_key=source_key,
+                        old_shape=ew,
+                        new_shapes=gen_shapes,
+                        proof=ProofClass.EXACT_KERNEL_HISTORY,
+                    )
+                )
+
+            mod_list = history.Modified(ew)
+            mod_shapes = tuple(mod_list)
+            if mod_shapes:
+                relations.append(
+                    LiveEvolutionRelation(
+                        relation_id=f"{scope.node_id}/{source_key}/mod/{len(relations)}",
+                        operation_id=scope.node_id,
+                        kind=EvolutionKind.MODIFIED,
+                        entity_kind=TopologyEntityKind.EDGE,
+                        source_key=source_key,
+                        old_shape=ew,
+                        new_shapes=mod_shapes,
+                        proof=ProofClass.EXACT_KERNEL_HISTORY,
+                    )
+                )
+
+            if history.IsRemoved(ew):
+                relations.append(
+                    LiveEvolutionRelation(
+                        relation_id=f"{scope.node_id}/{source_key}/del/{len(relations)}",
+                        operation_id=scope.node_id,
+                        kind=EvolutionKind.DELETED,
+                        entity_kind=TopologyEntityKind.EDGE,
+                        source_key=source_key,
+                        old_shape=ew,
+                        new_shapes=(),
+                        proof=ProofClass.EXACT_KERNEL_HISTORY,
+                    )
+                )
+
+            if not gen_shapes and not mod_shapes and not history.IsRemoved(ew):
+                partner = find_partner_edge(result.wrapped, ew)
+                if partner is not None:
+                    relations.append(
+                        LiveEvolutionRelation(
+                            relation_id=f"{scope.node_id}/{source_key}/carry/{len(relations)}",
+                            operation_id=scope.node_id,
+                            kind=EvolutionKind.MODIFIED,
+                            entity_kind=TopologyEntityKind.EDGE,
+                            source_key=source_key,
+                            old_shape=ew,
+                            new_shapes=(partner,),
+                            proof=ProofClass.EXACT_KERNEL_HISTORY,
+                        )
+                    )
+
+    history_complete = all_faces_accounted(
+        relations, all_input_faces + all_input_edges
+    )
     batch = LiveEvolutionBatch(
         scope=scope,
         builder_kind=builder_kind,
@@ -236,7 +308,7 @@ def _export_bopalgo_history(
         context_shape=result.wrapped,
         relations=relations,
         history_complete=history_complete,
-        missing_phases=[] if history_complete else ["some input faces are not accounted for"],
+        missing_phases=[] if history_complete else ["some input shapes are not accounted for"],
     )
     return batch
 

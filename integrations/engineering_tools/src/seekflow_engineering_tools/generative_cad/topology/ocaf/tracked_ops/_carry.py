@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from OCP.TopAbs import TopAbs_FACE
+from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE
 from OCP.TopExp import TopExp_Explorer
 
 from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
@@ -41,6 +41,30 @@ def find_partner_face(result_shape: Any, face: Any) -> Any | None:
         for rf in iter_faces(result_shape):
             if rf.IsPartner(face) or rf.IsSame(face):
                 return rf
+    except Exception:
+        pass
+    return None
+
+
+def iter_edges(shape: Any) -> list[Any]:
+    """Return all TopoDS_Edge handles in ``shape``."""
+    try:
+        exp = TopExp_Explorer(shape, TopAbs_EDGE)
+        edges: list[Any] = []
+        while exp.More():
+            edges.append(exp.Current())
+            exp.Next()
+        return edges
+    except Exception:
+        return []
+
+
+def find_partner_edge(result_shape: Any, edge: Any) -> Any | None:
+    """Return an edge in ``result_shape`` sharing the same TShape as ``edge``."""
+    try:
+        for re in iter_edges(result_shape):
+            if re.IsPartner(edge) or re.IsSame(edge):
+                return re
     except Exception:
         pass
     return None
