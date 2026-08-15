@@ -33,6 +33,7 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     TopologyCaptureScope,
     TopologyEntityKind,
     TrackedShapeResult,
+    FaceRoleSpec,
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops._carry import (
     all_faces_accounted,
@@ -152,6 +153,7 @@ def _export_bopalgo_history(
     and collects REAL TopoDS_Shape handles into LiveEvolutionRelation objects.
     """
     relations: list[LiveEvolutionRelation] = []
+    face_roles: dict[str, FaceRoleSpec] = {}
     all_input_faces: list[Any] = []
     all_input_edges: list[Any] = []
 
@@ -177,6 +179,14 @@ def _export_bopalgo_history(
                         proof=ProofClass.EXACT_KERNEL_HISTORY,
                     )
                 )
+                for j, new_shape in enumerate(gen_shapes):
+                    role_key = f"{source_key}/gen/{j}"
+                    face_roles[role_key] = FaceRoleSpec(
+                        role_key=role_key,
+                        shape=new_shape,
+                        source_shape=fw,
+                        first_evolution=EvolutionKind.GENERATED,
+                    )
 
             # ── Modified: this face was modified (typically 1:1) ──
             mod_list = history.Modified(fw)
@@ -194,6 +204,14 @@ def _export_bopalgo_history(
                         proof=ProofClass.EXACT_KERNEL_HISTORY,
                     )
                 )
+                for j, new_shape in enumerate(mod_shapes):
+                    role_key = f"{source_key}/mod/{j}"
+                    face_roles[role_key] = FaceRoleSpec(
+                        role_key=role_key,
+                        shape=new_shape,
+                        source_shape=fw,
+                        first_evolution=EvolutionKind.MODIFIED,
+                    )
 
             # ── IsRemoved: this face no longer exists in result ──
             if history.IsRemoved(fw):
@@ -229,6 +247,13 @@ def _export_bopalgo_history(
                             proof=ProofClass.EXACT_KERNEL_HISTORY,
                         )
                     )
+                    role_key = f"{source_key}/carry"
+                    face_roles[role_key] = FaceRoleSpec(
+                        role_key=role_key,
+                        shape=partner,
+                        source_shape=fw,
+                        first_evolution=EvolutionKind.MODIFIED,
+                    )
 
     for role_name, shape in [("target", target), ("tool", tool)]:
         for i, edge in enumerate(shape.Edges()):
@@ -251,7 +276,6 @@ def _export_bopalgo_history(
                         proof=ProofClass.EXACT_KERNEL_HISTORY,
                     )
                 )
-
             mod_list = history.Modified(ew)
             mod_shapes = tuple(mod_list)
             if mod_shapes:
@@ -267,7 +291,6 @@ def _export_bopalgo_history(
                         proof=ProofClass.EXACT_KERNEL_HISTORY,
                     )
                 )
-
             if history.IsRemoved(ew):
                 relations.append(
                     LiveEvolutionRelation(
@@ -297,7 +320,6 @@ def _export_bopalgo_history(
                             proof=ProofClass.EXACT_KERNEL_HISTORY,
                         )
                     )
-
     history_complete = all_faces_accounted(
         relations, all_input_faces + all_input_edges
     )
@@ -307,6 +329,7 @@ def _export_bopalgo_history(
         result_shape=result.wrapped,
         context_shape=result.wrapped,
         relations=relations,
+        face_roles=face_roles,
         history_complete=history_complete,
         missing_phases=[] if history_complete else ["some input shapes are not accounted for"],
     )

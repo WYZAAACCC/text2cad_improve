@@ -47,6 +47,7 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.schema import (
     TAG_REVISIONS,
     TAG_CAE_BINDINGS,
     COMPONENT_TAG_FEATURES,
+    FEATURE_TAG_RESULT_ROOT,
     FEATURE_TAG_RELATION_METADATA,
     TAGPATH_STABLE_ID_INDEX,
     TagPath,
@@ -228,6 +229,41 @@ class StableLabelIndex:
             DESIGN_ROOT_TAG, TAG_COMPONENTS, component_tag,
             COMPONENT_TAG_FEATURES, feature_tag,
             FEATURE_TAG_RELATION_METADATA, tag,
+        ))
+
+        entry = IndexEntry(key=key, tag_path=tag_path, created_revision=revision)
+        self._by_key[key_str] = entry
+        self._by_path[tag_path] = entry
+        return entry
+
+    def allocate_face_role(
+        self,
+        component_tag: int,
+        feature_tag: int,
+        feature_namespace: str,
+        role_key: str,
+        revision: int,
+    ) -> IndexEntry:
+        """Allocate a stable tag for a per-face naming role under ResultRoot.
+
+        The face role label is a child of ``Feature/ResultRoot``, so
+        ``TNaming_Selector.Solve`` can follow it together with the feature
+        result and semantic construction roles. The same (feature namespace,
+        role_key) maps to the same tag across revisions.
+        """
+        key = StableObjectKey("face_role", feature_namespace, role_key)
+        key_str = str(key)
+
+        existing = self._by_key.get(key_str)
+        if existing is not None:
+            return existing
+
+        tag = self._next_tags.get("face_role", DYNAMIC_TAG_START)
+        self._next_tags["face_role"] = tag + 1
+        tag_path = TagPath((
+            DESIGN_ROOT_TAG, TAG_COMPONENTS, component_tag,
+            COMPONENT_TAG_FEATURES, feature_tag,
+            FEATURE_TAG_RESULT_ROOT, tag,
         ))
 
         entry = IndexEntry(key=key, tag_path=tag_path, created_revision=revision)

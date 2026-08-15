@@ -29,6 +29,7 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     TopologyCaptureScope,
     TopologyEntityKind,
     TrackedShapeResult,
+    FaceRoleSpec,
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.writer import (
     edge_role_key,
@@ -79,6 +80,7 @@ def tracked_extrude(
         "end_cap": end_cap,
         **side_roles,
     }
+    face_roles = _remaining_face_roles(result, construction_roles, "extrude")
     edge_roles = _derive_box_edges(construction_roles)
 
     batch = LiveEvolutionBatch(
@@ -90,9 +92,85 @@ def tracked_extrude(
         relations=relations,
         construction_roles=construction_roles,
         edge_roles=edge_roles,
+        face_roles=face_roles,
         history_complete=True,
     )
     return TrackedShapeResult(result=result, batch=batch)
+
+
+def _remaining_face_roles(
+    result: Any, existing_roles: dict[str, Any], prefix: str,
+) -> dict[str, FaceRoleSpec]:
+    """Name every result face that is not already covered by a semantic role."""
+    existing = [face for face in existing_roles.values() if face is not None]
+    remaining: list[Any] = []
+    for face in result.Faces():
+        fw = face.wrapped
+        if any(fw.IsSame(other) or fw.IsPartner(other) for other in existing):
+            continue
+        remaining.append(fw)
+
+    remaining.sort(key=_face_sort_key)
+    return {
+        f"{prefix}/face_{index:03d}": FaceRoleSpec(
+            role_key=f"{prefix}/face_{index:03d}",
+            shape=face,
+            first_evolution=EvolutionKind.GENERATED,
+        )
+        for index, face in enumerate(remaining)
+    }
+
+
+def _face_sort_key(face: Any) -> tuple:
+    """Deterministic geometric key for stable ordinary-face ordering."""
+    from OCP.BRepAdaptor import BRepAdaptor_Surface
+    from OCP.BRepGProp import BRepGProp
+    from OCP.GProp import GProp_GProps
+
+    props = GProp_GProps()
+    BRepGProp.SurfaceProperties_s(face, props)
+    center = props.CentreOfMass()
+    area = float(props.Mass())
+
+    surface_type = 10
+    normal = (0.0, 0.0, 0.0)
+    axis = (0.0, 0.0, 0.0)
+    try:
+        adaptor = BRepAdaptor_Surface(face)
+        surface_type = int(adaptor.GetType())
+        if surface_type == 0:  # Plane
+            d = adaptor.Plane().Position().Direction()
+            normal = (
+                round(float(d.X()), 4),
+                round(float(d.Y()), 4),
+                round(float(d.Z()), 4),
+            )
+        elif surface_type == 1:  # Cylinder
+            d = adaptor.Cylinder().Axis().Direction()
+            axis = (
+                round(float(d.X()), 4),
+                round(float(d.Y()), 4),
+                round(float(d.Z()), 4),
+            )
+        elif surface_type == 2:  # Cone
+            d = adaptor.Cone().Axis().Direction()
+            axis = (
+                round(float(d.X()), 4),
+                round(float(d.Y()), 4),
+                round(float(d.Z()), 4),
+            )
+    except Exception:
+        pass
+
+    return (
+        surface_type,
+        normal,
+        axis,
+        round(float(center.X()), 4),
+        round(float(center.Y()), 4),
+        round(float(center.Z()), 4),
+        round(area, 4),
+    )
 
 
 def _find_cap_faces(result: Any, direction: tuple[float, float, float] | list[float]):

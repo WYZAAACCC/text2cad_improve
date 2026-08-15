@@ -20,6 +20,7 @@ from OCP.gp import gp_Ax1
 
 from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.extrude import (
     _find_cap_faces,
+    _remaining_face_roles,
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     EvolutionKind,
@@ -69,6 +70,12 @@ def tracked_revolve(
     result = _compound_or_shape(results)
     start_cap, end_cap = _find_cap_faces(result, axis_dir)
     side_roles = _find_revolve_side_faces(result)
+    construction_roles = {
+        "start_cap": start_cap,
+        "end_cap": end_cap,
+        **side_roles,
+    }
+    face_roles = _remaining_face_roles(result, construction_roles, "revolve")
 
     batch = LiveEvolutionBatch(
         scope=scope,
@@ -81,11 +88,8 @@ def tracked_revolve(
         result_shape=result.wrapped,
         context_shape=result.wrapped,
         relations=relations,
-        construction_roles={
-            "start_cap": start_cap,
-            "end_cap": end_cap,
-            **side_roles,
-        },
+        construction_roles=construction_roles,
+        face_roles=face_roles,
         history_complete=True,
     )
     return TrackedShapeResult(result=result, batch=batch)

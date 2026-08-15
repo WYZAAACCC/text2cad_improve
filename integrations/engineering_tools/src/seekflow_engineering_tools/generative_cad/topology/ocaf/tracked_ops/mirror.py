@@ -12,7 +12,8 @@ from OCP.gp import gp_Trsf, gp_Pnt, gp_Dir, gp_Ax1
 
 from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     EvolutionKind, TopologyEntityKind, ProofClass,
-    TopologyCaptureScope, LiveEvolutionBatch, LiveEvolutionRelation, TrackedShapeResult,
+    TopologyCaptureScope, LiveEvolutionBatch, LiveEvolutionRelation,
+    TrackedShapeResult, FaceRoleSpec,
 )
 
 
@@ -50,12 +51,14 @@ def tracked_mirror(
     result = cq.Shape.cast(result_shape)
 
     relations: list[LiveEvolutionRelation] = []
+    face_roles: dict[str, FaceRoleSpec] = {}
 
     # Per-face history: each source face maps to one mirrored face
     for i, face in enumerate(body.Faces()):
         mod_list = builder.Modified(face.wrapped)
         mod_shapes = tuple(mod_list)
         if mod_shapes:
+            role_key = f"face_{i}"
             relations.append(LiveEvolutionRelation(
                 relation_id=f"{scope.node_id}/mirror/mod/face_{i}",
                 operation_id=scope.node_id,
@@ -66,6 +69,12 @@ def tracked_mirror(
                 new_shapes=mod_shapes,
                 proof=ProofClass.EXACT_KERNEL_HISTORY,
             ))
+            face_roles[role_key] = FaceRoleSpec(
+                role_key=role_key,
+                shape=mod_shapes[0],
+                source_shape=face.wrapped,
+                first_evolution=EvolutionKind.MODIFIED,
+            )
 
     batch = LiveEvolutionBatch(
         scope=scope,
@@ -78,6 +87,7 @@ def tracked_mirror(
         result_shape=result.wrapped,
         context_shape=result.wrapped,
         relations=relations,
+        face_roles=face_roles,
         history_complete=len(relations) > 0,
     )
     return TrackedShapeResult(result=result, batch=batch)

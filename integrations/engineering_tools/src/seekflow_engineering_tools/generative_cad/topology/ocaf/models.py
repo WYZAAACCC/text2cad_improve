@@ -174,6 +174,7 @@ class LiveEvolutionBatch:
     relations: list[LiveEvolutionRelation] = field(default_factory=list)
     construction_roles: dict[str, Any] = field(default_factory=dict)
     edge_roles: dict[str, Any] = field(default_factory=dict)
+    face_roles: dict[str, Any] = field(default_factory=dict)
     history_complete: bool = True
     missing_phases: list[str] = field(default_factory=list)
     diagnostics: list[str] = field(default_factory=list)
@@ -272,6 +273,28 @@ class TrackedShapeResult:
     result: Any = None                     # cadquery.Shape — identical geometry
     batch: LiveEvolutionBatch = field(default_factory=LiveEvolutionBatch)
     diagnostics: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class FaceRoleSpec:
+    """Stable per-face naming entry under a feature's ResultRoot.
+
+    Unlike the semantic construction_roles (start_cap, rim, ...), this models
+    *any* result face, including faces that are only modified/carried through
+    by an operation such as fillet or boolean.
+
+    ``source_shape`` records the first occurrence's cross-feature source:
+      - first_evolution=MODIFIED  -> TNaming_Builder.Modify(source, face)
+      - first_evolution=GENERATED -> TNaming_Builder.Generated(source, face)
+
+    When a previous revision already named this role, the writer instead calls
+    Modify(previous_face, face).
+    """
+
+    role_key: str
+    shape: Any
+    source_shape: Any | None = None
+    first_evolution: EvolutionKind = EvolutionKind.GENERATED
 
 
 # ---------------------------------------------------------------------------
@@ -392,7 +415,7 @@ class StableObjectKey:
     # v5.0 §5.3: expanded kind set for full index coverage
     _VALID_KINDS = frozenset({
         "component", "feature", "selection",
-        "relation", "revision", "cae_binding",
+        "relation", "revision", "cae_binding", "face_role",
     })
 
     def __post_init__(self):

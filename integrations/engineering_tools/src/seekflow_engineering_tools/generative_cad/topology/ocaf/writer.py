@@ -37,6 +37,7 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     EvolutionKind,
     LiveEvolutionBatch,
     LiveEvolutionRelation,
+    TopologyEntityKind,
 )
 
 # ---------------------------------------------------------------------------
@@ -151,14 +152,23 @@ class TopologyNamingWriter:
             )
             written += 1
 
-        # 2. Write each evolution relation under Tag 3
-        written += self._write_relations(feat_label, batch.relations)
-
-        # 3. Write construction roles (first/last) to Tag 4
+        # 2. Write construction roles (first/last) to Tag 4
         written += self._write_construction_roles(feat_label, batch.construction_roles)
 
-        # 4. Write derived edge roles under ResultRoot (v8 Stage 1)
+        # 3. Write derived edge roles under ResultRoot (v8 Stage 1)
         written += self._write_edge_roles(feat_label, getattr(batch, "edge_roles", {}))
+
+        # 4. Write every persisted face role under ResultRoot.
+        face_roles = getattr(batch, "face_roles", {}) or {}
+        feature_namespace = f"feature:{scope.node_id or scope.operation or 'unnamed'}"
+        written += self._write_face_roles(feat_label, face_roles, feature_namespace)
+
+        # 5. Write evolution relations under Tag 3. Face relations that are now
+        # represented by face_roles are skipped so Solve only follows the stable
+        # ResultRoot chain instead of a duplicate/possibly-broken relation chain.
+        written += self._write_relations(
+            feat_label, batch.relations, face_roles=face_roles,
+        )
 
         return written
 
@@ -228,7 +238,8 @@ class TopologyNamingWriter:
     # ── Relations ───────────────────────────────────────────────────────
 
     def _write_relations(
-        self, feat_label, relations: list[LiveEvolutionRelation]
+        self, feat_label, relations: list[LiveEvolutionRelation], *,
+        face_roles: dict | None = None,
     ) -> int:
         """Write every LiveEvolutionRelation under Tag 3.
 
@@ -244,6 +255,13 @@ class TopologyNamingWriter:
         for rel in relations:
             # ★ Fail-closed: validate contract before writing
             rel.validate()
+
+            if (
+                face_roles
+                and rel.entity_kind == TopologyEntityKind.FACE
+                and rel.kind in (EvolutionKind.GENERATED, EvolutionKind.MODIFIED)
+            ):
+                continue
 
             if rel.kind == EvolutionKind.PRIMITIVE:
                 written += self._write_primitive(container, rel, component_tag, feature_tag)
@@ -351,6 +369,55 @@ class TopologyNamingWriter:
                 feat_label, edge_tag, edge, previous_face=previous_edge,
             )
             written_edges.append(edge)
+            written += 1
+
+        return written
+
+    def _write_face_roles(
+        self, feat_label, face_roles: dict, feature_namespace: str,
+    ) -> int:
+        """Write per-face naming entries under ResultRoot.
+
+        Each face gets a stable Index-allocated child tag under
+        ``Feature/ResultRoot``. On subsequent revisions the previous face is
+        retrieved and linked with ``Modify(previous_face, face)``. On first
+        occurrence, a cross-feature source is written when available so
+        TNaming_Selector can follow e.g. box face -> fillet face.
+        """
+        written = 0
+        written_shapes: list[Any] = []
+        component_tag, feature_tag = self._component_feature_tags(feat_label)
+
+        for role_key, spec in face_roles.items():
+            if spec is None or getattr(spec, "shape", None) is None:
+                continue
+            shape = spec.shape
+            if any(shape.IsSame(prev_shape) for prev_shape in written_shapes):
+                continue
+
+            entry = self._session.label_index.allocate_face_role(
+                component_tag, feature_tag, feature_namespace, role_key,
+                self._session.revision_number,
+            )
+            label = entry.tag_path.resolve_or_create(self._session.main_label)
+            previous_face = self._get_previous_role_result(
+                feat_label, entry.tag_path.tags[-1],
+            )
+
+            builder = TNaming_Builder(label)
+            if previous_face is not None:
+                builder.Modify(previous_face, shape)
+            elif getattr(spec, "source_shape", None) is not None:
+                source = spec.source_shape
+                first_evolution = getattr(spec, "first_evolution", None)
+                if first_evolution is EvolutionKind.MODIFIED:
+                    builder.Modify(source, shape)
+                else:
+                    builder.Generated(source, shape)
+            else:
+                builder.Generated(shape)
+
+            written_shapes.append(shape)
             written += 1
 
         return written

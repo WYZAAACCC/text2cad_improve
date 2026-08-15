@@ -12,11 +12,13 @@ from OCP.TopoDS import TopoDS
 
 from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     EvolutionKind, TopologyEntityKind, ProofClass,
-    TopologyCaptureScope, LiveEvolutionBatch, LiveEvolutionRelation, TrackedShapeResult,
+    TopologyCaptureScope, LiveEvolutionBatch, LiveEvolutionRelation,
+    TrackedShapeResult, FaceRoleSpec,
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops._carry import (
     all_faces_accounted,
     carry_unchanged_faces,
+    find_partner_face,
 )
 
 
@@ -56,6 +58,7 @@ def tracked_chamfer(
     result = cq.Shape.cast(result_shape)
 
     relations: list[LiveEvolutionRelation] = []
+    face_roles: dict[str, FaceRoleSpec] = {}
     chamfer_face = None
 
     for i, edge_shape in enumerate(edge_shapes):
@@ -80,6 +83,7 @@ def tracked_chamfer(
         mod_list = builder.Modified(face.wrapped)
         mod_shapes = tuple(mod_list)
         if mod_shapes:
+            role_key = f"face_{i}"
             relations.append(LiveEvolutionRelation(
                 relation_id=f"{scope.node_id}/chamfer/mod/face_{i}",
                 operation_id=scope.node_id,
@@ -90,8 +94,26 @@ def tracked_chamfer(
                 new_shapes=mod_shapes,
                 proof=ProofClass.EXACT_KERNEL_HISTORY,
             ))
+            face_roles[role_key] = FaceRoleSpec(
+                role_key=role_key,
+                shape=mod_shapes[0],
+                source_shape=face.wrapped,
+                first_evolution=EvolutionKind.MODIFIED,
+            )
 
     carry_unchanged_faces(relations, scope, result.wrapped, body_faces, "chamfer")
+    for i, face in enumerate(body_faces):
+        role_key = f"face_{i}"
+        if role_key in face_roles:
+            continue
+        partner = find_partner_face(result.wrapped, face.wrapped)
+        if partner is not None:
+            face_roles[role_key] = FaceRoleSpec(
+                role_key=role_key,
+                shape=partner,
+                source_shape=face.wrapped,
+                first_evolution=EvolutionKind.MODIFIED,
+            )
     history_complete = all_faces_accounted(relations, body_faces)
 
     batch = LiveEvolutionBatch(
@@ -102,6 +124,7 @@ def tracked_chamfer(
         context_shape=result.wrapped,
         relations=relations,
         construction_roles={"chamfer": chamfer_face},
+        face_roles=face_roles,
         history_complete=history_complete,
         missing_phases=[] if history_complete else ["some input faces are not accounted for"],
     )
