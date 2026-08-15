@@ -9,9 +9,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 find_package(OpenCASCADE REQUIRED)
 
-add_executable(ocaf_smoke src/ocaf_smoke.cpp)
-
-target_link_libraries(ocaf_smoke PRIVATE
+set(OCCT_LIBS
     TKernel
     TKMath
     TKG2d
@@ -29,9 +27,17 @@ target_link_libraries(ocaf_smoke PRIVATE
     TKFeat
     TKXSBase
     TKService
+    TKCDF
+    TKLCAF
     TKCAF
+    TKXCAF
     TKBinXCAF
     TKStd
     TKStdL
-    TKLCAF
 )
+
+add_executable(ocaf_smoke src/ocaf_smoke.cpp)
+target_link_libraries(ocaf_smoke PRIVATE ${OCCT_LIBS})
+
+add_executable(tnaming_smoke src/tnaming_smoke.cpp)
+target_link_libraries(tnaming_smoke PRIVATE ${OCCT_LIBS})
