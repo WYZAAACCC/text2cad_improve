@@ -404,19 +404,51 @@ class PersistentSelectionService:
 
     @staticmethod
     def _shape_fingerprint(shape):
-        """Geometric fingerprint of a face: (area, cx, cy, cz)."""
+        """Robust geometric fingerprint of a face.
+
+        Returns a JSON-serializable dict with area, centroid, surface type,
+        orientation (plane normal or cylinder/cone axis), and perimeter. The
+        old (area, cx, cy, cz) tuple could collide for distinct faces in
+        symmetric models; surface type + orientation + perimeter make that
+        effectively impossible.
+        """
+        from OCP.BRepAdaptor import BRepAdaptor_Surface
         from OCP.BRepGProp import BRepGProp
         from OCP.GProp import GProp_GProps
 
         props = GProp_GProps()
         BRepGProp.SurfaceProperties_s(shape, props)
         c = props.CentreOfMass()
-        return (
-            round(float(props.Mass()), 4),
-            round(c.X(), 4),
-            round(c.Y(), 4),
-            round(c.Z(), 4),
-        )
+
+        linear_props = GProp_GProps()
+        BRepGProp.LinearProperties_s(shape, linear_props)
+
+        surface_type = "Other"
+        normal = None
+        axis = None
+        try:
+            adaptor = BRepAdaptor_Surface(shape)
+            surface_type = _get_surface_type(shape) or "Other"
+            if adaptor.GetType() == 0:  # GeomAbs_Plane
+                d = adaptor.Plane().Position().Direction()
+                normal = (round(d.X(), 4), round(d.Y(), 4), round(d.Z(), 4))
+            elif adaptor.GetType() == 1:  # GeomAbs_Cylinder
+                d = adaptor.Cylinder().Axis().Direction()
+                axis = (round(d.X(), 4), round(d.Y(), 4), round(d.Z(), 4))
+            elif adaptor.GetType() == 2:  # GeomAbs_Cone
+                d = adaptor.Cone().Axis().Direction()
+                axis = (round(d.X(), 4), round(d.Y(), 4), round(d.Z(), 4))
+        except Exception:
+            pass
+
+        return {
+            "area": round(float(props.Mass()), 4),
+            "centroid": (round(c.X(), 4), round(c.Y(), 4), round(c.Z(), 4)),
+            "surface_type": surface_type,
+            "normal": normal,
+            "axis": axis,
+            "perimeter": round(float(linear_props.Mass()), 4),
+        }
 
     def _store_fingerprint(self, sel_label, fingerprint) -> None:
         import json
@@ -439,7 +471,7 @@ class PersistentSelectionService:
         if raw is None:
             return None
         try:
-            return tuple(json.loads(raw))
+            return json.loads(raw)
         except (json.JSONDecodeError, TypeError):
             return None
 
