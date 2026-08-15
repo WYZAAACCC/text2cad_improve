@@ -125,6 +125,7 @@ class RawSelectionSpec(BaseModel):
     role_key: str | None = Field(default=None, description='Semantic face role (e.g. "rim", "bore", "start_cap", "end_cap", "+X"). Takes precedence over face_selector when set.')
     entity_kind: Literal["face", "edge"] = Field(default="face", description='"face" or "edge".')
     cardinality: Literal["exact_one", "set_allowed"] = Field(default="exact_one", description='"exact_one" or "set_allowed".')
+    edge_selector: str = Field(default="", description='CadQuery edge selector string (e.g. ">Z" for top edges). Used when entity_kind="edge".')
 
 
 class RawCaeBinding(BaseModel):

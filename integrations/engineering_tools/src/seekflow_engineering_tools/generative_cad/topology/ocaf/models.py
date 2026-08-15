@@ -447,6 +447,8 @@ class SelectionSpec:
     face_selector: CadQuery face selector string (e.g. ">Z" for the top face).
     role_key: optional named role (e.g. "+X", "start_cap") resolved from the
         captured feature's construction_roles; takes precedence over face_selector.
+    edge_selector: CadQuery edge selector string (e.g. ">Z"), used when the
+        policy entity_kind is EDGE.
     policy: optional SelectionPolicy (defaults to FACE / EXACT_ONE).
     contract: optional SemanticContract for post-solve validation.
     """
@@ -454,6 +456,7 @@ class SelectionSpec:
     component_id: str
     face_selector: str = ""
     role_key: str | None = None
+    edge_selector: str = ""
     policy: SelectionPolicy | None = None
     contract: SemanticContract | None = None
 

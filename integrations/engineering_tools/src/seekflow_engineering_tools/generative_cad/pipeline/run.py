@@ -144,6 +144,7 @@ def _selections_from_canonical(canonical):
             component_id=s.component_id,
             face_selector=s.face_selector,
             role_key=getattr(s, "role_key", None),
+            edge_selector=getattr(s, "edge_selector", ""),
             policy=SelectionPolicy(entity_kind=ek, cardinality=card),
         ))
     return tuple(specs)
@@ -179,6 +180,9 @@ def _create_selections_from_specs(
     from seekflow_engineering_tools.generative_cad.topology.ocaf.selection_service import (
         PersistentSelectionService,
     )
+    from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+        TopologyEntityKind,
+    )
 
     svc = PersistentSelectionService(ocaf_session)
     created = 0
@@ -190,14 +194,27 @@ def _create_selections_from_specs(
             if hasattr(body, "val") and not hasattr(body, "wrapped"):
                 body = body.val()
 
-            role_key = getattr(spec, "role_key", None)
-            if role_key:
-                face_wrapped = _resolve_role_face(ctx, spec.component_id, role_key)
+            policy = spec.policy
+            entity_kind = (
+                policy.entity_kind if policy is not None else TopologyEntityKind.FACE
+            )
+            if entity_kind == TopologyEntityKind.EDGE:
+                if not getattr(spec, "edge_selector", ""):
+                    raise ValueError(
+                        f"edge selection {spec.selection_id!r} requires edge_selector"
+                    )
+                selected_wrapped = body.edges(spec.edge_selector).wrapped
             else:
-                face_wrapped = body.faces(spec.face_selector).wrapped
+                role_key = getattr(spec, "role_key", None)
+                if role_key:
+                    selected_wrapped = _resolve_role_face(
+                        ctx, spec.component_id, role_key
+                    )
+                else:
+                    selected_wrapped = body.faces(spec.face_selector).wrapped
 
             svc.create(
-                spec.selection_id, face_wrapped, body.wrapped,
+                spec.selection_id, selected_wrapped, body.wrapped,
                 spec.policy, spec.contract,
             )
             created += 1
