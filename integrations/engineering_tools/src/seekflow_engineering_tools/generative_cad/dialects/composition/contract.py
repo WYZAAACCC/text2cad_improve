@@ -41,6 +41,11 @@ COMPOSITION_CONTRACT = {
             "description": "Cut tool solids from target solid.",
             "required_params": [],
         },
+        "boolean_intersect": {
+            "phase": "boolean",
+            "description": "Intersect two solid bodies.",
+            "required_params": [],
+        },
     },
     "unsupported": [
         "sketch", "profile", "loft", "sweep",

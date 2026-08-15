@@ -6,13 +6,13 @@ from typing import Any
 
 from seekflow_engineering_tools.generative_cad.dialects.composition.contract import COMPOSITION_CONTRACT
 from seekflow_engineering_tools.generative_cad.dialects.composition.handlers import (
-    handle_boolean_cut, handle_boolean_union,
+    handle_boolean_cut, handle_boolean_intersect, handle_boolean_union,
     handle_circular_pattern_component, handle_linear_pattern_component,
     handle_place_component, handle_rotate_solid, handle_translate_solid,
 )
 from seekflow_engineering_tools.generative_cad.dialects.composition.manifest import COMPOSITION_MANIFEST
 from seekflow_engineering_tools.generative_cad.dialects.composition.params import (
-    BooleanCutParams, BooleanUnionParams,
+    BooleanCutParams, BooleanIntersectParams, BooleanUnionParams,
     CircularPatternComponentParams, LinearPatternComponentParams,
     PlaceComponentParams, RotateSolidParams, TranslateSolidParams,
 )
@@ -30,7 +30,7 @@ class CompositionDialect:
     _op_version_map = {k: "1.0.0" for k in [
         "translate_solid", "rotate_solid", "place_component",
         "circular_pattern_component", "linear_pattern_component",
-        "boolean_union", "boolean_cut",
+        "boolean_union", "boolean_cut", "boolean_intersect",
     ]}
 
     def manifest(self): return dict(COMPOSITION_MANIFEST)
@@ -81,6 +81,12 @@ class CompositionDialect:
                 phase="boolean", input_types=["solid", "solid"], output_types=SO,
                 params_model=BooleanCutParams, effects=["boolean_cut"],
                 postconditions=["valid_solid"], handler=handle_boolean_cut,
+            ),
+            ("boolean_intersect", "1.0.0"): OperationSpec(
+                dialect="composition", op="boolean_intersect", op_version="1.0.0",
+                phase="boolean", input_types=["solid", "solid"], output_types=SO,
+                params_model=BooleanIntersectParams, effects=["boolean_intersect"],
+                postconditions=["valid_solid"], handler=handle_boolean_intersect,
             ),
         }
 

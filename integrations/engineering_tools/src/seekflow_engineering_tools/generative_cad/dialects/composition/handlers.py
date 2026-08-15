@@ -446,6 +446,39 @@ def handle_boolean_cut(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, st
     return {"body": _store_solid(node, ctx, result)}
 
 
+def handle_boolean_intersect(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
+    if len(node.inputs) != 2:
+        raise ValueError(
+            f"boolean_intersect requires exactly 2 inputs, got {len(node.inputs)}"
+        )
+    a = resolve_input_object(node, ctx, 0)
+    b = resolve_input_object(node, ctx, 1)
+
+    if _use_tracked(ctx):
+        import cadquery as cq
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+            TopologyCaptureScope,
+        )
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+            tracked_common,
+        )
+
+        scope = TopologyCaptureScope(
+            node_id=node.id,
+            component_id=node.component,
+            dialect=node.dialect,
+            operation=node.op,
+            operation_version=node.op_version,
+        )
+        tracked = tracked_common(a.val(), b.val(), scope=scope)
+        ctx.capture_session.stage(tracked.batch)
+        result = cq.Workplane("XY").newObject([tracked.result])
+        return {"body": _store_solid(node, ctx, result)}
+
+    result = a.intersect(b)
+    return {"body": _store_solid(node, ctx, result)}
+
+
 # ── Topology capture helpers (v6.4 PR-2) ────────────────────────────────────────
 
 

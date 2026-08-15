@@ -271,8 +271,7 @@ class TopologyNamingWriter:
             rel.validate()
 
             if (
-                face_roles
-                and rel.entity_kind == TopologyEntityKind.FACE
+                rel.entity_kind == TopologyEntityKind.FACE
                 and rel.kind in (EvolutionKind.GENERATED, EvolutionKind.MODIFIED)
             ):
                 continue

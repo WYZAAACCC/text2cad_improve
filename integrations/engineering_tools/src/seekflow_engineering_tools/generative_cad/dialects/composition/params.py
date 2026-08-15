@@ -45,6 +45,11 @@ class BooleanCutParams(BaseModel):
     clean_after: bool = True
 
 
+class BooleanIntersectParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    clean_after: bool = True
+
+
 class PlaceComponentParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
     position_mm: tuple[float, float, float] = (0.0, 0.0, 0.0)
