@@ -39,6 +39,7 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     SelectionResolutionStatus,
     SemanticContract,
     TopologyEntityKind,
+    ProofClass,
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.schema import (
     SELECTION_TAG_NATIVE_NAMING,
@@ -303,7 +304,11 @@ class PersistentSelectionService:
         if contract is not None:
             semantic_errors = validate_semantics(list(exploded), contract)
 
-        base = dict(selection_id=selection_id, resolved_shapes=exploded)
+        base = dict(
+            selection_id=selection_id,
+            resolved_shapes=exploded,
+            proof=ProofClass.EXACT_KERNEL_HISTORY,
+        )
 
         # v6.0 §9.5: semantic errors must NOT be silently ignored
         if semantic_errors:
@@ -337,6 +342,7 @@ class PersistentSelectionService:
                 selection_id=selection_id,
                 resolved_shapes=(main,),
                 detail="Split resolved to largest-area main face",
+                proof=ProofClass.EXACT_KERNEL_HISTORY,
             )
 
         if policy is not None and policy.cardinality == SelectionCardinality.SET_ALLOWED:
@@ -639,6 +645,62 @@ def create_selection_from_edge_role(
             f"in component {component_id!r}"
         )
 
+    service = PersistentSelectionService(session)
+    service.create(selection_id, edge, body, policy, contract)
+    return service
+
+
+def create_selection_from_selector(
+    session,
+    selection_id: str,
+    component_id: str,
+    feature_id: str,
+    face_selector: str,
+    policy=None,
+    contract=None,
+):
+    """Create a persistent selection on an arbitrary face after generation.
+
+    The face is resolved from the feature's already-persisted ``CurrentResult``
+    shape, so this can be called after the XBF has been saved and reopened.
+    """
+    import cadquery as cq
+
+    comp = session.ensure_component(component_id)
+    feat = session.ensure_feature(comp, feature_id)
+    body = session.get_current_result_shape(feat)
+    if body is None:
+        raise KeyError(
+            f"no current result shape for feature {feature_id!r} "
+            f"in component {component_id!r}"
+        )
+    face = cq.Shape.cast(body).faces(face_selector).wrapped
+    service = PersistentSelectionService(session)
+    service.create(selection_id, face, body, policy, contract)
+    return service
+
+
+def create_selection_from_edge_selector(
+    session,
+    selection_id: str,
+    component_id: str,
+    feature_id: str,
+    edge_selector: str,
+    policy=None,
+    contract=None,
+):
+    """Create a persistent selection on an arbitrary edge after generation."""
+    import cadquery as cq
+
+    comp = session.ensure_component(component_id)
+    feat = session.ensure_feature(comp, feature_id)
+    body = session.get_current_result_shape(feat)
+    if body is None:
+        raise KeyError(
+            f"no current result shape for feature {feature_id!r} "
+            f"in component {component_id!r}"
+        )
+    edge = cq.Shape.cast(body).edges(edge_selector).wrapped
     service = PersistentSelectionService(session)
     service.create(selection_id, edge, body, policy, contract)
     return service

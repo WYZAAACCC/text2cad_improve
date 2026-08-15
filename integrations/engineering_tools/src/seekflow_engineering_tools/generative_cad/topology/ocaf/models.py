@@ -367,6 +367,7 @@ class SelectionResolution:
     resolved_shapes: tuple[Any, ...] = ()     # TopoDS_Shape handles (live)
     candidates: list[dict] = field(default_factory=list)
     detail: str = ""
+    proof: ProofClass | None = None
 
 
 # ---------------------------------------------------------------------------

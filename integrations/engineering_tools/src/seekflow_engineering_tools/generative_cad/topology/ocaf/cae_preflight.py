@@ -17,6 +17,7 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     SelectionCardinality,
     SelectionResolutionStatus,
     TopologyEntityKind,
+    ProofClass,
 )
 
 
@@ -116,13 +117,9 @@ def run_cae_preflight(
 
         # v5.0 §10.3: Proof gate — reject heuristic candidates
         if report["ok"] and binding.require_native_proof:
-            from seekflow_engineering_tools.generative_cad.topology.ocaf.models import ProofClass
-            # If any resolved shape comes from heuristic, fail
-            if resolution.status in (SelectionResolutionStatus.UNIQUE, SelectionResolutionStatus.SET):
-                # Check if resolution detail indicates heuristic
-                if "heuristic" in resolution.detail.lower():
-                    report["ok"] = False
-                    report["detail"] = f"Rejected: heuristic proof not allowed for {binding.binding_id}"
+            if resolution.proof == ProofClass.HEURISTIC_CANDIDATE:
+                report["ok"] = False
+                report["detail"] = f"Rejected: heuristic proof not allowed for {binding.binding_id}"
 
         # v5.0 §10.3: History complete gate
         # Activated only when the caller explicitly reports history completeness.
