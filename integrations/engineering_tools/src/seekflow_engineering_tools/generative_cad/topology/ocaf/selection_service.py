@@ -8,6 +8,9 @@ Each selection lives under the fixed Selections/<tag> label tree (§4.3):
   Tag 3: SemanticContract — written as structured attributes
   Tag 4: Audit       — heuristic fingerprint for diagnostics only
 
+  Tag 5: Fingerprint -- geometric fingerprint for cross-process DELETED detection
+  Tag 6: ShapeAnchor -- TNaming anchor for the selected sub-shape (FACE/EDGE)
+
 Constraints:
   - Create DOES NOT accept face/edge indices — caller must resolve to TopoDS_Shape.
   - NativeNaming label (Tag 1) is for TNaming_Selector ONLY.
@@ -26,7 +29,7 @@ from __future__ import annotations
 from dataclasses import field
 from typing import Any
 
-from OCP.TNaming import TNaming_Selector, TNaming_Tool
+from OCP.TNaming import TNaming_Builder, TNaming_Selector, TNaming_Tool
 from OCP.TDF import TDF_LabelMap
 
 from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
@@ -43,6 +46,7 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.schema import (
     SELECTION_TAG_SEMANTIC_CONTRACT,
     SELECTION_TAG_AUDIT,
     SELECTION_TAG_FINGERPRINT,
+    SELECTION_TAG_SHAPE_ANCHOR,
 )
 
 
@@ -114,6 +118,15 @@ class PersistentSelectionService:
 
         # Tag 1: NativeNaming — TNaming_Selector exclusive
         native_label = sel_label.FindChild(SELECTION_TAG_NATIVE_NAMING, True)
+
+        # Anchor the selected sub-shape (FACE/EDGE) as its own TNaming_NamedShape.
+        # Without this, TNaming_Selector.Solve() can only track the whole context
+        # body, so arbitrary (non-role) faces resolve to the body instead of the
+        # selected face. This also satisfies the "at least one builder exists
+        # before Select" requirement.
+        anchor_label = sel_label.FindChild(SELECTION_TAG_SHAPE_ANCHOR, True)
+        TNaming_Builder(anchor_label).Generated(selected_shape)
+
         selector = TNaming_Selector(native_label)
         ok = selector.Select(selected_shape, context_shape)
         if not ok:
@@ -214,12 +227,19 @@ class PersistentSelectionService:
                         detail="Selection target deleted (pre-judged via DELETED relation)",
                     )
 
-        # Run Solve
+        # Run Solve. Ensure the selection's own shape anchor is in the valid map:
+        # dependency-closure callers may pass only the owning component subtree,
+        # which excludes the Selections subtree where the anchor lives.
+        anchor_label = sel_label.FindChild(SELECTION_TAG_SHAPE_ANCHOR, False)
         selector = TNaming_Selector(native_label)
         if valid_labels is not None:
+            if not anchor_label.IsNull():
+                valid_labels.Add(anchor_label)
             solved = selector.Solve(valid_labels)
         else:
             empty_map = TDF_LabelMap()
+            if not anchor_label.IsNull():
+                empty_map.Add(anchor_label)
             solved = selector.Solve(empty_map)
 
         if not solved:

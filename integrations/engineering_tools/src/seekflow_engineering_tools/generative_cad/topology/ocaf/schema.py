@@ -110,6 +110,7 @@ SELECTION_TAG_METADATA = 2
 SELECTION_TAG_SEMANTIC_CONTRACT = 3
 SELECTION_TAG_AUDIT = 4
 SELECTION_TAG_FINGERPRINT = 5      # geometric fingerprint for cross-process DELETED detection
+SELECTION_TAG_SHAPE_ANCHOR = 6     # TNaming anchor for the selected sub-shape (FACE/EDGE)
 
 # ---------------------------------------------------------------------------
 # StableIdIndex sub-tags (v5.0 §5.4)
