@@ -305,11 +305,15 @@ class SelectionPolicy:
     cardinality: EXACT_ONE or SET_ALLOWED
     allow_deleted: if True, DELETED is a valid resolution
     required_for_cae: if True, heuristic fallback is forbidden
+    split_strategy: optional split resolution ("largest_area") — when the
+        selected face splits into multiple, return the largest-area sub-face
+        as UNIQUE instead of AMBIGUOUS.
     """
     entity_kind: TopologyEntityKind
     cardinality: SelectionCardinality = SelectionCardinality.EXACT_ONE
     allow_deleted: bool = False
     required_for_cae: bool = False
+    split_strategy: str | None = None
 
 
 @dataclass(frozen=True)

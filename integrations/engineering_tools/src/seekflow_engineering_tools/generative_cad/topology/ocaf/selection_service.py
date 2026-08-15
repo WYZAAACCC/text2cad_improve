@@ -310,6 +310,15 @@ class PersistentSelectionService:
             )
 
         # Multiple entities
+        if policy is not None and policy.split_strategy == "largest_area":
+            main = self._pick_largest_area(exploded)
+            return SelectionResolution(
+                status=SelectionResolutionStatus.UNIQUE,
+                selection_id=selection_id,
+                resolved_shapes=(main,),
+                detail="Split resolved to largest-area main face",
+            )
+
         if policy is not None and policy.cardinality == SelectionCardinality.SET_ALLOWED:
             return SelectionResolution(status=SelectionResolutionStatus.SET, **base)
 
@@ -337,6 +346,19 @@ class PersistentSelectionService:
             return 0
         except Exception:
             return 0
+
+    @staticmethod
+    def _pick_largest_area(shapes):
+        """Pick the largest-area face, tie-broken deterministically by centroid."""
+        scored = []
+        for s in shapes:
+            props = _get_shape_props(s)
+            if props is None:
+                scored.append((0.0, (0.0, 0.0, 0.0), s))
+            else:
+                scored.append((props.get("area", 0.0), props.get("centroid", (0.0, 0.0, 0.0)), s))
+        scored.sort(key=lambda item: (-item[0], item[1][0], item[1][1], item[1][2]))
+        return scored[0][2]
 
     # ------------------------------------------------------------------
     # Label helpers
@@ -417,6 +439,7 @@ class PersistentSelectionService:
             "cardinality": policy.cardinality.value,
             "allow_deleted": policy.allow_deleted,
             "required_for_cae": policy.required_for_cae,
+            "split_strategy": policy.split_strategy,
         })
         TDataStd_AsciiString.Set_s(meta_label, TCAscii(data))
 
@@ -458,6 +481,7 @@ class PersistentSelectionService:
                 cardinality=SelectionCardinality(data.get("cardinality", "exact_one")),
                 allow_deleted=data.get("allow_deleted", False),
                 required_for_cae=data.get("required_for_cae", False),
+                split_strategy=data.get("split_strategy"),
             )
         except (json.JSONDecodeError, ValueError, KeyError):
             return None
