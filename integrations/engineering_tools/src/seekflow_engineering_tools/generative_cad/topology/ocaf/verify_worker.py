@@ -43,6 +43,9 @@ result = {{
     "design_root_present": False,
     "schema_version": None,
     "index_entry_count": 0,
+    "selection_count": 0,
+    "selection_ok_count": 0,
+    "selection_statuses": {{}},
     "manifest_sha256": None,
 }}
 
@@ -80,6 +83,29 @@ try:
     label_map = collect_tnaming_labels(session.design_root_label)
     result["tnaming_label_count"] = label_map.Extent()
 
+    # Round-trip solve every persisted selection. This is the real check that
+    # the saved document can still resolve topology identities (not just that
+    # it has the right structural labels).
+    from seekflow_engineering_tools.generative_cad.topology.ocaf.selection_service import (
+        PersistentSelectionService,
+    )
+    selection_ids = [
+        e.key.object_id
+        for e in session.label_index.entries()
+        if e.key.object_kind == "selection"
+    ]
+    service = PersistentSelectionService(session)
+    for sid in selection_ids:
+        result["selection_count"] += 1
+        try:
+            resolution = service.solve(sid, label_map)
+            status = resolution.status.value
+        except Exception as exc:
+            status = f"error:{{str(exc)[:80]}}"
+        result["selection_statuses"][sid] = status
+        if status in ("unique", "set"):
+            result["selection_ok_count"] += 1
+
     session.close()
     result["ok"] = True
 
@@ -108,6 +134,9 @@ class VerifyResult:
     schema_version: str | None = None
     index_entry_count: int = 0
     tnaming_label_count: int = 0
+    selection_count: int = 0
+    selection_ok_count: int = 0
+    selection_statuses: dict[str, str] = field(default_factory=dict)
     manifest_sha256: str | None = None
     raw_stdout: str = ""
     raw_stderr: str = ""
@@ -198,6 +227,9 @@ def verify_xbf(xbf_path: Path, timeout: int = 30) -> VerifyResult:
         schema_version=data.get("schema_version"),
         index_entry_count=data.get("index_entry_count", 0),
         tnaming_label_count=data.get("tnaming_label_count", 0),
+        selection_count=data.get("selection_count", 0),
+        selection_ok_count=data.get("selection_ok_count", 0),
+        selection_statuses=data.get("selection_statuses", {}),
         manifest_sha256=data.get("manifest_sha256"),
         raw_stdout=raw_stdout,
         raw_stderr=raw_stderr,
