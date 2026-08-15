@@ -362,6 +362,7 @@ def handle_se_fillet(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]
     r = float(node.typed_params.get("radius_mm", node.params.get("radius_mm", 0))) if node.typed_params else float(node.params.get("radius_mm", 0))
     if r > 0:
         target = node.params.get("target", "all_external_edges")
+        edge_role = node.params.get("edge_role")
         if (
             getattr(ctx, "enable_topology_capture", False)
             and ctx.capture_session is not None
@@ -376,7 +377,16 @@ def handle_se_fillet(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]
             from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
                 TopologyCaptureScope,
             )
-            edge_shapes = select_edge_shapes(body, target)
+            if edge_role:
+                try:
+                    from seekflow_engineering_tools.generative_cad.pipeline.run import (
+                        _resolve_edge_role,
+                    )
+                    edge_shapes = [_resolve_edge_role(ctx, node.component, edge_role)]
+                except Exception:
+                    edge_shapes = select_edge_shapes(body, target)
+            else:
+                edge_shapes = select_edge_shapes(body, target)
             if edge_shapes:
                 try:
                     scope = TopologyCaptureScope(
@@ -411,6 +421,7 @@ def handle_se_chamfer(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str
     d = float(node.typed_params.get("distance_mm", node.params.get("distance_mm", 0))) if node.typed_params else float(node.params.get("distance_mm", 0))
     if d > 0:
         target = node.params.get("target", "all_external_edges")
+        edge_role = node.params.get("edge_role")
         if (
             getattr(ctx, "enable_topology_capture", False)
             and ctx.capture_session is not None
@@ -425,7 +436,16 @@ def handle_se_chamfer(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str
             from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
                 TopologyCaptureScope,
             )
-            edge_shapes = select_edge_shapes(body, target)
+            if edge_role:
+                try:
+                    from seekflow_engineering_tools.generative_cad.pipeline.run import (
+                        _resolve_edge_role,
+                    )
+                    edge_shapes = [_resolve_edge_role(ctx, node.component, edge_role)]
+                except Exception:
+                    edge_shapes = select_edge_shapes(body, target)
+            else:
+                edge_shapes = select_edge_shapes(body, target)
             if edge_shapes:
                 try:
                     scope = TopologyCaptureScope(

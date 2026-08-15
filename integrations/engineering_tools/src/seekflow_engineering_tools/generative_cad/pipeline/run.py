@@ -248,6 +248,22 @@ def _resolve_role_face(ctx: RuntimeContext, component_id: str, role_key: str):
     )
 
 
+def _resolve_edge_role(ctx: RuntimeContext, component_id: str, edge_role_key: str):
+    """Resolve a named edge role from the captured batches of a component."""
+    if ctx.capture_session is None:
+        raise KeyError("no capture session available for edge role resolution")
+    for batch in ctx.capture_session.iter_batches():
+        if batch.scope.component_id != component_id:
+            continue
+        edge_roles = getattr(batch, "edge_roles", {}) or {}
+        edge = edge_roles.get(edge_role_key)
+        if edge is not None:
+            return edge
+    raise KeyError(
+        f"edge role {edge_role_key!r} not found for component {component_id!r}"
+    )
+
+
 def _run_ocaf_write_and_save(
     ctx: RuntimeContext,
     ocaf_session: Any,

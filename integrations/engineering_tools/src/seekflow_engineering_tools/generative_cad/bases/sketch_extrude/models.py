@@ -97,6 +97,7 @@ class ApplySafeFilletParams(BaseModel):
 
     radius_mm: float = Field(gt=0)
     target: Literal["all_external_edges"] = "all_external_edges"
+    edge_role: str | None = Field(default=None, description="Stable box edge role key (e.g. '+Y/end_cap'). Takes precedence over target.")
 
 
 class ApplySafeChamferParams(BaseModel):
@@ -104,3 +105,4 @@ class ApplySafeChamferParams(BaseModel):
 
     distance_mm: float = Field(gt=0)
     target: Literal["all_external_edges"] = "all_external_edges"
+    edge_role: str | None = Field(default=None, description="Stable box edge role key (e.g. '+Y/end_cap'). Takes precedence over target.")
