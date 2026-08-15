@@ -86,3 +86,16 @@ class TestTierBTrackedOps:
         edge = box.edges(">Z").val()
         tracked = tracked_chamfer(box.val(), [edge.wrapped], 2.0, scope=_scope("c"))
         assert tracked.batch.construction_roles["chamfer"] is not None
+
+    def test_unify_does_not_mark_unchanged_faces_deleted(self):
+        pytest.importorskip("cadquery")
+        import cadquery as cq
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.unify import (
+            tracked_unify,
+        )
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.models import EvolutionKind
+
+        box = cq.Workplane("XY").box(20, 20, 10).val()
+        tracked = tracked_unify(box, scope=_scope("unify"))
+        deleted = [r for r in tracked.batch.relations if r.kind == EvolutionKind.DELETED]
+        assert deleted == []

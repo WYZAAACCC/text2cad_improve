@@ -85,8 +85,10 @@ def tracked_unify(
                 proof=ProofClass.EXACT_KERNEL_HISTORY,
             ))
 
-        # IsRemoved: faces merged into others
-        if history.IsRemoved(old_face):
+        # IsRemoved: only truly-deleted faces (no Generated/Modified) → DELETED.
+        # A merged face is both IsRemoved and Generated(old→merged), so it must
+        # keep the GENERATED relation instead of being marked DELETED.
+        if history.IsRemoved(old_face) and not gen_shapes and not mod_shapes:
             relations.append(LiveEvolutionRelation(
                 relation_id=f"{scope.node_id}/unify/del/face_{face_idx}",
                 operation_id=scope.node_id,
