@@ -311,6 +311,8 @@ def tracked_circular_pattern(
     # Fuse all instances with history.
     from OCP.BOPAlgo import BOPAlgo_BOP, BOPAlgo_FUSE
     fused = instance_shapes[0]
+    history_complete = True
+    missing_phases: list[str] = []
     for si, s in enumerate(instance_shapes[1:]):
         fuser = BOPAlgo_BOP()
         fuser.SetOperation(BOPAlgo_FUSE)
@@ -321,13 +323,41 @@ def tracked_circular_pattern(
         new_fused = fuser.Shape()
         fhist = fuser.History()
         if fhist is not None:
+            has_gen = False
+            has_mod = False
             for fi, face in enumerate(cq.Shape.cast(fused).Faces()):
-                _capture_fuse_face(relations, scope, fhist, face, si, fi, "arg", new_fused)
+                g, m = _capture_fuse_face(relations, scope, fhist, face, si, fi, "arg", new_fused)
+                has_gen = has_gen or g
+                has_mod = has_mod or m
             for fi, face in enumerate(cq.Shape.cast(s).Faces()):
-                _capture_fuse_face(relations, scope, fhist, face, si, fi, "tool", new_fused)
+                g, m = _capture_fuse_face(relations, scope, fhist, face, si, fi, "tool", new_fused)
+                has_gen = has_gen or g
+                has_mod = has_mod or m
+            if not has_gen and not has_mod:
+                history_complete = False
+                missing_phases.append(f"fuse_step_{si}_no_history")
+        else:
+            history_complete = False
+            missing_phases.append(f"fuse_step_{si}")
         fused = new_fused
 
     result = cq.Shape.cast(fused)
+
+    # Same completeness contract as linear_pattern: every seed face must compose
+    # forward through the arg chain to a final output (or be explicitly deleted).
+    graph = HistoryGraph.from_relations(relations)
+    composer = HistoryComposer()
+    for fi, face in enumerate(body.Faces()):
+        finals = composer.compose(graph, [face.wrapped], follow_tokens=("_arg_",))
+        deleted = graph.successors(
+            face.wrapped,
+            follow_kinds=(EvolutionKind.DELETED,),
+            follow_tokens=("_arg_",),
+        )
+        if not finals and not deleted:
+            history_complete = False
+            missing_phases.append(f"face_{fi}_not_composable")
+
     batch = LiveEvolutionBatch(
         scope=scope,
         builder_kind="CircularPattern",
@@ -335,6 +365,7 @@ def tracked_circular_pattern(
         result_shape=result.wrapped,
         context_shape=result.wrapped,
         relations=relations,
-        history_complete=True,
+        history_complete=history_complete,
+        missing_phases=missing_phases,
     )
     return TrackedShapeResult(result=result, batch=batch)

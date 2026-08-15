@@ -15,6 +15,10 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     EvolutionKind, TopologyEntityKind, ProofClass,
     TopologyCaptureScope, LiveEvolutionBatch, LiveEvolutionRelation, TrackedShapeResult,
 )
+from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops._carry import (
+    all_faces_accounted,
+    carry_unchanged_faces,
+)
 
 
 def tracked_fillet(
@@ -90,6 +94,11 @@ def tracked_fillet(
                 proof=ProofClass.EXACT_KERNEL_HISTORY,
             ))
 
+    # Faces untouched by the fillet keep their TShape; record that explicitly
+    # so history_complete is an honest signal rather than a hardcoded True.
+    carry_unchanged_faces(relations, scope, result.wrapped, body_faces, "fillet")
+    history_complete = all_faces_accounted(relations, body_faces)
+
     batch = LiveEvolutionBatch(
         scope=scope,
         builder_kind="BRepFilletAPI_MakeFillet",
@@ -98,6 +107,7 @@ def tracked_fillet(
         context_shape=result.wrapped,
         relations=relations,
         construction_roles={"fillet": fillet_face},
-        history_complete=True,
+        history_complete=history_complete,
+        missing_phases=[] if history_complete else ["some input faces are not accounted for"],
     )
     return TrackedShapeResult(result=result, batch=batch)

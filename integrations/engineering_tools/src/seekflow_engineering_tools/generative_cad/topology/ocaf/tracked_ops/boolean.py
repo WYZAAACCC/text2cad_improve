@@ -34,6 +34,9 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     TopologyEntityKind,
     TrackedShapeResult,
 )
+from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops._carry import (
+    all_faces_accounted,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -148,10 +151,12 @@ def _export_bopalgo_history(
     and collects REAL TopoDS_Shape handles into LiveEvolutionRelation objects.
     """
     relations: list[LiveEvolutionRelation] = []
+    all_input_faces: list[Any] = []
 
     for role_name, shape in [("target", target), ("tool", tool)]:
         for i, face in enumerate(shape.Faces()):
             fw = face.wrapped  # TopoDS_Shape
+            all_input_faces.append(face)
             source_key = f"{role_name}_face_{i}"
 
             # ── Generated: new faces in result created from this input face ──
@@ -223,13 +228,15 @@ def _export_bopalgo_history(
                         )
                     )
 
+    history_complete = all_faces_accounted(relations, all_input_faces)
     batch = LiveEvolutionBatch(
         scope=scope,
         builder_kind=builder_kind,
         result_shape=result.wrapped,
         context_shape=result.wrapped,
         relations=relations,
-        history_complete=True,
+        history_complete=history_complete,
+        missing_phases=[] if history_complete else ["some input faces are not accounted for"],
     )
     return batch
 
