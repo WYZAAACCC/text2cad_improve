@@ -139,6 +139,7 @@ def tracked_chamfer(
         context_shape=result.wrapped,
         relations=relations,
         construction_roles={"chamfer": chamfer_face},
+        edge_roles={f"edge_{i}": edge_shape for i, edge_shape in enumerate(edge_shapes)},
         face_roles=face_roles,
         history_complete=history_complete,
         missing_phases=[] if history_complete else ["some input faces are not accounted for"],

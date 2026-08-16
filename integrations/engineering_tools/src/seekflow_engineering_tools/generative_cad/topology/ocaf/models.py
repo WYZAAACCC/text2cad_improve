@@ -455,7 +455,7 @@ class StableObjectKey:
     # v5.0 §5.3: expanded kind set for full index coverage
     _VALID_KINDS = frozenset({
         "component", "feature", "selection",
-        "relation", "revision", "cae_binding", "face_role",
+        "relation", "revision", "cae_binding", "face_role", "edge_role",
     })
 
     def __post_init__(self):

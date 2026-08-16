@@ -133,6 +133,7 @@ INDEX_COUNTER_KINDS = [
     "revision",        # tag 5
     "cae_binding",     # tag 6
     "face_role",       # tag 7
+    "edge_role",       # tag 8
 ]
 
 # ---------------------------------------------------------------------------

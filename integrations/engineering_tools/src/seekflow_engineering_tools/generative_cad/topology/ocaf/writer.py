@@ -181,12 +181,15 @@ class TopologyNamingWriter:
         # 2. Write construction roles (first/last) to Tag 4
         written += self._write_construction_roles(feat_label, batch.construction_roles)
 
+        feature_namespace = f"feature:{scope.node_id or scope.operation or 'unnamed'}"
+
         # 3. Write derived edge roles under ResultRoot (v8 Stage 1)
-        written += self._write_edge_roles(feat_label, getattr(batch, "edge_roles", {}))
+        written += self._write_edge_roles(
+            feat_label, getattr(batch, "edge_roles", {}), feature_namespace,
+        )
 
         # 4. Write every persisted face role under ResultRoot.
         face_roles = getattr(batch, "face_roles", {}) or {}
-        feature_namespace = f"feature:{scope.node_id or scope.operation or 'unnamed'}"
         written += self._write_face_roles(feat_label, face_roles, feature_namespace)
 
         # 5. Write evolution relations under Tag 3. Face relations that are now
@@ -396,7 +399,9 @@ class TopologyNamingWriter:
 
         return written
 
-    def _write_edge_roles(self, feat_label, edge_roles: dict) -> int:
+    def _write_edge_roles(
+        self, feat_label, edge_roles: dict, feature_namespace: str,
+    ) -> int:
         """Write derived box edge roles under ResultRoot (v8 Stage 1).
 
         Edge tags use EDGE_ROLE_TAG_BASE + index in EDGE_ROLE_KEYS so the same
@@ -405,13 +410,20 @@ class TopologyNamingWriter:
         """
         written = 0
         written_edges: list[Any] = []
-        for index, edge_key in enumerate(EDGE_ROLE_KEYS):
-            edge = edge_roles.get(edge_key)
+        component_tag, feature_tag = self._component_feature_tags(feat_label)
+        for edge_key, edge in edge_roles.items():
             if edge is None:
                 continue
             if any(edge.IsSame(prev_edge) for prev_edge in written_edges):
                 continue
-            edge_tag = EDGE_ROLE_TAG_BASE + index
+            if edge_key in EDGE_ROLE_KEYS:
+                edge_tag = EDGE_ROLE_TAG_BASE + EDGE_ROLE_KEYS.index(edge_key)
+            else:
+                entry = self._session.label_index.allocate_edge_role(
+                    component_tag, feature_tag, feature_namespace, edge_key,
+                    self._session.revision_number,
+                )
+                edge_tag = entry.tag_path.tags[-1]
             previous_edge = self._get_previous_role_result(feat_label, edge_tag)
             self.write_role_result(
                 feat_label, edge_tag, edge, previous_face=previous_edge,

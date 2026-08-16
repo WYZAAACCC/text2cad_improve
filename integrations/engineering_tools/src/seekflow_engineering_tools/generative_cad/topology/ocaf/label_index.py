@@ -105,6 +105,8 @@ class StableLabelIndex:
         # revision numbers start at 1, not DYNAMIC_TAG_START
         if self._next_tags.get("revision", DYNAMIC_TAG_START) == DYNAMIC_TAG_START:
             self._next_tags["revision"] = 1
+        if self._next_tags.get("edge_role", DYNAMIC_TAG_START) == DYNAMIC_TAG_START:
+            self._next_tags["edge_role"] = 3001
 
     # ------------------------------------------------------------------
     # Query
@@ -260,6 +262,37 @@ class StableLabelIndex:
 
         tag = self._next_tags.get("face_role", DYNAMIC_TAG_START)
         self._next_tags["face_role"] = tag + 1
+        tag_path = TagPath((
+            DESIGN_ROOT_TAG, TAG_COMPONENTS, component_tag,
+            COMPONENT_TAG_FEATURES, feature_tag,
+            FEATURE_TAG_RESULT_ROOT, tag,
+        ))
+
+        entry = IndexEntry(key=key, tag_path=tag_path, created_revision=revision)
+        self._by_key[key_str] = entry
+        self._by_path[tag_path] = entry
+        return entry
+
+    def allocate_edge_role(
+        self,
+        component_tag: int,
+        feature_tag: int,
+        feature_namespace: str,
+        role_key: str,
+        revision: int,
+    ) -> IndexEntry:
+        """Allocate a stable tag for an arbitrary edge role under ResultRoot."""
+        key = StableObjectKey("edge_role", feature_namespace, role_key)
+        key_str = str(key)
+
+        existing = self._by_key.get(key_str)
+        if existing is not None:
+            return existing
+
+        tag = self._next_tags.get("edge_role", 3001)
+        if tag < 3001:
+            tag = 3001
+        self._next_tags["edge_role"] = tag + 1
         tag_path = TagPath((
             DESIGN_ROOT_TAG, TAG_COMPONENTS, component_tag,
             COMPONENT_TAG_FEATURES, feature_tag,
@@ -507,6 +540,7 @@ class StableLabelIndex:
             kind: DYNAMIC_TAG_START for kind in INDEX_COUNTER_KINDS
         }
         self._next_tags["revision"] = 1
+        self._next_tags["edge_role"] = 3001
 
     @property
     def entry_count(self) -> int:
