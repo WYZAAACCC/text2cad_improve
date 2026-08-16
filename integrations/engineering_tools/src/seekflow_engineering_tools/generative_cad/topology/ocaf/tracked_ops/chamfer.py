@@ -14,6 +14,7 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     EvolutionKind, TopologyEntityKind, ProofClass,
     TopologyCaptureScope, LiveEvolutionBatch, LiveEvolutionRelation,
     TrackedShapeResult, FaceRoleSpec,
+    make_relation_key, make_source_ref,
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops._carry import (
     all_faces_accounted,
@@ -77,6 +78,10 @@ def tracked_chamfer(
                 old_shape=edge,
                 new_shapes=gen_shapes,
                 proof=ProofClass.EXACT_KERNEL_HISTORY,
+                relation_key=make_relation_key(
+                    scope.component_id, scope.node_id, f"edge_{i}",
+                    EvolutionKind.GENERATED, relation_role="chamfer_edge",
+                ),
             ))
 
     for i, face in enumerate(body_faces):
@@ -93,12 +98,19 @@ def tracked_chamfer(
                 old_shape=face.wrapped,
                 new_shapes=mod_shapes,
                 proof=ProofClass.EXACT_KERNEL_HISTORY,
+                relation_key=make_relation_key(
+                    scope.component_id, scope.node_id, f"face_{i}",
+                    EvolutionKind.MODIFIED, relation_role="chamfer_adjacent",
+                ),
             ))
             face_roles[role_key] = FaceRoleSpec(
                 role_key=role_key,
                 shape=mod_shapes[0],
                 source_shape=face.wrapped,
                 first_evolution=EvolutionKind.MODIFIED,
+                source_ref=make_source_ref(
+                    scope.component_id, scope.node_id, f"face_{i}",
+                ),
             )
 
     carry_unchanged_faces(relations, scope, result.wrapped, body_faces, "chamfer")
@@ -113,6 +125,9 @@ def tracked_chamfer(
                 shape=partner,
                 source_shape=face.wrapped,
                 first_evolution=EvolutionKind.MODIFIED,
+                source_ref=make_source_ref(
+                    scope.component_id, scope.node_id, f"face_{i}",
+                ),
             )
     history_complete = all_faces_accounted(relations, body_faces)
 

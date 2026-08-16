@@ -15,6 +15,7 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     EvolutionKind, TopologyEntityKind, ProofClass,
     TopologyCaptureScope, LiveEvolutionBatch, LiveEvolutionRelation,
     TrackedShapeResult, FaceRoleSpec,
+    make_relation_key, make_source_ref,
 )
 
 
@@ -70,6 +71,10 @@ def tracked_unify(
                 old_shape=old_face,
                 new_shapes=gen_shapes,
                 proof=ProofClass.EXACT_KERNEL_HISTORY,
+                relation_key=make_relation_key(
+                    scope.component_id, scope.node_id, f"face_{face_idx}",
+                    EvolutionKind.GENERATED, relation_role="unify",
+                ),
             ))
             for j, new_shape in enumerate(gen_shapes):
                 role_key = f"face_{face_idx}/gen/{j}"
@@ -78,6 +83,9 @@ def tracked_unify(
                     shape=new_shape,
                     source_shape=old_face,
                     first_evolution=EvolutionKind.GENERATED,
+                    source_ref=make_source_ref(
+                        scope.component_id, scope.node_id, f"face_{face_idx}",
+                    ),
                 )
 
         # Modified: faces that were modified
@@ -93,6 +101,10 @@ def tracked_unify(
                 old_shape=old_face,
                 new_shapes=mod_shapes,
                 proof=ProofClass.EXACT_KERNEL_HISTORY,
+                relation_key=make_relation_key(
+                    scope.component_id, scope.node_id, f"face_{face_idx}",
+                    EvolutionKind.MODIFIED, relation_role="unify",
+                ),
             ))
             for j, new_shape in enumerate(mod_shapes):
                 role_key = f"face_{face_idx}/mod/{j}"
@@ -101,6 +113,9 @@ def tracked_unify(
                     shape=new_shape,
                     source_shape=old_face,
                     first_evolution=EvolutionKind.MODIFIED,
+                    source_ref=make_source_ref(
+                        scope.component_id, scope.node_id, f"face_{face_idx}",
+                    ),
                 )
 
         # IsRemoved: only truly-deleted faces (no Generated/Modified) → DELETED.

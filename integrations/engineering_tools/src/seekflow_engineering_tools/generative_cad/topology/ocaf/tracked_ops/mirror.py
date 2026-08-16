@@ -14,6 +14,7 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     EvolutionKind, TopologyEntityKind, ProofClass,
     TopologyCaptureScope, LiveEvolutionBatch, LiveEvolutionRelation,
     TrackedShapeResult, FaceRoleSpec,
+    make_relation_key, make_source_ref,
 )
 
 
@@ -68,12 +69,19 @@ def tracked_mirror(
                 old_shape=face.wrapped,
                 new_shapes=mod_shapes,
                 proof=ProofClass.EXACT_KERNEL_HISTORY,
+                relation_key=make_relation_key(
+                    scope.component_id, scope.node_id, f"face_{i}",
+                    EvolutionKind.MODIFIED, relation_role="mirror",
+                ),
             ))
             face_roles[role_key] = FaceRoleSpec(
                 role_key=role_key,
                 shape=mod_shapes[0],
                 source_shape=face.wrapped,
                 first_evolution=EvolutionKind.MODIFIED,
+                source_ref=make_source_ref(
+                    scope.component_id, scope.node_id, f"face_{i}",
+                ),
             )
 
     batch = LiveEvolutionBatch(
