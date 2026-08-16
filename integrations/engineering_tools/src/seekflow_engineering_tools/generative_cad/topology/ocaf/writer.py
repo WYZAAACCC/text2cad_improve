@@ -344,9 +344,21 @@ class TopologyNamingWriter:
 
     def _write_deleted(self, container, rel, component_tag, feature_tag) -> int:
         """DELETED: Delete(old_shape) — single call."""
+        import json
+        from OCP.TDataStd import TDataStd_AsciiString
+        from OCP.TCollection import TCollection_AsciiString as TCAscii
+
         tag = self._relation_tag(rel, component_tag, feature_tag)
         label = self._relation_label(container, tag, 0)
         TNaming_Builder(label).Delete(rel.old_shape)
+        audit = json.dumps({
+            "relation_id": rel.relation_id,
+            "kind": rel.kind.value,
+            "entity_kind": rel.entity_kind.value,
+            "source_key": rel.source_key,
+            "operation_id": rel.operation_id,
+        })
+        TDataStd_AsciiString.Set_s(label, TCAscii(audit))
         return 1
 
     def _write_audit_relation(
