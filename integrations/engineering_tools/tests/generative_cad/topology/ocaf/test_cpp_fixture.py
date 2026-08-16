@@ -11,7 +11,7 @@ import pytest
 
 @pytest.mark.parametrize(
     "name",
-    ["ocaf_smoke", "tnaming_smoke", "edge_lineage", "edge_boolean"],
+    ["ocaf_smoke", "tnaming_smoke", "edge_lineage", "edge_boolean", "full_edge_boolean"],
 )
 def test_cpp_fixture_runs(name):
     sys.path.insert(0, str(Path(__file__).resolve().parent / "cpp_fixture"))

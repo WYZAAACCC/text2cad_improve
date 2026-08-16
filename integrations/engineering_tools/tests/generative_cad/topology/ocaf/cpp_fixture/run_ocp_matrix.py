@@ -52,7 +52,10 @@ def main() -> None:
                 }
             )
 
-    for name in ("ocaf_smoke", "tnaming_smoke", "edge_lineage", "edge_boolean"):
+    for name in (
+        "ocaf_smoke", "tnaming_smoke", "edge_lineage", "edge_boolean",
+        "full_edge_boolean",
+    ):
         try:
             proc = run_fixture(name)
             report["fixtures"][name] = {

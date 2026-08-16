@@ -47,3 +47,6 @@ target_link_libraries(edge_lineage PRIVATE ${OCCT_LIBS})
 
 add_executable(edge_boolean src/edge_boolean.cpp)
 target_link_libraries(edge_boolean PRIVATE ${OCCT_LIBS})
+
+add_executable(full_edge_boolean src/full_edge_boolean.cpp)
+target_link_libraries(full_edge_boolean PRIVATE ${OCCT_LIBS})

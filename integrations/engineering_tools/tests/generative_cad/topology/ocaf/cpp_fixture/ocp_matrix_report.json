@@ -26,6 +26,11 @@
       "returncode": 0,
       "stdout": "solve=ok current_type=EDGE current_edges=1 edge_len=30",
       "stderr": ""
+    },
+    "full_edge_boolean": {
+      "returncode": 0,
+      "stdout": "face_select=ok face_solve=ok face_type=FACE face_count=1 edge_select=ok edge_solve=ok edge_type=EDGE edge_count=1 edge_len=30",
+      "stderr": ""
     }
   }
 }
