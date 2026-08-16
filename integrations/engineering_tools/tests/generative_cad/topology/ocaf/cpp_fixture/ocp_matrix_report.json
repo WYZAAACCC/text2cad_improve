@@ -1,0 +1,31 @@
+{
+  "occt_cpp": "D:\\anaconda\\envs\\occt_cpp",
+  "python_envs": [
+    {
+      "path": "E:\\text_to_cad_improve\\auto_detection_process\\.conda\\python.exe",
+      "ocp_version": "7.8.1.1"
+    }
+  ],
+  "fixtures": {
+    "ocaf_smoke": {
+      "returncode": 0,
+      "stdout": "OCCT_SMOKE_OK volume=4000 faces=6",
+      "stderr": ""
+    },
+    "tnaming_smoke": {
+      "returncode": 0,
+      "stdout": "select=ok\nsolve=ok\ncurrent_type=COMPOUND current_faces=6\nget_type=COMPOUND get_faces=6\nnamed_solve=ok named_current_type=FACE named_current_faces=1",
+      "stderr": ""
+    },
+    "edge_lineage": {
+      "returncode": 0,
+      "stdout": "select=ok solve=ok current_type=EDGE current_edges=1 edge_len=30",
+      "stderr": ""
+    },
+    "edge_boolean": {
+      "returncode": 0,
+      "stdout": "solve=ok current_type=EDGE current_edges=1 edge_len=30",
+      "stderr": ""
+    }
+  }
+}

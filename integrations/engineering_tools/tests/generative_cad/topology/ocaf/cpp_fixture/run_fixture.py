@@ -5,12 +5,16 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 
 FIXTURE_DIR = Path(__file__).resolve().parent
 BUILD_DIR = FIXTURE_DIR / "build"
 OCCT_BIN = Path(r"D:\anaconda\envs\occt_cpp\Library\bin")
+DEFAULT_STAGE_ROOT = Path(
+    r"C:\Users\mycomputer\.codex\visualizations\2026\08\13\019ffac8-4917-7543-ae0d-3d657f2d323a"
+)
 
 
 def run_fixture(name: str, *, timeout: int = 30) -> subprocess.CompletedProcess[str]:
@@ -18,24 +22,29 @@ def run_fixture(name: str, *, timeout: int = 30) -> subprocess.CompletedProcess[
     if not exe.exists():
         raise FileNotFoundError(f"fixture executable not built: {exe}")
 
-    env = os.environ.copy()
+    # The workspace is currently on an exFAT volume, where Windows refuses to
+    # start native executables (Access Denied). Stage the exe + OCCT DLLs on
+    # the system temp volume (NTFS) before running.
+    stage_root = Path(os.environ.get("OCAF_FIXTURE_STAGE_DIR", str(DEFAULT_STAGE_ROOT)))
+    stage_root.mkdir(parents=True, exist_ok=True)
+    stage_dir = Path(tempfile.mkdtemp(prefix="ocaf_fixture_", dir=str(stage_root)))
+    staged_exe = stage_dir / exe.name
+    shutil.copy2(str(exe), str(staged_exe))
     if OCCT_BIN.exists():
-        env["PATH"] = str(OCCT_BIN) + os.pathsep + env.get("PATH", "")
-        # OCCT DLLs must be co-located with the exe on Windows; the OCCT
-        # manifest cannot always resolve DLLs through PATH alone.
         for dll in OCCT_BIN.glob("*.dll"):
-            target = BUILD_DIR / dll.name
-            if not target.exists() or target.stat().st_mtime < dll.stat().st_mtime:
-                shutil.copy2(str(dll), str(target))
+            shutil.copy2(str(dll), str(stage_dir / dll.name))
 
-    return subprocess.run(
-        [str(exe)],
-        cwd=str(BUILD_DIR),
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-    )
+    try:
+        return subprocess.run(
+            [str(staged_exe)],
+            cwd=str(stage_dir),
+            env=os.environ.copy(),
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    finally:
+        shutil.rmtree(str(stage_dir), ignore_errors=True)
 
 
 def main() -> None:
