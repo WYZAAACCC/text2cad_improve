@@ -34,6 +34,7 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     TopologyEntityKind,
     TrackedShapeResult,
     FaceRoleSpec,
+    make_relation_key, make_source_ref,
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops._carry import (
     all_faces_accounted,
@@ -177,6 +178,10 @@ def _export_bopalgo_history(
                         old_shape=fw,
                         new_shapes=gen_shapes,
                         proof=ProofClass.EXACT_KERNEL_HISTORY,
+                        relation_key=make_relation_key(
+                            scope.component_id, scope.node_id, source_key,
+                            EvolutionKind.GENERATED, relation_role="boolean",
+                        ),
                     )
                 )
                 for j, new_shape in enumerate(gen_shapes):
@@ -202,6 +207,10 @@ def _export_bopalgo_history(
                         old_shape=fw,
                         new_shapes=mod_shapes,
                         proof=ProofClass.EXACT_KERNEL_HISTORY,
+                        relation_key=make_relation_key(
+                            scope.component_id, scope.node_id, source_key,
+                            EvolutionKind.MODIFIED, relation_role="boolean",
+                        ),
                     )
                 )
                 for j, new_shape in enumerate(mod_shapes):
@@ -245,6 +254,10 @@ def _export_bopalgo_history(
                             old_shape=fw,
                             new_shapes=(partner,),
                             proof=ProofClass.EXACT_KERNEL_HISTORY,
+                            relation_key=make_relation_key(
+                                scope.component_id, scope.node_id, source_key,
+                                EvolutionKind.MODIFIED, relation_role="boolean",
+                            ),
                         )
                     )
                     role_key = f"{source_key}/carry"

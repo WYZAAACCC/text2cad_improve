@@ -20,6 +20,7 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     EvolutionKind, TopologyEntityKind, ProofClass,
     TopologyCaptureScope, LiveEvolutionBatch, LiveEvolutionRelation, TrackedShapeResult,
     FaceRoleSpec,
+    make_source_ref,
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.history_graph import (
     HistoryGraph,
@@ -228,6 +229,9 @@ def tracked_linear_pattern(
                     shape=final_shape,
                     source_shape=face.wrapped,
                     first_evolution=EvolutionKind.MODIFIED,
+                    source_ref=make_source_ref(
+                        scope.component_id, scope.node_id, f"face_{fi}",
+                    ),
                 )
     else:
         result = body
@@ -376,6 +380,9 @@ def tracked_circular_pattern(
                 shape=final_shape,
                 source_shape=face.wrapped,
                 first_evolution=EvolutionKind.MODIFIED,
+                source_ref=make_source_ref(
+                    scope.component_id, scope.node_id, f"face_{fi}",
+                ),
             )
 
     batch = LiveEvolutionBatch(

@@ -13,6 +13,7 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     TopologyEntityKind,
     TrackedShapeResult,
     FaceRoleSpec,
+    make_relation_key, make_source_ref,
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops._carry import (
     all_faces_accounted,
@@ -29,6 +30,8 @@ def _capture_generated_modified(
     source_key: str,
     *,
     face_roles: dict[str, FaceRoleSpec] | None = None,
+    component_id: str = "",
+    feature_id: str = "",
 ) -> None:
     gen_list = builder.Generated(input_shape)
     gen_shapes = tuple(gen_list)
@@ -42,6 +45,10 @@ def _capture_generated_modified(
             old_shape=input_shape,
             new_shapes=gen_shapes,
             proof=ProofClass.EXACT_KERNEL_HISTORY,
+            relation_key=make_relation_key(
+                component_id, feature_id, source_key,
+                EvolutionKind.GENERATED, relation_role="sweep",
+            ) if component_id and feature_id else None,
         ))
         if face_roles is not None:
             for j, new_shape in enumerate(gen_shapes):
@@ -51,6 +58,9 @@ def _capture_generated_modified(
                     shape=new_shape,
                     source_shape=input_shape,
                     first_evolution=EvolutionKind.GENERATED,
+                    source_ref=make_source_ref(
+                        component_id, feature_id, source_key,
+                    ) if component_id and feature_id else None,
                 )
 
     mod_list = builder.Modified(input_shape)
@@ -65,6 +75,10 @@ def _capture_generated_modified(
             old_shape=input_shape,
             new_shapes=mod_shapes,
             proof=ProofClass.EXACT_KERNEL_HISTORY,
+            relation_key=make_relation_key(
+                component_id, feature_id, source_key,
+                EvolutionKind.MODIFIED, relation_role="sweep",
+            ) if component_id and feature_id else None,
         ))
         if face_roles is not None:
             for j, new_shape in enumerate(mod_shapes):
@@ -74,6 +88,9 @@ def _capture_generated_modified(
                     shape=new_shape,
                     source_shape=input_shape,
                     first_evolution=EvolutionKind.MODIFIED,
+                    source_ref=make_source_ref(
+                        component_id, feature_id, source_key,
+                    ) if component_id and feature_id else None,
                 )
 
 
@@ -125,6 +142,7 @@ def tracked_shell(
         _capture_generated_modified(
             relations, scope, builder, face.wrapped, f"face_{i}",
             face_roles=face_roles,
+            component_id=scope.component_id, feature_id=scope.node_id,
         )
 
     carry_unchanged_faces(relations, scope, result.wrapped, list(body.Faces()), "shell")
@@ -187,6 +205,7 @@ def tracked_sweep(
         _capture_generated_modified(
             relations, scope, builder, profile_wrapped, "profile",
             face_roles=face_roles,
+            component_id=scope.component_id, feature_id=scope.node_id,
         )
     else:
         # Wire/edge profile: capture per edge.
@@ -198,6 +217,7 @@ def tracked_sweep(
             _capture_generated_modified(
                 relations, scope, builder, exp.Current(), f"edge_{idx}",
                 face_roles=face_roles,
+                component_id=scope.component_id, feature_id=scope.node_id,
             )
             idx += 1
             exp.Next()
@@ -247,6 +267,7 @@ def tracked_loft(
             _capture_generated_modified(
                 relations, scope, builder, exp.Current(), f"section_{i}_edge_{idx}",
                 face_roles=face_roles,
+                component_id=scope.component_id, feature_id=scope.node_id,
             )
             idx += 1
             exp.Next()
