@@ -76,6 +76,7 @@ def tracked_revolve(
         **side_roles,
     }
     face_roles = _remaining_face_roles(result, construction_roles, "revolve")
+    history_complete = len(relations) > 0
 
     batch = LiveEvolutionBatch(
         scope=scope,
@@ -90,7 +91,8 @@ def tracked_revolve(
         relations=relations,
         construction_roles=construction_roles,
         face_roles=face_roles,
-        history_complete=True,
+        history_complete=history_complete,
+        missing_phases=[] if history_complete else ["no profile history captured"],
     )
     return TrackedShapeResult(result=result, batch=batch)
 

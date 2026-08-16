@@ -42,5 +42,5 @@ def test_face_modified_relation_is_audit_only():
 
     session = OcafDocumentSession.create()
     count = TopologyNamingWriter(session).write_batch(batch)
-    # Only the feature result is TNaming; the FACE MODIFIED relation is skipped.
-    assert count == 1
+    # Feature result + one JSON audit relation.
+    assert count == 2

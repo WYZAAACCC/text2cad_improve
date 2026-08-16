@@ -286,6 +286,9 @@ class TopologyNamingWriter:
                 rel.entity_kind == TopologyEntityKind.FACE
                 and rel.kind in (EvolutionKind.GENERATED, EvolutionKind.MODIFIED)
             ):
+                written += self._write_audit_relation(
+                    container, rel, component_tag, feature_tag,
+                )
                 continue
 
             if rel.kind == EvolutionKind.PRIMITIVE:
@@ -341,6 +344,26 @@ class TopologyNamingWriter:
         tag = self._relation_tag(rel, component_tag, feature_tag)
         label = self._relation_label(container, tag, 0)
         TNaming_Builder(label).Delete(rel.old_shape)
+        return 1
+
+    def _write_audit_relation(
+        self, container, rel, component_tag, feature_tag,
+    ) -> int:
+        """Write JSON audit metadata for a non-TNaming face relation."""
+        import json
+        from OCP.TDataStd import TDataStd_AsciiString
+        from OCP.TCollection import TCollection_AsciiString as TCAscii
+
+        tag = self._relation_tag(rel, component_tag, feature_tag)
+        label = self._relation_label(container, tag, 0)
+        data = json.dumps({
+            "relation_id": rel.relation_id,
+            "kind": rel.kind.value,
+            "entity_kind": rel.entity_kind.value,
+            "source_key": rel.source_key,
+            "operation_id": rel.operation_id,
+        })
+        TDataStd_AsciiString.Set_s(label, TCAscii(data))
         return 1
 
     # ── Construction roles ──────────────────────────────────────────────

@@ -404,6 +404,42 @@ class RelationKey:
     relation_role: str = ""   # "target" | "tool" | "profile"
 
 
+def make_source_ref(
+    component_id: str,
+    feature_id: str,
+    source_key: str,
+    *,
+    entity_kind: TopologyEntityKind = TopologyEntityKind.FACE,
+) -> SourceEntityRef:
+    """Build a SourceEntityRef from a tracked op's string source key."""
+    return SourceEntityRef(
+        component_id=component_id,
+        feature_id=feature_id,
+        construction_role=source_key,
+        entity_kind=entity_kind,
+    )
+
+
+def make_relation_key(
+    component_id: str,
+    feature_id: str,
+    source_key: str,
+    kind: EvolutionKind,
+    *,
+    relation_role: str = "",
+    entity_kind: TopologyEntityKind = TopologyEntityKind.FACE,
+) -> RelationKey:
+    """Build a stable RelationKey from tracked op context."""
+    return RelationKey(
+        feature_id=feature_id,
+        source_entity_ref=make_source_ref(
+            component_id, feature_id, source_key, entity_kind=entity_kind,
+        ),
+        evolution_kind=kind,
+        relation_role=relation_role,
+    )
+
+
 @dataclass(frozen=True)
 class StableObjectKey:
     """Composite key for stable label identity across revisions.

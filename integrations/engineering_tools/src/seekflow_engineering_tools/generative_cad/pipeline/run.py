@@ -205,6 +205,10 @@ def _create_selections_from_specs(
                         f"edge selection {spec.selection_id!r} requires edge_selector"
                     )
                 selected_wrapped = body.edges(spec.edge_selector).wrapped
+                selection_feature_map[spec.selection_id] = (
+                    spec.component_id,
+                    _resolve_component_terminal_node(ctx, spec.component_id),
+                )
             else:
                 role_key = getattr(spec, "role_key", None)
                 if role_key:
@@ -219,6 +223,10 @@ def _create_selections_from_specs(
                     )
                 else:
                     selected_wrapped = body.faces(spec.face_selector).wrapped
+                    selection_feature_map[spec.selection_id] = (
+                        spec.component_id,
+                        _resolve_component_terminal_node(ctx, spec.component_id),
+                    )
 
             svc.create(
                 spec.selection_id, selected_wrapped, body.wrapped,
@@ -269,6 +277,21 @@ def _resolve_role_node(ctx: RuntimeContext, component_id: str, role_key: str):
     raise KeyError(
         f"role {role_key!r} not found for component {component_id!r}"
     )
+
+
+def _resolve_component_terminal_node(
+    ctx: RuntimeContext, component_id: str,
+) -> str | None:
+    """Return the last captured feature node for a component, if available."""
+    if ctx.capture_session is None:
+        return None
+    batches = [
+        batch for batch in ctx.capture_session.iter_batches()
+        if batch.scope.component_id == component_id
+    ]
+    if not batches:
+        return None
+    return batches[-1].scope.node_id
 
 
 def _resolve_edge_role(ctx: RuntimeContext, component_id: str, edge_role_key: str):
