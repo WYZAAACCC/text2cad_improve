@@ -9,12 +9,14 @@ from seekflow_engineering_tools.generative_cad.dialects.composition.handlers imp
     handle_boolean_cut, handle_boolean_intersect, handle_boolean_union,
     handle_circular_pattern_component, handle_linear_pattern_component,
     handle_place_component, handle_rotate_solid, handle_translate_solid,
+    handle_unify, handle_mirror,
 )
 from seekflow_engineering_tools.generative_cad.dialects.composition.manifest import COMPOSITION_MANIFEST
 from seekflow_engineering_tools.generative_cad.dialects.composition.params import (
     BooleanCutParams, BooleanIntersectParams, BooleanUnionParams,
     CircularPatternComponentParams, LinearPatternComponentParams,
     PlaceComponentParams, RotateSolidParams, TranslateSolidParams,
+    UnifyParams, MirrorParams,
 )
 from seekflow_engineering_tools.generative_cad.dialects.operation import OperationSpec
 from seekflow_engineering_tools.generative_cad.ir.canonical import CanonicalComponent, CanonicalNode
@@ -31,6 +33,7 @@ class CompositionDialect:
         "translate_solid", "rotate_solid", "place_component",
         "circular_pattern_component", "linear_pattern_component",
         "boolean_union", "boolean_cut", "boolean_intersect",
+        "unify", "mirror",
     ]}
 
     def manifest(self): return dict(COMPOSITION_MANIFEST)
@@ -87,6 +90,18 @@ class CompositionDialect:
                 phase="boolean", input_types=["solid", "solid"], output_types=SO,
                 params_model=BooleanIntersectParams, effects=["boolean_intersect"],
                 postconditions=["valid_solid"], handler=handle_boolean_intersect,
+            ),
+            ("unify", "1.0.0"): OperationSpec(
+                dialect="composition", op="unify", op_version="1.0.0",
+                phase="boolean", input_types=S, output_types=SO,
+                params_model=UnifyParams, effects=["modifies_solid"],
+                postconditions=["valid_solid"], handler=handle_unify,
+            ),
+            ("mirror", "1.0.0"): OperationSpec(
+                dialect="composition", op="mirror", op_version="1.0.0",
+                phase="transform", input_types=S, output_types=SO,
+                params_model=MirrorParams, effects=["modifies_solid"],
+                postconditions=["valid_solid"], handler=handle_mirror,
             ),
         }
 

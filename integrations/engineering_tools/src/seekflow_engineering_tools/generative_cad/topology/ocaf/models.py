@@ -297,6 +297,7 @@ class FaceRoleSpec:
     shape: Any
     source_shape: Any | None = None
     first_evolution: EvolutionKind = EvolutionKind.GENERATED
+    source_ref: SourceEntityRef | None = None
 
 
 # ---------------------------------------------------------------------------

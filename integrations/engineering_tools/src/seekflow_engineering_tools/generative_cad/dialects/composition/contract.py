@@ -46,6 +46,16 @@ COMPOSITION_CONTRACT = {
             "description": "Intersect two solid bodies.",
             "required_params": [],
         },
+        "unify": {
+            "phase": "boolean",
+            "description": "Unify same-domain faces.",
+            "required_params": [],
+        },
+        "mirror": {
+            "phase": "transform",
+            "description": "Mirror a solid across a plane.",
+            "required_params": ["origin", "normal"],
+        },
     },
     "unsupported": [
         "sketch", "profile", "loft", "sweep",

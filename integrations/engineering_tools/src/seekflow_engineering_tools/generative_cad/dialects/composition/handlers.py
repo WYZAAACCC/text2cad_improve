@@ -479,6 +479,87 @@ def handle_boolean_intersect(node: CanonicalNode, ctx: RuntimeContext) -> dict[s
     return {"body": _store_solid(node, ctx, result)}
 
 
+def handle_unify(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
+    body = resolve_input_object(node, ctx, 0)
+    angular = float(node.typed_params.get("angular_tolerance", 1e-5)) if node.typed_params else 1e-5
+    linear = float(node.typed_params.get("linear_tolerance", 1e-5)) if node.typed_params else 1e-5
+
+    if _use_tracked(ctx):
+        import cadquery as cq
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+            TopologyCaptureScope,
+        )
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+            tracked_unify,
+        )
+
+        tracked = tracked_unify(
+            body.val(),
+            angular_tolerance=angular,
+            linear_tolerance=linear,
+            scope=TopologyCaptureScope(
+                node_id=node.id,
+                component_id=node.component,
+                dialect=node.dialect,
+                operation=node.op,
+                operation_version=node.op_version,
+            ),
+        )
+        ctx.capture_session.stage(tracked.batch)
+        result = cq.Workplane("XY").newObject([tracked.result])
+        return {"body": _store_solid(node, ctx, result)}
+
+    import cadquery as cq
+    from OCP.ShapeUpgrade import ShapeUpgrade_UnifySameDomain
+
+    upgrader = ShapeUpgrade_UnifySameDomain(body.wrapped)
+    upgrader.SetAngularTolerance(angular)
+    upgrader.SetLinearTolerance(linear)
+    upgrader.Build()
+    return {"body": _store_solid(node, ctx, cq.Shape.cast(upgrader.Shape()))}
+
+
+def handle_mirror(node: CanonicalNode, ctx: RuntimeContext) -> dict[str, str]:
+    body = resolve_input_object(node, ctx, 0)
+    origin = tuple(node.typed_params.get("origin", (0.0, 0.0, 0.0))) if node.typed_params else (0.0, 0.0, 0.0)
+    normal = tuple(node.typed_params.get("normal", (1.0, 0.0, 0.0))) if node.typed_params else (1.0, 0.0, 0.0)
+
+    if _use_tracked(ctx):
+        import cadquery as cq
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
+            TopologyCaptureScope,
+        )
+        from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops import (
+            tracked_mirror,
+        )
+
+        tracked = tracked_mirror(
+            body.val(),
+            origin=origin,
+            normal=normal,
+            scope=TopologyCaptureScope(
+                node_id=node.id,
+                component_id=node.component,
+                dialect=node.dialect,
+                operation=node.op,
+                operation_version=node.op_version,
+            ),
+        )
+        ctx.capture_session.stage(tracked.batch)
+        result = cq.Workplane("XY").newObject([tracked.result])
+        return {"body": _store_solid(node, ctx, result)}
+
+    import cadquery as cq
+    from OCP.BRepBuilderAPI import BRepBuilderAPI_Transform
+    from OCP.gp import gp_Ax1, gp_Dir, gp_Pnt, gp_Trsf
+
+    trsf = gp_Trsf()
+    trsf.SetMirror(gp_Ax1(gp_Pnt(*origin), gp_Dir(*normal)))
+    builder = BRepBuilderAPI_Transform(body.wrapped, trsf)
+    builder.Build()
+    return {"body": _store_solid(node, ctx, cq.Shape.cast(builder.Shape()))}
+
+
 # ── Topology capture helpers (v6.4 PR-2) ────────────────────────────────────────
 
 

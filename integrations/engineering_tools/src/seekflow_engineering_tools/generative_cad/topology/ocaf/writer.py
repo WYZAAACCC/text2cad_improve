@@ -117,6 +117,18 @@ def _stable_relation_id(rel: LiveEvolutionRelation) -> str:
     )
 
 
+def _stable_face_role_key(role_key: str, spec: Any) -> str:
+    """Prefer SourceEntityRef semantics for face roles, else keep role_key."""
+    source_ref = getattr(spec, "source_ref", None)
+    if source_ref is None:
+        return role_key
+    return (
+        f"fr:{source_ref.component_id}:{source_ref.feature_id}"
+        f":{source_ref.selection_id or ''}:{source_ref.construction_role or ''}"
+        f":{source_ref.entity_kind.value}"
+    )
+
+
 # ---------------------------------------------------------------------------
 # TopologyNamingWriter
 # ---------------------------------------------------------------------------
@@ -404,12 +416,13 @@ class TopologyNamingWriter:
         for role_key, spec in face_roles.items():
             if spec is None or getattr(spec, "shape", None) is None:
                 continue
+            stable_role_key = _stable_face_role_key(role_key, spec)
             shape = spec.shape
             if any(shape.IsSame(prev_shape) for prev_shape in written_shapes):
                 continue
 
             entry = self._session.label_index.allocate_face_role(
-                component_tag, feature_tag, feature_namespace, role_key,
+                component_tag, feature_tag, feature_namespace, stable_role_key,
                 self._session.revision_number,
             )
             label = entry.tag_path.resolve_or_create(self._session.main_label)

@@ -50,6 +50,18 @@ class BooleanIntersectParams(BaseModel):
     clean_after: bool = True
 
 
+class UnifyParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    angular_tolerance: float = 1e-5
+    linear_tolerance: float = 1e-5
+
+
+class MirrorParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    origin: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    normal: tuple[float, float, float] = (1.0, 0.0, 0.0)
+
+
 class PlaceComponentParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
     position_mm: tuple[float, float, float] = (0.0, 0.0, 0.0)

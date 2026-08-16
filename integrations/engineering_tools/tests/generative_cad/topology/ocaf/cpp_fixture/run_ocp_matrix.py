@@ -18,12 +18,10 @@ PYTHON_CANDIDATES = [
 
 def python_ocp_version(python: Path) -> str | None:
     code = (
-        "import sys;"
-        "sys.path.insert(0, r'E:\\text_to_cad_improve\\auto_detection_process\\integrations\\engineering_tools\\src');"
         "try:\n"
         " import OCP\n"
         " print(getattr(OCP, '__version__', 'unknown'))\n"
-        "except Exception as e:\n"
+        "except Exception:\n"
         " print('NO_OCP')"
     )
     try:

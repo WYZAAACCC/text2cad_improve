@@ -8,7 +8,7 @@ COMPOSITION_MANIFEST = {
     "main_ops": [
         "translate_solid", "rotate_solid", "place_component",
         "circular_pattern_component", "linear_pattern_component",
-    "boolean_union", "boolean_cut", "boolean_intersect",
+    "boolean_union", "boolean_cut", "boolean_intersect", "unify", "mirror",
     ],
     "unsupported": [
         "sketch", "profile", "loft", "sweep", "hole creation",
