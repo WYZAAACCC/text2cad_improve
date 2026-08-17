@@ -21,6 +21,7 @@ from OCP.gp import gp_Ax1
 from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.extrude import (
     _find_cap_faces,
     _remaining_face_roles,
+    _remaining_edge_roles,
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     EvolutionKind,
@@ -30,6 +31,7 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     TopologyCaptureScope,
     TopologyEntityKind,
     TrackedShapeResult,
+    make_relation_key,
 )
 
 
@@ -76,6 +78,7 @@ def tracked_revolve(
         **side_roles,
     }
     face_roles = _remaining_face_roles(result, construction_roles, "revolve")
+    edge_roles = _remaining_edge_roles(result, "revolve")
     history_complete = len(relations) > 0
 
     batch = LiveEvolutionBatch(
@@ -91,6 +94,7 @@ def tracked_revolve(
         relations=relations,
         construction_roles=construction_roles,
         face_roles=face_roles,
+        edge_roles=edge_roles,
         history_complete=history_complete,
         missing_phases=[] if history_complete else ["no profile history captured"],
     )
@@ -144,6 +148,10 @@ def _capture_generated(relations, scope, builder, element, source_role):
                 old_shape=element.wrapped,
                 new_shapes=gen_shapes,
                 proof=ProofClass.EXACT_KERNEL_HISTORY,
+                relation_key=make_relation_key(
+                    scope.component_id, scope.node_id, source_role,
+                    EvolutionKind.GENERATED, relation_role="revolve",
+                ),
             )
         )
 
@@ -162,5 +170,9 @@ def _capture_modified(relations, scope, builder, element, source_role):
                 old_shape=element.wrapped,
                 new_shapes=mod_shapes,
                 proof=ProofClass.EXACT_KERNEL_HISTORY,
+                relation_key=make_relation_key(
+                    scope.component_id, scope.node_id, source_role,
+                    EvolutionKind.MODIFIED, relation_role="revolve",
+                ),
             )
         )

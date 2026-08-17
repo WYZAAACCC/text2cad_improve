@@ -13,12 +13,16 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     TopologyEntityKind,
     TrackedShapeResult,
     FaceRoleSpec,
+    EdgeRoleSpec,
     make_relation_key, make_source_ref,
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops._carry import (
     all_faces_accounted,
     carry_unchanged_faces,
     find_partner_face,
+)
+from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.extrude import (
+    _remaining_edge_roles,
 )
 
 
@@ -137,7 +141,7 @@ def tracked_shell(
 
     relations: list[LiveEvolutionRelation] = []
     face_roles: dict[str, FaceRoleSpec] = {}
-    face_roles: dict[str, FaceRoleSpec] = {}
+    edge_roles = _remaining_edge_roles(result, "shell")
     for i, face in enumerate(body.Faces()):
         _capture_generated_modified(
             relations, scope, builder, face.wrapped, f"face_{i}",
@@ -168,6 +172,7 @@ def tracked_shell(
         context_shape=result.wrapped,
         relations=relations,
         face_roles=face_roles,
+        edge_roles=edge_roles,
         history_complete=history_complete,
         missing_phases=[] if history_complete else ["some input faces are not accounted for"],
     )
@@ -201,6 +206,7 @@ def tracked_sweep(
     result = cq.Shape.cast(builder.Shape())
     relations: list[LiveEvolutionRelation] = []
     face_roles: dict[str, FaceRoleSpec] = {}
+    edge_roles = _remaining_edge_roles(result, "sweep")
     if profile_wrapped.ShapeType() == 5:  # TopAbs_FACE
         _capture_generated_modified(
             relations, scope, builder, profile_wrapped, "profile",
@@ -230,6 +236,7 @@ def tracked_sweep(
         context_shape=result.wrapped,
         relations=relations,
         face_roles=face_roles,
+        edge_roles=edge_roles,
         history_complete=history_complete,
         missing_phases=[] if history_complete else ["no profile history captured"],
     )
@@ -259,6 +266,7 @@ def tracked_loft(
     result = cq.Shape.cast(builder.Shape())
     relations: list[LiveEvolutionRelation] = []
     face_roles: dict[str, FaceRoleSpec] = {}
+    edge_roles = _remaining_edge_roles(result, "loft")
     for i, w in enumerate(section_wires):
         ww = w.wrapped if hasattr(w, "wrapped") else w
         exp = TopExp_Explorer(ww, TopAbs_EDGE)
@@ -281,6 +289,7 @@ def tracked_loft(
         context_shape=result.wrapped,
         relations=relations,
         face_roles=face_roles,
+        edge_roles=edge_roles,
         history_complete=history_complete,
         missing_phases=[] if history_complete else ["no section history captured"],
     )

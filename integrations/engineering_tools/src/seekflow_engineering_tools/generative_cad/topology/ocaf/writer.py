@@ -129,6 +129,18 @@ def _stable_face_role_key(role_key: str, spec: Any) -> str:
     )
 
 
+def _stable_edge_role_key(role_key: str, spec: Any) -> str:
+    """Prefer SourceEntityRef semantics for edge roles, else keep role_key."""
+    source_ref = getattr(spec, "source_ref", None)
+    if source_ref is None:
+        return role_key
+    return (
+        f"er:{source_ref.component_id}:{source_ref.feature_id}"
+        f":{source_ref.selection_id or ''}:{source_ref.construction_role or ''}"
+        f":{source_ref.entity_kind.value}"
+    )
+
+
 # ---------------------------------------------------------------------------
 # TopologyNamingWriter
 # ---------------------------------------------------------------------------
@@ -286,7 +298,7 @@ class TopologyNamingWriter:
             rel.validate()
 
             if (
-                rel.entity_kind == TopologyEntityKind.FACE
+                rel.entity_kind in (TopologyEntityKind.FACE, TopologyEntityKind.EDGE)
                 and rel.kind in (EvolutionKind.GENERATED, EvolutionKind.MODIFIED)
             ):
                 written += self._write_audit_relation(
@@ -416,31 +428,56 @@ class TopologyNamingWriter:
     ) -> int:
         """Write derived box edge roles under ResultRoot (v8 Stage 1).
 
-        Edge tags use EDGE_ROLE_TAG_BASE + index in EDGE_ROLE_KEYS so the same
-        edge keeps the same label across revisions. Subsequent revisions write
-        Modify(prev_edge, new_edge) via the shared write_role_result helper.
+        Edge tags use ``EDGE_ROLE_TAG_BASE + index`` for the fixed box role
+        keys, or an Index-allocated tag for arbitrary edge roles. On subsequent
+        revisions the previous edge is linked with ``Modify``. A role that
+        carries a ``source_shape`` records a same-feature ``Modify``/``Generated``
+        chain, matching the face-role semantics.
         """
         written = 0
         written_edges: list[Any] = []
         component_tag, feature_tag = self._component_feature_tags(feat_label)
-        for edge_key, edge in edge_roles.items():
-            if edge is None:
+        result_root = feat_label.FindChild(FEATURE_TAG_RESULT_ROOT, True)
+
+        for edge_key, spec in edge_roles.items():
+            if spec is None:
                 continue
-            if any(edge.IsSame(prev_edge) for prev_edge in written_edges):
+            shape = getattr(spec, "shape", None)
+            if shape is None:
+                shape = spec
+                source_shape = None
+                first_evolution = EvolutionKind.GENERATED
+            else:
+                source_shape = getattr(spec, "source_shape", None)
+                first_evolution = getattr(
+                    spec, "first_evolution", EvolutionKind.GENERATED,
+                )
+            if any(shape.IsSame(prev_edge) for prev_edge in written_edges):
                 continue
-            if edge_key in EDGE_ROLE_KEYS:
-                edge_tag = EDGE_ROLE_TAG_BASE + EDGE_ROLE_KEYS.index(edge_key)
+
+            stable_key = _stable_edge_role_key(edge_key, spec)
+            if stable_key in EDGE_ROLE_KEYS:
+                edge_tag = EDGE_ROLE_TAG_BASE + EDGE_ROLE_KEYS.index(stable_key)
             else:
                 entry = self._session.label_index.allocate_edge_role(
-                    component_tag, feature_tag, feature_namespace, edge_key,
+                    component_tag, feature_tag, feature_namespace, stable_key,
                     self._session.revision_number,
                 )
                 edge_tag = entry.tag_path.tags[-1]
+
+            role_label = result_root.FindChild(edge_tag, True)
             previous_edge = self._get_previous_role_result(feat_label, edge_tag)
-            self.write_role_result(
-                feat_label, edge_tag, edge, previous_face=previous_edge,
-            )
-            written_edges.append(edge)
+            builder = TNaming_Builder(role_label)
+            if previous_edge is not None:
+                builder.Modify(previous_edge, shape)
+            elif source_shape is not None:
+                if first_evolution is EvolutionKind.MODIFIED:
+                    builder.Modify(source_shape, shape)
+                else:
+                    builder.Generated(source_shape, shape)
+            else:
+                builder.Generated(shape)
+            written_edges.append(shape)
             written += 1
 
         return written

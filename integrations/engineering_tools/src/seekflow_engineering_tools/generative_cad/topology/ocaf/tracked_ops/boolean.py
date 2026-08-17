@@ -34,6 +34,7 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     TopologyEntityKind,
     TrackedShapeResult,
     FaceRoleSpec,
+    EdgeRoleSpec,
     make_relation_key, make_source_ref,
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops._carry import (
@@ -155,6 +156,7 @@ def _export_bopalgo_history(
     """
     relations: list[LiveEvolutionRelation] = []
     face_roles: dict[str, FaceRoleSpec] = {}
+    edge_roles: dict[str, EdgeRoleSpec] = {}
     all_input_faces: list[Any] = []
     all_input_edges: list[Any] = []
 
@@ -273,6 +275,10 @@ def _export_bopalgo_history(
             ew = edge.wrapped
             all_input_edges.append(edge)
             source_key = f"{role_name}_edge_{i}"
+            source_ref = make_source_ref(
+                scope.component_id, scope.node_id, source_key,
+                entity_kind=TopologyEntityKind.EDGE,
+            )
 
             gen_list = history.Generated(ew)
             gen_shapes = tuple(gen_list)
@@ -287,8 +293,23 @@ def _export_bopalgo_history(
                         old_shape=ew,
                         new_shapes=gen_shapes,
                         proof=ProofClass.EXACT_KERNEL_HISTORY,
+                        relation_key=make_relation_key(
+                            scope.component_id, scope.node_id, source_key,
+                            EvolutionKind.GENERATED, relation_role="boolean",
+                            entity_kind=TopologyEntityKind.EDGE,
+                        ),
                     )
                 )
+                for j, new_shape in enumerate(gen_shapes):
+                    role_key = f"{source_key}/gen/{j}"
+                    edge_roles[role_key] = EdgeRoleSpec(
+                        role_key=role_key,
+                        shape=new_shape,
+                        source_shape=ew,
+                        first_evolution=EvolutionKind.GENERATED,
+                        source_ref=source_ref,
+                    )
+
             mod_list = history.Modified(ew)
             mod_shapes = tuple(mod_list)
             if mod_shapes:
@@ -302,8 +323,23 @@ def _export_bopalgo_history(
                         old_shape=ew,
                         new_shapes=mod_shapes,
                         proof=ProofClass.EXACT_KERNEL_HISTORY,
+                        relation_key=make_relation_key(
+                            scope.component_id, scope.node_id, source_key,
+                            EvolutionKind.MODIFIED, relation_role="boolean",
+                            entity_kind=TopologyEntityKind.EDGE,
+                        ),
                     )
                 )
+                for j, new_shape in enumerate(mod_shapes):
+                    role_key = f"{source_key}/mod/{j}"
+                    edge_roles[role_key] = EdgeRoleSpec(
+                        role_key=role_key,
+                        shape=new_shape,
+                        source_shape=ew,
+                        first_evolution=EvolutionKind.MODIFIED,
+                        source_ref=source_ref,
+                    )
+
             if history.IsRemoved(ew):
                 relations.append(
                     LiveEvolutionRelation(
@@ -315,6 +351,11 @@ def _export_bopalgo_history(
                         old_shape=ew,
                         new_shapes=(),
                         proof=ProofClass.EXACT_KERNEL_HISTORY,
+                        relation_key=make_relation_key(
+                            scope.component_id, scope.node_id, source_key,
+                            EvolutionKind.DELETED, relation_role="boolean",
+                            entity_kind=TopologyEntityKind.EDGE,
+                        ),
                     )
                 )
 
@@ -331,7 +372,20 @@ def _export_bopalgo_history(
                             old_shape=ew,
                             new_shapes=(partner,),
                             proof=ProofClass.EXACT_KERNEL_HISTORY,
+                            relation_key=make_relation_key(
+                                scope.component_id, scope.node_id, source_key,
+                                EvolutionKind.MODIFIED, relation_role="boolean",
+                                entity_kind=TopologyEntityKind.EDGE,
+                            ),
                         )
+                    )
+                    role_key = f"{source_key}/carry"
+                    edge_roles[role_key] = EdgeRoleSpec(
+                        role_key=role_key,
+                        shape=partner,
+                        source_shape=ew,
+                        first_evolution=EvolutionKind.MODIFIED,
+                        source_ref=source_ref,
                     )
     history_complete = all_faces_accounted(
         relations, all_input_faces + all_input_edges
@@ -343,6 +397,7 @@ def _export_bopalgo_history(
         context_shape=result.wrapped,
         relations=relations,
         face_roles=face_roles,
+        edge_roles=edge_roles,
         history_complete=history_complete,
         missing_phases=[] if history_complete else ["some input shapes are not accounted for"],
     )

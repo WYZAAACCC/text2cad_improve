@@ -20,11 +20,15 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     EvolutionKind, TopologyEntityKind, ProofClass,
     TopologyCaptureScope, LiveEvolutionBatch, LiveEvolutionRelation, TrackedShapeResult,
     FaceRoleSpec,
-    make_source_ref,
+    EdgeRoleSpec,
+    make_relation_key, make_source_ref,
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.history_graph import (
     HistoryGraph,
     HistoryComposer,
+)
+from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.extrude import (
+    _remaining_edge_roles,
 )
 
 
@@ -38,42 +42,57 @@ def _capture_fuse_face(relations, scope, fhist, face, si, fi, role, result_shape
     gen_shapes = tuple(gen_list)
     if gen_shapes:
         has_gen = True
+        source_key = f"fuse_{si}_{role}_{fi}"
         relations.append(LiveEvolutionRelation(
             relation_id=f"{scope.node_id}/pattern/fuse_{si}/{role}_{fi}",
             operation_id=scope.node_id,
             kind=EvolutionKind.GENERATED,
             entity_kind=TopologyEntityKind.FACE,
-            source_key=f"fuse_{si}_{role}_{fi}",
+            source_key=source_key,
             old_shape=face.wrapped,
             new_shapes=gen_shapes,
             proof=ProofClass.EXACT_KERNEL_HISTORY,
+            relation_key=make_relation_key(
+                scope.component_id, scope.node_id, source_key,
+                EvolutionKind.GENERATED, relation_role="pattern",
+            ),
         ))
     # Modified
     mod_list = fhist.Modified(face.wrapped)
     mod_shapes = tuple(mod_list)
     if mod_shapes:
         has_mod = True
+        source_key = f"fuse_{si}_{role}_{fi}"
         relations.append(LiveEvolutionRelation(
             relation_id=f"{scope.node_id}/pattern/fuse_{si}/{role}_mod_{fi}",
             operation_id=scope.node_id,
             kind=EvolutionKind.MODIFIED,
             entity_kind=TopologyEntityKind.FACE,
-            source_key=f"fuse_{si}_{role}_{fi}",
+            source_key=source_key,
             old_shape=face.wrapped,
             new_shapes=mod_shapes,
             proof=ProofClass.EXACT_KERNEL_HISTORY,
+            relation_key=make_relation_key(
+                scope.component_id, scope.node_id, source_key,
+                EvolutionKind.MODIFIED, relation_role="pattern",
+            ),
         ))
     # IsRemoved
     if fhist.IsRemoved(face.wrapped):
+        source_key = f"fuse_{si}_{role}_{fi}"
         relations.append(LiveEvolutionRelation(
             relation_id=f"{scope.node_id}/pattern/fuse_{si}/{role}_del_{fi}",
             operation_id=scope.node_id,
             kind=EvolutionKind.DELETED,
             entity_kind=TopologyEntityKind.FACE,
-            source_key=f"fuse_{si}_{role}_{fi}",
+            source_key=source_key,
             old_shape=face.wrapped,
             new_shapes=(),
             proof=ProofClass.EXACT_KERNEL_HISTORY,
+            relation_key=make_relation_key(
+                scope.component_id, scope.node_id, source_key,
+                EvolutionKind.DELETED, relation_role="pattern",
+            ),
         ))
     # v7 Phase 3: BOPAlgo_BOP does NOT populate History() for a disjoint fuse
     # (faces are carried through unchanged). Recognize carry-through as a valid,
@@ -155,15 +174,20 @@ def tracked_linear_pattern(
                 mod_list = builder.Modified(face.wrapped)
                 mod_shapes = tuple(mod_list)
                 if mod_shapes:
+                    source_key = f"face_{fi}_inst_{inst}"
                     relations.append(LiveEvolutionRelation(
                         relation_id=f"{scope.node_id}/pattern/inst_{inst}/face_{fi}",
                         operation_id=scope.node_id,
                         kind=EvolutionKind.GENERATED,
                         entity_kind=TopologyEntityKind.FACE,
-                        source_key=f"face_{fi}_inst_{inst}",
+                        source_key=source_key,
                         old_shape=face.wrapped,
                         new_shapes=mod_shapes,
                         proof=ProofClass.EXACT_KERNEL_HISTORY,
+                        relation_key=make_relation_key(
+                            scope.component_id, scope.node_id, source_key,
+                            EvolutionKind.GENERATED, relation_role="pattern",
+                        ),
                     ))
 
     # Fuse all instances with history capture (P1-03)
@@ -236,6 +260,8 @@ def tracked_linear_pattern(
     else:
         result = body
 
+    edge_roles = _remaining_edge_roles(result, "linear_pattern")
+
     batch = LiveEvolutionBatch(
         scope=scope,
         builder_kind="LinearPattern",
@@ -248,6 +274,7 @@ def tracked_linear_pattern(
         context_shape=result.wrapped,
         relations=relations,
         face_roles=face_roles,
+        edge_roles=edge_roles,
         history_complete=history_complete,
         missing_phases=missing_phases,
     )
@@ -313,15 +340,20 @@ def tracked_circular_pattern(
             mod_list = builder.Modified(face.wrapped)
             mod_shapes = tuple(mod_list)
             if mod_shapes:
+                source_key = f"face_{fi}_inst_{i}"
                 relations.append(LiveEvolutionRelation(
                     relation_id=f"{scope.node_id}/circular/inst_{i}/face_{fi}",
                     operation_id=scope.node_id,
                     kind=EvolutionKind.MODIFIED,
                     entity_kind=TopologyEntityKind.FACE,
-                    source_key=f"face_{fi}_inst_{i}",
+                    source_key=source_key,
                     old_shape=face.wrapped,
                     new_shapes=mod_shapes,
                     proof=ProofClass.EXACT_KERNEL_HISTORY,
+                    relation_key=make_relation_key(
+                        scope.component_id, scope.node_id, source_key,
+                        EvolutionKind.MODIFIED, relation_role="pattern",
+                    ),
                 ))
 
     # Fuse all instances with history.
@@ -359,6 +391,8 @@ def tracked_circular_pattern(
 
     result = cq.Shape.cast(fused)
 
+    edge_roles = _remaining_edge_roles(result, "circular_pattern")
+
     # Same completeness contract as linear_pattern: every seed face must compose
     # forward through the arg chain to a final output (or be explicitly deleted).
     graph = HistoryGraph.from_relations(relations)
@@ -393,6 +427,7 @@ def tracked_circular_pattern(
         context_shape=result.wrapped,
         relations=relations,
         face_roles=face_roles,
+        edge_roles=edge_roles,
         history_complete=history_complete,
         missing_phases=missing_phases,
     )

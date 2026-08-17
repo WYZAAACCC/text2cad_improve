@@ -300,6 +300,23 @@ class FaceRoleSpec:
     source_ref: SourceEntityRef | None = None
 
 
+@dataclass(frozen=True)
+class EdgeRoleSpec:
+    """Stable per-edge naming entry under a feature's ResultRoot.
+
+    Symmetric to ``FaceRoleSpec``, but for result edges. ``source_shape``
+    records the first occurrence's cross-feature source edge so the writer can
+    emit ``TNaming_Builder.Modify(source_edge, edge)`` for modified/carried
+    edges, or ``Generated(source_edge, edge)`` for generated edges.
+    """
+
+    role_key: str
+    shape: Any
+    source_shape: Any | None = None
+    first_evolution: EvolutionKind = EvolutionKind.GENERATED
+    source_ref: SourceEntityRef | None = None
+
+
 # ---------------------------------------------------------------------------
 # Selection models — §5.3 of v3.0 implementation guide
 # ---------------------------------------------------------------------------

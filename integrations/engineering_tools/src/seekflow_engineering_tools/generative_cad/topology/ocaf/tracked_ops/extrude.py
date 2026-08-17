@@ -30,6 +30,7 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     TopologyEntityKind,
     TrackedShapeResult,
     FaceRoleSpec,
+    EdgeRoleSpec,
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.writer import (
     edge_role_key,
@@ -301,6 +302,59 @@ def _edge_midpoint(edge: Any) -> tuple[float, float, float]:
     l = adaptor.LastParameter()
     p = adaptor.Value((f + l) / 2.0)
     return (round(p.X(), 4), round(p.Y(), 4), round(p.Z(), 4))
+
+
+def _edge_sort_key(edge: Any) -> tuple:
+    """Deterministic geometric key for stable ordinary-edge ordering."""
+    from OCP.BRepAdaptor import BRepAdaptor_Curve
+    from OCP.BRepGProp import BRepGProp
+    from OCP.GProp import GProp_GProps
+    from OCP.TopoDS import TopoDS
+
+    curve_type = 8  # GeomAbs_OtherCurve
+    try:
+        adaptor = BRepAdaptor_Curve(TopoDS.Edge_s(edge))
+        curve_type = int(adaptor.GetType())
+    except Exception:
+        pass
+
+    mid = (0.0, 0.0, 0.0)
+    try:
+        adaptor = BRepAdaptor_Curve(TopoDS.Edge_s(edge))
+        first = adaptor.FirstParameter()
+        last = adaptor.LastParameter()
+        point = adaptor.Value((first + last) / 2.0)
+        mid = (
+            round(float(point.X()), 4),
+            round(float(point.Y()), 4),
+            round(float(point.Z()), 4),
+        )
+    except Exception:
+        pass
+
+    length = 0.0
+    try:
+        props = GProp_GProps()
+        BRepGProp.LinearProperties_s(TopoDS.Edge_s(edge), props)
+        length = round(float(props.Mass()), 4)
+    except Exception:
+        pass
+
+    return (curve_type, mid[0], mid[1], mid[2], length)
+
+
+def _remaining_edge_roles(result: Any, prefix: str) -> dict[str, EdgeRoleSpec]:
+    """Name every result edge with a deterministic geometric ordering."""
+    remaining = [edge.wrapped for edge in result.Edges()]
+    remaining.sort(key=_edge_sort_key)
+    return {
+        f"{prefix}/edge_{index:03d}": EdgeRoleSpec(
+            role_key=f"{prefix}/edge_{index:03d}",
+            shape=edge,
+            first_evolution=EvolutionKind.GENERATED,
+        )
+        for index, edge in enumerate(remaining)
+    }
 
 
 # ---------------------------------------------------------------------------
