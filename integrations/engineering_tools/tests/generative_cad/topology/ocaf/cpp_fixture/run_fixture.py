@@ -10,8 +10,15 @@ from pathlib import Path
 
 
 FIXTURE_DIR = Path(__file__).resolve().parent
-BUILD_DIR = FIXTURE_DIR / "build"
-OCCT_BIN = Path(r"D:\anaconda\envs\occt_cpp\Library\bin")
+# OCCT version is selectable so a multi-version C++ matrix can be built and
+# run per environment: set OCAF_OCCT_BIN to the target conda Library\bin and
+# OCAF_FIXTURE_BUILD_DIR to that version's build directory.
+BUILD_DIR = Path(os.environ.get(
+    "OCAF_FIXTURE_BUILD_DIR", str(FIXTURE_DIR / "build"),
+))
+OCCT_BIN = Path(os.environ.get(
+    "OCAF_OCCT_BIN", r"D:\anaconda\envs\occt_cpp\Library\bin",
+))
 DEFAULT_STAGE_ROOT = Path(
     r"C:\Users\mycomputer\.codex\visualizations\2026\08\13\019ffac8-4917-7543-ae0d-3d657f2d323a"
 )

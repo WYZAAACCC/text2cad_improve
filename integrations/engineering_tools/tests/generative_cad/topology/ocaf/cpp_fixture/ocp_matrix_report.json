@@ -3,7 +3,48 @@
   "python_envs": [
     {
       "path": "E:\\text_to_cad_improve\\auto_detection_process\\.conda\\python.exe",
-      "ocp_version": "7.8.1.1"
+      "ocp_version": "7.8.1.1",
+      "core_smoke": {
+        "ocp_version": "7.8.1.1",
+        "ok": true,
+        "steps": {
+          "create_and_write": true,
+          "save": true,
+          "reopen": true
+        },
+        "errors": [],
+        "returncode": 0
+      }
+    },
+    {
+      "path": "E:\\text_to_cad_improve\\auto_detection_process\\_p8_envs\\ocp-7.8.1.0\\Scripts\\python.exe",
+      "ocp_version": "7.8.1.0",
+      "core_smoke": {
+        "ocp_version": "7.8.1.0",
+        "ok": true,
+        "steps": {
+          "create_and_write": true,
+          "save": true,
+          "reopen": true
+        },
+        "errors": [],
+        "returncode": 0
+      }
+    },
+    {
+      "path": "E:\\text_to_cad_improve\\auto_detection_process\\_p8_envs\\ocp-7.9.3.1.1\\Scripts\\python.exe",
+      "ocp_version": "7.9.3.1",
+      "core_smoke": {
+        "ocp_version": "7.9.3.1",
+        "ok": true,
+        "steps": {
+          "create_and_write": true,
+          "save": true,
+          "reopen": true
+        },
+        "errors": [],
+        "returncode": 0
+      }
     }
   ],
   "fixtures": {

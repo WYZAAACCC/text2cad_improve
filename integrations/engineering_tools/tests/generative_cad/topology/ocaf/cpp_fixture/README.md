@@ -31,3 +31,16 @@ Copy-Item "$prefix\bin\TK*.dll" -Destination $build -Force
 > 注意：conda 的 `occt` 是用较新的 `vc14_runtime` 构建的，若与本机 MSVC 运行时版本
 > 不匹配会报 SxS 错误；本 fixture 已用静态 MSVC 运行时（`CMAKE_MSVC_RUNTIME_LIBRARY`）
 > 规避 exe 自身的 CRT 清单依赖，运行仍需要 co-locate 的 OCCT DLL。
+
+
+## 多版本矩阵
+
+Python OCP 侧由 `run_ocp_matrix.py` 自动发现 `.conda`（OCP 7.8.1.1）与 `_p8_envs/*`（7.8.1.0、7.9.3.1.1）下的解释器，逐个运行纯 OCP 的 OCAF 核心 smoke（不依赖 cadquery），结果写入 `ocp_matrix_report.json`。
+
+C++ OCCT 侧当前环境只有 OCCT 7.8.1（`D:\anaconda\envs\occt_cpp`）。要加入第二个 OCCT 版本，需要在一个可联网且有 conda 写权限的环境中执行：
+
+```powershell
+conda create -y -n occt_7_7 -c conda-forge occt=7.7 cmake ninja
+```
+
+然后为它构建 fixture，并用 `OCAF_OCCT_BIN` 和 `OCAF_FIXTURE_BUILD_DIR` 环境变量指定该版本的 DLL 与构建目录，再运行 `run_ocp_matrix.py` 生成对比报告。
