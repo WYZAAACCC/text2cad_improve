@@ -207,7 +207,24 @@ class PersistentSelectionService:
             except Exception:
                 deleted_shapes = ()
 
-        if target_fp is not None and deleted_shapes:
+        # ── authoritative TShape identity first (SHAPE_ANCHOR) ──────────
+        anchor_shape = self._read_shape_anchor(sel_label)
+        if anchor_shape is not None and deleted_shapes:
+            for dshape in deleted_shapes:
+                if dshape is None:
+                    continue
+                try:
+                    same = anchor_shape.IsSame(dshape) or anchor_shape.IsPartner(dshape)
+                except Exception:
+                    same = False
+                if same:
+                    return self._deleted_resolution(
+                        selection_id, policy,
+                        "Selection target deleted (authoritative TShape match)",
+                    )
+
+        # Geometric fingerprint fallback for documents without a readable anchor.
+        if anchor_shape is None and target_fp is not None and deleted_shapes:
             for dshape in deleted_shapes:
                 if dshape is None:
                     continue
@@ -216,16 +233,9 @@ class PersistentSelectionService:
                 except Exception:
                     continue
                 if same:
-                    if policy is not None and policy.allow_deleted:
-                        return SelectionResolution(
-                            status=SelectionResolutionStatus.DELETED,
-                            selection_id=selection_id,
-                            detail="Selection target deleted (pre-judged via DELETED relation)",
-                        )
-                    return SelectionResolution(
-                        status=SelectionResolutionStatus.UNRESOLVED,
-                        selection_id=selection_id,
-                        detail="Selection target deleted (pre-judged via DELETED relation)",
+                    return self._deleted_resolution(
+                        selection_id, policy,
+                        "Selection target deleted (pre-judged via DELETED relation)",
                     )
 
         # Run Solve. Ensure the selection's own shape anchor is in the valid map:
@@ -407,6 +417,38 @@ class PersistentSelectionService:
                 return TDF_Label()  # Null → INVALID_SELECTION_ID
             sel_label = entry.tag_path.resolve(self._session.main_label)
         return sel_label.FindChild(SELECTION_TAG_NATIVE_NAMING, False)
+
+    def _read_shape_anchor(self, sel_label):
+        """Return the originally-selected shape persisted in SHAPE_ANCHOR.
+
+        The anchor is written by ``TNaming_Builder.Generated(selected_shape)``
+        at create time, so its original shape is the authoritative TShape
+        identity of the selected face/edge. Returns None if unreadable.
+        """
+        from OCP.TDF import TDF_AttributeIterator
+        from OCP.TNaming import TNaming_Tool
+
+        anchor_label = sel_label.FindChild(SELECTION_TAG_SHAPE_ANCHOR, False)
+        if anchor_label.IsNull():
+            return None
+        it = TDF_AttributeIterator(anchor_label)
+        while it.More():
+            attr = it.Value()
+            if attr.DynamicType().Name() == "TNaming_NamedShape":
+                original = TNaming_Tool.OriginalShape_s(attr)
+                if original is not None and not original.IsNull():
+                    return original
+            it.Next()
+        return None
+
+    def _deleted_resolution(self, selection_id, policy, detail):
+        """Build a DELETED/UNRESOLVED resolution honoring allow_deleted."""
+        status = (
+            SelectionResolutionStatus.DELETED
+            if (policy is not None and policy.allow_deleted)
+            else SelectionResolutionStatus.UNRESOLVED
+        )
+        return SelectionResolution(status=status, selection_id=selection_id, detail=detail)
 
     @staticmethod
     def _shape_fingerprint(shape):

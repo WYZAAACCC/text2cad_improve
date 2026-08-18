@@ -207,7 +207,9 @@ def _create_selections_from_specs(
                 selected_wrapped = body.edges(spec.edge_selector).wrapped
                 selection_feature_map[spec.selection_id] = (
                     spec.component_id,
-                    _resolve_component_terminal_node(ctx, spec.component_id),
+                    _resolve_feature_for_shape(
+                        ctx, spec.component_id, selected_wrapped,
+                    ) or _resolve_component_terminal_node(ctx, spec.component_id),
                 )
             else:
                 role_key = getattr(spec, "role_key", None)
@@ -225,7 +227,9 @@ def _create_selections_from_specs(
                     selected_wrapped = body.faces(spec.face_selector).wrapped
                     selection_feature_map[spec.selection_id] = (
                         spec.component_id,
-                        _resolve_component_terminal_node(ctx, spec.component_id),
+                        _resolve_feature_for_shape(
+                            ctx, spec.component_id, selected_wrapped,
+                        ) or _resolve_component_terminal_node(ctx, spec.component_id),
                     )
 
             svc.create(
@@ -308,6 +312,48 @@ def _resolve_edge_role(ctx: RuntimeContext, component_id: str, edge_role_key: st
     raise KeyError(
         f"edge role {edge_role_key!r} not found for component {component_id!r}"
     )
+
+
+def _shapes_match(a, b) -> bool:
+    """True when two TopoDS shapes share the same underlying TShape."""
+    try:
+        return a.IsSame(b) or a.IsPartner(b)
+    except Exception:
+        return False
+
+
+def _batch_outputs_shape(batch, selected_shape) -> bool:
+    """True when a captured batch's named roles contain the target shape."""
+    for spec in (getattr(batch, "face_roles", {}) or {}).values():
+        shape = getattr(spec, "shape", None)
+        if shape is not None and _shapes_match(shape, selected_shape):
+            return True
+    for shape in (getattr(batch, "construction_roles", {}) or {}).values():
+        if shape is not None and _shapes_match(shape, selected_shape):
+            return True
+    for spec in (getattr(batch, "edge_roles", {}) or {}).values():
+        shape = getattr(spec, "shape", None)
+        if shape is not None and _shapes_match(shape, selected_shape):
+            return True
+    return False
+
+
+def _resolve_feature_for_shape(ctx, component_id, selected_shape):
+    """Return the feature node that produced/modified the selected shape.
+
+    Searches the component's captured batches in reverse capture order so the
+    most recent producer wins. Falls back to None when no batch names the shape.
+    """
+    if ctx.capture_session is None:
+        return None
+    batches = [
+        batch for batch in ctx.capture_session.iter_batches()
+        if batch.scope.component_id == component_id
+    ]
+    for batch in reversed(batches):
+        if _batch_outputs_shape(batch, selected_shape):
+            return batch.scope.node_id
+    return None
 
 
 def _build_feature_dependency_map(canonical: Any) -> dict:
