@@ -22,6 +22,10 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops._carry 
     carry_unchanged_faces,
     find_partner_face,
 )
+from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.extrude import (
+    _remaining_edge_roles,
+    _remaining_face_roles,
+)
 
 
 def tracked_fillet(
@@ -134,6 +138,13 @@ def tracked_fillet(
                     scope.component_id, scope.node_id, f"face_{i}",
                 ),
             )
+    existing_roles = {"fillet": fillet_face}
+    existing_roles.update(face_roles)
+    face_roles.update(_remaining_face_roles(result, existing_roles, "fillet"))
+    edge_roles = {f"edge_{i}": edge_shape for i, edge_shape in enumerate(edge_shapes)}
+    edge_roles.update(
+        _remaining_edge_roles(result, "fillet", existing_edges=tuple(edge_shapes)),
+    )
     history_complete = all_faces_accounted(relations, body_faces)
 
     batch = LiveEvolutionBatch(
@@ -144,7 +155,7 @@ def tracked_fillet(
         context_shape=result.wrapped,
         relations=relations,
         construction_roles={"fillet": fillet_face},
-        edge_roles={f"edge_{i}": edge_shape for i, edge_shape in enumerate(edge_shapes)},
+        edge_roles=edge_roles,
         face_roles=face_roles,
         history_complete=history_complete,
         missing_phases=[] if history_complete else ["some input faces are not accounted for"],

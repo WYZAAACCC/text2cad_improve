@@ -17,6 +17,10 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     TrackedShapeResult, FaceRoleSpec,
     make_relation_key, make_source_ref,
 )
+from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.extrude import (
+    _remaining_edge_roles,
+    _remaining_face_roles,
+)
 
 
 def tracked_unify(
@@ -135,6 +139,8 @@ def tracked_unify(
 
         face_idx += 1
 
+    face_roles.update(_remaining_face_roles(result, face_roles, "unify"))
+    edge_roles = _remaining_edge_roles(result, "unify")
     history_complete = len(relations) > 0
     batch = LiveEvolutionBatch(
         scope=scope,
@@ -147,6 +153,7 @@ def tracked_unify(
         context_shape=result.wrapped,
         relations=relations,
         face_roles=face_roles,
+        edge_roles=edge_roles,
         history_complete=history_complete,
         missing_phases=[] if history_complete else ["no faces were modified by unify"],
     )

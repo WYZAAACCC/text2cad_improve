@@ -16,6 +16,9 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     TrackedShapeResult, FaceRoleSpec,
     make_relation_key, make_source_ref,
 )
+from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.extrude import (
+    _remaining_edge_roles,
+)
 
 
 def tracked_mirror(
@@ -84,6 +87,8 @@ def tracked_mirror(
                 ),
             )
 
+    edge_roles = _remaining_edge_roles(result, "mirror")
+
     batch = LiveEvolutionBatch(
         scope=scope,
         builder_kind="BRepBuilderAPI_Transform",
@@ -96,6 +101,7 @@ def tracked_mirror(
         context_shape=result.wrapped,
         relations=relations,
         face_roles=face_roles,
+        edge_roles=edge_roles,
         history_complete=len(relations) > 0,
     )
     return TrackedShapeResult(result=result, batch=batch)
