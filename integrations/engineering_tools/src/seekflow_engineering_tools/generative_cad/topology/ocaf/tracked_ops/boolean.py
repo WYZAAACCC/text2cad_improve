@@ -41,6 +41,9 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops._carry 
     all_faces_accounted,
     find_partner_edge,
 )
+from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.extrude import (
+    _remaining_edge_roles,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -387,6 +390,16 @@ def _export_bopalgo_history(
                         first_evolution=EvolutionKind.MODIFIED,
                         source_ref=source_ref,
                     )
+    # Fusion/intersection creates brand-new edges with no single input-edge
+    # ancestor; name them with a deterministic geometric ordering so every
+    # result edge is selectable.
+    existing_edges = tuple(
+        spec.shape for spec in edge_roles.values()
+        if getattr(spec, "shape", None) is not None
+    )
+    edge_roles.update(
+        _remaining_edge_roles(result, "boolean", existing_edges=existing_edges),
+    )
     history_complete = all_faces_accounted(
         relations, all_input_faces + all_input_edges
     )

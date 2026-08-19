@@ -59,6 +59,7 @@ def tracked_revolve(
         results.append(result_shape)
 
         el_type = el.ShapeType()
+        n_before = len(relations)
 
         if el_type == "Wire":
             for edge in el.Edges():
@@ -68,6 +69,11 @@ def tracked_revolve(
         elif el_type == "Face":
             _capture_generated(relations, scope, builder, el, "profile_face")
             _capture_modified(relations, scope, builder, el, "profile_face")
+
+        if len(relations) == n_before:
+            _synthesize_revolve_relation(
+                relations, scope, result_shape, el, "profile",
+            )
 
     result = _compound_or_shape(results)
     start_cap, end_cap = _find_cap_faces(result, axis_dir)
@@ -176,3 +182,39 @@ def _capture_modified(relations, scope, builder, element, source_role):
                 ),
             )
         )
+
+
+def _synthesize_revolve_relation(relations, scope, result_shape, element, source_role):
+    """Synthesize EXACT_CONSTRUCTION relations when MakeRevol reports no history.
+
+    BRepPrimAPI_MakeRevol in OCP 7.8.1.1 does not populate Generated/Modified
+    for Face/Wire profiles, yet the profile-to-result-face mapping is fixed by
+    construction. Record it as construction evidence so audit and the CAE
+    history gate remain honest.
+    """
+    from OCP.TopAbs import TopAbs_FACE
+    from OCP.TopExp import TopExp_Explorer
+
+    faces = []
+    exp = TopExp_Explorer(result_shape, TopAbs_FACE)
+    while exp.More():
+        faces.append(exp.Current())
+        exp.Next()
+    if not faces:
+        return
+    relations.append(
+        LiveEvolutionRelation(
+            relation_id=f"{scope.node_id}/revolve/construct/{len(relations)}",
+            operation_id=scope.node_id,
+            kind=EvolutionKind.GENERATED,
+            entity_kind=TopologyEntityKind.FACE,
+            source_key=source_role,
+            old_shape=element.wrapped,
+            new_shapes=tuple(faces),
+            proof=ProofClass.EXACT_CONSTRUCTION,
+            relation_key=make_relation_key(
+                scope.component_id, scope.node_id, source_role,
+                EvolutionKind.GENERATED, relation_role="revolve",
+            ),
+        )
+    )

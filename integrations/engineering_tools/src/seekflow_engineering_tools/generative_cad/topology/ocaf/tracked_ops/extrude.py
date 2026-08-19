@@ -83,6 +83,13 @@ def tracked_extrude(
     }
     face_roles = _remaining_face_roles(result, construction_roles, "extrude")
     edge_roles = _derive_box_edges(construction_roles)
+    # Non-box profiles have no semantic box edges; name every remaining result
+    # edge with a deterministic geometric ordering.
+    edge_roles.update(
+        _remaining_edge_roles(
+            result, "extrude", existing_edges=tuple(edge_roles.values()),
+        )
+    )
     history_complete = len(relations) > 0
 
     batch = LiveEvolutionBatch(
@@ -105,7 +112,12 @@ def _remaining_face_roles(
     result: Any, existing_roles: dict[str, Any], prefix: str,
 ) -> dict[str, FaceRoleSpec]:
     """Name every result face that is not already covered by a semantic role."""
-    existing = [face for face in existing_roles.values() if face is not None]
+    existing = []
+    for value in existing_roles.values():
+        if value is None:
+            continue
+        shape = getattr(value, "shape", None)
+        existing.append(shape if shape is not None else value)
     remaining: list[Any] = []
     for face in result.Faces():
         fw = face.wrapped
@@ -343,9 +355,18 @@ def _edge_sort_key(edge: Any) -> tuple:
     return (curve_type, mid[0], mid[1], mid[2], length)
 
 
-def _remaining_edge_roles(result: Any, prefix: str) -> dict[str, EdgeRoleSpec]:
-    """Name every result edge with a deterministic geometric ordering."""
-    remaining = [edge.wrapped for edge in result.Edges()]
+def _remaining_edge_roles(
+    result: Any, prefix: str, existing_edges: tuple = (),
+) -> dict[str, EdgeRoleSpec]:
+    """Name every result edge with a deterministic geometric ordering.
+
+    ``existing_edges`` holds already-named shapes (semantic roles or history
+    relations); edges matching them are skipped so roles are not duplicated.
+    """
+    remaining = [
+        e for e in (edge.wrapped for edge in result.Edges())
+        if not any(e.IsSame(x) or e.IsPartner(x) for x in existing_edges)
+    ]
     remaining.sort(key=_edge_sort_key)
     return {
         f"{prefix}/edge_{index:03d}": EdgeRoleSpec(

@@ -23,6 +23,7 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops._carry 
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.extrude import (
     _remaining_edge_roles,
+    _remaining_face_roles,
 )
 
 
@@ -162,6 +163,7 @@ def tracked_shell(
                 source_shape=face.wrapped,
                 first_evolution=EvolutionKind.MODIFIED,
             )
+    face_roles.update(_remaining_face_roles(result, face_roles, "shell"))
     history_complete = all_faces_accounted(relations, list(body.Faces()))
 
     batch = LiveEvolutionBatch(
@@ -227,6 +229,7 @@ def tracked_sweep(
             )
             idx += 1
             exp.Next()
+    face_roles.update(_remaining_face_roles(result, face_roles, "sweep"))
     history_complete = len(relations) > 0
 
     batch = LiveEvolutionBatch(
@@ -279,6 +282,7 @@ def tracked_loft(
             )
             idx += 1
             exp.Next()
+    face_roles.update(_remaining_face_roles(result, face_roles, "loft"))
     history_complete = len(relations) > 0
 
     batch = LiveEvolutionBatch(
