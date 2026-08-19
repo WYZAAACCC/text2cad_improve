@@ -29,6 +29,7 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.history_graph impor
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.extrude import (
     _remaining_edge_roles,
+    _remaining_face_roles,
 )
 
 
@@ -260,6 +261,7 @@ def tracked_linear_pattern(
     else:
         result = body
 
+    face_roles.update(_remaining_face_roles(result, face_roles, "linear_pattern"))
     edge_roles = _remaining_edge_roles(result, "linear_pattern")
 
     batch = LiveEvolutionBatch(
@@ -391,6 +393,7 @@ def tracked_circular_pattern(
 
     result = cq.Shape.cast(fused)
 
+    face_roles.update(_remaining_face_roles(result, face_roles, "circular_pattern"))
     edge_roles = _remaining_edge_roles(result, "circular_pattern")
 
     # Same completeness contract as linear_pattern: every seed face must compose
