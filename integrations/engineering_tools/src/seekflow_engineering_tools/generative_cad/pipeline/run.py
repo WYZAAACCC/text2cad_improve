@@ -322,19 +322,35 @@ def _shapes_match(a, b) -> bool:
         return False
 
 
+def _is_carry_through(spec) -> bool:
+    """True when a role spec records an unchanged pass-through of its source."""
+    source = getattr(spec, "source_shape", None)
+    shape = getattr(spec, "shape", None)
+    if source is None or shape is None:
+        return False
+    return _shapes_match(source, shape)
+
+
 def _batch_outputs_shape(batch, selected_shape) -> bool:
-    """True when a captured batch's named roles contain the target shape."""
+    """True when a captured batch's named roles contain the target shape.
+
+    Pure carry-through entries (same TShape as their source) are skipped so
+    the resolver prefers the feature that actually produced or modified the
+    shape, not a later fuse/boolean that simply kept it.
+    """
     for spec in (getattr(batch, "face_roles", {}) or {}).values():
         shape = getattr(spec, "shape", None)
         if shape is not None and _shapes_match(shape, selected_shape):
-            return True
+            if not _is_carry_through(spec):
+                return True
     for shape in (getattr(batch, "construction_roles", {}) or {}).values():
         if shape is not None and _shapes_match(shape, selected_shape):
             return True
     for spec in (getattr(batch, "edge_roles", {}) or {}).values():
         shape = getattr(spec, "shape", None)
         if shape is not None and _shapes_match(shape, selected_shape):
-            return True
+            if not _is_carry_through(spec):
+                return True
     return False
 
 
