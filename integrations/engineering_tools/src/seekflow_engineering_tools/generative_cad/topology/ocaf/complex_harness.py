@@ -92,6 +92,8 @@ class SelectionExpectation:
     area_range: tuple[float, float] | None = None
     length_range: tuple[float, float] | None = None
     centroid_near: tuple[tuple[float, float, float], float] | None = None
+    same_as: Any | None = None          # resolved shape must be this TShape identity
+    distinct_from: tuple[Any, ...] = ()  # resolved shape must differ from these
     label: str = ""
 
 
@@ -126,6 +128,18 @@ def check_expectation(expectation: SelectionExpectation, resolution) -> tuple[bo
             dist = sum((a - b) ** 2 for a, b in zip(c, target)) ** 0.5
             if dist > tol:
                 return False, f"centroid dist={dist:.3f} tol={tol}"
+        if expectation.same_as is not None:
+            try:
+                if not (shape.IsSame(expectation.same_as) or shape.IsPartner(expectation.same_as)):
+                    return False, "resolved shape is not the expected TShape identity"
+            except Exception:
+                return False, "identity comparison failed"
+        for ref in expectation.distinct_from:
+            try:
+                if shape.IsSame(ref) or shape.IsPartner(ref):
+                    return False, "resolved shape collides with a distinct candidate"
+            except Exception:
+                continue
     return True, "ok"
 
 
