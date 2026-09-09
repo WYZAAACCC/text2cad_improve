@@ -211,9 +211,10 @@ def _strip_unsupported(node: dict[str, Any]) -> None:
     for kw in list(node.keys()):
         if kw in UNSUPPORTED_KEYWORDS:
             stripped[kw] = node.pop(kw)
-        # DeepSeek does NOT support "number" type — convert to "integer"
-        if kw == "type" and node.get(kw) == "number":
-            node[kw] = "integer"
+        # 保留 "number"（浮点）类型：DeepSeek strict tool 的字段值本就是任意 JSON，
+        # 实数/浮点完全受支持。此前强制 number→integer 会把所有浮点（坐标、尺寸、
+        # 圆角等）截断为整数，破坏小数精度（例如盘面 web_inner=22.8 被写成 22/23），
+        # 也逼着调用方用宽松 object 规避，反而引入 "_" 占位键等格式缺陷。不再强转。
 
     if stripped:
         existing = node.get("x-local-validation", {})

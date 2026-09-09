@@ -1,6 +1,11 @@
 """Tests for JSON repair and argument coercion."""
+import copy
+
 from seekflow.repair.json_repair import repair_json_arguments
 from seekflow.repair.coercion import coerce_arguments
+from seekflow_engineering_tools.generative_cad.authoring.auto_fixer import (
+    _fix_slot_half_profile,
+)
 
 
 class TestJsonRepair:
@@ -28,6 +33,39 @@ class TestJsonRepair:
         assert result.ok
         assert result.value == {"ok": True, "value": None, "flag": False}
         assert "python_literals_to_json" in result.applied_rules
+
+    def test_slot_half_profile_ignores_groove_cutter(self):
+        doc = {
+            "components": [
+                {"id": "feat_groove_0", "kind_hint": "groove_cutter"},
+                {"id": "slot_cutter", "kind_hint": "fir_tree_cutter"},
+            ],
+            "nodes": [
+                {"id": "g", "component": "feat_groove_0", "op": "add_polyline",
+                 "params": {"points": [
+                     {"x_mm": 220.4, "y_mm": -22.0},
+                     {"x_mm": 233.4, "y_mm": -22.0},
+                     {"x_mm": 233.4, "y_mm": -12.0},
+                     {"x_mm": 220.4, "y_mm": -12.0},
+                 ]}},
+                {"id": "s", "component": "slot_cutter", "op": "add_polyline",
+                 "params": {"points": [
+                     {"x_mm": 0.0, "y_mm": 8.0},
+                     {"x_mm": -3.0, "y_mm": 6.0},
+                     {"x_mm": -5.0, "y_mm": 9.0},
+                     {"x_mm": -6.0, "y_mm": 9.0},
+                     {"x_mm": -7.0, "y_mm": 5.0},
+                     {"x_mm": -9.0, "y_mm": 4.0},
+                 ]}},
+            ],
+        }
+        before = copy.deepcopy(doc)
+        fixed = _fix_slot_half_profile(doc)
+        groove = next(n for n in fixed["nodes"] if n["id"] == "g")
+        slot = next(n for n in fixed["nodes"] if n["id"] == "s")
+        assert len(groove["params"]["points"]) == 4
+        assert groove["params"]["points"] == before["nodes"][0]["params"]["points"]
+        assert len(slot["params"]["points"]) == 11  # 6 + mirrored(5)
 
     def test_extract_json_from_text(self):
         raw = '这里是参数：{"city": "杭州"}，请处理。'

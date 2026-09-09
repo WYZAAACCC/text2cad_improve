@@ -6,7 +6,12 @@ import subprocess, webbrowser, time, sys, os, signal
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent  # app/text-to-cad/
-PYTHON = r"E:\auto_detection_process\.conda\python.exe"
+_PYTHON_CANDIDATES = [
+    ROOT.parent / ".conda" / "python.exe",
+    Path(r"E:\auto_detection_process\.conda\python.exe"),
+    Path(r"E:\text_to_cad_improve\auto_detection_process\.conda\python.exe"),
+]
+PYTHON = str(next(p for p in _PYTHON_CANDIDATES if p.exists()))
 NPX = "npx.cmd" if sys.platform == "win32" else "npx"
 
 def main():
@@ -27,8 +32,10 @@ def main():
 
     # Backend
     print("[1/2] Backend  :8080")
+    env = os.environ.copy()
+    env.setdefault("AGENTIC_L2", "1")
     backend = subprocess.Popen([PYTHON, "-m", "uvicorn", "server.main:app", "--port", "8080"],
-                               cwd=str(ROOT))
+                               cwd=str(ROOT), env=env)
 
     # Frontend
     print("[2/2] Frontend :5173")

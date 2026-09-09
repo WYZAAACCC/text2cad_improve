@@ -33,7 +33,8 @@ sys.path.insert(0, str(ROOT / "integrations" / "engineering_tools" / "src"))
 sys.path.insert(0, str(_HERE))
 
 from agentic_l2 import (  # noqa: E402
-    AGENT_A_SYSTEM, _DISC_SYSTEM, _SLOT_SYSTEM, _append_parametric_block,
+    AGENT_A_SYSTEM, _DISC_SYSTEM, _GROOVE_SYSTEM, _HOLE_SYSTEM,
+    _SLOT_SYSTEM, _append_parametric_block,
 )
 from param_templates import build, plan  # noqa: E402
 from seekflow_engineering_tools.generative_cad.skills.orchestrator import (  # noqa: E402
@@ -64,11 +65,11 @@ def _points_of(llm_raw: dict, comp_id: str) -> list:
 
 
 def _disc_contour(llm_raw: dict, comp_id: str) -> dict:
-    """盘体轮廓 → {points, arcs?}。complex_rim 盘体为 add_line_segment+add_arc_segment
-    混合（无 add_polyline），圆弧段坐标由模板确定性算出（论文 2.1 曲线过渡）。
+    """盘体轮廓 → {points, arcs?}。complex_rim 盘体当前由 add_polyline 采样点表达
+    （论文 2.1 曲线过渡），不再依赖 add_arc_segment 链式节点。
 
     - 标准榫槽盘（slot/coupled）：add_polyline 12 点 → {points}
-    - complex_rim：直线段终点序列 + 过渡弧参数 → {points, arcs}
+    - complex_rim：add_polyline 采样点 → {points}
     """
     pts = _points_of(llm_raw, comp_id)
     if pts:
@@ -176,6 +177,31 @@ def build_samples(cand: dict) -> dict:
             "gold_output": {"profile_id": slot_pid, "kind": "slot",
                             "points": _points_of(llm_raw, slot_comp)},
         })
+    # Feature Worker：孔/环槽轮廓
+    for prof in ap["profiles"]:
+        if prof["kind"] not in ("hole", "groove"):
+            continue
+        pid = prof["profile_id"]
+        comp_id = pid.replace("_profile", "")
+        params_txt = ", ".join(f"{k}={v}" for k, v in sorted(prof["params"].items()))
+        user_f = (f"请为特征轮廓 [{pid}]（kind={prof['kind']}）从参数生成精确闭合轮廓点。\n"
+                  f"轮廓参数: {params_txt}\n需求相关: {text[:800]}")
+        if prof["kind"] == "hole":
+            samples.append({
+                "agent_role": "D_hole_profile",
+                "system_prompt": _HOLE_SYSTEM,
+                "user_input": user_f,
+                "gold_output": {"profile_id": pid, "kind": "hole",
+                                "points": _points_of(llm_raw, comp_id)},
+            })
+        else:
+            samples.append({
+                "agent_role": "E_groove_profile",
+                "system_prompt": _GROOVE_SYSTEM,
+                "user_input": user_f,
+                "gold_output": {"profile_id": pid, "kind": "groove",
+                                "points": _points_of(llm_raw, comp_id)},
+            })
     return {"task_id": cand.get("task_id"), "category": cat,
             "family": cand.get("family"), "samples": samples}
 

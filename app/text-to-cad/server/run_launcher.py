@@ -6,7 +6,12 @@ import subprocess, webbrowser, time, sys, os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-PYTHON = r"E:\auto_detection_process\.conda\python.exe"
+_PYTHON_CANDIDATES = [
+    ROOT.parent / ".conda" / "python.exe",
+    Path(r"E:\auto_detection_process\.conda\python.exe"),
+    Path(r"E:\text_to_cad_improve\auto_detection_process\.conda\python.exe"),
+]
+PYTHON = str(next(p for p in _PYTHON_CANDIDATES if p.exists()))
 
 def main():
     print("=" * 50)
@@ -15,10 +20,13 @@ def main():
 
     # 1. Backend (FastAPI)
     print("\n[1/3] Starting backend (port 8080)...")
+    env = os.environ.copy()
+    env.setdefault("AGENTIC_L2", "1")
     backend = subprocess.Popen(
         [PYTHON, "-m", "uvicorn", "server.main:app", "--port", "8080", "--reload"],
         cwd=str(ROOT),
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        env=env,
     )
 
     # 2. Frontend (Vite)

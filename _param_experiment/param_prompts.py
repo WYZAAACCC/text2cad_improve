@@ -21,7 +21,7 @@ DISC_PROFILE_RULES = """\
 - hub_web_fillet_mm: 轮毂-腹板过渡圆角（在 x=hub_radius_mm 处）
 - web_rim_fillet_mm: 腹板-轮缘过渡圆角（在 x=rim_web_junction_mm 处）
 
-轮廓点生成规则（必须恰好 12 个点，闭合顺序，关于 y=0 严格对称）：
+默认轮廓点生成规则（恰好 12 个点，闭合顺序，关于 y=0 严格对称）：
 下侧（y<0），从内（小 x）到外（大 x）：
   1. (bore_radius_mm, -hub_half_thickness_mm)            # bore 内壁点
   2. (hub_radius_mm, -hub_half_thickness_mm)             # hub 底转角
@@ -38,10 +38,27 @@ DISC_PROFILE_RULES = """\
  12. (bore_radius_mm, +hub_half_thickness_mm)
 然后回到点 1 闭合。
 
+复杂轮缘过渡（仅当参数提供 rim_transition_type 与 rim_transition_radius_mm 时适用）：
+- 轮廓总点数必须恰好为 28（不是 12），每侧 14 点；默认 12 点站序全部保留。
+- 下侧 14 点站序：
+  1. (bore_radius_mm, -hub_half_thickness_mm)
+  2. (hub_radius_mm, -hub_half_thickness_mm)
+  3. (hub_radius_mm, -web_inner_half_thickness_mm)
+  4. (rim_web_junction_mm, -web_outer_half_thickness_mm)
+  5..12. 八个曲线过渡点：u=i/9（i=1..8），z 从 -web_outer_half_thickness_mm 到
+    -rim_half_thickness_mm 线性均分，r = rim_web_junction_mm +
+    rim_transition_radius_mm × f(u)，其中 f(u) 按类型取：
+    s_curve = sin(πu)²；ellipse = sin(πu)^0.7；power = sin(πu)·√u；
+    arc_out = sin(πu)；arc_in = 0.5·sin(πu)。
+  13. (rim_web_junction_mm, -rim_half_thickness_mm)
+  14. (rim_radius_mm, -rim_half_thickness_mm)
+- 上侧 14 点为下侧精确镜像（顺序倒置、y 取相反数）。
+- 过渡点必须用 run_python_code 计算并逐字复制到 emit_profile_points；禁止手工近似或省略。
+
 约束：
-- 12 个点必须全部满足 bore_radius_mm <= x <= rim_radius_mm
-- hub 外壁是垂直段（点2→点3 同 x），rim 内壁是垂直阶梯（点4→点5 同 x）
-- 腹板是单一直线段（点3→点4），不拆多段
+- 所有点必须满足 bore_radius_mm <= x <= rim_radius_mm
+- hub 外壁是垂直段（点2→点3 同 x），rim 内壁是垂直阶梯（过渡后点→点13 同 x）
+- 默认 12 点盘体：腹板是单一直线段（点3→点4），不拆多段
 - 两个过渡圆角 hub_web_fillet/web_rim_fillet 是后续 fillet_sketch 的半径提示，不在坐标中体现，但要回传
 """
 
@@ -53,37 +70,37 @@ SLOT_PROFILE_RULES = """\
 ### 榫槽（枞树形）轮廓（XY 平面，x=径向 0=轮缘表面 负向=向中心，y=切向半宽，关于 y=0 对称）
 
 榫槽是两侧对称的枞树形槽截面。由以下参数决定：
-- teeth_count: 每侧凸台（lobe）数量（整数，1~4）
+- teeth_count: 每侧凸台（lobe）数量（整数，2~4）
 - mouth_half_width_mm: 槽口半宽（x=0 处的 y）
-- slot_depth_mm: 槽总深（x 从 0 到 -slot_depth_mm）
-- neck_half_width_mm: 颈部半宽（凸台之间凹槽的 y）
-- lobe_half_width_mm: 凸台顶部半宽（最大的 y）
-- bottom_half_width_mm: 槽底半宽（小于 lobe_half_width_mm）
+- slot_depth_mm: 槽总深（x 从 0 到 -槽深）
+- neck_half_width_mm / lobe_half_width_mm / bottom_half_width_mm: 验收参考值，不是直接坐标
 - flank_angle_deg: 齿面角（凸台侧斜面与径向 x 方向的夹角，度）
 - root_fillet_mm: 齿根圆角（凸台顶部转角半径，后续 fillet_sketch 用）
 - bottom_fillet_mm: 槽底圆角（半径，后续 fillet_sketch 用）
+- 若任务给出 fr_mm（榫槽圆角比例），fillet 分组半径按
+  0.08/0.10/0.12 × mouth_half_width_mm × fr_mm 计算（齿根/槽底/齿顶分组）。
 
 轮廓点生成规则（每侧点数 = 2 + 4×teeth_count + 3；总点数 = 每侧×2，关于 y=0 对称）：
-每侧（y>0 侧）从外（x=0）到内（x=-slot_depth_mm）：
+每侧（y>0 侧）从外（x=0）到内（x=-槽深）：
   口部楔形 2 点：
-    1. (0, mouth_half_width_mm)          # 口部上缘
-    2. (-3, neck_half_width_mm)          # 口部楔形入口结束（斜面）
+    1. (0, mouth_half_width_mm)
+    2. 楔入点（第一齿根）
   对每个齿 i（i=1..teeth_count，从外到内，每齿 4 点）：
-    3. 外斜面顶点: 从颈部平缓升至凸台顶, y = lobe_half_width_mm（x 由 flank_angle_deg 决定，越陡 x 跨度越小）
-    4. 凸台顶部: y = lobe_half_width_mm（沿 x 延伸一小段, 齿顶平台）
-    5. 内斜面: 从凸台顶回落到颈部, y = neck_half_width_mm
-    6. 颈部平台: y = neck_half_width_mm（沿 x 延伸一小段, 进入下一齿或底部）
-  槽底 3 点：
-    7. 底外扩: y = bottom_half_width_mm（从最后颈部外扩）
-    8. 槽底顶: y = bottom_half_width_mm（槽底平台）
-    9. 根部: y = bottom_half_width_mm - 1.5（x = -slot_depth_mm，槽底最深处）
-下侧（y<0）为 y>0 侧关于 y=0 的精确镜像，从内到外。
+    3. 外斜面齿顶（crest）：y = neck_i + h_i（齿高系数×mouth）
+    4. 齿顶平台（plat）：y = crest 的 y，x 沿径向推进一小段
+    5. 内斜面降面终点（under）：y 落在颈部共线直线 X_neck 上
+    6. 连接线终点（conn）：y 落在同一直线 X_neck 上
+  槽底 3 点（卡榫状）：外扩（flare）、平台（platform）、收窄根（tip）
+- 所有齿根/颈部/连接线点必须位于 X_neck(y) 直线上：该直线穿过
+  (neck_half[0], ys_root[0]) 与 (neck_half[n], ys_under[n-1])，线性插值。
+- 齿顶半宽逐齿外宽内窄（lobe 递减）；齿根半宽同样沿 X_neck 递减。
+- 槽底收窄半宽 = 0.24×mouth_half_width_mm；槽底 x 为自然深度对应值（可小于 slot_depth_mm）。
+- 下侧（y<0）为 y>0 侧关于 y=0 的精确镜像，顺序相反。
 
 约束：
 - 总点数必须严格等于 2 × (2 + 4×teeth_count + 3)
-- 外宽内窄: lobe_half_width_mm > neck_half_width_mm > bottom_half_width_mm
-- 凸台越靠内 x 跨度可稍小（越靠近槽底）
-- 所有 x <= 0；x=0 处是口部；x=-slot_depth_mm 处是槽底
+- 所有 x <= 0；x=0 处是口部
+- neck/lobe/bottom 三个字段只是验收参考；坐标一律以 EXACT 算法输出为准
 - root_fillet_mm / bottom_fillet_mm 是圆角提示，不在坐标中体现，但要回传
 """
 

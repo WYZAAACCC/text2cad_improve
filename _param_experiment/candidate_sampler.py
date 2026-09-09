@@ -272,7 +272,7 @@ def _make_text(params: dict, cat: str) -> str:
         p.append(f"腹板处环形减重腔，腔宽{f['cavity_width_mm']}mm，"
                  f"腔深{f['cavity_depth_mm']}mm")
     if f.get("rim_arc_radius_mm"):
-        p.append(f"轮缘与腹板交界采用圆弧曲线过渡，过渡半径{f['rim_arc_radius_mm']}mm")
+        p.append(f"轮缘与腹板交界采用曲线过渡，过渡幅度{f['rim_arc_radius_mm']}mm")
     return "，".join(p) + "。参考几何，非适航件。"
 
 

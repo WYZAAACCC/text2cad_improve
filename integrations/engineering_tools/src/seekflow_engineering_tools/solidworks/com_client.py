@@ -942,6 +942,70 @@ class SolidWorksClient:
         status = model.SaveAs3(str(out), 0, 2)
         return out.exists() and out.stat().st_size > 0
 
+    def import_step_and_count_bodies(
+        self, step_path: str | Path, *, timeout: float = 180.0,
+    ) -> dict:
+        """Import a STEP file in SolidWorks and count resulting bodies.
+
+        Returns ``{"ok": bool, "body_count": int, "step": str}``.
+        ``ok`` is True when SolidWorks loads the STEP and reports exactly one body
+        (single-solid criterion used by the commercial CAD import experiment).
+        Volume/dimension checks are covered separately by OpenCascade metrics.
+        """
+        import subprocess
+        import tempfile
+        import os
+
+        step = Path(step_path).resolve()
+        if not step.exists() or step.stat().st_size < 1:
+            raise FileNotFoundError(f"STEP not found or empty: {step}")
+        vbs = (
+            "Dim swApp\n"
+            'Set swApp = CreateObject("SldWorks.Application")\n'
+            "swApp.Visible = False\n"
+            'swApp.LoadFile2 "%STEP%", ""\n'
+            "Dim model\n"
+            "Set model = swApp.ActiveDoc\n"
+            "If model Is Nothing Then\n"
+            '  WScript.StdErr.WriteLine "LOAD_FAILED"\n'
+            "  WScript.Quit 2\n"
+            "End If\n"
+            "Dim b\n"
+            "b = model.GetBodies2(0, False)\n"
+            "Dim n\n"
+            "n = 0\n"
+            "If IsArray(b) Then\n"
+            "  n = UBound(b) - LBound(b) + 1\n"
+            "ElseIf Not IsEmpty(b) Then\n"
+            "  n = 1\n"
+            "End If\n"
+            'WScript.StdOut.WriteLine "RESULT|" & n\n'
+            "swApp.CloseAllDocuments False\n"
+        ).replace("%STEP%", str(step))
+        vp = os.path.join(tempfile.gettempdir(), "_sw_import_count.vbs")
+        with open(vp, "w", encoding="utf-8") as fh:
+            fh.write(vbs)
+        proc = subprocess.run(
+            ["cscript.exe", "//B", "//Nologo", vp],
+            timeout=timeout, capture_output=True, text=True,
+            encoding="utf-8", errors="replace",
+        )
+        stdout = (proc.stdout or "").strip()
+        count = None
+        for line in stdout.splitlines():
+            if line.startswith("RESULT|"):
+                try:
+                    count = int(line.split("|", 1)[1])
+                except Exception:
+                    count = None
+        return {
+            "ok": count == 1,
+            "body_count": count,
+            "step": str(step),
+            "returncode": proc.returncode,
+            "error": (proc.stderr or "").strip()[:200] or None,
+        }
+
     # ── cleanup ─────────────────────────────────────────────────────
 
     def close_all(self) -> None:

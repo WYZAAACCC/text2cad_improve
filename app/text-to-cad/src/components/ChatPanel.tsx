@@ -20,6 +20,7 @@ import {
 import { useStore } from '../store';
 import { setForceRoute } from '../App';
 import type { ChatMessage } from '../types';
+import ThinkingChain from './ThinkingChain';
 
 /** 生成进度条组件 */
 function GenerationProgress() {
@@ -43,6 +44,9 @@ function GenerationProgress() {
       <div className="w-full bg-bg-primary rounded-full h-2 overflow-hidden">
         <div className="h-full bg-accent rounded-full transition-all duration-500"
           style={{ width: `${Math.max(5, generationProgress)}%` }} />
+      </div>
+      <div className="mt-3">
+        <ThinkingChain maxHeight="max-h-48" />
       </div>
     </div>
   );

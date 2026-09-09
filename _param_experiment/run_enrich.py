@@ -94,7 +94,7 @@ NORMALIZED_PARAMS = [
     ("rs_depth_mm", "切槽深度", False, None),
     ("cavity_width_mm", "环形腔宽", False, None),
     ("cavity_depth_mm", "环形腔深", False, None),
-    ("rim_arc_radius_mm", "轮缘过渡半径", False, None),
+    ("rim_arc_radius_mm", "轮缘过渡幅度", False, None),
 ]
 
 # design_family 匹配注册表（G1-G5 期望参数向量；离散键精确、连续键 tol）

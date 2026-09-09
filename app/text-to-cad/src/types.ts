@@ -100,11 +100,22 @@ export interface FeatureEdge {
 /** 生成任务状态 */
 export type GenerationStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
+/** 生成过程中的一个可观测事件（思考链/系统运行细节） */
+export interface TraceEvent {
+  ts: number;
+  progress: number;
+  title: string;
+  message: string;
+  status: string;
+  data?: Record<string, unknown> | null;
+}
+
 /** 生成任务 */
 export interface GenerationTask {
   taskId: string;
   status: GenerationStatus;
   progress: number;
+  trace?: TraceEvent[];
   result?: {
     modelId: string;
     geometryType: string;

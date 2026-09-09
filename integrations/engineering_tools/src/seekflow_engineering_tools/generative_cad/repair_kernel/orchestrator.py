@@ -59,6 +59,15 @@ class RepairLoopResult:
         self.outcome = outcome
 
 
+_REPEAT_GUIDANCE_TMPL = (
+    "The repair is not making progress: the same {kind} has already been "
+    "submitted and rejected without changing the document. You MUST either "
+    "propose a genuinely different patch that is not identical to any previous "
+    "attempt, or set give_up=true. Repeating an already-submitted patch is "
+    "forbidden."
+)
+
+
 def check_patch_common(patch, *, cfg: RepairLoopConfig) -> tuple[bool, str]:
     """两阶段共用的补丁硬规则 (§8.1/§10.4/§4).
 
@@ -104,11 +113,18 @@ def check_runtime_patch(patch, *, target_node_id: str,
         return False, "empty runtime patch"
     if len(patch.changes) > cfg.max_changes_per_patch:
         return False, f"too many changes: {len(patch.changes)} > {cfg.max_changes_per_patch}"
-    params_re = re.compile(rf"^/nodes/{re.escape(target_node_id)}/params/.+$")
+    def _allowed_regex(p):
+        m = re.match(r"^/nodes/([^/]+)/params", p)
+        if not m:
+            return None
+        return re.compile(rf"^/nodes/{re.escape(m.group(1))}/params(/.+)?$")
+    allowed_regexes = [r for r in (_allowed_regex(p) for p in allowed_paths) if r]
+    if not allowed_regexes:
+        allowed_regexes = [re.compile(rf"^/nodes/{re.escape(target_node_id)}/params/.+$")]
     allowed_prefixes = tuple(allowed_paths)
     for ch in patch.changes:
-        if not params_re.match(ch.path):
-            return False, f"path {ch.path!r} outside target node params"
+        if not any(r.match(ch.path) for r in allowed_regexes):
+            return False, f"path {ch.path!r} outside allowed repair node params"
         if allowed_prefixes and not any(
                 ch.path == p or ch.path.startswith(p.rstrip("/") + "/")
                 or p == f"/nodes/{target_node_id}/params"
@@ -239,6 +255,7 @@ def run_generation_loop(
     autofix_provider = None
     prior_runtime_attempts: list[dict] = []
     prior_validation_attempts: list[dict] = []
+    repeated_raw_seen: dict[str, int] = {}
 
     def _stage(label: str, pct: int) -> None:
         if on_stage is not None:
@@ -262,18 +279,95 @@ def run_generation_loop(
             outcome=outcome,
         )
 
-    def _call_patch_llm(caller, system_prompt: str, user_prompt: str):
-        tc = caller.call_strict_tool(
-            messages=[{"role": "system", "content": system_prompt},
-                      {"role": "user", "content": user_prompt}],
-            tool_name="emit_repair_patch",
-            tool_description="Local repair patch",
-            tool_schema=build_repair_patch_tool_schema(),
-            model_config=llm_model_config,
-        )
-        if tc.arguments.get("give_up"):
-            return None
-        return RepairPatchV2.model_validate(tc.arguments)
+    def _call_patch_llm(caller, system_prompt: str, user_prompt: str,
+                        guidance: str = ""):
+        messages = [{"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}]
+        if guidance:
+            messages.append({"role": "user", "content": guidance})
+        def _call_once(msgs):
+            tc = caller.call_strict_tool(
+                messages=msgs,
+                tool_name="emit_repair_patch",
+                tool_description="Local repair patch",
+                tool_schema=build_repair_patch_tool_schema(),
+                model_config=llm_model_config,
+            )
+            if tc.arguments.get("give_up"):
+                return None
+            return RepairPatchV2.model_validate(tc.arguments)
+
+        try:
+            return _call_once(messages)
+        except Exception as exc:
+            retry_messages = messages + [
+                {"role": "assistant", "content": "The previous repair patch was rejected by the patch schema."},
+                {"role": "user", "content": f"Schema validation failed: {exc}. Re-emit a COMPLETE repair patch that satisfies the schema."},
+            ]
+            return _call_once(retry_messages)
+
+    def _repeat_handling(raw_hash: str, kind: str):
+        """Give one explicit change-or-give-up chance, then stop cleanly.
+
+        Pure repair-loop logic: identical submissions mean the LLM is not
+        making progress, so the loop must end with an auditable give_up instead
+        of silently spinning until a generic governor stop.
+
+        Returns (stop_reason, guidance, allow_new_attempt).  On the first
+        repeat the caller must bypass the governor (its raw-hash guard would
+        otherwise stop before the guidance reaches the LLM) and call the LLM
+        with the guidance message.
+        """
+        seen = repeated_raw_seen.get(raw_hash, 0)
+        repeated_raw_seen[raw_hash] = seen + 1
+        if seen == 0:
+            return "", "", True
+        if seen == 1:
+            return "", _REPEAT_GUIDANCE_TMPL.format(kind=kind), False
+        return (f"repair agent repeated the same {kind} after guidance "
+                "to change or give up"), "", False
+
+    def _check_contract_changes(patch, current):
+        # phase/op_version repairs must resolve to registered op contract values.
+        import re as _re
+        if dialect_registry is None:
+            for ch in patch.changes:
+                if _re.match(r"^/nodes/[^/]+/(phase|op_version)$", ch.path):
+                    return False, "phase/op_version repair requires dialect_registry",
+            return True, ""
+        for ch in patch.changes:
+            m = _re.match(r"^/nodes/([^/]+)/(phase|op_version)$", ch.path)
+            if not m:
+                continue
+            node = next((n for n in current.get("nodes", [])
+                         if n.get("id") == m.group(1)), None)
+            if node is None:
+                return False, "target node not found: " + m.group(1)
+            d = dialect_registry.get(node.get("dialect", ""))
+            if d is None:
+                return False, "unknown dialect: " + str(node.get("dialect", ""))
+            op = node.get("op", "")
+            new_ver = None
+            for ch2 in patch.changes:
+                m2 = _re.match(r"^/nodes/([^/]+)/op_version$", ch2.path)
+                if m2 and m2.group(1) == m.group(1):
+                    new_ver = ch2.new_value
+                    break
+            try:
+                resolved_v = new_ver or node.get("op_version") or d.default_op_version(op)
+                spec = d.get_op_spec(op, resolved_v)
+            except (KeyError, ValueError):
+                spec = None
+            if m.group(2) == "phase":
+                if spec is None:
+                    return False, "cannot resolve op contract for phase"
+                if ch.new_value != spec.phase:
+                    return False, "phase must be %r, got %r" % (spec.phase, ch.new_value)
+            else:
+                default_v = d.default_op_version(op)
+                if ch.new_value != default_v:
+                    return False, "op_version must be %r, got %r" % (default_v, ch.new_value)
+        return True, ""
 
     def _audit_attempt(phase: str, idx: int, files: dict[str, Any]) -> None:
         if audit_dir is None:
@@ -315,11 +409,15 @@ def run_generation_loop(
             raw_hash = stable_hash(current)
             error_sig = _validation_error_signature(vrun.report)
             stage_rank = stage_rank_for(getattr(vrun.report, "stage", "") or "")
-            can, why = can_repair_v2(state, raw_graph_hash=raw_hash,
-                                     error_sig_hash=error_sig,
-                                     current_stage_rank=stage_rank)
-            if not can:
-                return _finish("governor_stop", why)
+            stop_why, guidance, allow_new = _repeat_handling(raw_hash, "raw graph")
+            if stop_why:
+                return _finish("give_up", stop_why)
+            if allow_new:
+                can, why = can_repair_v2(state, raw_graph_hash=raw_hash,
+                                         error_sig_hash=error_sig,
+                                         current_stage_rank=stage_rank)
+                if not can:
+                    return _finish("governor_stop", why)
 
             _stage("LLM validation repair", 68)
             outcome.validation_llm_attempts += 1
@@ -331,13 +429,19 @@ def run_generation_loop(
                                         build_repair_user_prompt(
                                             current, issues,
                                             repairable_paths=_V2_PATH_GRAMMAR,
-                                            prior_attempts=prior_validation_attempts))
+                                            prior_attempts=prior_validation_attempts),
+                                        guidance=guidance)
             except Exception as exc:
                 return _finish("repair_caller_error", str(exc)[:500])
             if patch is None:
                 return _finish("give_up", "validation repair agent gave up")
 
             patch_hash = repair_patch_hash(patch)
+            if patch_hash in state.repair_patch_hashes:
+                return _finish(
+                    "give_up",
+                    "validation repair repeated an already-submitted patch "
+                    "instead of changing it or giving up")
             can, why = can_repair_v2(state, patch_hash=patch_hash)
             if not can:
                 return _finish("governor_stop", why)
@@ -354,6 +458,21 @@ def run_generation_loop(
                                                  "reason": why[:200]})
                 prior_validation_attempts.append(
                     {"patch": patch.model_dump(mode="json"), "rejected": why[:200]})
+                state = update_repair_state_v2(state, raw_graph_hash=raw_hash,
+                                               error_sig_hash=error_sig,
+                                               patch_hash=patch_hash,
+                                               stage_rank=stage_rank)
+                continue
+
+            ok_contract, contract_why = _check_contract_changes(patch, current)
+            if not ok_contract:
+                audit["apply_report"] = {"ok": False, "rejection_reason": contract_why}
+                _audit_attempt("validation", attempt_idx, audit)
+                outcome.rejected_patches.append({"phase": "validation",
+                                                 "patch_hash": patch_hash,
+                                                 "reason": contract_why[:200]})
+                prior_validation_attempts.append(
+                    {"patch": patch.model_dump(mode="json"), "rejected": contract_why[:200]})
                 state = update_repair_state_v2(state, raw_graph_hash=raw_hash,
                                                error_sig_hash=error_sig,
                                                patch_hash=patch_hash,
@@ -454,10 +573,14 @@ def run_generation_loop(
             raw_hash = stable_hash(current)
             rt_sig = _runtime_error_signature(report)
             # current_stage_rank=0: runtime→validation 回跳不是 stage 回归 (§19 #47)
-            can, why = can_repair_v2(state, raw_graph_hash=raw_hash,
-                                     error_sig_hash=rt_sig, current_stage_rank=0)
-            if not can:
-                return _finish("governor_stop", why)
+            stop_why, guidance, allow_new = _repeat_handling(raw_hash, "raw graph")
+            if stop_why:
+                return _finish("give_up", stop_why)
+            if allow_new:
+                can, why = can_repair_v2(state, raw_graph_hash=raw_hash,
+                                         error_sig_hash=rt_sig, current_stage_rank=0)
+                if not can:
+                    return _finish("governor_stop", why)
 
             _stage("LLM runtime repair", 88)
             outcome.runtime_llm_attempts += 1
@@ -472,25 +595,55 @@ def run_generation_loop(
                                        op=failing_node.get("op", ""),
                                        op_version=failing_node.get("op_version", "1.0.0"))
                 op_contract = _build_op_contract(plan, dialect_registry)
+            allowed_paths = list(cls.allowed_paths)
+            related_contracts: list[str] = []
+            if failing_node is not None and dialect_registry is not None:
+                collected: set[str] = set()
+
+                def _collect_input_nodes(node_id: str, depth: int) -> None:
+                    if node_id in collected or depth > 8:
+                        return
+                    collected.add(node_id)
+                    node = next((n for n in current.get("nodes", [])
+                                 if n.get("id") == node_id), None)
+                    if node is None:
+                        return
+                    allowed_paths.append(f"/nodes/{node_id}/params")
+                    plan = SimpleNamespace(dialect=node.get("dialect", ""),
+                                           op=node.get("op", ""),
+                                           op_version=node.get("op_version", "1.0.0"))
+                    related_contracts.append(_build_op_contract(plan, dialect_registry))
+                    for inp in node.get("inputs", []):
+                        _collect_input_nodes(inp.get("node", ""), depth + 1)
+
+                _collect_input_nodes(cls.target_node_id or "", 0)
+
             prompt = build_runtime_repair_user_prompt(
                 current_doc=current,
                 runtime_issues=[i.model_dump(mode="json") for i in report.issues],
                 failing_node=failing_node,
                 op_contract=op_contract,
+                related_contracts=related_contracts,
                 geometry_health=report.geometry_health,
-                allowed_paths=cls.allowed_paths,
+                allowed_paths=allowed_paths,
                 prior_attempts=prior_runtime_attempts,
                 user_request=user_request,
             )
             try:
                 patch = _call_patch_llm(runtime_repair_caller,
-                                        RUNTIME_REPAIR_SYSTEM_PROMPT, prompt)
+                                        RUNTIME_REPAIR_SYSTEM_PROMPT, prompt,
+                                        guidance=guidance)
             except Exception as exc:
                 return _finish("repair_caller_error", str(exc)[:500])
             if patch is None:
                 return _finish("give_up", "runtime repair agent gave up")
 
             patch_hash = repair_patch_hash(patch)
+            if patch_hash in state.repair_patch_hashes:
+                return _finish(
+                    "give_up",
+                    "runtime repair repeated an already-submitted patch "
+                    "instead of changing it or giving up")
             can, why = can_repair_v2(state, patch_hash=patch_hash)
             if not can:
                 return _finish("governor_stop", why)
@@ -516,7 +669,7 @@ def run_generation_loop(
                 continue
             ok_policy, why = check_runtime_patch(
                 patch, target_node_id=cls.target_node_id or "",
-                allowed_paths=cls.allowed_paths, cfg=cfg)
+                allowed_paths=allowed_paths, cfg=cfg)
             if not ok_policy:
                 _reject(f"policy: {why}")
                 continue

@@ -1,0 +1,107 @@
+{
+  "runs": 120,
+  "tasks": [
+    "T01",
+    "T02",
+    "T03",
+    "T04",
+    "T05",
+    "T06",
+    "T07",
+    "T08",
+    "T09",
+    "T10",
+    "T11",
+    "T12",
+    "T13",
+    "T14",
+    "T15",
+    "T16",
+    "T17",
+    "T18",
+    "T19",
+    "T20",
+    "T21",
+    "T22",
+    "T23",
+    "T24",
+    "T25",
+    "T26",
+    "T27",
+    "T28",
+    "T29",
+    "T30",
+    "T31",
+    "T32",
+    "T33",
+    "T34",
+    "T35",
+    "T36",
+    "T37",
+    "T38",
+    "T39",
+    "T40"
+  ],
+  "no_repair": {
+    "ok": 0,
+    "rate": "0.0%"
+  },
+  "multi_inner_mcp": {
+    "ok": 115,
+    "rate": "95.8%"
+  },
+  "multi_inner_gate": {
+    "ok": 112,
+    "rate": "93.3%"
+  },
+  "full_mcp": {
+    "ok": 119,
+    "rate": "99.2%"
+  },
+  "full_gate": {
+    "ok": 116,
+    "rate": "96.7%"
+  },
+  "outer_repair": [
+    {
+      "task": "T24",
+      "seed": 6,
+      "ok": true,
+      "status": "completed",
+      "error_stage": null,
+      "error_message": ""
+    },
+    {
+      "task": "T26",
+      "seed": 6,
+      "ok": false,
+      "status": "completed",
+      "error_stage": "mcp_gate",
+      "error_message": "check_degenerate_geometry"
+    },
+    {
+      "task": "T26",
+      "seed": 7,
+      "ok": true,
+      "status": "completed",
+      "error_stage": null,
+      "error_message": ""
+    },
+    {
+      "task": "T30",
+      "seed": 7,
+      "ok": true,
+      "status": "completed",
+      "error_stage": null,
+      "error_message": ""
+    },
+    {
+      "task": "T30",
+      "seed": 8,
+      "ok": true,
+      "status": "completed",
+      "error_stage": null,
+      "error_message": ""
+    }
+  ]
+}

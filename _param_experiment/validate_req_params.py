@@ -30,10 +30,17 @@ RE_PARAMS = [
     ("slot_depth_mm",        r"(?<!环槽)槽深(\d+)",   float, 2.0),
     ("throat_half_width_mm", r"喉部半宽([\d.]+)",     float, 0.5),
     ("root_fillet_mm",       r"齿根圆角([\d.]+)",     float, 0.3),
+    # 可单独覆盖的榫槽圆角（缺省按 root_fillet 比例缩放）
+    ("tip_fillet_mm",        r"齿顶圆角([\d.]+)",     float, 0.2),
+    ("neck_fillet_mm",       r"(?:齿间|颈部)圆角([\d.]+)", float, 0.2),
+    ("bottom_fillet_mm",     r"槽底圆角([\d.]+)",     float, 0.2),
     ("R_mm",                 r"枞树形榫槽.*?分布半径([\d.]+)", float, 2.0),
     # 主体：轮毂/轮缘半厚
     ("hub_half_mm",          r"轮毂半厚([\d.]+)",    float, 3.0),
     ("rim_half_mm",          r"轮缘半厚([\d.]+)",    float, 3.0),
+    # 可选显式盘体径向参数（有值时优先于比例系数）
+    ("hub_radial_height_mm", r"(?:hub|轮毂)径向(?:高度|长度)[：:]?([\d.]+)", float, 2.0),
+    ("web_radial_length_mm", r"(?:web|腹板)径向(?:长度|高度)[：:]?([\d.]+)", float, 2.0),
     # 孔阵列（"安装孔"限定避免与减重/冷却孔"孔径"冲突）
     ("holes",                r"(\d+)个安装孔",       int,   0),
     ("hdia_mm",              r"安装孔，孔径([\d.]+)", float, 0.5),
@@ -61,7 +68,9 @@ LABELS = {
     "outer_diameter_mm": "外径", "bore_diameter_mm": "中心孔",
     "axial_thickness_mm": "轴厚", "slots": "榫槽数量", "teeth_count": "齿数",
     "slot_depth_mm": "槽深", "throat_half_width_mm": "喉部半宽", "root_fillet_mm": "齿根圆角",
+    "tip_fillet_mm": "齿顶圆角", "neck_fillet_mm": "齿间/颈部圆角", "bottom_fillet_mm": "槽底圆角",
     "hub_half_mm": "轮毂半厚", "rim_half_mm": "轮缘半厚",
+    "hub_radial_height_mm": "hub径向高度", "web_radial_length_mm": "web径向长度",
     "holes": "孔数量", "hdia_mm": "孔径", "pcd_mm": "孔分布半径",
     "grooves": "环槽数量", "gw_mm": "环槽槽宽", "gd_mm": "环槽槽深",
     "R_mm": "榫槽分布半径",

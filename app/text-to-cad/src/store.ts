@@ -9,6 +9,7 @@ import type {
   DatasetEntry,
   GeometryType,
   ModelParameters,
+  TraceEvent,
   Fea3dField,
   Fea3dColorCache,
 } from './types';
@@ -75,11 +76,13 @@ interface AppState {
   generationProgress: number;
   generationStage: string;
   setGenerationProgress: (p: number, stage?: string) => void;
+  generationTrace: TraceEvent[];
+  setGenerationTrace: (trace: TraceEvent[]) => void;
 
   // UI 状态
   leftPanelCollapsed: boolean;
   rightPanelCollapsed: boolean;
-  rightPanelActiveTab: 'properties' | 'dataset' | 'fea';
+  rightPanelActiveTab: 'properties' | 'dataset' | 'fea' | 'trace';
   wireframeMode: boolean;
 
   // FEA State
@@ -131,7 +134,7 @@ interface AppState {
 
   setLeftPanelCollapsed: (value: boolean) => void;
   setRightPanelCollapsed: (value: boolean) => void;
-  setRightPanelActiveTab: (tab: 'properties' | 'dataset') => void;
+  setRightPanelActiveTab: (tab: 'properties' | 'dataset' | 'fea' | 'trace') => void;
   setWireframeMode: (value: boolean) => void;
 }
 
@@ -339,6 +342,8 @@ export const useStore = create<AppState>((set) => ({
   generationProgress: 0,
   generationStage: '',
   setGenerationProgress: (p, s) => set(() => ({ generationProgress: p, generationStage: s || '' })),
+  generationTrace: [],
+  setGenerationTrace: (trace) => set(() => ({ generationTrace: trace })),
 
   leftPanelCollapsed: false,
   rightPanelCollapsed: false,

@@ -28,7 +28,10 @@ class LlmModelConfig(BaseModel):
     use_json_output_fallback: bool = False
     timeout_s: int = 90
     max_retries: int = 2
+    api_key_env: str = "DEEPSEEK_API_KEY"
+    thinking: dict | None = None
     temperature: float | None = None
+    seed: int | None = None
     reasoning_enabled: bool = False
     reasoning_effort: str | None = None
 

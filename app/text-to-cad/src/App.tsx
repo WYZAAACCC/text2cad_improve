@@ -23,12 +23,15 @@ export function setForceRoute(route: string | undefined) { _forceRoute = route; 
 async function doGenerate(text: string, graphKey?: string) {
   const s = useStore.getState();
   try {
-    const taskId = await generateModel(text, s.sessionId, graphKey, _forceRoute);
+    s.setGenerationTrace([]);
+    const useAgentic = _forceRoute !== 'deterministic_primitive';
+    const taskId = await generateModel(text, s.sessionId, graphKey, _forceRoute, useAgentic);
     let task: GenerationTask | null = null;
-    for (let i = 0; i < 120; i++) {
-      await new Promise(r => setTimeout(r, 5000));
+    for (let i = 0; i < 600; i++) {
+      await new Promise(r => setTimeout(r, 1000));
       task = await pollTaskStatus(taskId);
       s.setGenerationProgress(task.progress || 0);
+      if (task.trace && task.trace.length) s.setGenerationTrace(task.trace);
       if (task.status === 'completed' || task.status === 'failed') break;
     }
     s.setGenerationProgress(100);

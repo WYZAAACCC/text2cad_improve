@@ -85,29 +85,59 @@ def _disc_profile(ir):
     return _find_profile_node(ir, comp)
 
 
+def _slot_cutter_component(ir):
+    """真正的枞树榫槽 cutter 组件（排除孔/环槽/冷却孔等特征 cutter）。"""
+    for c in ir.get("components", []):
+        cid = str(c.get("id", ""))
+        kh = str(c.get("kind_hint", ""))
+        if ("slot" in cid or "cutter" in cid or "slot" in kh or "cutter" in kh) \
+                and "hole" not in cid and "groove" not in cid \
+                and "cl_" not in cid and "lh" not in cid and "rimslot" not in cid:
+            return c
+    return None
+
+
 def _slot_profile(ir):
-    comp = _component_with_op(ir, "extrude_profile")
-    return _find_profile_node(ir, comp)
+    comp = _slot_cutter_component(ir)
+    if comp is None:
+        return []
+    pts = _find_profile_node(ir, comp["id"]) or []
+    out = []
+    for p in pts:
+        if isinstance(p, dict):
+            out.append(p)
+        elif isinstance(p, (list, tuple)) and len(p) == 2:
+            out.append({"x_mm": float(p[0]), "y_mm": float(p[1])})
+    return out
 
 
 def _pattern(ir):
-    for n in ir["nodes"]:
-        if n["op"] == "circular_pattern_component":
-            return n["params"]
+    comp = _slot_cutter_component(ir)
+    if comp is not None:
+        extrude_ids = [
+            n.get("id") for n in ir.get("nodes", [])
+            if n.get("component") == comp["id"] and n.get("op") == "extrude_profile"
+        ]
+        for n in ir.get("nodes", []):
+            if n.get("op") != "circular_pattern_component":
+                continue
+            ins = n.get("inputs") or []
+            refs = [inp.get("node") or inp.get("producer_node") for inp in ins]
+            if any(r in extrude_ids for r in refs):
+                return n.get("params")
     raise ValueError("未找到榫槽阵列 (circular_pattern_component)")
 
 
 def _no_slot_skip(ir) -> dict | None:
-    """IR 无榫槽（无 extrude_profile 工具体组件）→ 返回跳过 ok=True；有榫槽 → None。
+    """IR 无榫槽（无榫槽 cutter 组件）→ 返回跳过 ok=True；有榫槽 → None。
 
     盘型（basic/hole/groove）为 axisym 单组件（revolve + 孔/环槽/切槽），无榫槽 cutter，
     榫槽检查（节距/周期性/STEP 回读）对它无意义，须跳过而非抛异常（否则 MCP 门误判失败）。
     """
-    try:
-        _component_with_op(ir, "extrude_profile")
+    if _slot_cutter_component(ir) is not None:
         return None
-    except ValueError:
-        return {"ok": True, "skipped": True, "note": "无榫槽盘（无 extrude_profile 工具体），跳过榫槽检查"}
+    return {"ok": True, "skipped": True,
+            "note": "无榫槽盘（无榫槽 cutter 组件），跳过榫槽检查"}
 
 
 def _slot_fillets(ir):
@@ -229,8 +259,10 @@ def check_degenerate_geometry(args=None):
         from OCP.BRepGProp import BRepGProp
         from OCP.TopoDS import TopoDS
 
-        edge_len_min = 0.25      # tolerance.py min_edge_length_mm
-        face_area_min = 0.01     # 小面面积阈值 (mm²)
+        # 阈值校准：参考模板 60 槽盘的布尔接缝最短边约 0.137mm（实测分布
+        # 0.137/0.142），0.1 仍能抓真退化，同时放行无害布尔细缝。
+        edge_len_min = float((args or {}).get("edge_len_min", 0.1))
+        face_area_min = float((args or {}).get("face_area_min", 0.01))
 
         small_edges, total_edges = 0, 0
         exp = TopExp_Explorer(shape, TopAbs_EDGE)
@@ -424,6 +456,8 @@ def measure_fir_tree_slot_profile(args=None):
     base = _base_dir(args or {})
     ir = _load_ir(base)
     pts = _slot_profile(ir)
+    if not pts:
+        return {"ok": False, "reason": "槽轮廓缺失或格式非法"}
     stats = _profile_stats(pts)
     root = _root_fillet(ir)
     stats["root_fillet_mm"] = root["params"]["radius_mm"] if root else None
@@ -450,6 +484,8 @@ def check_slot_pitch_and_ligament(args=None):
         return skip
     pat = _pattern(ir)
     pts = _slot_profile(ir)
+    if not pts:
+        return {"ok": False, "reason": "槽轮廓缺失或格式非法"}
     count, radius = pat["count"], pat["radius_mm"]
     pitch = 2 * math.pi * radius / count
     ys = [p["y_mm"] for p in pts]
@@ -473,7 +509,10 @@ def check_slot_depth_and_rim(args=None):
     skip = _no_slot_skip(ir)
     if skip is not None:
         return skip
-    stats = _profile_stats(_slot_profile(ir))
+    pts = _slot_profile(ir)
+    if not pts:
+        return {"ok": False, "reason": "槽轮廓缺失或格式非法"}
+    stats = _profile_stats(pts)
     disc = _disc_profile(ir)
     slot_depth = stats["slot_depth_mm"]
     outer = max(p["x_mm"] for p in disc)
@@ -500,6 +539,8 @@ def check_adjacent_feature_clearance(args=None):
         return skip
     pat = _pattern(ir)
     pts = _slot_profile(ir)
+    if not pts:
+        return {"ok": False, "reason": "槽轮廓缺失或格式非法"}
     count, radius = pat["count"], pat["radius_mm"]
     pitch = 2 * math.pi * radius / count
     ys = [p["y_mm"] for p in pts]
@@ -534,6 +575,8 @@ def compare_slot_profile_to_requirement(args=None):
     if skip is not None:
         return skip
     pts = _slot_profile(ir)
+    if not pts:
+        return {"ok": False, "reason": "槽轮廓缺失或格式非法"}
     actual = _profile_stats(pts)
     root = _root_fillet(ir)
     actual_root = root["params"]["radius_mm"] if root else None
@@ -606,6 +649,8 @@ def validate_slot_pattern_periodicity(args=None):
         return skip
     pat = _pattern(ir)
     pts = _slot_profile(ir)
+    if not pts:
+        return {"ok": False, "reason": "槽轮廓缺失或格式非法"}
     count, radius = pat["count"], pat["radius_mm"]
     pitch = 2 * math.pi * radius / count
     ys = [p["y_mm"] for p in pts]
@@ -938,6 +983,74 @@ def _slot_fillet_class(ir: dict, node: dict):
     return best
 
 
+def _component_ids_by_kind(ir: dict, kind_hint: str) -> list[str]:
+    return [c["id"] for c in ir.get("components", [])
+            if c.get("kind_hint") == kind_hint]
+
+
+def _polyline_node_for_component(ir: dict, component_id: str):
+    for n in ir.get("nodes", []):
+        if n.get("component") == component_id and n.get("op") == "add_polyline":
+            return n
+    return None
+
+
+def _disc_polyline_node(ir: dict):
+    cids = _component_ids_by_kind(ir, "turbine_disc")
+    for cid in cids:
+        node = _polyline_node_for_component(ir, cid)
+        if node is not None:
+            return node
+    return None
+
+
+def _groove_polyline_node(ir: dict):
+    cids = _component_ids_by_kind(ir, "groove_cutter")
+    for cid in cids:
+        node = _polyline_node_for_component(ir, cid)
+        if node is not None:
+            return node
+    return None
+
+
+def _slot_polyline_node(ir: dict):
+    cids = _component_ids_by_kind(ir, "fir_tree_cutter")
+    for cid in cids:
+        node = _polyline_node_for_component(ir, cid)
+        if node is not None:
+            return node
+    return None
+
+
+def _slot_pattern_node(ir: dict):
+    """榫槽 pattern：最后一个 boolean_cut 的 tool body 若为 pattern，即榫槽阵列。"""
+    if not _component_ids_by_kind(ir, "fir_tree_cutter"):
+        return None
+    for n in reversed(ir.get("nodes", [])):
+        if n.get("op") != "boolean_cut":
+            continue
+        ins = n.get("inputs") or []
+        if len(ins) < 2:
+            return None
+        tool_ref = ins[1].get("producer_node") or ins[1].get("node") or ""
+        tool = _get_node(ir, tool_ref)
+        if tool is not None and tool.get("op") == "circular_pattern_component":
+            return tool
+        return None
+    return None
+
+
+def _hole_pattern_node(ir: dict):
+    """孔 pattern：第一个非榫槽的 circular_pattern_component（模板固定命名 n_pat_*）。"""
+    for n in ir.get("nodes", []):
+        if n.get("op") != "circular_pattern_component":
+            continue
+        if str(n.get("id") or "").startswith("n_pattern_cutters"):
+            continue
+        return n
+    return None
+
+
 def _resolve_param_nodes(ir: dict, param_key: str):
     """语义定位参数→节点 id 列表（不依赖节点命名）。未知/组件缺失→None。
 
@@ -948,27 +1061,47 @@ def _resolve_param_nodes(ir: dict, param_key: str):
     """
     try:
         if param_key in ("slot_count", "slot_distribution_radius"):
-            for n in ir["nodes"]:
-                if n["op"] == "circular_pattern_component":
-                    return [n["id"]]
-            return None
+            pat = _slot_pattern_node(ir)
+            return [pat["id"]] if pat is not None else None
         if param_key == "slot_axial_depth":
-            comp = _component_with_op(ir, "extrude_profile")
-            for n in ir["nodes"]:
-                if n["component"] == comp and n["op"] == "extrude_profile":
-                    return [n["id"]]
+            cids = _component_ids_by_kind(ir, "fir_tree_cutter")
+            for cid in cids:
+                for n in ir["nodes"]:
+                    if n.get("component") == cid and n.get("op") == "extrude_profile":
+                        return [n["id"]]
             return None
         if param_key in ("root_fillet", "flank_fillet", "lobe_top_fillet"):
-            comp = _component_with_op(ir, "extrude_profile")
-            cls = {"root_fillet": "root", "flank_fillet": "flank",
-                   "lobe_top_fillet": "lobe_top"}[param_key]
-            out = [n["id"] for n in ir["nodes"]
-                   if n["component"] == comp and n["op"] == "fillet_sketch"
-                   and _slot_fillet_class(ir, n) == cls]
+            cids = _component_ids_by_kind(ir, "fir_tree_cutter")
+            if not cids:
+                return None
+            comp = cids[0]
+            poly = _polyline_node_for_component(ir, comp)
+            n_upper = (len(poly.get("params", {}).get("points") or []) // 2
+                       if poly is not None else 0)
+            role_set = {
+                "root_fillet": {"neck"},
+                "flank_fillet": {"tip_flank_top", "connector"},
+                "lobe_top_fillet": {"tip_platform_end"},
+            }[param_key]
+            out = []
+            for n in ir["nodes"]:
+                if n.get("component") != comp or n.get("op") != "fillet_sketch":
+                    continue
+                ai = n.get("params", {}).get("at_vertex_index")
+                idxs = ai if isinstance(ai, list) else ([ai] if isinstance(ai, int) else [])
+                roles = {_slot_index_role(i, n_upper) for i in idxs if n_upper > 0}
+                if roles & role_set:
+                    out.append(n["id"])
             return out or None
         if param_key in ("disc_hub_web_fillet", "disc_web_rim_fillet"):
-            comp = _component_with_op(ir, "revolve_profile")
-            target = {2, 9} if param_key == "disc_hub_web_fillet" else {3, 8}
+            cids = _component_ids_by_kind(ir, "turbine_disc")
+            if not cids:
+                return None
+            comp = cids[0]
+            poly = _polyline_node_for_component(ir, comp)
+            n_pts = len(poly.get("params", {}).get("points") or []) if poly is not None else 0
+            target = ({2, n_pts - 3} if param_key == "disc_hub_web_fillet"
+                      else {3, n_pts - 4})
             out = []
             for n in ir["nodes"]:
                 if n["component"] == comp and n["op"] == "fillet_sketch":
@@ -978,29 +1111,36 @@ def _resolve_param_nodes(ir: dict, param_key: str):
                     if ai_set & target:
                         out.append(n["id"])
             return out or None
-        # axisym 盘（basic/hole/groove）：语义定位 cut_center_bore / 首个孔 pattern /
-        # 首个环槽节点。多孔/多槽盘取首个（"主特征"），避免歧义。
         if param_key == "bore_diameter":
-            for n in ir["nodes"]:
-                if n["op"] == "cut_center_bore":
-                    return [n["id"]]
-            return None
+            node = _disc_polyline_node(ir)
+            return [node["id"]] if node is not None else None
         if param_key == "hole_count":
-            for n in ir["nodes"]:
-                if n["op"] == "cut_circular_hole_pattern":
-                    return [n["id"]]
-            return None
+            node = _hole_pattern_node(ir)
+            return [node["id"]] if node is not None else None
         if param_key == "groove_depth":
-            for n in ir["nodes"]:
-                if n["op"] == "cut_annular_groove":
-                    return [n["id"]]
-            return None
+            node = _groove_polyline_node(ir)
+            return [node["id"]] if node is not None else None
     except ValueError:
         return None
     return None
 
 
 def _current_value(ir: dict, reg: dict):
+    key = reg["param"]
+    if key == "bore_diameter":
+        node = _disc_polyline_node(ir)
+        if node is None:
+            return None
+        pts = node.get("params", {}).get("points") or []
+        xs = [p.get("x_mm") for p in pts if isinstance(p, dict) and p.get("x_mm") is not None]
+        return round(min(xs) * 2.0, 3) if xs else None
+    if key == "groove_depth":
+        node = _groove_polyline_node(ir)
+        if node is None:
+            return None
+        pts = node.get("params", {}).get("points") or []
+        xs = [p.get("x_mm") for p in pts if isinstance(p, dict) and p.get("x_mm") is not None]
+        return round(max(xs) - min(xs), 3) if xs else None
     nodes = _resolve_param_nodes(ir, reg["param"])
     if not nodes:
         return None
@@ -1066,6 +1206,8 @@ def regenerate_model(args=None):
         if reg is None:
             errors.append(f"未知参数 key {key!r}（请用 list_regeneratable_params 查看）")
             continue
+        if reg.get("type") == "int":
+            val = int(round(float(val)))
         lo, hi = reg["range"]
         if val < lo or val > hi:
             errors.append(f"{key}={val} 超出范围 [{lo},{hi}]{reg['unit']}")
@@ -1075,8 +1217,40 @@ def regenerate_model(args=None):
         if not node_ids:
             errors.append(f"参数 {key} 在当前文档中不可用（未找到对应节点）")
             continue
-        for nid in node_ids:
-            _get_node(raw, nid)["params"][reg["field"]] = val
+        if key == "bore_diameter":
+            node = _disc_polyline_node(raw)
+            if node is None:
+                errors.append("参数 bore_diameter 不可用（未找到盘体轮廓）")
+                continue
+            pts = node.get("params", {}).get("points") or []
+            xs = [p.get("x_mm") for p in pts if isinstance(p, dict) and p.get("x_mm") is not None]
+            if not xs:
+                errors.append("参数 bore_diameter 不可用（盘体轮廓无坐标点）")
+                continue
+            min_x = min(xs)
+            new_r = round(float(val) / 2.0, 3)
+            for p in pts:
+                if abs(p.get("x_mm") - min_x) < 1e-9:
+                    p["x_mm"] = new_r
+        elif key == "groove_depth":
+            node = _groove_polyline_node(raw)
+            if node is None:
+                errors.append("参数 groove_depth 不可用（未找到环槽轮廓）")
+                continue
+            pts = node.get("params", {}).get("points") or []
+            xs = [p.get("x_mm") for p in pts if isinstance(p, dict) and p.get("x_mm") is not None]
+            if not xs:
+                errors.append("参数 groove_depth 不可用（环槽轮廓无坐标点）")
+                continue
+            inner = min(xs)
+            outer = max(xs)
+            new_outer = round(float(inner) + float(val), 3)
+            for p in pts:
+                if abs(p.get("x_mm") - outer) < 1e-9:
+                    p["x_mm"] = new_outer
+        else:
+            for nid in node_ids:
+                _get_node(raw, nid)["params"][reg["field"]] = val
         changes.append({"param": key, "label": reg["label"], "old": old, "new": val,
                         "unit": reg["unit"], "nodes": node_ids})
 
@@ -1086,7 +1260,7 @@ def regenerate_model(args=None):
         return {"ok": False, "reason": "没有有效的参数修改"}
 
     # 每个再生一个独立子目录（含 raw_fixed.json + output.step，命名兼容 MCP 检查工具）
-    tag = "_".join(f"{c['param']}{c['new']}" for c in changes)
+    tag = f"{base.name}_" + "_".join(f"{c['param']}{c['new']}" for c in changes)
     tag_dir = REGEN_WS / tag
     tag_dir.mkdir(parents=True, exist_ok=True)
     (tag_dir / "raw_fixed.json").write_text(

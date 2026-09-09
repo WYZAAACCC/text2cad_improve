@@ -1,0 +1,10 @@
+{
+  "experiment": "commercial_cad_import",
+  "software": "SolidWorks 2025",
+  "sample_size": 80,
+  "direct_import_ok": 80,
+  "direct_import_rate": 1.0,
+  "first_attempt_rate": 0.9625,
+  "retried_success": 3,
+  "generated_at": "2026-08-30T16:02:12"
+}

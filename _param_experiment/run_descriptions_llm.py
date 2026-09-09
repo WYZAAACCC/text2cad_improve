@@ -89,7 +89,7 @@ def _param_summary(params: dict) -> str:
     if params.get("cavity_width_mm"):
         p.append(f"腹板环形减重腔，腔宽{params['cavity_width_mm']}mm，腔深{params['cavity_depth_mm']}mm")
     if params.get("rim_arc_radius_mm"):
-        p.append(f"轮缘圆弧曲线过渡半径{params['rim_arc_radius_mm']}mm")
+        p.append(f"轮缘与腹板交界采用曲线过渡，过渡幅度{params['rim_arc_radius_mm']}mm")
     return "，".join(p)
 
 

@@ -34,6 +34,7 @@ class GenerateRequest(BaseModel):
     sessionId: str = "default"
     spatialGraphKey: str | None = None
     forceRoute: str | None = None  # "generative_cad_ir" | "deterministic_primitive" | None(auto)
+    agentic: bool | None = None    # True: 多智能体 L2；None: 跟随 AGENTIC_L2 环境变量
 
 class TaskStatus(BaseModel):
     taskId: str
@@ -41,6 +42,7 @@ class TaskStatus(BaseModel):
     progress: int = 0
     result: dict | None = None
     error: str | None = None
+    trace: list[dict] = Field(default_factory=list)
 
 class DatasetCreateRequest(BaseModel):
     name: str
@@ -68,6 +70,60 @@ def _update_task(task_id: str, **kwargs):
         if task_id in _tasks:
             _tasks[task_id].update(kwargs)
 
+
+def _append_trace(task_id: str, *, progress: int, title: str,
+                  message: str = "", data: dict | None = None,
+                  status: str = "running") -> None:
+    """追加一条运行过程事件，供前端实时展示思考链与系统细节。"""
+    with _lock:
+        task = _tasks.get(task_id)
+        if task is None:
+            return
+        task.setdefault("trace", []).append({
+            "ts": _time.time(),
+            "progress": progress,
+            "title": title,
+            "message": message,
+            "status": status,
+            "data": data,
+        })
+
+
+def _agentic_trace_events(out_dir: Path) -> list[tuple[int, str, str, dict]]:
+    """从落盘产物提取 Agent A/B 的可视化摘要（失败时静默跳过）。"""
+    events: list[tuple[int, str, str, dict]] = []
+    try:
+        plan = json.loads((out_dir / "agent_a_plan.json").read_text(encoding="utf-8"))
+        skel = plan.get("gcad_skeleton") or {}
+        profiles = plan.get("profiles") or []
+        comps = skel.get("components") or []
+        nodes = skel.get("nodes") or []
+        prof_summary = [
+            {"profile_id": p.get("profile_id"), "kind": p.get("kind"),
+             "params": p.get("params") or {}}
+            for p in profiles
+        ]
+        events.append((
+            48, "Agent A · 整体设计",
+            f"生成设计骨架：{len(comps)} 个组件、{len(nodes)} 个节点，声明 {len(profiles)} 个轮廓参数",
+            {"part_name": skel.get("part_name"),
+             "components": [c.get("id") for c in comps[:8]],
+             "profiles": prof_summary},
+        ))
+    except Exception:
+        pass
+    try:
+        raw = json.loads((out_dir / "llm_raw.json").read_text(encoding="utf-8"))
+        hints = (raw.get("llm_validation_hints") or {}).get("agentic_l2") or {}
+        events.append((
+            52, "Agent B · 轮廓实现",
+            f"填充 {hints.get('filled_points', 0)}/{hints.get('profiles', 0)} 个轮廓坐标",
+            {"symmetry_corrected": hints.get("symmetry_corrected") or []},
+        ))
+    except Exception:
+        pass
+    return events
+
 # ============================================================
 # L2 后处理：fillet 安全半径 clamp
 # ============================================================
@@ -80,6 +136,16 @@ def _clamp_fillet_radii(raw: dict, factor: float = 0.85) -> dict:
 
     返回 {"clamped": [{node_id, old, new, min_edge}], "count"}。
     """
+    def _point(p):
+        if isinstance(p, dict):
+            return p
+        if isinstance(p, (list, tuple)) and len(p) >= 2:
+            try:
+                return {"x_mm": float(p[0]), "y_mm": float(p[1])}
+            except (TypeError, ValueError):
+                return None
+        return None
+
     comp_points: dict = {}
     for n in raw.get("nodes", []):
         if n["op"] == "add_polyline":
@@ -98,9 +164,11 @@ def _clamp_fillet_radii(raw: dict, factor: float = 0.85) -> dict:
         for i in idxs:
             if not (0 <= i < len(pts)):
                 continue
-            prev = pts[(i - 1) % len(pts)]
-            nxt = pts[(i + 1) % len(pts)]
-            p = pts[i]
+            prev = _point(pts[(i - 1) % len(pts)])
+            nxt = _point(pts[(i + 1) % len(pts)])
+            p = _point(pts[i])
+            if prev is None or nxt is None or p is None:
+                continue
             la = math.hypot(prev["x_mm"] - p["x_mm"], prev["y_mm"] - p["y_mm"])
             lb = math.hypot(p["x_mm"] - nxt["x_mm"], p["y_mm"] - nxt["y_mm"])
             min_edges.append(min(la, lb))
@@ -483,9 +551,13 @@ def _run_primitive(task_id: str, plan, out_dir: Path):
 # ============================================================
 # Pipeline
 # ============================================================
-def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None, force_route: str | None = None):
+def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
+                  force_route: str | None = None, agentic: bool | None = None):
     try:
         _update_task(task_id, status="processing", progress=10)
+        _append_trace(task_id, progress=10, title="任务启动",
+                      message="需求已接收，开始解析几何约束与生成路线",
+                      data={"text": text[:200]})
 
         api_key = os.environ.get("DEEPSEEK_API_KEY", "")
 
@@ -507,7 +579,12 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                 encoding="utf-8")
         except Exception:
             pass
-        config = LlmModelConfig(model="deepseek-v4-pro", base_url="https://api.deepseek.com/beta")
+        config = LlmModelConfig(
+            model="deepseek-v4-pro",
+            base_url="https://api.deepseek.com/beta",
+            timeout_s=240,
+            reasoning_effort=os.environ.get("REASONING_EFFORT", "low"),
+        )
         # 数据集字段 L：逐次工具调用轨迹（薄 wrapper，不碰 src；L1/L2/双 repair 环共用同一实例）
         _tool_audit: list = []
         caller = _AuditToolCaller(DeepSeekToolCaller(), _tool_audit)
@@ -535,6 +612,9 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                     spatial_context += SERVER_SPATIAL_DIALECT_GUIDANCE
                     _update_task(task_id, status="processing", progress=15,
                                  result={"stage": f"Spatial: {len(cg.constraints)} constraints"})
+                    _append_trace(task_id, progress=15, title="空间约束解析",
+                                  message=f"识别到 {len(cg.constraints)} 条空间约束，注入几何参数上下文",
+                                  data={"constraint_count": len(cg.constraints)})
                 except Exception:
                     pass
 
@@ -544,20 +624,25 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
             # Skip L1 routing — the caller already knows the desired route.
             # Build a minimal route plan directly.
             from seekflow_engineering_tools.generative_cad.skills.schemas import DialectSelectionItem
+            is_primitive = force_route == "deterministic_primitive"
             plan = DialectSelectionPlan(
                 part_intent={"object_type": "unknown", "dominant_geometry": "unknown",
                              "engineering_domain": "general"},
                 route_decision=force_route,
-                selected_dialects=[
+                selected_dialects=[] if is_primitive else [
                     DialectSelectionItem(dialect="sketch_profile", version="0.2.0",
                                          reason="Forced route — caller specified"),
                     DialectSelectionItem(dialect="composition", version="0.2.0",
                                          reason="Assembly operations"),
                 ],
+                selected_primitive="axisymmetric_turbine_disk" if is_primitive else None,
                 safety_notes=["Forced route — no L1 analysis performed."],
             )
             _update_task(task_id, status="processing", progress=35,
                          result={"stage": f"L1: forced to {force_route}"})
+            _append_trace(task_id, progress=35, title="L1 路由决策（强制）",
+                          message=f"按调用方指定路线 {force_route}，跳过 L1 大模型路由",
+                          data={"route_decision": force_route})
         else:
             _update_task(task_id, status="processing", progress=20, result={"stage": "L1 routing"})
             l1c = prompt_compiler.compile_level1(text, dialect_catalog=reg.export_catalog(),
@@ -606,6 +691,13 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
             (out_dir/"route_plan.json").write_text(plan.model_dump_json(indent=2), encoding="utf-8")
             _update_task(task_id, status="processing", progress=35,
                          result={"stage": f"L1: {plan.route_decision}"})
+            _append_trace(task_id, progress=35, title="L1 路由决策",
+                          message=f"模型判定采用 {plan.route_decision} 路线",
+                          data={"route_decision": plan.route_decision,
+                                "selected_dialects": [
+                                    {"dialect": d.dialect, "reason": d.reason}
+                                    for d in (plan.selected_dialects or [])
+                                ]})
 
         # Write route plan regardless
         (out_dir/"route_plan.json").write_text(plan.model_dump_json(indent=2), encoding="utf-8")
@@ -622,6 +714,9 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                 ]
             _update_task(task_id, status="processing", progress=35,
                          result={"stage": "L1: forced to generative_cad_ir"})
+            _append_trace(task_id, progress=35, title="L1 路线覆盖",
+                          message="调用方指定生成式 CAD IR，覆盖 L1 路由结果",
+                          data={"route_decision": "generative_cad_ir"})
 
         if plan.route_decision == "deterministic_primitive" and force_route != "generative_cad_ir":
             # Try primitive path
@@ -644,20 +739,76 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
 
         # ---- L2 Author (with context injection) ----
         _update_task(task_id, status="processing", progress=45, result={"stage": "L2 authoring"})
+        _append_trace(task_id, progress=45, title="L2 创作启动",
+                      message="开始由 Agent 系统构建 CAD 中间表示")
         try:
             # 提示词组合迁移至 PromptCompiler (prompt_system) — 输出与原内联拼接
             # 逐字节一致 (tests/generative_cad/prompt_system 回归锁定), 并落盘 trace。
             # 方向 X：注入实验参数化轮廓规则 + 本次需求参数值（提高喉部/齿数/圆角遵循率）
             from validate_req_params import extract_requirements
+            use_agentic = agentic if agentic is not None else os.environ.get("AGENTIC_L2") == "1"
             if os.environ.get("TEMPLATE_L2") == "1" and (out_dir / "llm_raw.json").exists():
                 # 确定性参数化模板预置 llm_raw（run_batch 模板模式，非 LLM 生成）。
                 # 模板生成的 IR 结构合法，validation 一次过；下游 repair/runtime/MCP 门照常。
                 raw = json.loads((out_dir / "llm_raw.json").read_text(encoding="utf-8"))
-            elif os.environ.get("AGENTIC_L2") == "1":
+            elif use_agentic:
                 # 生成层 agent 化：整体设计 agent + 轮廓实现 agent（输出与 llm_raw 同构）
-                from agentic_l2 import run_agentic_l2
+                from server.agentic_l2 import run_agentic_l2
+                def _push_agent_status(agent: str, kind: str, status: str):
+                    if status == "calling":
+                        _append_trace(
+                            task_id,
+                            progress=45 if kind == "design" else 50,
+                            title=f"{agent} 推理中",
+                            message=f"正在调用 DeepSeek 生成{agent}输出，完整思考链将在返回后滚动展示",
+                            data={"agent": agent, "kind": kind, "status": status},
+                            status="running",
+                        )
+                def _push_reasoning_token(agent: str, kind: str, token: str,
+                                          profile_id: str | None = None):
+                    tag = f" [{profile_id}]" if profile_id else ""
+                    title = f"思考链 · {agent}{tag}"
+                    with _lock:
+                        task = _tasks.get(task_id)
+                        if task is None:
+                            return
+                        trace = task.setdefault("trace", [])
+                        ev = next(
+                            (e for e in reversed(trace)
+                             if e.get("title") == title and e.get("status") == "running"),
+                            None,
+                        )
+                        if ev is None:
+                            ev = {
+                                "ts": _time.time(),
+                                "progress": 48 if kind == "design" else 52,
+                                "title": title,
+                                "message": "",
+                                "status": "running",
+                                "data": {"reasoning": "", "agent": agent, "kind": kind},
+                            }
+                            trace.append(ev)
+                        data = ev.setdefault("data", {})
+                        data["reasoning"] = (data.get("reasoning") or "") + token
+                        ev["message"] = data["reasoning"][:2000]
+                def _push_reasoning(agent: str, kind: str, profile_id: str | None, text: str):
+                    tag = f" [{profile_id}]" if profile_id else ""
+                    _append_trace(
+                        task_id,
+                        progress=48 if kind == "design" else 52,
+                        title=f"设计推理摘要 · {agent}{tag}",
+                        message=text[:2000],
+                        data={"reasoning_summary": text, "agent": agent, "kind": kind},
+                        status="completed",
+                    )
                 raw = run_agentic_l2(text, plan, caller=caller,
-                                     llm_model_config=config, out_dir=out_dir)
+                                     llm_model_config=config, out_dir=out_dir,
+                                     on_reasoning=_push_reasoning,
+                                     on_status=_push_agent_status,
+                                     on_reasoning_token=_push_reasoning_token)
+                for ev_progress, ev_title, ev_msg, ev_data in _agentic_trace_events(out_dir):
+                    _append_trace(task_id, progress=ev_progress, title=ev_title,
+                                  message=ev_msg, data=ev_data)
             else:
                 l2_text = text + _append_parametric_block(text, extract_requirements(text))
                 l2c = prompt_compiler.compile_level2(l2_text, plan, spatial_context=spatial_context,
@@ -682,6 +833,9 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
             # fillet 安全半径 clamp（防 BRep_API: command not done；llm_raw.json 保留 LLM 原始输出）
             clamp_report = _clamp_fillet_radii(raw)
             if clamp_report["count"]:
+                _append_trace(task_id, progress=50, title="圆角安全钳制",
+                              message=f"将 {clamp_report['count']} 处超限圆角半径钳制到邻边安全上限",
+                              data={"clamped": clamp_report["clamped"]})
                 (out_dir/"fillet_clamp.json").write_text(
                     json.dumps(clamp_report, indent=2, ensure_ascii=False), encoding="utf-8")
         except Exception as e:
@@ -692,6 +846,9 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
 
         n_nodes = len(raw.get("nodes",[]))
         _update_task(task_id, status="processing", progress=55, result={"stage": f"L2: {n_nodes} nodes"})
+        _append_trace(task_id, progress=55, title="L2 结构生成",
+                      message=f"CAD IR 包含 {n_nodes} 个操作节点，进入校验与修复",
+                      data={"node_count": n_nodes})
 
         # ---- Validate + Repair Loop (repair_kernel orchestrator, repair_loop.md) ----
         _update_task(task_id, status="processing", progress=65, result={"stage": "Validation"})
@@ -722,6 +879,13 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
         if loop.repair_outcome is not None:
             (out_dir/"repair_execution.json").write_text(
                 loop.repair_outcome.model_dump_json(indent=2), encoding="utf-8")
+        _append_trace(task_id, progress=68, title="修复循环",
+                      message=("修复被接受，已应用自动修复" if repair_accepted
+                               else "无需修复或未产生可接受修复"),
+                      data={"stop_code": loop.outcome.stop_code,
+                            "validation_llm_attempts": loop.outcome.validation_llm_attempts,
+                            "runtime_llm_attempts": loop.outcome.runtime_llm_attempts,
+                            "autofix_accepted": repair_accepted})
         provider = loop.autofix_provider
         if provider is not None and getattr(provider, "last_report", None) is not None:
             (out_dir/"autofix_report.json").write_text(
@@ -757,6 +921,14 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
             except Exception:
                 pass
         errs = [i for i in report.issues if i.severity=="error"]
+        _append_trace(task_id, progress=70, title="IR 结构校验",
+                      message=f"校验完成：{len(report.issues)} 项提示，其中 {len(errs)} 项错误",
+                      data={"issue_count": len(report.issues), "error_count": len(errs),
+                            "issues": [
+                                {"code": getattr(i, "code", ""), "node_id": getattr(i, "node_id", ""),
+                                 "severity": getattr(i, "severity", ""), "message": str(getattr(i, "message", ""))[:160]}
+                                for i in report.issues[:12]
+                            ]})
         if canonical is None or errs:
             _write_pipeline_log(out_dir, ok=False, error=f"Validation: {len(errs)} errors",
                                 tool_audit=_tool_audit)
@@ -766,11 +938,19 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
 
         # ---- Runtime 已在 orchestrator 内执行 (含失败分类/审计) ----
         rr = loop.run_result
+        _append_trace(task_id, progress=75, title="CAD 几何执行",
+                      message="CadQuery 执行" + ("成功" if rr.ok else f"失败：{rr.error or ''}"),
+                      data={"ok": rr.ok, "error": rr.error or None})
 
         # ---- DiskCAD-MCP 外层质量门（确定性，论文"CAD 生成后的独立质量门"）----
         mcp_gate = _run_mcp_gate(out_dir)
         if mcp_gate is not None:
             _write_inspection_validation(meta_path, mcp_gate)
+            _append_trace(task_id, progress=90, title="CAD 质量门（MCP）",
+                          message=f"通过 {len(mcp_gate.get('passed_checks', []))} 项，"
+                                  f"失败 {len(mcp_gate.get('failed_checks', []))} 项",
+                          data={"passed_checks": mcp_gate.get("passed_checks", []),
+                                "failed_checks": mcp_gate.get("failed_checks", [])})
             if not mcp_gate["ok"]:
                 _write_pipeline_log(out_dir, ok=False,
                                     error=f"MCP quality gate failed: {mcp_gate['failed_checks']}",
@@ -822,6 +1002,16 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
                          if not mcp_gate["ok"] else []},
             "stl": {"ok": stl_ok},
         }, tool_audit=_tool_audit)
+        _append_trace(task_id, progress=100, title="任务完成",
+                      message=f"STEP 已导出（{step_kb} KB），STL 预览{'可用' if stl_ok else '不可用'}",
+                      data={"step_kb": step_kb, "stl_ok": stl_ok,
+                            "autofix_applied": repair_accepted,
+                            "tool_calls": {
+                                "count": len(_tool_audit),
+                                "ok": sum(1 for r in _tool_audit if r.get("ok")),
+                                "failed": sum(1 for r in _tool_audit if not r.get("ok")),
+                                "total_elapsed_s": round(sum(r.get("elapsed_s", 0) for r in _tool_audit), 3),
+                            }})
         _update_task(task_id, status="completed", progress=100, result=task_result)
 
     except Exception as exc:
@@ -836,8 +1026,9 @@ def _run_pipeline(task_id: str, text: str, spatial_graph_key: str | None = None,
 def api_generate(req: GenerateRequest):
     task_id = uuid.uuid4().hex[:16]
     with _lock:
-        _tasks[task_id] = {"taskId": task_id, "status": "pending", "progress": 0, "result": None, "error": None}
-    threading.Thread(target=_run_pipeline, args=(task_id, req.text, req.spatialGraphKey, req.forceRoute), daemon=True).start()
+        _tasks[task_id] = {"taskId": task_id, "status": "pending", "progress": 0,
+                           "result": None, "error": None, "trace": []}
+    threading.Thread(target=_run_pipeline, args=(task_id, req.text, req.spatialGraphKey, req.forceRoute, req.agentic), daemon=True).start()
     return {"taskId": task_id}
 
 @app.get("/api/generate/{task_id}")

@@ -63,6 +63,31 @@ code {
   color: #c9c9d4;
 }
 
+/* Thinking chain stream entry */
+.thinking-entry {
+  animation: thinking-in 0.28s ease-out;
+}
+
+@keyframes thinking-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.thinking-caret {
+  animation: thinking-caret 0.7s step-end infinite;
+}
+
+@keyframes thinking-caret {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
 /* Canvas container */
 .canvas-container {
   position: relative;

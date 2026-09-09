@@ -38,10 +38,12 @@ class SpyCaller:
     def __init__(self, returns: list[dict] | None = None):
         self._returns = list(returns or [])
         self.calls = 0
+        self.messages: list[list[dict]] = []
 
     def call_strict_tool(self, **kwargs):
         from seekflow_engineering_tools.generative_cad.llm.provider import ToolCallResult
         self.calls += 1
+        self.messages.append(kwargs.get("messages", []))
         args = self._returns.pop(0) if self._returns else {"give_up": True,
                                                            "changes": [], "reason": "out"}
         return ToolCallResult(tool_name="emit_repair_patch", arguments=args,
@@ -173,7 +175,7 @@ class TestRuntimeRepairFlow:
                    rt_caller=rt_caller,
                    cfg=RepairLoopConfig(max_runtime_llm_attempts=1))
         assert res.outcome.rejected_patches
-        assert "outside target node" in res.outcome.rejected_patches[0]["reason"]
+        assert "outside allowed repair node params" in res.outcome.rejected_patches[0]["reason"]
 
     def test_implementation_failure_never_reaches_llm(self):
         # §19.5 #42/#43: 代码缺陷不进 LLM, 不消耗预算
@@ -198,6 +200,55 @@ class TestRuntimeRepairFlow:
                    rt_caller=SpyCaller([{"give_up": True, "changes": [],
                                          "reason": "cannot prove causality"}]))
         assert res.outcome.stop_code == "give_up"
+
+    def test_repeated_patch_gives_up_after_guidance(self, tmp_path):
+        # 同一补丁第二次提交 → 先追加明确指导; 仍重复 → give_up, 不空转.
+        doc = _load_valid_doc()
+        node_id = doc["nodes"][0]["id"]
+        old_stations = doc["nodes"][0]["params"]["profile_stations"]
+        new_stations = json.loads(json.dumps(old_stations))
+        new_stations[0]["z_front_mm"] = new_stations[0]["z_rear_mm"] + 1.0
+        patch = {
+            "target_node": node_id, "target_component": None,
+            "changes": [{
+                "path": f"/nodes/{node_id}/params/profile_stations",
+                "old_value": old_stations, "new_value": new_stations,
+                "reason": "attempt same fix",
+            }],
+            "reason": "same fix", "give_up": False,
+        }
+        caller = SpyCaller([patch, patch])
+        res = _run(doc, runtime=FakeRuntime([_repairable_report(node_id)]),
+                   rt_caller=caller, audit_dir=tmp_path)
+        assert res.outcome.stop_code == "give_up"
+        assert res.outcome.runtime_llm_attempts == 2
+        assert "give_up=true" in caller.messages[1][-1]["content"]
+        assert "repeated an already-submitted patch" in res.outcome.stop_reason
+
+    def test_guided_llm_gives_up_cleanly(self, tmp_path):
+        # 引导后 LLM 主动 give_up → 干净结束, 不再消耗下一次调用.
+        doc = _load_valid_doc()
+        node_id = doc["nodes"][0]["id"]
+        old_stations = doc["nodes"][0]["params"]["profile_stations"]
+        new_stations = json.loads(json.dumps(old_stations))
+        new_stations[0]["z_front_mm"] = new_stations[0]["z_rear_mm"] + 1.0
+        patch = {
+            "target_node": node_id, "target_component": None,
+            "changes": [{
+                "path": f"/nodes/{node_id}/params/profile_stations",
+                "old_value": old_stations, "new_value": new_stations,
+                "reason": "attempt same fix",
+            }],
+            "reason": "same fix", "give_up": False,
+        }
+        caller = SpyCaller([patch, {"give_up": True, "changes": [],
+                                    "reason": "cannot improve"}])
+        res = _run(doc, runtime=FakeRuntime([_repairable_report(node_id)]),
+                   rt_caller=caller, audit_dir=tmp_path)
+        assert res.outcome.stop_code == "give_up"
+        assert res.outcome.runtime_llm_attempts == 2
+        assert caller.calls == 2
+        assert "give_up=true" in caller.messages[1][-1]["content"]
 
 
 class TestRuntimePatchPolicy:
@@ -247,7 +298,7 @@ class TestRuntimePatchPolicy:
     def test_foreign_node_path_rejected(self):
         ok, why = self._check([{"path": "/nodes/OTHER/params/radius_mm",
                                 "old_value": 4.0, "new_value": 4.5, "reason": "r"}])
-        assert not ok and "outside target node" in why
+        assert not ok and "outside allowed repair node params" in why
 
 
 class TestCommonPatchPolicy:

@@ -31,3 +31,9 @@ def test_python_exec_no_sandbox_denies_execution():
     ns = NoSandbox()
     result = ns.execute("print(1)")
     assert result.ok is False
+
+
+def test_local_thread_sandbox_accepts_utf8_comments():
+    result = LocalThreadSandbox().execute("# 中文注释\nprint('ok')")
+    assert result.ok
+    assert "ok" in result.stdout

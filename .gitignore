@@ -80,3 +80,17 @@ seekflow_workspace/
 app/text-to-cad/server/output/fea3d_jobs/*/turbine3d.*
 _p8_envs/
 _param_experiment/slot_deep_test/
+
+# Experiment runtime outputs and transient local analysis artifacts (not published)
+_main_experiment/output/
+_param_experiment/turbine_disc_dataset_D01-D32/
+_param_experiment/turbine_disc_dataset_D01-D32.zip
+_param_experiment/_paper_extract/
+.tmp_test/
+_tmp_canon_patch/
+_tmp_canon_patch_T19_1/
+_tmp_canon_patch_T33_1/
+*.log
+_paper_extract.txt
+_paper_extract_0825.txt
+_compare_llm_template_profiles.png

@@ -20,10 +20,12 @@ import {
   History,
   FlaskConical,
   ChevronDown,
+  Activity,
 } from 'lucide-react';
 import * as Tabs from '@radix-ui/react-tabs';
 import * as Dialog from '@radix-ui/react-dialog';
 import FeaTab from './FeaTab';
+import RunTracePanel from './RunTracePanel';
 import * as Slider from '@radix-ui/react-slider';
 import { useStore } from '../store';
 import { getDatasetList, addDatasetEntryApi, deleteDatasetEntryApi } from '../api';
@@ -790,7 +792,7 @@ export default function RightPanel() {
     <div className="w-80 bg-bg-secondary border-l border-border flex flex-col flex-shrink-0">
       <Tabs.Root
         value={rightPanelActiveTab}
-        onValueChange={(v) => setRightPanelActiveTab(v as 'properties' | 'dataset')}
+        onValueChange={(v) => setRightPanelActiveTab(v as 'properties' | 'dataset' | 'fea' | 'trace')}
         className="flex flex-col h-full"
       >
         {/* Tab 头部 */}
@@ -817,6 +819,13 @@ export default function RightPanel() {
               <FlaskConical className="w-3.5 h-3.5" />
               FEA
             </Tabs.Trigger>
+            <Tabs.Trigger
+              value="trace"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-all data-[state=active]:bg-bg-hover data-[state=active]:text-text-primary text-text-secondary"
+            >
+              <Activity className="w-3.5 h-3.5" />
+              过程
+            </Tabs.Trigger>
           </Tabs.List>
 
           <button
@@ -837,6 +846,9 @@ export default function RightPanel() {
         </Tabs.Content>
         <Tabs.Content value="fea" className="flex-1 overflow-hidden data-[state=inactive]:hidden">
           <FeaTab />
+        </Tabs.Content>
+        <Tabs.Content value="trace" className="flex-1 overflow-hidden data-[state=inactive]:hidden">
+          <RunTracePanel />
         </Tabs.Content>
       </Tabs.Root>
     </div>

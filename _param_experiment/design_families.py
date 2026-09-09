@@ -136,6 +136,9 @@ CATEGORY_LABEL = {
     "complex_rim": "轮毂-腹板-轮缘盘体，带厚轮缘与枞树形榫槽",
 }
 
+FORM_LABEL = {"standard": "标准", "thin_web": "薄腹板", "thick_rim": "厚轮缘",
+              "large_hub": "大轮毂", "conical": "锥形腹板"}
+
 
 def _n(v):
     return int(v) if isinstance(v, float) and v.is_integer() else v
@@ -143,7 +146,9 @@ def _n(v):
 
 def _family_text(fam: dict) -> str:
     """按类别确定性生成需求文本（参数显式、措辞对齐 extract_requirements 正则）。"""
-    p = [f"生成一个高压涡轮盘参考几何：{CATEGORY_LABEL[fam['category']]}",
+    form = fam.get("form", "standard")
+    form_label = "" if form == "standard" else FORM_LABEL.get(form, "")
+    p = [f"生成一个{form_label}高压涡轮盘参考几何：{CATEGORY_LABEL[fam['category']]}",
          f"外径{fam['od']}mm，中心孔直径{fam['bore']}mm，轴向最大厚度{fam['thick']}mm",
          f"轮毂半厚{fam['hub']}mm，轮缘半厚{fam['rim']}mm"]
     f = fam.get("features") or {}

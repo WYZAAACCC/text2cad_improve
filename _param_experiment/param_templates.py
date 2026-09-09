@@ -80,7 +80,7 @@ def _transition_pts(rim_junc, z0, z1, t, kind, n=4) -> list:
     power/arc_out），不能统一成圆角式。曲线平滑外凸（r ≥ rim_junc，不削内壁），过渡带限于
     顶部 z0→z0+t（轮缘内壁下半垂直），幅度 t 适中（0.5×rim_arc_radius）避免外凸凸台被
     榫槽贯穿轮缘时切离主体（此前全幅 30mm 使 D32 solid_count=4 → roundtrip fail）。
-    各曲线 r(z) 形状（0→t→0，顶点位置/曲率不同）：
+    各曲线 r(z) 形状（0→t→0，顶点位置/曲率不同），z 覆盖完整过渡区间 [z0, z1]：
       arc_out 对称凸弧（sin）｜s_curve S形（sin²，顶点更圆）｜ellipse 椭圆（缓起缓落，幂 0.7）
       power 幂曲线（不对称，先快后缓）｜arc_in 浅外凸（0.5×sin）。
     返回 [(r, z), ...]（不含两端）。
@@ -88,9 +88,10 @@ def _transition_pts(rim_junc, z0, z1, t, kind, n=4) -> list:
     if t <= 0 or kind == "linear":
         return []
     out = []
+    span = z1 - z0
     for i in range(1, n + 1):
         u = i / (n + 1)
-        z = z0 + t * u                       # 过渡带仅顶部 z0→z0+t，内壁下半垂直
+        z = z0 + span * u                    # 覆盖完整 web-rim 过渡区间
         if kind == "arc_out":
             r = rim_junc + t * math.sin(math.pi * u)                    # 外凸弧（对称）
         elif kind == "s_curve":
@@ -126,15 +127,14 @@ def disc_profile(od_mm, bore_mm, hub_half_mm, rim_half_mm, thick_mm,
         web_inner = web_inner_half if web_inner_half else _clamp(0.6 * hub_half_mm, 8.0, 40.0)
         web_outer = web_outer_half if web_outer_half else _clamp(0.5 * rim_half_mm, 6.0, 32.0)
     # 复杂轮缘曲线过渡（transition != linear）：web-rim 台阶插入过渡点逼近曲线（圆角式）。
-    # 幅度 = 0.5×rim_arc_radius（10-15mm）：全幅 20-30mm 使轮缘内壁外凸成高凸台，
-    # 榫槽贯穿轮缘时把凸台切离主体（D32 solid_count=4 → roundtrip fail）。
+    # rim_arc_radius_mm 即过渡幅度；过渡曲线覆盖完整 web-rim 轴向区间，两端回到 rim_junc。
     trans_t = 0.0
     if transition != "linear":
-        trans_t = float(rim_arc_radius_mm) * 0.5 if rim_arc_radius_mm \
+        trans_t = float(rim_arc_radius_mm) if rim_arc_radius_mm \
             else _clamp(0.12 * rim_radial, 6.0, 15.0)
 
     def _wr(z0, z1):
-        return _transition_pts(rim_junc, z0, z1, trans_t, transition)
+        return _transition_pts(rim_junc, z0, z1, trans_t, transition, n=8)
 
     if form == "conical":
         # 锥形腹板：web 越朝外越薄（hub 侧厚、rim 侧薄）——rim 侧半厚 wo_cone 小于 hub 侧 web_inner。
@@ -1096,6 +1096,60 @@ _KIND_HINT_MAP = {"axisymmetric_disc": "turbine_disc", "fir_tree_slot_cutter": "
 SLOT_CATS = ("slot", "coupled", "complex_rim")
 
 
+def _feature_profiles_from_raw(raw: dict) -> list:
+    """从确定性模板 IR 提取孔/环槽 cutter 的 profile 参数声明。"""
+    profiles = []
+    comps = {c["id"]: c for c in raw.get("components", [])}
+    for node in raw.get("nodes", []):
+        if node.get("op") != "add_polyline":
+            continue
+        cid = node.get("component")
+        if not str(cid).startswith("feat_"):
+            continue
+        pts = node.get("params", {}).get("points", [])
+        if not pts:
+            continue
+        pid = f"{cid}_profile"
+        if any(k in str(cid) for k in ("groove", "cavity", "rimslot")):
+            xs = [p["x_mm"] for p in pts]
+            ys = [p["y_mm"] for p in pts]
+            profiles.append({
+                "profile_id": pid,
+                "kind": "groove",
+                "params": {
+                    "inner_radius_mm": min(xs),
+                    "outer_radius_mm": max(xs),
+                    "z_base_mm": min(ys),
+                    "depth_mm": max(ys) - min(ys),
+                },
+            })
+        else:
+            radius = sum(math.hypot(p["x_mm"], p["y_mm"]) for p in pts) / len(pts)
+            profiles.append({
+                "profile_id": pid,
+                "kind": "hole",
+                "params": {"center_x_mm": 0.0, "center_y_mm": 0.0,
+                           "diameter_mm": round(radius * 2, 3)},
+            })
+    return profiles
+
+
+def _feature_profile_points(kind: str, params: dict) -> list:
+    if kind == "hole":
+        return [{"x_mm": round(params["center_x_mm"] + radius * math.cos(2 * math.pi * i / 16), 3),
+                 "y_mm": round(params["center_y_mm"] + radius * math.sin(2 * math.pi * i / 16), 3)}
+                for i in range(16)
+                for radius in [params["diameter_mm"] / 2.0]]
+    if kind == "groove":
+        return [
+            {"x_mm": params["inner_radius_mm"], "y_mm": params["z_base_mm"]},
+            {"x_mm": params["outer_radius_mm"], "y_mm": params["z_base_mm"]},
+            {"x_mm": params["outer_radius_mm"], "y_mm": params["z_base_mm"] + params["depth_mm"]},
+            {"x_mm": params["inner_radius_mm"], "y_mm": params["z_base_mm"] + params["depth_mm"]},
+        ]
+    return []
+
+
 def _skeletonize(raw: dict) -> dict:
     """完整 llm_raw → 骨架（Agent A 的 gcad_skeleton）：
     kind_hint 组件（盘体/榫槽 cutter）的 add_polyline 占位 2 点（由 assemble 按 B/C 轮廓填充）；
@@ -1105,6 +1159,14 @@ def _skeletonize(raw: dict) -> dict:
     comp_hints = {}
     for c in skel.get("components", []):
         kh = c.get("kind_hint")
+        if not kh and str(c.get("id", "")).startswith("feat_"):
+            if "rimslot" in str(c.get("id", "")):
+                continue  # 保持无 kind_hint，保留模板算好的 U 形截面坐标
+            if any(k in str(c.get("id", "")) for k in ("groove", "cavity")):
+                kh = "groove_cutter"
+            else:
+                kh = "hole_cutter"
+            c["kind_hint"] = kh
         c["kind_hint"] = _KIND_HINT_MAP.get(kh, kh)
         comp_hints[c.get("id")] = c["kind_hint"]
     for n in skel.get("nodes", []):
@@ -1115,10 +1177,19 @@ def _skeletonize(raw: dict) -> dict:
 
 def _disc_params(params: dict) -> dict:
     """候选参数 → Agent A disc profile 参数（AGENT_A_ADDENDUM 契约）。"""
+    dp = disc_profile(params.get("od_mm", 500), params.get("bore_mm", 120),
+                      params.get("hub_mm", 38), params.get("rim_mm", 30),
+                      params.get("thick_mm", 76),
+                      form=params.get("form", "standard"),
+                      transition=params.get("transition", "linear"),
+                      rim_arc_radius_mm=params.get("rim_arc_radius_mm"))
+    r = dp["params"]
     d = {
-        "outer_diameter_mm": params.get("od_mm"), "bore_diameter_mm": params.get("bore_mm"),
-        "axial_thickness_mm": params.get("thick_mm"),
+        "bore_radius_mm": r["bore_radius_mm"], "hub_radius_mm": r["hub_radius_mm"],
+        "rim_web_junction_mm": r["rim_web_junction_mm"], "rim_radius_mm": r["rim_radius_mm"],
         "hub_half_thickness_mm": params.get("hub_mm"), "rim_half_thickness_mm": params.get("rim_mm"),
+        "web_inner_half_thickness_mm": r["web_inner_half_mm"],
+        "web_outer_half_thickness_mm": r["web_outer_half_mm"],
         "hub_web_fillet_mm": params.get("disc_fillet_mm", 10.0),
         "web_rim_fillet_mm": params.get("disc_fillet_mm", 10.0),
     }
@@ -1132,14 +1203,23 @@ def _disc_params(params: dict) -> dict:
 def _slot_params(params: dict) -> dict:
     """候选参数 → Agent C slot profile 参数（AGENT_A_ADDENDUM 契约）。"""
     throat = params.get("throat_half_width_mm", 8.0)
+    teeth = int(params.get("teeth", 2))
+    depth = float(params.get("depth_mm", 24.0))
     fr = params.get("fr_mm", 0.97)
+    # 半宽必须是 EXACT 算法的实际轮廓值（slot_profile 只用 mouth/teeth/depth/角度；
+    # 名义 1.1/2.25/0.875×mouth 与真实轮廓不符，会造成槽宽超 pitch）。
+    sp = slot_profile(teeth, depth, throat,
+                      round(1.1 * throat, 3), round(2.25 * throat, 3),
+                      round(0.875 * throat, 3), 45.0, 75.0)
+    upper = sp[:len(sp) // 2]
     return {
-        "teeth_count": params.get("teeth"), "slots": params.get("slots"),
-        "slot_depth_mm": params.get("depth_mm"),
-        "mouth_half_width_mm": throat, "neck_half_width_mm": round(1.1 * throat, 3),
-        "lobe_half_width_mm": round(2.25 * throat, 3),
-        "bottom_half_width_mm": round(0.875 * throat, 3),
-        "tfa_deg": params.get("tfa_deg", 45.0), "ufa_deg": params.get("ufa_deg", 75.0),
+        "teeth_count": teeth,
+        "slot_depth_mm": depth,
+        "mouth_half_width_mm": throat,
+        "neck_half_width_mm": round(float(upper[1]["y_mm"]), 3),
+        "lobe_half_width_mm": round(max(float(p["y_mm"]) for p in upper), 3),
+        "bottom_half_width_mm": round(float(upper[-1]["y_mm"]), 3),
+        "flank_angle_deg": params.get("flank_angle_deg", 45.0),
         "root_fillet_mm": fr, "bottom_fillet_mm": round(0.8 * fr, 3),
     }
 
@@ -1162,12 +1242,19 @@ def plan(params: dict) -> dict:
     build() 的第一阶段。profiles 参数是 Agent B/C 的输入（参数 → 轮廓点）。
     """
     cat = params.get("category")
-    skel = _skeleton(params)
+    if cat == "coupled":
+        raw = build_coupled_disc(params)
+    elif cat in ("slot", "complex_rim"):
+        raw = build_slot_disc(params)
+    else:
+        raw = build_axisym_disc(params)
+    skel = _skeletonize(raw)
     profiles = [{"profile_id": "disc_polyline", "kind": "disc",
                  "params": _disc_params(params)}]
     if cat in SLOT_CATS:
         profiles.append({"profile_id": "cutter_polyline", "kind": "slot",
                          "params": _slot_params(params)})
+    profiles.extend(_feature_profiles_from_raw(raw))
     return {"gcad_skeleton": skel, "profiles": profiles}
 
 
@@ -1199,6 +1286,8 @@ def build(params: dict) -> dict:
             bottom = round(0.875 * throat, 3)
             points[pid] = slot_profile(teeth, depth, throat, neck, lobe, bottom,
                                        params.get("tfa_deg", 45.0), params.get("ufa_deg", 75.0))
+        elif prof["kind"] in ("hole", "groove"):
+            points[pid] = _feature_profile_points(prof["kind"], prof["params"])
     return assemble(ap["gcad_skeleton"], ap["profiles"], points)
 
 

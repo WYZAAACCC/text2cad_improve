@@ -291,6 +291,7 @@ def auto_fix_with_report(
     _apply_fix("fix_param_names", lambda d: _fix_param_names(d))
     _apply_fix("fix_param_values", lambda d: _fix_param_values(d))
     _apply_fix("fix_path_points", lambda d: _fix_path_points(d))
+    _apply_fix("fix_point2d_lists", lambda d: _fix_point2d_lists(d, dialect_registry))
     _apply_fix("fix_unknown_ops", lambda d: _fix_unknown_ops(d, dialect_registry), severity="destructive", confidence=0.85)
     _apply_fix("fix_target_values", lambda d: _fix_target_values(d))
     _apply_fix("fix_cross_component_refs", lambda d: _fix_cross_component_refs(d), severity="semantic_guess", confidence=0.9)
@@ -303,7 +304,7 @@ def auto_fix_with_report(
     _apply_fix("fill_default_params", lambda d: _fill_default_params(d))
     _apply_fix("fix_fillet_zero_radius", lambda d: _fix_fillet_zero_radius(d))
     _apply_fix("fix_null_hints", lambda d: _fix_null_hints(d))
-    _apply_fix("remove_extra_params", lambda d: _remove_extra_params(d))
+    _apply_fix("remove_extra_params", lambda d: _remove_extra_params(d, dialect_registry))
 
     after_hash = stable_hash(doc)
     report = AutoFixReport(
@@ -375,6 +376,18 @@ def _fix_op_versions(doc: dict, dialect_registry=None) -> dict:
         elif ver.startswith("v") and ver[1:].replace(".", "").isdigit():
             # Strip "v" prefix: "v1.0.0" → "1.0.0"
             node["op_version"] = ver.lstrip("v")
+
+        # Align unparseable op_version to the registered default for this op.
+        if node.get("op_version"):
+            d = dialect_registry.get(did)
+            if d:
+                try:
+                    d.get_op_spec(op, node["op_version"])
+                except (KeyError, ValueError):
+                    try:
+                        node["op_version"] = d.default_op_version(op)
+                    except Exception:
+                        pass
 
     return doc
 
@@ -1049,10 +1062,15 @@ def _fix_slot_half_profile(doc: dict) -> dict:
         if node.get("op") != "add_polyline":
             continue
         comp = _find_component_name(doc, node.get("component"))
-        if not comp or "cutter" not in comp.lower():
+        if not comp:
+            continue
+        # 只镜像真正的榫槽 cutter 半剖面；groove_cutter/环槽等闭合矩形
+        # 不是“单侧剖面”，泛匹配 'cutter' 会把环槽 4 点矩形镜像成 7 点混线。
+        kind = str(comp).lower()
+        if not ("slot" in kind or "fir_tree" in kind):
             continue
         pts = node.get("params", {}).get("points", [])
-        if not pts:
+        if not pts or len(pts) < 5:
             continue
         ys = [p.get("y_mm", 0) for p in pts]
         # If all Y >= 0 or all Y <= 0: half-profile detected
@@ -1154,8 +1172,64 @@ def _fix_path_points(doc: dict) -> dict:
     return doc
 
 
+def _fix_point2d_lists(doc: dict, dialect_registry=None) -> dict:
+    """Convert coordinate lists to Point2D/Point3D dicts per op params schema."""
+    if dialect_registry is None:
+        from seekflow_engineering_tools.generative_cad.dialects.default_registry import default_registry
+        dialect_registry = default_registry()
+    for node in doc.get("nodes", []):
+        did = node.get("dialect", "")
+        d = dialect_registry.get(did)
+        if not d:
+            continue
+        try:
+            spec = d.get_op_spec(node.get("op", ""), node.get("op_version", ""))
+        except (KeyError, ValueError):
+            continue
+        model = getattr(spec, "params_model", None)
+        if model is None:
+            continue
+        params = node.get("params", {})
+        for fname, field in model.model_fields.items():
+            if fname not in params:
+                continue
+            anno = str(field.annotation)
+            if "Point2D" not in anno and "Point3D" not in anno:
+                continue
+            value = params[fname]
+            is_3d = "Point3D" in anno
+            is_list = "list[" in anno or "List[" in anno
+            if isinstance(value, (list, tuple)):
+                if is_list:
+                    fixed = []
+                    for item in value:
+                        if isinstance(item, (list, tuple)) and len(item) >= 2:
+                            fixed.append(_point_to_dict(item, is_3d))
+                        else:
+                            fixed.append(item)
+                    params[fname] = fixed
+                elif value and not isinstance(value, dict):
+                    params[fname] = _point_to_dict(value, is_3d)
+    return doc
+
+
+def _point_to_dict(item, is_3d):
+    if is_3d and len(item) >= 3:
+        return {"x_mm": item[0], "y_mm": item[1], "z_mm": item[2]}
+    return {"x_mm": item[0], "y_mm": item[1]}
+
+
 def _fill_default_params(doc: dict) -> dict:
     """填充缺失的有默认值的参数。"""
+    revolve_components = {n.get("component") for n in doc.get("nodes", [])
+                           if n.get("op") == "revolve_profile"}
+    for node in doc.get("nodes", []):
+        if (node.get("op") == "create_2d_sketch"
+                and node.get("component") in revolve_components):
+            params = node.setdefault("params", {})
+            params.setdefault("plane", "XZ")
+            params.setdefault("origin_x_mm", 0)
+            params.setdefault("origin_y_mm", 0)
     defaults = {
         "revolve_profile": {"axis": "Z"},
         "cut_center_bore": {"axis": "Z", "through_all": True},
@@ -1333,8 +1407,11 @@ def _fix_null_hints(doc: dict) -> dict:
     return doc
 
 
-def _remove_extra_params(doc: dict) -> dict:
-    """删除已知的无效参数字段。"""
+def _remove_extra_params(doc: dict, dialect_registry=None) -> dict:
+    """删除无效参数字段（含 schema 禁止的额外字段）。"""
+    if dialect_registry is None:
+        from seekflow_engineering_tools.generative_cad.dialects.default_registry import default_registry
+        dialect_registry = default_registry()
     known_bad_params = {
         "revolve_profile": {"outer_diameter_mm", "inner_diameter_mm", "height_mm"},
         "cut_center_bore": {"outer_diameter_mm", "bore_diameter_mm", "depth_mm"},
@@ -1347,8 +1424,20 @@ def _remove_extra_params(doc: dict) -> dict:
     for node in doc.get("nodes", []):
         op = node.get("op", "")
         bad = known_bad_params.get(op, set())
-        for key in list(node.get("params", {}).keys()):
+        params = node.get("params", {})
+        did = node.get("dialect", "")
+        d = dialect_registry.get(did)
+        if d:
+            try:
+                spec = d.get_op_spec(op, node.get("op_version", ""))
+                model = getattr(spec, "params_model", None)
+                if model is not None and model.model_config.get("extra") == "forbid":
+                    allowed = set(model.model_fields.keys())
+                    bad = bad | {k for k in params.keys() if k not in allowed}
+            except (KeyError, ValueError):
+                pass
+        for key in list(params.keys()):
             # Strip placeholder keys (LLM uses "_" when params must be non-empty)
             if key == "_" or key in bad:
-                del node["params"][key]
+                del params[key]
     return doc

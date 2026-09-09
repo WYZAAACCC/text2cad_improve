@@ -65,7 +65,8 @@ class LocalThreadSandbox(ToolSandbox):
         import time
 
         start = time.monotonic()
-        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False,
+                                          encoding="utf-8")
         try:
             tmp.write(code)
             tmp.close()
@@ -130,7 +131,8 @@ class ContainerSandbox(ToolSandbox):
 
         start = time.monotonic()
         container_name = f"seekflow-sandbox-{uuid.uuid4().hex[:12]}"
-        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False,
+                                          encoding="utf-8")
         try:
             tmp.write(code)
             tmp.close()

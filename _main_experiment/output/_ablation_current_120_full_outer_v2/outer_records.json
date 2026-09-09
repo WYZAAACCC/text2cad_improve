@@ -1,0 +1,42 @@
+[
+  {
+    "task": "T24",
+    "seed": 6,
+    "ok": true,
+    "status": "completed",
+    "error_stage": null,
+    "error_message": ""
+  },
+  {
+    "task": "T26",
+    "seed": 6,
+    "ok": false,
+    "status": "completed",
+    "error_stage": "mcp_gate",
+    "error_message": "check_degenerate_geometry"
+  },
+  {
+    "task": "T26",
+    "seed": 7,
+    "ok": true,
+    "status": "completed",
+    "error_stage": null,
+    "error_message": ""
+  },
+  {
+    "task": "T30",
+    "seed": 7,
+    "ok": true,
+    "status": "completed",
+    "error_stage": null,
+    "error_message": ""
+  },
+  {
+    "task": "T30",
+    "seed": 8,
+    "ok": true,
+    "status": "completed",
+    "error_stage": null,
+    "error_message": ""
+  }
+]

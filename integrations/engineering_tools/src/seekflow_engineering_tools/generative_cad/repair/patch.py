@@ -9,8 +9,15 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 def _old_value_matches(current, expected) -> bool:
-    """Return True if expected is None (no check) or current == expected."""
-    return expected is None or current == expected
+    """Semantic comparison: JSON-normalize nested structures before equality."""
+    if expected is None:
+        return True
+    if isinstance(current, (dict, list)) or isinstance(expected, (dict, list)):
+        import json
+        def _norm(v):
+            return json.dumps(v, sort_keys=True, ensure_ascii=False, default=str)
+        return _norm(current) == _norm(expected)
+    return current == expected
 
 
 class RepairChange(BaseModel):
@@ -41,17 +48,20 @@ FORBIDDEN_EXACT_PREFIXES = [
 ]
 
 # Forbidden node field patterns
-FORBIDDEN_NODE_FIELDS = {"dialect", "op", "op_version"}
+FORBIDDEN_NODE_FIELDS = {"dialect", "op"}
 
 # Forbidden component fields
 FORBIDDEN_COMPONENT_FIELDS = {"owner_dialect"}
 
 # Allowed path patterns
 ALLOWED_PATH_PATTERNS = [
+    re.compile(r"^/nodes/[^/]+/params$"),
     re.compile(r"^/nodes/[^/]+/params/.+$"),
     re.compile(r"^/nodes/[^/]+/inputs$"),
     re.compile(r"^/nodes/[^/]+/outputs$"),
     re.compile(r"^/nodes/[^/]+/required$"),
+    re.compile(r"^/nodes/[^/]+/phase$"),
+    re.compile(r"^/nodes/[^/]+/op_version$"),
     re.compile(r"^/nodes/[^/]+/degradation_policy$"),
     re.compile(r"^/components/[^/]+/root_node$"),
     re.compile(r"^/llm_validation_hints$"),
@@ -127,6 +137,47 @@ def apply_repair_patch_v2(raw: dict, patch: RepairPatchV2) -> dict:
 
     for change in patch.changes:
         path = change.path
+
+        # /nodes/<node_id>/phase | /nodes/<node_id>/op_version
+        m = re.match(r"^/nodes/([^/]+)/(phase|op_version)$", path)
+        if m:
+            node_id, field = m.group(1), m.group(2)
+            found = False
+            for node in updated.get("nodes", []):
+                if node.get("id") == node_id:
+                    current = node.get(field)
+                    if not _old_value_matches(current, change.old_value):
+                        raise ValueError(
+                            f"repair old_value mismatch at {path}: "
+                            f"expected {change.old_value!r}, got {current!r}"
+                        )
+                    node[field] = change.new_value
+                    found = True
+                    break
+            if not found:
+                raise ValueError(f"repair target node not found: {node_id}")
+            applied += 1
+
+        # /nodes/<node_id>/params (replace entire params dict)
+        m = re.match(r"^/nodes/([^/]+)/params$", path)
+        if m:
+            node_id = m.group(1)
+            found = False
+            for node in updated.get("nodes", []):
+                if node.get("id") == node_id:
+                    current = node.get("params", {})
+                    if not _old_value_matches(current, change.old_value):
+                        raise ValueError(
+                            f"repair old_value mismatch at {path}: "
+                            f"expected {change.old_value!r}, got {current!r}"
+                        )
+                    node["params"] = change.new_value
+                    found = True
+                    break
+            if not found:
+                raise ValueError(f"repair target node not found: {node_id}")
+            applied += 1
+            continue
 
         # /nodes/<node_id>/params/<field>
         m = re.match(r"^/nodes/([^/]+)/params/(.+)$", path)

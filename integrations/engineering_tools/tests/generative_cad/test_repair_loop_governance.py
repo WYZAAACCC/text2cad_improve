@@ -42,11 +42,15 @@ class TestRepairPatchRestrictions:
         )
         assert is_forbidden_repair_path("/nodes/n1/op")
 
-    def test_repair_rejects_op_version_change(self):
+    def test_repair_allows_op_version_and_phase_change(self):
         from seekflow_engineering_tools.generative_cad.repair.patch import (
+            is_allowed_repair_path,
             is_forbidden_repair_path,
         )
-        assert is_forbidden_repair_path("/nodes/n1/op_version")
+        assert is_allowed_repair_path("/nodes/n1/op_version")
+        assert is_allowed_repair_path("/nodes/n1/phase")
+        assert is_forbidden_repair_path("/nodes/n1/dialect")
+        assert is_forbidden_repair_path("/nodes/n1/op")
 
     def test_repair_rejects_owner_dialect_change(self):
         from seekflow_engineering_tools.generative_cad.repair.patch import (
@@ -184,3 +188,13 @@ class TestRepairPatchApply:
         )
         updated = apply_repair_patch_v2(raw, patch)
         assert updated == original
+
+
+class TestOldValueSemanticComparison:
+    def test_nested_structures_compare_semantically(self):
+        from seekflow_engineering_tools.generative_cad.repair.patch import (
+            _old_value_matches,
+        )
+        assert _old_value_matches([[0, 0], [1, 1]], [[0,0],[1,1]])
+        assert _old_value_matches({"x_mm": 1, "y_mm": 2}, {"y_mm": 2, "x_mm": 1})
+        assert not _old_value_matches([[0, 0]], [[0, 1]])

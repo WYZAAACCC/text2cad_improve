@@ -1,0 +1,6 @@
+*** Begin Patch
+*** Update File: integrations/engineering_tools/src/seekflow_engineering_tools/generative_cad/authoring/auto_fixer.py
+@@
+ def _fix_path_points(doc: dict) -> dict:
+     """fix create_sweep_path path_points: x/y/z to x_mm/y_mm/z_mm."""
+*** End Patch

@@ -21,8 +21,14 @@ const apiClient = axios.create({
  * POST /api/generate
  * 提交文本生成请求，返回 taskId 用于轮询
  */
-export async function generateModel(text: string, sessionId: string, spatialGraphKey?: string, forceRoute?: string): Promise<string> {
-  const { data } = await apiClient.post('/generate', { text, sessionId, spatialGraphKey, forceRoute });
+export async function generateModel(
+  text: string,
+  sessionId: string,
+  spatialGraphKey?: string,
+  forceRoute?: string,
+  agentic?: boolean,
+): Promise<string> {
+  const { data } = await apiClient.post('/generate', { text, sessionId, spatialGraphKey, forceRoute, agentic });
   return data.taskId;
 }
 
@@ -36,6 +42,7 @@ export async function pollTaskStatus(taskId: string): Promise<GenerationTask> {
     taskId: data.taskId,
     status: data.status,
     progress: data.progress,
+    trace: data.trace || [],
     result: data.result ? {
       modelId: data.result.taskId || data.taskId,
       geometryType: 'step',
@@ -158,7 +165,7 @@ export async function continueSpatial(
 /**
  * FEA API functions
  */
-import type { FeaTemplateSchema, FeaRegionDef, FeaTask, FeaQuestion, FeaAnswer } from './types';
+import type { FeaTemplateSchema, FeaRegionDef, FeaTask } from './types';
 
 export async function getFeaTemplates(): Promise<FeaTemplateSchema[]> {
   const { data } = await apiClient.get('/fea/templates');
@@ -180,20 +187,6 @@ export async function pollFeaResult(taskId: string): Promise<FeaTask> {
 export async function getFeaRegions(modelId: string): Promise<FeaRegionDef[]> {
   const { data } = await apiClient.get(`/fea/regions/${modelId}`);
   return data.regions || [];
-}
-
-export async function startFeaAnalysis(
-  modelId: string, stepUrl: string, analysisType: string
-): Promise<{ needsClarification: boolean; sessionId?: string; questions?: FeaQuestion[] }> {
-  const { data } = await apiClient.post('/fea/start', { model_id: modelId, step_file_url: stepUrl, analysis_type: analysisType });
-  return data;
-}
-
-export async function continueFeaAnalysis(
-  sessionId: string, answers: FeaAnswer[]
-): Promise<{ needsClarification: boolean; questions?: FeaQuestion[]; taskId?: string }> {
-  const { data } = await apiClient.post('/fea/continue', { session_id: sessionId, answers });
-  return data;
 }
 
 // ---- FEA3D API ----
