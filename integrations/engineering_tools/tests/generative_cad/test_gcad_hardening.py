@@ -202,11 +202,20 @@ class TestMockCadQuery:
     def test_boolean_union_handler_with_mock(self, monkeypatch):
         """Test boolean_union handler logic with mocked cadquery."""
         import sys
-        # Mock cadquery
+
+        # Mock cadquery through `monkeypatch`, which puts the real module back
+        # when the test ends. Assigning `sys.modules['cadquery']` directly,
+        # which is what this used to do, is never undone: every test that ran
+        # afterwards and needed the real cadquery got this stub instead and
+        # died with "MockWorkplane() takes no arguments" or a missing
+        # `cadquery.Shape`. On its own this file passes; run before the ocaf
+        # suite it took about 118 of those tests down with it, which is why
+        # that suite only reported 320 passed when invoked by itself.
         class MockWorkplane:
             def union(self, other):
                 return MockWorkplane()
-        sys.modules['cadquery'] = type(sys)('cadquery')
+
+        monkeypatch.setitem(sys.modules, "cadquery", type(sys)("cadquery"))
         sys.modules['cadquery'].Workplane = MockWorkplane
 
         from seekflow_engineering_tools.generative_cad.dialects.composition.handlers import handle_boolean_union
