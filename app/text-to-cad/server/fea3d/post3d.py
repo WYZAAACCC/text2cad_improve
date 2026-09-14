@@ -26,6 +26,20 @@ def _zone_name(r: float, cfg: dict) -> str:
     return "rim"
 
 
+def _sectors_per_turn(sector_deg: float) -> int:
+    """How many copies of this domain make a full turn.
+
+    A whole-part analysis is one sector; anything less divides the turn. The
+    count follows from the domain that was solved, which is why it is computed
+    here rather than read from the geometry config's feature count.
+    """
+    if sector_deg <= 0:
+        return 1
+    if sector_deg >= 359.9:
+        return 1
+    return max(1, int(round(360.0 / sector_deg)))
+
+
 def _yield_interp(temp: float, yield_tbl: dict[str, float]) -> float:
     """温度→屈服强度线性插值. yield_tbl: {"20":1100, "300":1050, ...}"""
     pairs = sorted((float(k), float(v)) for k, v in yield_tbl.items())
@@ -315,7 +329,12 @@ def _export_sector_surface(job_dir: Path, nodes: list[dict], cfg: dict) -> None:
             "sector_deg": float(gcfg["sector_deg"]),
             "theta_low_deg": float(gcfg["theta_low_deg"]),
             "z_half": float(gcfg["z_half_mm"]),
-            "n_sectors": int(gcfg["n_slots"]),
+            # Derived from the domain actually analysed, not read from a
+            # generation-side slot count. The two agree only while the sector
+            # happens to be one slot wide; once the planner picks a wider
+            # repeat unit they diverge, and expanding by the wrong count
+            # reproduces a part whose period is not the one that was solved.
+            "n_sectors": _sectors_per_turn(float(gcfg["sector_deg"])),
             "ranges": vmin_vmax,
         },
         "positions": positions,

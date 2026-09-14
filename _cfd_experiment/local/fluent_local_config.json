@@ -1,0 +1,37 @@
+{
+  "command": [
+    "E:/text_to_cad_improve/auto_detection_process/.conda/python.exe",
+    "E:/text_to_cad_improve/auto_detection_process/_cfd_experiment/local/fluent_worker.py"
+  ],
+  "capabilities": {
+    "name": "fluent-18.1-local",
+    "version": "windows-gmsh-2026-09-11",
+    "is_mock": false,
+    "operations": [
+      "domain.construct",
+      "mesh.generate",
+      "physics.configure",
+      "solver.initialize",
+      "solver.advance",
+      "solver.stop",
+      "results.extract"
+    ],
+    "domain_strategies": ["outer"],
+    "mesh_methods": ["tetra"],
+    "turbulence_models": ["laminar"],
+    "heat_models": ["isothermal"],
+    "time_modes": ["steady"],
+    "rotation_models": ["none"],
+    "compressible": false,
+    "temperature_tables": false,
+    "restart": true,
+    "resource_limits_enforced": true,
+    "spatial_orders": [1, 2],
+    "pv_coupling_schemes": ["simple", "simplec", "piso", "coupled"],
+    "under_relaxation": true,
+    "materials": ["air"],
+    "operating_pressure": true,
+    "gravity": true,
+    "inflation": false
+  }
+}

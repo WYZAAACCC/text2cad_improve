@@ -192,3 +192,82 @@ class TestStrictSchemaCompiler:
         assert result["additionalProperties"] is False
         assert "name" in result["required"]
         assert "count" in result["required"]
+
+
+class TestParameterDocumentationSurvives:
+    """An optional parameter must reach the model with its description.
+
+    The converter wrapped every optional field in `anyOf [<type>, null]` and
+    dropped the description on the way, keeping `title` and `default`. The
+    effect was repository-wide and silent: every tool's optional parameters
+    arrived undocumented, so a model saw `radial_min` with a default of -1e30
+    and no statement of what it measured or in what unit. Nothing could
+    recover that from the field name alone.
+    """
+
+    def _converted(self, prop: dict) -> dict:
+        from seekflow_engineering_tools.generative_cad.authoring.strict_schema import (
+            to_deepseek_strict_schema,
+        )
+
+        return to_deepseek_strict_schema({
+            "type": "object",
+            "properties": {"p": prop, "given": {"type": "string"}},
+            "required": ["given"],
+        })["properties"]["p"]
+
+    def test_optional_field_keeps_its_description(self):
+        out = self._converted({
+            "type": "number",
+            "default": -1e30,
+            "description": "lowest radius in mm",
+        })
+        assert "description" in out["anyOf"][0], (
+            "the description was dropped; the model sees the parameter "
+            "undocumented"
+        )
+        assert out["anyOf"][0]["description"] == "lowest radius in mm"
+
+    def test_optional_field_still_nullable_and_typed(self):
+        out = self._converted({
+            "type": "number",
+            "default": -1e30,
+            "description": "lowest radius in mm",
+        })
+        assert out["anyOf"][0]["type"] == "number"
+        assert any(v.get("type") == "null" for v in out["anyOf"])
+
+    def test_optional_field_keeps_default_and_title(self):
+        out = self._converted({
+            "type": "number", "default": 3.5, "title": "T",
+            "description": "d",
+        })
+        assert out["anyOf"][0]["default"] == 3.5
+        assert out["anyOf"][0]["title"] == "T"
+
+    def test_field_without_a_description_is_unchanged(self):
+        out = self._converted({"type": "number", "default": 1.0})
+        assert "description" not in out["anyOf"][0]
+        assert out["anyOf"][0]["default"] == 1.0
+
+    def test_a_real_structural_action_schema_carries_its_units(self):
+        """The face filter the agent could not use without documentation."""
+        import sys
+        from pathlib import Path
+
+        src = Path(__file__).resolve().parents[3] / "structural" / "src"
+        if not src.is_dir():
+            pytest.skip("structural package is not present")
+        sys.path.insert(0, str(src))
+        from seekflow_structural.agents.facefind import Action
+        from seekflow_engineering_tools.generative_cad.authoring.strict_schema import (
+            to_deepseek_strict_schema,
+        )
+
+        schema = to_deepseek_strict_schema(Action.model_json_schema())
+        radius = schema["properties"]["radial_min"]["anyOf"][0]
+        assert "description" in radius
+        assert "mm" in radius["description"]
+        normal = schema["properties"]["normal_tangential_min"]["anyOf"][0]
+        assert "description" in normal
+        assert "-1..1" in normal["description"]

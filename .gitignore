@@ -94,3 +94,23 @@ _tmp_canon_patch_T33_1/
 _paper_extract.txt
 _paper_extract_0825.txt
 _compare_llm_template_profiles.png
+
+# Simulation scratch: meshes, solver working files and caches the chain
+# regenerates. The structural run tree alone is about 15 GB, and `output/`
+# above already covers the results.
+_structural_experiment/work/
+_structural_experiment/cache/
+_cfd_experiment/work/
+_cfd_experiment/cache/
+_cfd_experiment/smoke/
+# Prepared model bundles: tens of megabytes of STEP and XBF per part, produced
+# by the parameter dataset rather than authored. Regenerated, not source.
+_cfd_experiment/input/lineage/
+_cfd_experiment/dev/prepared-*/
+# Credentials. The key is read from this file at run time and must never reach
+# a remote.
+*.deepseek_key
+# Solver output written beside the probe that produced it. The probe scripts
+# are the record worth keeping; these are what they left on disk.
+_structural_experiment/probes/*/run*/
+*.msh

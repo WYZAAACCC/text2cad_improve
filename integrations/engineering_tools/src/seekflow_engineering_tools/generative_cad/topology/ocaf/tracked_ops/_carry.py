@@ -12,6 +12,7 @@ from typing import Any
 
 from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE
 from OCP.TopExp import TopExp_Explorer
+from OCP.TopTools import TopTools_IndexedMapOfShape
 
 from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     EvolutionKind,
@@ -33,6 +34,59 @@ def iter_faces(shape: Any) -> list[Any]:
         return faces
     except Exception:
         return []
+
+
+class ShapeIndex:
+    """Exact TopoDS_Shape lookup using OCCT's native shape map.
+
+    ``IsSame`` is used by ``TopTools_IndexedMapOfShape`` and is the same
+    identity relation used for persistent topology matching.  Building the
+    index once replaces repeated O(N) partner scans with O(1) lookups.
+    """
+
+    def __init__(self, shapes=()):
+        self._map = TopTools_IndexedMapOfShape()
+        self._shapes: list[Any] = []
+        for shape in shapes:
+            self.add(shape)
+
+    @staticmethod
+    def _unwrap(shape: Any) -> Any:
+        return shape.wrapped if hasattr(shape, "wrapped") else shape
+
+    def add(self, shape: Any) -> None:
+        shape = self._unwrap(shape)
+        if shape is None:
+            return
+        try:
+            if not self._map.Contains(shape):
+                self._map.Add(shape)
+                self._shapes.append(shape)
+        except Exception:
+            return
+
+    def contains(self, shape: Any) -> bool:
+        shape = self._unwrap(shape)
+        if shape is None:
+            return False
+        try:
+            return bool(self._map.Contains(shape))
+        except Exception:
+            return False
+
+    def find(self, shape: Any) -> Any | None:
+        shape = self._unwrap(shape)
+        if shape is None:
+            return None
+        try:
+            if not self._map.Contains(shape):
+                return None
+            return self._shapes[self._map.FindIndex(shape) - 1]
+        except Exception:
+            return None
+
+    def __len__(self) -> int:
+        return len(self._shapes)
 
 
 def find_partner_face(result_shape: Any, face: Any) -> Any | None:
@@ -92,7 +146,10 @@ def all_faces_accounted(
     relations: list[LiveEvolutionRelation], input_faces: list[Any],
 ) -> bool:
     """True if every input face has an accounting relation."""
-    return all(is_accounted(relations, face) for face in input_faces)
+    relation_index = ShapeIndex(
+        rel.old_shape for rel in relations if rel.old_shape is not None
+    )
+    return all(relation_index.contains(face) for face in input_faces)
 
 
 def carry_unchanged_faces(
@@ -107,11 +164,15 @@ def carry_unchanged_faces(
     Returns the number of carry-through relations added.
     """
     added = 0
+    relation_index = ShapeIndex(
+        rel.old_shape for rel in relations if rel.old_shape is not None
+    )
+    result_index = ShapeIndex(iter_faces(result_shape))
     for i, face in enumerate(input_faces):
         fw = _wrapped(face)
-        if is_accounted(relations, fw):
+        if relation_index.contains(fw):
             continue
-        partner = find_partner_face(result_shape, fw)
+        partner = result_index.find(fw)
         if partner is None:
             continue
         relations.append(
@@ -126,5 +187,6 @@ def carry_unchanged_faces(
                 proof=ProofClass.EXACT_KERNEL_HISTORY,
             )
         )
+        relation_index.add(fw)
         added += 1
     return added

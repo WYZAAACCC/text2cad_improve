@@ -168,8 +168,17 @@ def _make_nullable(schema: dict[str, Any]) -> dict[str, Any]:
             schema["anyOf"].append({"type": "null"})
         return schema
 
-    # Simple type → wrap in anyOf
-    original = {k: v for k, v in schema.items() if k != "description"}
+    # Simple type → wrap in anyOf.
+    #
+    # The description is kept with the typed variant rather than dropped. It
+    # was being discarded here, which stripped the documentation off every
+    # optional parameter of every tool in the repository - a caller saw
+    # `radial_min` with a default and no word on what it measured or in what
+    # unit, and no amount of reasoning recovers that. It sits beside `title`
+    # and `default`, which were already kept, so it carries no schema risk
+    # that they do not: all three are annotations on a variant DeepSeek
+    # already accepts.
+    original = dict(schema)
 
     # DeepSeek rejects {"type": "object"} with no properties.
     # For open dict types (dict[str, Any]): keep type=object with

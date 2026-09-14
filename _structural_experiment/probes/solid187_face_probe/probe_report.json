@@ -1,0 +1,123 @@
+{
+  "faces": [
+    {
+      "element": 1,
+      "lkey_applied": 1,
+      "loaded_corner_nodes": [],
+      "loaded_midside_nodes": [
+        5,
+        6,
+        7
+      ],
+      "midside_magnitudes": [
+        16.666667,
+        16.666667,
+        16.666667
+      ],
+      "expected_midside_magnitude": 16.666667,
+      "reaction_total_n": 50.000001,
+      "expected_total_n": 50.0,
+      "reaction_direction": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "face_outward_normal": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "direction_dot_outward": 1.0
+    },
+    {
+      "element": 2,
+      "lkey_applied": 2,
+      "loaded_corner_nodes": [],
+      "loaded_midside_nodes": [
+        15,
+        18,
+        19
+      ],
+      "midside_magnitudes": [
+        16.666667,
+        16.666667,
+        16.666667
+      ],
+      "expected_midside_magnitude": 16.666667,
+      "reaction_total_n": 50.000001,
+      "expected_total_n": 50.0,
+      "reaction_direction": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "face_outward_normal": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "direction_dot_outward": 1.0
+    },
+    {
+      "element": 3,
+      "lkey_applied": 3,
+      "loaded_corner_nodes": [],
+      "loaded_midside_nodes": [
+        26,
+        29,
+        30
+      ],
+      "midside_magnitudes": [
+        28.867514,
+        28.867514,
+        28.867514
+      ],
+      "expected_midside_magnitude": 28.867513,
+      "reaction_total_n": 86.602542,
+      "expected_total_n": 86.60254,
+      "reaction_direction": [
+        0.57735,
+        0.57735,
+        0.57735
+      ],
+      "face_outward_normal": [
+        0.57735,
+        0.57735,
+        0.57735
+      ],
+      "direction_dot_outward": 1.0
+    },
+    {
+      "element": 4,
+      "lkey_applied": 4,
+      "loaded_corner_nodes": [],
+      "loaded_midside_nodes": [
+        37,
+        38,
+        40
+      ],
+      "midside_magnitudes": [
+        16.666667,
+        16.666667,
+        16.666667
+      ],
+      "expected_midside_magnitude": 16.666667,
+      "reaction_total_n": 50.000001,
+      "expected_total_n": 50.0,
+      "reaction_direction": [
+        -1.0,
+        -0.0,
+        0.0
+      ],
+      "face_outward_normal": [
+        -1.0,
+        0.0,
+        0.0
+      ],
+      "direction_dot_outward": 1.0
+    }
+  ],
+  "consistent_load_vector_confirmed": true,
+  "sign_confirmed": true,
+  "lkey_table_confirmed": true
+}

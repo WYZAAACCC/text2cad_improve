@@ -98,6 +98,8 @@ class DeepSeekToolCaller:
             tool_call_name: str | None = None
             arg_parts: list[str] = []
             response_id: str | None = None
+            tool_call_id: str | None = None
+            content_parts: list[str] = []
             try:
                 for chunk in stream_resp:
                     if not chunk.choices:
@@ -106,8 +108,12 @@ class DeepSeekToolCaller:
                     rc = getattr(delta, "reasoning_content", None)
                     if rc and on_reasoning_token:
                         on_reasoning_token(rc)
+                    if getattr(delta, "content", None):
+                        content_parts.append(delta.content)
                     if delta.tool_calls:
                         for tc in delta.tool_calls:
+                            if getattr(tc, "id", None):
+                                tool_call_id = tc.id
                             if tc.function and tc.function.name:
                                 tool_call_name = tc.function.name
                             if tc.function and tc.function.arguments:
@@ -153,6 +159,8 @@ class DeepSeekToolCaller:
                 raw_response_id=response_id,
                 model=model_config.model,
                 provider="deepseek",
+                tool_call_id=tool_call_id,
+                assistant_content="".join(content_parts),
             )
 
         try:
@@ -179,13 +187,15 @@ class DeepSeekToolCaller:
                 code="provider_no_tool_call",
             )
 
-        if len(message.tool_calls) != 1:
-            raise LlmToolCallError(
-                f"Expected exactly one tool call, got {len(message.tool_calls)}",
-                code="provider_multiple_tool_calls",
-            )
-
+        # A schema with a discriminated-union action invites the model to
+        # propose several actions in one turn. Refusing the whole turn over
+        # that throws away a response that is otherwise perfectly usable, so
+        # only the first is acted on - a caller that loops takes one action
+        # per turn by design - and the number dropped is carried on the
+        # result rather than discarded silently.
+        extra_tool_calls = max(0, len(message.tool_calls) - 1)
         call = message.tool_calls[0]
+
         if call.function.name != tool_name:
             raise LlmToolCallError(
                 f"Unexpected tool call name: {call.function.name!r} (expected {tool_name!r})",
@@ -212,4 +222,7 @@ class DeepSeekToolCaller:
             raw_response_id=getattr(response, "id", None),
             model=model_config.model,
             provider="deepseek",
+            tool_call_id=getattr(call, "id", None),
+            assistant_content=getattr(message, "content", None) or "",
+            extra_tool_calls=extra_tool_calls,
         )

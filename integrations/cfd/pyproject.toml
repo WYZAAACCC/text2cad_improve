@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "seekflow-cfd"
+version = "0.1.0"
+description = "Auditable declarative CFD agents for persistent-topology CAD"
+requires-python = ">=3.10"
+dependencies = ["pydantic>=2.0"]
+
+[project.optional-dependencies]
+mcp = ["mcp>=1.0"]
+api = ["fastapi>=0.100", "uvicorn>=0.23"]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.scripts]
+seekflow-cfd = "seekflow_cfd.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

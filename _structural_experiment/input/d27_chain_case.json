@@ -1,0 +1,63 @@
+{
+  "case_id": "D27_chain_run",
+  "confirmation_status": "unconfirmed_synthetic",
+  "rotation": {
+    "rpm": 15000.0,
+    "source": "synthetic pipeline smoke test only"
+  },
+  "temperature": {
+    "model": "radial_power_law",
+    "reference_temperature_c": 20.0,
+    "bore_c": 500.0,
+    "rim_c": 650.0,
+    "bore_radius_mm": 60.0,
+    "outer_radius_mm": 300.0,
+    "exponent": 1.0,
+    "source": "synthetic pipeline smoke test only"
+  },
+  "material": {
+    "name": "Synthetic validation material",
+    "source": "synthetic pipeline smoke test only",
+    "poisson_ratio": 0.3,
+    "density_t_mm3": 8.24e-09,
+    "points": [
+      {
+        "temperature_c": 20.0,
+        "young_mpa": 205000.0,
+        "alpha_per_c": 1.18e-05,
+        "yield_mpa": 1100.0
+      },
+      {
+        "temperature_c": 300.0,
+        "young_mpa": 190000.0,
+        "alpha_per_c": 1.35e-05,
+        "yield_mpa": 1050.0
+      },
+      {
+        "temperature_c": 500.0,
+        "young_mpa": 178000.0,
+        "alpha_per_c": 1.44e-05,
+        "yield_mpa": 1000.0
+      },
+      {
+        "temperature_c": 650.0,
+        "young_mpa": 165000.0,
+        "alpha_per_c": 1.54e-05,
+        "yield_mpa": 950.0
+      }
+    ]
+  },
+  "blade_load": {
+    "model": "equivalent_total_force",
+    "total_force_n_per_slot": 10000.0,
+    "source": "synthetic pipeline smoke test only; not a design load; representation chosen to match the verified run",
+    "direction_rule": "flank_surface_normal",
+    "distribution": "area_weighted_uniform_pressure"
+  },
+  "constraints": {
+    "cyclic_symmetry": true,
+    "axial_symmetry_z0": true,
+    "tangential_anchor": true,
+    "source": "synthetic pipeline smoke test only"
+  }
+}

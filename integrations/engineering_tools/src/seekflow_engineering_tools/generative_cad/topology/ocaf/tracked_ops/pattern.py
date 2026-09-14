@@ -20,7 +20,6 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     EvolutionKind, TopologyEntityKind, ProofClass,
     TopologyCaptureScope, LiveEvolutionBatch, LiveEvolutionRelation, TrackedShapeResult,
     FaceRoleSpec,
-    EdgeRoleSpec,
     make_relation_key, make_source_ref,
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.history_graph import (
@@ -31,9 +30,15 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.extrude
     _remaining_edge_roles,
     _remaining_face_roles,
 )
+from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops._carry import (
+    ShapeIndex,
+    iter_faces,
+)
 
 
-def _capture_fuse_face(relations, scope, fhist, face, si, fi, role, result_shape=None):
+def _capture_fuse_face(
+    relations, scope, fhist, face, si, fi, role, result_index=None,
+):
     """Query fuse history for one input face (v6.0 §10.1: input, not output).
     Returns (has_gen, has_mod) flags."""
     has_gen = False
@@ -101,18 +106,103 @@ def _capture_fuse_face(relations, scope, fhist, face, si, fi, role, result_shape
     # No TNaming relation is written — the face's TShape is unchanged, so its
     # persistent identity already survives.
     if not gen_shapes and not mod_shapes and not fhist.IsRemoved(face.wrapped):
-        if result_shape is not None and _find_partner_face(result_shape, face.wrapped) is not None:
+        if result_index is not None and result_index.find(face.wrapped) is not None:
             has_mod = True
     return has_gen, has_mod
 
 
-def _find_partner_face(result_shape, face):
-    """Return a face in result_shape sharing the same TShape as ``face``."""
+def _fuse_instances_with_history(instance_shapes, relations, scope):
+    """Fuse all instances in one BOPAlgo operation and capture their history."""
     import cadquery as cq
-    for rf in cq.Shape.cast(result_shape).Faces():
-        if rf.wrapped.IsPartner(face) or rf.wrapped.IsSame(face):
-            return rf.wrapped
-    return None
+    from OCP.BOPAlgo import BOPAlgo_BOP, BOPAlgo_FUSE
+
+    fuser = BOPAlgo_BOP()
+    fuser.SetOperation(BOPAlgo_FUSE)
+    fuser.SetToFillHistory(True)
+    fuser.AddArgument(instance_shapes[0])
+    for shape in instance_shapes[1:]:
+        fuser.AddTool(shape)
+    fuser.Perform()
+    new_fused = fuser.Shape()
+
+    # Multi-tool fuse is equivalent to sequential fuse for disjoint instances.
+    # If instances overlap, OCCT can produce a different union boundary than
+    # the historical sequential path, so fall back to the exact legacy order.
+    if len(cq.Shape.cast(new_fused).Solids()) != len(instance_shapes):
+        return _fuse_instances_sequentially_with_history(
+            instance_shapes, relations, scope,
+        )
+
+    fhist = fuser.History()
+    if fhist is None:
+        return new_fused, False, ["fuse_no_history"]
+
+    result_index = ShapeIndex(iter_faces(new_fused))
+    has_gen = False
+    has_mod = False
+    for fi, face in enumerate(cq.Shape.cast(instance_shapes[0]).Faces()):
+        g, m = _capture_fuse_face(
+            relations, scope, fhist, face, 0, fi, "arg", result_index,
+        )
+        has_gen = has_gen or g
+        has_mod = has_mod or m
+    for si, shape in enumerate(instance_shapes[1:], start=1):
+        for fi, face in enumerate(cq.Shape.cast(shape).Faces()):
+            g, m = _capture_fuse_face(
+                relations, scope, fhist, face, si, fi, "tool", result_index,
+            )
+            has_gen = has_gen or g
+            has_mod = has_mod or m
+    if not has_gen and not has_mod:
+        return new_fused, False, ["fuse_step_no_history"]
+    return new_fused, True, []
+
+
+def _fuse_instances_sequentially_with_history(instance_shapes, relations, scope):
+    """Legacy N-1 fuse path, used when instances overlap or touch."""
+    import cadquery as cq
+    from OCP.BOPAlgo import BOPAlgo_BOP, BOPAlgo_FUSE
+
+    fused = instance_shapes[0]
+    history_complete = True
+    missing_phases: list[str] = []
+
+    for si, shape in enumerate(instance_shapes[1:]):
+        fuser = BOPAlgo_BOP()
+        fuser.SetOperation(BOPAlgo_FUSE)
+        fuser.SetToFillHistory(True)
+        fuser.AddArgument(fused)
+        fuser.AddTool(shape)
+        fuser.Perform()
+        new_fused = fuser.Shape()
+        fhist = fuser.History()
+        result_index = ShapeIndex(iter_faces(new_fused))
+        if fhist is None:
+            history_complete = False
+            missing_phases.append(f"fuse_step_{si}")
+            fused = new_fused
+            continue
+
+        has_gen = False
+        has_mod = False
+        for fi, face in enumerate(cq.Shape.cast(fused).Faces()):
+            g, m = _capture_fuse_face(
+                relations, scope, fhist, face, si, fi, "arg", result_index,
+            )
+            has_gen = has_gen or g
+            has_mod = has_mod or m
+        for fi, face in enumerate(cq.Shape.cast(shape).Faces()):
+            g, m = _capture_fuse_face(
+                relations, scope, fhist, face, si, fi, "tool", result_index,
+            )
+            has_gen = has_gen or g
+            has_mod = has_mod or m
+        if not has_gen and not has_mod:
+            history_complete = False
+            missing_phases.append(f"fuse_step_{si}_no_history")
+        fused = new_fused
+
+    return fused, history_complete, missing_phases
 
 
 def tracked_linear_pattern(
@@ -195,37 +285,9 @@ def tracked_linear_pattern(
     history_complete = True
     missing_phases: list[str] = []
     if len(instance_shapes) > 1:
-        from OCP.BOPAlgo import BOPAlgo_BOP, BOPAlgo_FUSE
-        fused = instance_shapes[0]
-        for si, s in enumerate(instance_shapes[1:]):
-            fuser = BOPAlgo_BOP()
-            fuser.SetOperation(BOPAlgo_FUSE)
-            fuser.SetToFillHistory(True)
-            fuser.AddArgument(fused)
-            fuser.AddTool(s)
-            fuser.Perform()
-            new_fused = fuser.Shape()
-
-            # ★ v6.0 §10.1: query history on INPUT shapes, not output
-            fhist = fuser.History()
-            if fhist is not None:
-                has_gen = False
-                has_mod = False
-                # Query on argument (previous_fused) faces
-                for fi, face in enumerate(cq.Shape.cast(fused).Faces()):
-                    g, m = _capture_fuse_face(relations, scope, fhist, face, si, fi, "arg", new_fused)
-                    has_gen = has_gen or g; has_mod = has_mod or m
-                # Query on tool faces
-                for fi, face in enumerate(cq.Shape.cast(s).Faces()):
-                    g, m = _capture_fuse_face(relations, scope, fhist, face, si, fi, "tool", new_fused)
-                    has_gen = has_gen or g; has_mod = has_mod or m
-                if not has_gen and not has_mod:
-                    history_complete = False
-                    missing_phases.append(f"fuse_step_{si}_no_history")
-            else:
-                history_complete = False
-                missing_phases.append(f"fuse_step_{si}")
-            fused = new_fused
+        fused, history_complete, missing_phases = _fuse_instances_with_history(
+            instance_shapes, relations, scope,
+        )
         result = cq.Shape.cast(fused)
 
         # v7 Phase 3: history is only "complete" if every original face can be
@@ -358,38 +420,9 @@ def tracked_circular_pattern(
                     ),
                 ))
 
-    # Fuse all instances with history.
-    from OCP.BOPAlgo import BOPAlgo_BOP, BOPAlgo_FUSE
-    fused = instance_shapes[0]
-    history_complete = True
-    missing_phases: list[str] = []
-    for si, s in enumerate(instance_shapes[1:]):
-        fuser = BOPAlgo_BOP()
-        fuser.SetOperation(BOPAlgo_FUSE)
-        fuser.SetToFillHistory(True)
-        fuser.AddArgument(fused)
-        fuser.AddTool(s)
-        fuser.Perform()
-        new_fused = fuser.Shape()
-        fhist = fuser.History()
-        if fhist is not None:
-            has_gen = False
-            has_mod = False
-            for fi, face in enumerate(cq.Shape.cast(fused).Faces()):
-                g, m = _capture_fuse_face(relations, scope, fhist, face, si, fi, "arg", new_fused)
-                has_gen = has_gen or g
-                has_mod = has_mod or m
-            for fi, face in enumerate(cq.Shape.cast(s).Faces()):
-                g, m = _capture_fuse_face(relations, scope, fhist, face, si, fi, "tool", new_fused)
-                has_gen = has_gen or g
-                has_mod = has_mod or m
-            if not has_gen and not has_mod:
-                history_complete = False
-                missing_phases.append(f"fuse_step_{si}_no_history")
-        else:
-            history_complete = False
-            missing_phases.append(f"fuse_step_{si}")
-        fused = new_fused
+    fused, history_complete, missing_phases = _fuse_instances_with_history(
+        instance_shapes, relations, scope,
+    )
 
     result = cq.Shape.cast(fused)
 

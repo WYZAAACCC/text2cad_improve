@@ -1,0 +1,245 @@
+{
+  "schema_version": "cfd_spec_v1",
+  "geometry_ref": {
+    "lineage_id": "D01",
+    "revision_id": "rev-000001",
+    "cad_record_id": "cfd-dev-D01-gen",
+    "geometry": {
+      "path": "model.step",
+      "sha256": "08cf8b44db8735f2589cde6c7ead9282f6b8fe7007f6d5c9e75d59bc12020f8a"
+    },
+    "topology": {
+      "path": "design.xbf",
+      "sha256": "c14adebd41057b78eedcd831067eca136c049e706d9999f6ad4002eff68a7f8d"
+    },
+    "history_evidence": {
+      "path": "history.json",
+      "sha256": "f09f1bde18e938fc956b139683c615b4e813dcec21aa23a313b1571b27c84c7a"
+    },
+    "length_unit": "mm"
+  },
+  "domain_strategy": {
+    "strategy": "outer",
+    "construction": "subtract_solid",
+    "fluid_region": "fluid",
+    "solid_regions": [],
+    "generated_surfaces": [
+      "x_min",
+      "x_max",
+      "y_min",
+      "y_max",
+      "z_min",
+      "z_max",
+      "solid_wall"
+    ],
+    "outer_bounds_m": [-0.6, -0.6, -0.5, 0.6, 0.6, 0.5],
+    "axis": [0.0, 0.0, 1.0],
+    "origin_m": [0.0, 0.0, 0.0],
+    "sector_angle_deg": null
+  },
+  "mesh_strategy": {
+    "method": "tetra",
+    "global_size_m": 0.06,
+    "refinements": [
+      {
+        "surface": {"source": "generated", "key": "solid_wall", "cardinality": "set_allowed"},
+        "size_m": 0.005
+      }
+    ],
+    "inflation_layers": 0,
+    "first_layer_m": null,
+    "growth_rate": 1.2,
+    "max_cells": 1000000,
+    "max_skewness": 0.95,
+    "min_orthogonal_quality": 0.05
+  },
+  "physics_spec": {
+    "time_mode": "steady",
+    "turbulence": "laminar",
+    "heat_transfer": "isothermal",
+    "compressible": false,
+    "reference_pressure_pa": 101325.0,
+    "reference_temperature_k": 293.15,
+    "rotation_rad_s": 0.0,
+    "rotation_model": "none",
+    "gravity_m_s2": [0.0, 0.0, 0.0]
+  },
+  "material_spec": [
+    {
+      "name": "air",
+      "region": "fluid",
+      "phase": "fluid",
+      "density_kg_m3": {"constant": 1.225, "temperature_table": []},
+      "equation_of_state": "constant_density",
+      "gas_constant_j_kgk": null,
+      "viscosity_pa_s": {"constant": 1.7894e-05, "temperature_table": []},
+      "conductivity_w_mk": null,
+      "heat_capacity_j_kgk": null
+    }
+  ],
+  "boundary_specs": [
+    {
+      "name": "z_inlet",
+      "surface": {"source": "generated", "key": "z_min", "cardinality": "set_allowed"},
+      "kind": "velocity_inlet",
+      "velocity_m_s": [0.0, 0.0, 0.4],
+      "mass_flow_kg_s": null,
+      "gauge_pressure_pa": null,
+      "temperature_k": null,
+      "heat_flux_w_m2": null,
+      "thermal": "adiabatic",
+      "peer": null,
+      "periodic_transform": null,
+      "turbulence_intensity": null,
+      "hydraulic_diameter_m": null
+    },
+    {
+      "name": "z_outlet",
+      "surface": {"source": "generated", "key": "z_max", "cardinality": "set_allowed"},
+      "kind": "pressure_outlet",
+      "velocity_m_s": null,
+      "mass_flow_kg_s": null,
+      "gauge_pressure_pa": 0.0,
+      "temperature_k": null,
+      "heat_flux_w_m2": null,
+      "thermal": "adiabatic",
+      "peer": null,
+      "periodic_transform": null,
+      "turbulence_intensity": null,
+      "hydraulic_diameter_m": null
+    },
+    {
+      "name": "x_wall_min",
+      "surface": {"source": "generated", "key": "x_min", "cardinality": "set_allowed"},
+      "kind": "wall",
+      "velocity_m_s": null,
+      "mass_flow_kg_s": null,
+      "gauge_pressure_pa": null,
+      "temperature_k": null,
+      "heat_flux_w_m2": null,
+      "thermal": "adiabatic",
+      "peer": null,
+      "periodic_transform": null,
+      "turbulence_intensity": null,
+      "hydraulic_diameter_m": null
+    },
+    {
+      "name": "x_wall_max",
+      "surface": {"source": "generated", "key": "x_max", "cardinality": "set_allowed"},
+      "kind": "wall",
+      "velocity_m_s": null,
+      "mass_flow_kg_s": null,
+      "gauge_pressure_pa": null,
+      "temperature_k": null,
+      "heat_flux_w_m2": null,
+      "thermal": "adiabatic",
+      "peer": null,
+      "periodic_transform": null,
+      "turbulence_intensity": null,
+      "hydraulic_diameter_m": null
+    },
+    {
+      "name": "y_wall_min",
+      "surface": {"source": "generated", "key": "y_min", "cardinality": "set_allowed"},
+      "kind": "wall",
+      "velocity_m_s": null,
+      "mass_flow_kg_s": null,
+      "gauge_pressure_pa": null,
+      "temperature_k": null,
+      "heat_flux_w_m2": null,
+      "thermal": "adiabatic",
+      "peer": null,
+      "periodic_transform": null,
+      "turbulence_intensity": null,
+      "hydraulic_diameter_m": null
+    },
+    {
+      "name": "y_wall_max",
+      "surface": {"source": "generated", "key": "y_max", "cardinality": "set_allowed"},
+      "kind": "wall",
+      "velocity_m_s": null,
+      "mass_flow_kg_s": null,
+      "gauge_pressure_pa": null,
+      "temperature_k": null,
+      "heat_flux_w_m2": null,
+      "thermal": "adiabatic",
+      "peer": null,
+      "periodic_transform": null,
+      "turbulence_intensity": null,
+      "hydraulic_diameter_m": null
+    },
+    {
+      "name": "disc_wall",
+      "surface": {"source": "generated", "key": "solid_wall", "cardinality": "set_allowed"},
+      "kind": "wall",
+      "velocity_m_s": null,
+      "mass_flow_kg_s": null,
+      "gauge_pressure_pa": null,
+      "temperature_k": null,
+      "heat_flux_w_m2": null,
+      "thermal": "adiabatic",
+      "peer": null,
+      "periodic_transform": null,
+      "turbulence_intensity": null,
+      "hydraulic_diameter_m": null
+    }
+  ],
+  "solver_control": {
+    "algorithm": "simple",
+    "spatial_order": 2,
+    "relaxation": 0.5,
+    "max_iterations": 300,
+    "chunk_iterations": 20,
+    "time_step_s": null,
+    "end_time_s": null,
+    "max_courant": 5.0
+  },
+  "convergence_criteria": {
+    "residuals": {
+      "continuity": 1e-05,
+      "x_velocity": 1e-05,
+      "y_velocity": 1e-05,
+      "z_velocity": 1e-05
+    },
+    "mass_relative_tolerance": 0.001,
+    "energy_relative_tolerance": 0.01,
+    "window": 3,
+    "divergence_factor": 100.0,
+    "stagnation_window": 8,
+    "monitor_relative_tolerance": 0.001
+  },
+  "result_requests": [
+    {
+      "name": "outlet_pressure",
+      "quantity": "pressure",
+      "operation": "mean",
+      "boundary": "z_outlet",
+      "expected_range": [90000.0, 110000.0]
+    },
+    {
+      "name": "outlet_mass_flow",
+      "quantity": "mass_flow",
+      "operation": "integral",
+      "boundary": "z_outlet",
+      "expected_range": [-1.0, 1.0]
+    }
+  ],
+  "budget": {
+    "wall_time_s": 7200.0,
+    "cpu_count": 8,
+    "memory_mb": 12000,
+    "max_tool_calls": 100,
+    "max_agent_calls": 10,
+    "max_repairs": 0,
+    "max_output_bytes": 800000000
+  },
+  "allowed_repairs": [],
+  "expert_confirmed": true,
+  "assumptions": [
+    "Software integration verification case, not a certified engineering prediction.",
+    "Outer rectangular fluid domain around the generated D01 solid; all six sides and the subtracted solid wall are explicit boundary groups.",
+    "Steady, incompressible, isothermal air at 1.225 kg/m3 and 1.7894e-5 Pa*s.",
+    "0.4 m/s normal-to-boundary velocity at z_min, 0 Pa gauge at z_max, all other boundaries adiabatic walls.",
+    "The first staged worker does not bind domain walls through persistent role selections; it reports exact Gmsh OCC construction provenance and generated-surface convention."
+  ]
+}

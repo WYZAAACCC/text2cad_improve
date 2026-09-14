@@ -1,0 +1,23 @@
+name: cfd-framework
+on:
+  push:
+    paths: ['integrations/cfd/**', '.github/workflows/cfd.yml']
+  pull_request:
+    paths: ['integrations/cfd/**', '.github/workflows/cfd.yml']
+jobs:
+  cfd:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        mode: [core, native]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -e 'integrations/cfd[dev,api]'
+      - if: matrix.mode == 'native'
+        run: pip install -e . -e integrations/engineering_tools cadquery
+      - run: ruff check integrations/cfd
+      - run: pytest integrations/cfd/tests -q
+      - run: python -m seekflow_cfd run integrations/cfd/examples/mock_spec.json --backend mock --job-id ci-demo

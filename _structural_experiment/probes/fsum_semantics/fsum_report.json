@@ -1,0 +1,55 @@
+{
+  "applied_load_n": 50.0,
+  "applied_vector_n": [
+    -0.0,
+    -0.0,
+    50.0
+  ],
+  "runs": [
+    {
+      "configuration": "A",
+      "fsum_n": [
+        0.0,
+        0.0,
+        49.999998
+      ],
+      "reaction_sum_n": [
+        0.0,
+        0.0,
+        -50.0
+      ],
+      "fsum_magnitude_n": 49.999998,
+      "reaction_magnitude_n": 50.0
+    },
+    {
+      "configuration": "B",
+      "fsum_n": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "reaction_sum_n": [
+        0.0,
+        0.0,
+        -50.0
+      ],
+      "fsum_magnitude_n": 0.0,
+      "reaction_magnitude_n": 50.0
+    },
+    {
+      "configuration": "C",
+      "fsum_n": [
+        2.9829606e-15,
+        2.6221938e-15,
+        49.999998
+      ],
+      "reaction_sum_n": [
+        -3.9339436e-13,
+        1.59448e-13,
+        -50.0
+      ],
+      "fsum_magnitude_n": 49.999998,
+      "reaction_magnitude_n": 50.0
+    }
+  ]
+}

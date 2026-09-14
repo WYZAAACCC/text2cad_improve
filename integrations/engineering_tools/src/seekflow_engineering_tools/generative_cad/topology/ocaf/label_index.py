@@ -226,12 +226,16 @@ class StableLabelIndex:
             return existing
 
         tag = self._next_tags.get("relation", DYNAMIC_TAG_START)
+        while True:
+            tag_path = TagPath((
+                DESIGN_ROOT_TAG, TAG_COMPONENTS, component_tag,
+                COMPONENT_TAG_FEATURES, feature_tag,
+                FEATURE_TAG_RELATION_METADATA, tag,
+            ))
+            if tag_path not in self._by_path:
+                break
+            tag += 1
         self._next_tags["relation"] = tag + 1
-        tag_path = TagPath((
-            DESIGN_ROOT_TAG, TAG_COMPONENTS, component_tag,
-            COMPONENT_TAG_FEATURES, feature_tag,
-            FEATURE_TAG_RELATION_METADATA, tag,
-        ))
 
         entry = IndexEntry(key=key, tag_path=tag_path, created_revision=revision)
         self._by_key[key_str] = entry
@@ -261,12 +265,16 @@ class StableLabelIndex:
             return existing
 
         tag = self._next_tags.get("face_role", DYNAMIC_TAG_START)
+        while True:
+            tag_path = TagPath((
+                DESIGN_ROOT_TAG, TAG_COMPONENTS, component_tag,
+                COMPONENT_TAG_FEATURES, feature_tag,
+                FEATURE_TAG_RESULT_ROOT, tag,
+            ))
+            if tag_path not in self._by_path:
+                break
+            tag += 1
         self._next_tags["face_role"] = tag + 1
-        tag_path = TagPath((
-            DESIGN_ROOT_TAG, TAG_COMPONENTS, component_tag,
-            COMPONENT_TAG_FEATURES, feature_tag,
-            FEATURE_TAG_RESULT_ROOT, tag,
-        ))
 
         entry = IndexEntry(key=key, tag_path=tag_path, created_revision=revision)
         self._by_key[key_str] = entry
@@ -292,12 +300,16 @@ class StableLabelIndex:
         tag = self._next_tags.get("edge_role", 3001)
         if tag < 3001:
             tag = 3001
+        while True:
+            tag_path = TagPath((
+                DESIGN_ROOT_TAG, TAG_COMPONENTS, component_tag,
+                COMPONENT_TAG_FEATURES, feature_tag,
+                FEATURE_TAG_RESULT_ROOT, tag,
+            ))
+            if tag_path not in self._by_path:
+                break
+            tag += 1
         self._next_tags["edge_role"] = tag + 1
-        tag_path = TagPath((
-            DESIGN_ROOT_TAG, TAG_COMPONENTS, component_tag,
-            COMPONENT_TAG_FEATURES, feature_tag,
-            FEATURE_TAG_RESULT_ROOT, tag,
-        ))
 
         entry = IndexEntry(key=key, tag_path=tag_path, created_revision=revision)
         self._by_key[key_str] = entry

@@ -1,0 +1,106 @@
+
+              Welcome to ANSYS Fluent Release 18.1
+
+              Copyright 2017 SAS IP, Inc. All Rights Reserved.
+              Unauthorized use, distribution or duplication is prohibited.
+              This product is subject to U.S. laws governing export and re-export.
+              For full Legal Notice, see documentation.
+
+Build Time: Apr 11 2017 18:00:01  Build Id: 10162  
+ 
+
+
+Cleanup script file is E:\text_to_cad_improve\auto_detection_process\_cfd_experiment\_tui_verify\\cleanup-fluent-WANGYONGZHE-37580.bat
+
+Reading journal file phy.jou...
+
+> /file/read-case "mesh/fluid_domain.msh"
+Reading "mesh/fluid_domain.msh"...
+
+     353 nodes.
+      68 triangular velocity-inlet faces, zone  1.
+      68 triangular outflow faces, zone  2.
+     442 triangular wall faces, zone  3.
+    1995 triangular interior faces, zone  6.
+    1142 tetrahedral cells, zone  4.
+
+Building...
+     mesh
+     materials,
+     interface,
+     domains,
+     zones,
+	default-interior
+	fluid
+	lateral_walls
+	outlet
+	inlet
+Done.
+
+
+> /define/operating-conditions/operating-pressure 101325
+
+> /define/materials/change-create
+
+material-name> air
+material name [air] yes
+yes is a fluid
+change Density? [no] yes
+
+Density
+methods: (constant ideal-gas incompressible-ideal-gas real-gas-soave-redlich-kwong real-gas-peng-robinson real-gas-aungier-redlich-kwong real-gas-redlich-kwong boussinesq piecewise-linear piecewise-polynomial polynomial compressible-liquid user-defined)
+new method [constant] constant
+value (kg/m3) [1.225] 1.225
+
+change Cp (Specific Heat)? [no] no
+change Thermal Conductivity? [no] no
+change Viscosity? [no] yes
+
+Viscosity
+methods: (constant piecewise-linear piecewise-polynomial polynomial power-law sutherland kinetic-theory cross herschel-bulkley carreau non-newtonian-power-law user-defined)
+new method [constant] constant
+value (kg/m-s) [1.7894e-05] 1.7894e-05
+
+change Molecular Weight? [no] no
+change Thermal Expansion Coefficient? [no] no
+change Speed of Sound? [no] no
+
+Change/Create mixture and Overwrite air? [no] yes
+
+> /solve/set/discretization-scheme/mom 1
+
+> /solve/set/under-relaxation/pressure 0.5
+
+> /solve/set/under-relaxation/mom 0.5
+
+> /solve/set/p-v-coupling
+Pressure Velocity Coupling Scheme [20] 20
+
+> ! --- configured settings readback ---
+'---' 不是内部或外部命令，也不是可运行的程序
+或批处理文件。
+
+> ! momentum scheme (expect 1)
+'momentum' 不是内部或外部命令，也不是可运行的程序
+或批处理文件。
+
+> (rpgetvar 'mom/scheme)
+1
+
+
+> /file/write-case "case-configured.cas.gz"
+Writing "| gzip -2cfv > case-configured.cas.gz"...
+
+Writing temporary file C:\\Users\\MYCOMP~1\\AppData\\Local\\Temp\\flntgz-136242 ...
+    1142 tetrahedral cells, zone  4, binary.
+      68 triangular velocity-inlet faces, zone  1, binary.
+      68 triangular outflow faces, zone  2, binary.
+     442 triangular wall faces, zone  3, binary.
+    1995 triangular interior faces, zone  6, binary.
+     353 nodes, binary.
+     353 node flags, binary.
+Done.
+
+
+
+> /exit

@@ -1,0 +1,568 @@
+{
+  "note": "The face-finding agent's own accepted submission for D27, replayed verbatim. Taken from a run whose sector (9-27 deg) matches the d27-e2e domain decision.",
+  "final": {
+    "accepted": true,
+    "feature": "n_final_cut",
+    "solid_index": 0,
+    "selected_face_indices": [
+      3954,
+      3962,
+      3970,
+      3978,
+      3990,
+      3998,
+      4006,
+      4014,
+      4020,
+      4028,
+      4036,
+      4044,
+      4056,
+      4064,
+      4072,
+      4080,
+      4086,
+      4094,
+      4102,
+      4110,
+      4122,
+      4130,
+      4138,
+      4146
+    ],
+    "selection_method": "filters",
+    "criterion": {
+      "intent": "The faces that carry the blade load into the body: the fir-tree slot flanks whose outward normal points into the blade root space (radially inward), i.e. the bearing surfaces the blade presses against under centrifugal load.",
+      "surface_types": [
+        "plane"
+      ],
+      "normal_clauses": [
+        {
+          "component": "radial",
+          "minimum": -1.0,
+          "maximum": -0.2
+        },
+        {
+          "component": "axial",
+          "minimum": -0.05,
+          "maximum": 0.05
+        }
+      ],
+      "symmetry": null,
+      "count": {
+        "min_count": 24,
+        "max_count": 24,
+        "even": true
+      },
+      "notes": "One repeating sector (azimuth 9-27 deg). The blade root is a fir-tree slot cut by the final cut's tool; the load-bearing flanks are the plane faces with outward normal pointing radially inward (negative radial component), which is the direction the blade presses against the disc material. 3 teeth x 8 flanks = 24 faces."
+    },
+    "criterion_residuals": {
+      "intent": "The faces that carry the blade load into the body: the fir-tree slot flanks whose outward normal points into the blade root space (radially inward), i.e. the bearing surfaces the blade presses against under centrifugal load.",
+      "face_count": 24,
+      "surface_types_seen": [
+        "plane"
+      ],
+      "surface_types_within_declared": true,
+      "per_face": [
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.722457,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.718853,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.715259,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.869299,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.869299,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.715259,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.718853,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.722457,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.722457,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.718853,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.715259,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.869299,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.869299,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.715259,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.718853,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.722457,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.722457,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.718853,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.715259,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.869299,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.869299,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.715259,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.718853,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ],
+        [
+          {
+            "clause": 0,
+            "component": "radial",
+            "value": -0.722457,
+            "minimum": -1.0,
+            "maximum": -0.2,
+            "within": true,
+            "excess_fraction": 0.0
+          },
+          {
+            "clause": 1,
+            "component": "axial",
+            "value": 0.0,
+            "minimum": -0.05,
+            "maximum": 0.05,
+            "within": true,
+            "excess_fraction": 0.0
+          }
+        ]
+      ],
+      "faces_failing_a_normal_clause": [],
+      "count_clause": {
+        "declared": true,
+        "count": 24,
+        "min_count": 24,
+        "max_count": 24,
+        "even": true,
+        "satisfied": true
+      },
+      "symmetry": {
+        "declared": false
+      },
+      "satisfied": true
+    },
+    "area_mm2_total": 2679.20604,
+    "load_radius_mm": 289.23939,
+    "radius_min_mm": 280.734608,
+    "radius_max_mm": 295.387494,
+    "rationale": "The 24 plane flanks of the fir-tree slot in the solved sector, with outward normals pointing radially inward into the blade root space, are the bearing surfaces that carry the blade load into the disc body."
+  }
+}

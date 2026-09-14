@@ -96,7 +96,7 @@ def cmd_confirm(args):
 
     # 几何比对
     g = cfg["geometry"]
-    print(f"[run3d] 几何: bore={g['r_bore_mm']}mm outer={g['r_outer_mm']}mm z_half={g['z_half_mm']}mm slots={g['n_slots']}")
+    print(f"[run3d] 几何: bore={g['r_bore_mm']}mm outer={g['r_outer_mm']}mm z_half={g['z_half_mm']}mm sector={g['sector_deg']}°")
     print(f"[run3d] 载荷: rpm={cfg['load']['rpm']} T_bore={cfg['load']['t_bore_c']}°C T_rim={cfg['load']['t_rim_c']}°C")
 
     cfg_hash = _hash_config(cfg)

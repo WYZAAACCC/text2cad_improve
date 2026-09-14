@@ -1,0 +1,17 @@
+{
+  "step_file": "E:/text_to_cad_improve/auto_detection_process/_cfd_experiment/input/lineage/D19/model.step",
+  "geometry": {
+    "axis": "Z",
+    "n_slots": 60,
+    "sector_deg": 6.0,
+    "theta_low_deg": 3.0,
+    "r_bore_mm": 60.0,
+    "r_outer_mm": 250.0,
+    "z_half_mm": 38.0
+  },
+  "mesh": {
+    "size_max_mm": 8.0,
+    "size_min_mm": 1.2,
+    "curvature_pts": 12
+  }
+}

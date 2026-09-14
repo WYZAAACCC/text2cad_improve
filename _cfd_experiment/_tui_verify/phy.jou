@@ -1,0 +1,27 @@
+/file/read-case "mesh/fluid_domain.msh"
+/define/operating-conditions/operating-pressure 101325
+/define/materials/change-create
+air
+yes
+yes
+constant
+1.225
+no
+no
+yes
+constant
+1.7894e-05
+no
+no
+no
+yes
+/solve/set/discretization-scheme/mom 1
+/solve/set/under-relaxation/pressure 0.5
+/solve/set/under-relaxation/mom 0.5
+/solve/set/p-v-coupling
+20
+! --- configured settings readback ---
+! momentum scheme (expect 1)
+(rpgetvar 'mom/scheme)
+/file/write-case "case-configured.cas.gz"
+/exit

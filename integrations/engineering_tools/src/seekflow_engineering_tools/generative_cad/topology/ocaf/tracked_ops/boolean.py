@@ -38,8 +38,10 @@ from seekflow_engineering_tools.generative_cad.topology.ocaf.models import (
     make_relation_key, make_source_ref,
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops._carry import (
+    ShapeIndex,
     all_faces_accounted,
-    find_partner_edge,
+    iter_edges,
+    iter_faces,
 )
 from seekflow_engineering_tools.generative_cad.topology.ocaf.tracked_ops.extrude import (
     _remaining_edge_roles,
@@ -162,6 +164,8 @@ def _export_bopalgo_history(
     edge_roles: dict[str, EdgeRoleSpec] = {}
     all_input_faces: list[Any] = []
     all_input_edges: list[Any] = []
+    result_face_index = ShapeIndex(iter_faces(result.wrapped))
+    result_edge_index = ShapeIndex(iter_edges(result.wrapped))
 
     for role_name, shape in [("target", target), ("tool", tool)]:
         for i, face in enumerate(shape.Faces()):
@@ -247,7 +251,7 @@ def _export_bopalgo_history(
             #    these, but a persistent TNaming chain still needs an explicit
             #    edge so cross-feature Solve can keep following the face. ──
             if not gen_shapes and not mod_shapes and not history.IsRemoved(fw):
-                partner = _find_partner_face(result, fw)
+                partner = result_face_index.find(fw)
                 if partner is not None:
                     relations.append(
                         LiveEvolutionRelation(
@@ -363,7 +367,7 @@ def _export_bopalgo_history(
                 )
 
             if not gen_shapes and not mod_shapes and not history.IsRemoved(ew):
-                partner = find_partner_edge(result.wrapped, ew)
+                partner = result_edge_index.find(ew)
                 if partner is not None:
                     relations.append(
                         LiveEvolutionRelation(
@@ -435,14 +439,3 @@ def _face_evidence(face: Any) -> dict:
         }
     except Exception:
         return {}
-
-
-def _find_partner_face(result_shape: Any, face: Any):
-    """Return a face in result_shape sharing the same TShape as ``face``."""
-    try:
-        for rf in result_shape.Faces():
-            if rf.wrapped.IsPartner(face) or rf.wrapped.IsSame(face):
-                return rf.wrapped
-    except Exception:
-        pass
-    return None

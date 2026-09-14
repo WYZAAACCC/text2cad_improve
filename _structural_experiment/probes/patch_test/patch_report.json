@@ -1,0 +1,31 @@
+{
+  "model": {
+    "mapped_area_mm2": 600.0,
+    "pressure_mpa": 10.0,
+    "element_face_count": 64,
+    "loaded_node_count": 149
+  },
+  "pressure_mpa": 10.0,
+  "surface_pressure": {
+    "node_count": 334,
+    "sigma_xx_mean": -10.0,
+    "sigma_xx_min": -10.0,
+    "sigma_xx_max": -10.0,
+    "sigma_yy_mean": -5.623415688092821e-13,
+    "sigma_zz_mean": -6.174989045759261e-13,
+    "max_abs_sigma_yy": 3.7924435e-11,
+    "max_abs_sigma_zz": 3.659313e-11,
+    "worst_error_fraction": 0.0
+  },
+  "nodal_force": {
+    "node_count": 334,
+    "sigma_xx_mean": -10.757547476646705,
+    "sigma_xx_min": -28.307102,
+    "sigma_xx_max": -4.180549,
+    "sigma_yy_mean": 0.03208003788681744,
+    "sigma_zz_mean": 0.07703077706319185,
+    "max_abs_sigma_yy": 5.8320289,
+    "max_abs_sigma_zz": 5.5939969,
+    "worst_error_fraction": 1.8307102
+  }
+}

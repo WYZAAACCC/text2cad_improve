@@ -1,0 +1,63 @@
+{
+  "case_id": "D27_physical_load",
+  "confirmation_status": "unconfirmed_synthetic",
+  "rotation": {
+    "rpm": 15000.0,
+    "source": "as before"
+  },
+  "temperature": {
+    "model": "radial_power_law",
+    "reference_temperature_c": 20.0,
+    "bore_c": 500.0,
+    "rim_c": 650.0,
+    "bore_radius_mm": 60.0,
+    "outer_radius_mm": 300.0,
+    "exponent": 1.0,
+    "source": "synthetic pipeline smoke test only"
+  },
+  "material": {
+    "name": "Synthetic validation material",
+    "source": "synthetic pipeline smoke test only",
+    "poisson_ratio": 0.3,
+    "density_t_mm3": 8.24e-09,
+    "points": [
+      {
+        "temperature_c": 20.0,
+        "young_mpa": 205000.0,
+        "alpha_per_c": 1.18e-05,
+        "yield_mpa": 1100.0
+      },
+      {
+        "temperature_c": 300.0,
+        "young_mpa": 190000.0,
+        "alpha_per_c": 1.35e-05,
+        "yield_mpa": 1050.0
+      },
+      {
+        "temperature_c": 500.0,
+        "young_mpa": 178000.0,
+        "alpha_per_c": 1.44e-05,
+        "yield_mpa": 1000.0
+      },
+      {
+        "temperature_c": 650.0,
+        "young_mpa": 165000.0,
+        "alpha_per_c": 1.54e-05,
+        "yield_mpa": 950.0
+      }
+    ]
+  },
+  "blade_load": {
+    "model": "equivalent_total_force",
+    "total_force_n_per_slot": 271300.0,
+    "source": "estimated, not a design load. One blade = 0.2136 kg (reference aerofoil 120x45x8 mm, 0.60 fill, density 8240 kg/m3) at a centre of gravity radius of 343.24 mm and 15000 rpm gives 180.9 kN by m*w^2*r. The analysed sector spans 18 deg over a 6 deg slot pitch, so three blades bear on it: 542.7 kN over the full 76 mm thickness, halved to 271.3 kN because the model is a half thickness. Applied as an area-weighted uniform pressure over the 24 selected flanks, that is 202.5 MPa mean contact pressure.",
+    "direction_rule": "flank_surface_normal",
+    "distribution": "area_weighted_uniform_pressure"
+  },
+  "constraints": {
+    "cyclic_symmetry": true,
+    "axial_symmetry_z0": true,
+    "tangential_anchor": true,
+    "source": "synthetic pipeline smoke test only"
+  }
+}

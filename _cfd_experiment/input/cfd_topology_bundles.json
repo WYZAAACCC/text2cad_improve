@@ -1,0 +1,25 @@
+{
+  "schema_version": "cfd_topology_bundles_v1",
+  "count": 2,
+  "output_root": "E:\\text_to_cad_improve\\auto_detection_process\\_cfd_experiment\\input",
+  "records": [
+    {
+      "family": "D14",
+      "step": "E:\\text_to_cad_improve\\auto_detection_process\\_cfd_experiment\\input\\lineage\\D14\\model.step",
+      "xbf": "E:\\text_to_cad_improve\\auto_detection_process\\_cfd_experiment\\input\\lineage\\D14\\design.xbf",
+      "history": "E:\\text_to_cad_improve\\auto_detection_process\\_cfd_experiment\\input\\lineage\\D14\\history.json",
+      "geometry_hash": "53c2aac806d01a5c4f817037c1126511d662ca2f15df031d0ba70f3b4c29600a",
+      "topology_hash": "45e41c193a8a6b52ae8bd511782438254830e7857166223abdbe9a923438c243",
+      "label_count": 35725
+    },
+    {
+      "family": "D15",
+      "step": "E:\\text_to_cad_improve\\auto_detection_process\\_cfd_experiment\\input\\lineage\\D15\\model.step",
+      "xbf": "E:\\text_to_cad_improve\\auto_detection_process\\_cfd_experiment\\input\\lineage\\D15\\design.xbf",
+      "history": "E:\\text_to_cad_improve\\auto_detection_process\\_cfd_experiment\\input\\lineage\\D15\\history.json",
+      "geometry_hash": "a4e863c0d0be91d107c1dfa8b19c0b478cfc9d12d8143718ba1d285ddc87643b",
+      "topology_hash": "75f1ad498c9787af641f781b7d94a9c58b688d3c3d022e6ea78915c8b062fd3f",
+      "label_count": 37631
+    }
+  ]
+}
