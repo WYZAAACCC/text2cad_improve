@@ -20,7 +20,10 @@ from datetime import datetime
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
-DATASETS = _HERE / "output" / "datasets"
+
+# The output tree no longer sits beside this file; see _paths.py.
+from _paths import output_root  # noqa: E402
+DATASETS = output_root() / "datasets"
 INDEX = DATASETS / "index.json"
 SPLIT = DATASETS / "split_report.json"
 DEFAULT_FAMILY_SPLIT = _HERE / "family_split.json"

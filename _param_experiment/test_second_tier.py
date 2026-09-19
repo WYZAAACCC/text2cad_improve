@@ -3,7 +3,10 @@ import json
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
-D = _HERE / "output" / "datasets"
+
+# The output tree no longer sits beside this file; see _paths.py.
+from _paths import output_root  # noqa: E402
+D = output_root() / "datasets"
 
 ok_all = True
 

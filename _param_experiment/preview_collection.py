@@ -14,6 +14,9 @@ import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
+
+# The output tree no longer sits beside this file; see _paths.py.
+from _paths import output_root  # noqa: E402
 ROOT = _HERE.parent
 sys.path.insert(0, str(ROOT / "app" / "text-to-cad" / "server"))
 sys.path.insert(0, str(ROOT / "integrations" / "engineering_tools" / "src"))
@@ -22,8 +25,8 @@ sys.path.insert(0, str(_HERE))
 import run_batch  # noqa: E402
 from design_families import DESIGN_FAMILIES  # noqa: E402
 
-COLLECTION = _HERE / "output" / "collection"
-PREVIEW_PNG = _HERE / "output" / "preview_png"
+COLLECTION = output_root() / "collection"
+PREVIEW_PNG = output_root() / "preview_png"
 
 
 def render_png(step: Path, out_png: Path):
@@ -47,7 +50,7 @@ def render_png(step: Path, out_png: Path):
 
 
 def main() -> int:
-    cands = json.loads((_HERE / "output" / "datasets" / "candidates.json").read_text(encoding="utf-8"))["candidates"]
+    cands = json.loads((output_root() / "datasets" / "candidates.json").read_text(encoding="utf-8"))["candidates"]
     # 每族取第一个候选（candidate_sampler 已把族名义完整特征放第一位）；
     # 族名义若不可行则回退第一个非 infeasible。此前只取第一个 feasible → 只展示最简变体。
     first: dict[str, dict] = {}

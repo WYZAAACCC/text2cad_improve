@@ -30,6 +30,9 @@ from pathlib import Path
 
 # 确保实验区可导入
 _HERE = Path(__file__).resolve().parent
+
+# The output tree no longer sits beside this file; see _paths.py.
+from _paths import output_root  # noqa: E402
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
@@ -100,7 +103,7 @@ def run_mcp_quality_assurance(
     result = run_quality_assurance(task, str(base), max_rounds=max_rounds)
 
     if out_path is None:
-        out_path = _HERE / "output" / "mcp_server" / f"qa_{base.name}.json"
+        out_path = output_root() / "mcp_server" / f"qa_{base.name}.json"
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -154,7 +157,7 @@ def main(argv=None) -> int:
         return 2
 
     result["report_path"] = str(
-        Path(args.out) if args.out else _HERE / "output" / "mcp_server" / f"qa_{base.name}.json"
+        Path(args.out) if args.out else output_root() / "mcp_server" / f"qa_{base.name}.json"
     )
     _print_summary(result, base)
 

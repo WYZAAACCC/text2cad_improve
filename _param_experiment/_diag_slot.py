@@ -2,8 +2,8 @@
 import json, sys, math
 from pathlib import Path
 
-BASE = Path(r"e:\text_to_cad_improve\auto_detection_process\_param_experiment\output\_compare_agentic\D15_baseline_llm_raw.json")
-AGENT = Path(r"e:\text_to_cad_improve\auto_detection_process\_param_experiment\output\_compare_agentic\D15\run2\llm_raw.json")
+BASE = Path(r"F:\text_to_cad_improve\auto_detection_process\_param_experiment\output\_compare_agentic\D15_baseline_llm_raw.json")
+AGENT = Path(r"F:\text_to_cad_improve\auto_detection_process\_param_experiment\output\_compare_agentic\D15\run2\llm_raw.json")
 
 
 def load(p):

@@ -21,9 +21,12 @@ plt.rcParams["font.sans-serif"] = ["SimHei", "Microsoft YaHei", "Arial"]
 plt.rcParams["axes.unicode_minus"] = False
 
 _HERE = Path(__file__).resolve().parent
+
+# The output tree no longer sits beside this file; see _paths.py.
+from _paths import output_root  # noqa: E402
 STL = (_HERE.parent / "app" / "text-to-cad" / "server" / "output"
        / "check_D15_v9" / "output.stl")
-OUT = _HERE / "output" / "d15_v9_disc_render.png"
+OUT = output_root() / "d15_v9_disc_render.png"
 
 
 def load_stl(path: Path) -> np.ndarray:

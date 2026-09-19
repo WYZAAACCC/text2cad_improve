@@ -32,8 +32,11 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
 _HERE = Path(__file__).resolve().parent
-DEFAULT_COLLECTION = _HERE / "output" / "collection"
-ERROR_LOG = _HERE / "output" / "viewer_error.log"
+
+# The output tree no longer sits beside this file; see _paths.py.
+from _paths import output_root  # noqa: E402
+DEFAULT_COLLECTION = output_root() / "collection"
+ERROR_LOG = output_root() / "viewer_error.log"
 
 # 状态栏显示的关键参数
 _SUMMARY_KEYS = ("od_mm", "bore_mm", "thick_mm", "slots", "teeth", "holes", "pcd_mm",

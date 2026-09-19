@@ -16,6 +16,9 @@ import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
+
+# The output tree no longer sits beside this file; see _paths.py.
+from _paths import output_root  # noqa: E402
 _ROOT = _HERE.parent
 _SERVER = _ROOT / "app" / "text-to-cad" / "server"
 _SRC = _ROOT / "integrations" / "engineering_tools" / "src"
@@ -136,7 +139,7 @@ def main() -> int:
     all_ok = True
 
     for fid in families:
-        out_dir = _HERE / "output" / "full_flow_trace" / fid
+        out_dir = output_root() / "full_flow_trace" / fid
         out_dir.mkdir(parents=True, exist_ok=True)
         try:
             if args.offline:
@@ -154,7 +157,7 @@ def main() -> int:
                      "error": f"{type(exc).__name__}: {str(exc)[:500]}"}
         all_ok = all_ok and bool(entry["ok"])
         report["families"].append(entry)
-        out = _HERE / "output" / "full_flow_trace_report.json"
+        out = output_root() / "full_flow_trace_report.json"
         out.write_text(json.dumps(report, ensure_ascii=False, indent=2),
                        encoding="utf-8")
         print(f"{fid} {'OK' if entry['ok'] else 'FAIL'}")
@@ -170,7 +173,7 @@ def main() -> int:
             print("  metrics:", entry["metrics"]["issues"][:5])
         print(f"  trace -> {out_dir / 'agent_trace.json'}")
 
-    out = _HERE / "output" / "full_flow_trace_report.json"
+    out = output_root() / "full_flow_trace_report.json"
     print(f"report -> {out}")
     return 0 if all_ok else 1
 

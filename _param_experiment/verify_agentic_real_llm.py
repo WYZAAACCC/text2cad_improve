@@ -20,6 +20,9 @@ import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
+
+# The output tree no longer sits beside this file; see _paths.py.
+from _paths import output_root  # noqa: E402
 _ROOT = _HERE.parent
 _SERVER = _ROOT / "app" / "text-to-cad" / "server"
 _SRC = _ROOT / "integrations" / "engineering_tools" / "src"
@@ -238,12 +241,12 @@ def main() -> int:
         if metric_issues:
             print("  metrics:", metric_issues[:5])
 
-        trace_out = _HERE / "output" / "traces" / f"{family_id}.json"
+        trace_out = output_root() / "traces" / f"{family_id}.json"
         trace_out.parent.mkdir(parents=True, exist_ok=True)
         trace_out.write_text(json.dumps(trace, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"  trace -> {trace_out}")
 
-    out = _HERE / "output" / "agentic_real_llm_report.json"
+    out = output_root() / "agentic_real_llm_report.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"report -> {out}")

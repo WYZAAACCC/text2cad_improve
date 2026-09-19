@@ -15,9 +15,12 @@ import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
+
+# The output tree no longer sits beside this file; see _paths.py.
+from _paths import output_root  # noqa: E402
 ROOT = _HERE.parent
 OUTPUT = ROOT / "app" / "text-to-cad" / "server" / "output"
-LOG_DIR = _HERE / "output"
+LOG_DIR = output_root()
 OUT = LOG_DIR / "infeasible_samples.json"
 
 _ERROR_PAT = re.compile(

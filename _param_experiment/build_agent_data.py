@@ -26,8 +26,11 @@ from datetime import datetime
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
+
+# The output tree no longer sits beside this file; see _paths.py.
+from _paths import output_root  # noqa: E402
 ROOT = _HERE.parent
-DATASETS = _HERE / "output" / "datasets" / "agent_data"
+DATASETS = output_root() / "datasets" / "agent_data"
 sys.path.insert(0, str(ROOT / "app" / "text-to-cad" / "server"))
 sys.path.insert(0, str(ROOT / "integrations" / "engineering_tools" / "src"))
 sys.path.insert(0, str(_HERE))
@@ -212,7 +215,7 @@ def main(argv=None) -> int:
     ap.add_argument("--limit", type=int, default=None, help="最多处理 N 个候选")
     args = ap.parse_args(argv)
 
-    cand_doc = json.loads((_HERE / "output" / "datasets" / "candidates.json").read_text(encoding="utf-8"))
+    cand_doc = json.loads((output_root() / "datasets" / "candidates.json").read_text(encoding="utf-8"))
     cands = cand_doc.get("candidates", [])
     if args.family:
         cands = [c for c in cands if c.get("family") == args.family]

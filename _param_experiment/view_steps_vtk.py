@@ -22,7 +22,10 @@ import cadquery as cq
 import vtk
 
 _HERE = Path(__file__).resolve().parent
-DEFAULT_COLLECTION = _HERE / "output" / "collection"
+
+# The output tree no longer sits beside this file; see _paths.py.
+from _paths import output_root  # noqa: E402
+DEFAULT_COLLECTION = output_root() / "collection"
 
 
 def step_to_polydata(step_path: Path, tol: float = 0.4) -> vtk.vtkPolyData:

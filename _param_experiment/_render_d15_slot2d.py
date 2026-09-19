@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 plt.rcParams["font.sans-serif"] = ["SimHei", "Microsoft YaHei", "Arial"]
 plt.rcParams["axes.unicode_minus"] = False
-OUT = r'E:\text_to_cad_improve\auto_detection_process\_param_experiment\output'
+OUT = r'F:\text_to_cad_improve\auto_detection_process\_param_experiment\output'
 
 
 def build_real_fillet(params):

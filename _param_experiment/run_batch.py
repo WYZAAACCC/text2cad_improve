@@ -21,9 +21,12 @@ from datetime import datetime
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
+
+# The output tree no longer sits beside this file; see _paths.py.
+from _paths import output_root  # noqa: E402
 ROOT = _HERE.parent
 OUTPUT = ROOT / "app" / "text-to-cad" / "server" / "output"
-DATASETS = _HERE / "output" / "datasets"
+DATASETS = output_root() / "datasets"
 CAND = DATASETS / "candidates.json"
 STATE = DATASETS / "batch_state.json"
 sys.path.insert(0, str(ROOT / "app" / "text-to-cad" / "server"))

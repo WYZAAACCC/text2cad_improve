@@ -15,7 +15,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 plt.rcParams["font.sans-serif"] = ["SimHei", "Microsoft YaHei", "Arial"]
 plt.rcParams["axes.unicode_minus"] = False
-OUT = r'E:\text_to_cad_improve\auto_detection_process\_param_experiment\output'
+OUT = r'F:\text_to_cad_improve\auto_detection_process\_param_experiment\output'
 
 # D15 基参（与 design_families 一致）
 BASE = dict(od_mm=500, bore_mm=120, thick_mm=76, hub_mm=38, rim_mm=30,

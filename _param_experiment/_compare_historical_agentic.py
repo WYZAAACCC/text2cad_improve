@@ -9,6 +9,9 @@ import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
+
+# The output tree no longer sits beside this file; see _paths.py.
+from _paths import output_root  # noqa: E402
 sys.path.insert(0, str(_HERE.parent / "app" / "text-to-cad" / "server"))
 sys.path.insert(0, str(_HERE.parent / "integrations" / "engineering_tools" / "src"))
 sys.path.insert(0, str(_HERE))
@@ -16,7 +19,7 @@ sys.path.insert(0, str(_HERE))
 from _compare_agentic_vs_template import make_baseline  # noqa: E402
 
 FAM = "D15"
-BASE_DIR = _HERE / "output" / "_compare_agentic" / FAM
+BASE_DIR = output_root() / "_compare_agentic" / FAM
 baseline = make_baseline(FAM)
 params = baseline["params"]
 

@@ -23,7 +23,10 @@ from PyQt5.QtWidgets import (
 )
 
 _HERE = Path(__file__).resolve().parent
-DEFAULT_COLLECTION = _HERE / "output" / "collection"
+
+# The output tree no longer sits beside this file; see _paths.py.
+from _paths import output_root  # noqa: E402
+DEFAULT_COLLECTION = output_root() / "collection"
 
 
 def read_step(path: Path):

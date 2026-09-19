@@ -22,6 +22,9 @@ import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
+
+# The output tree no longer sits beside this file; see _paths.py.
+from _paths import output_root  # noqa: E402
 ROOT = _HERE.parent
 sys.path.insert(0, str(ROOT / "app" / "text-to-cad" / "server"))
 sys.path.insert(0, str(ROOT / "integrations" / "engineering_tools" / "src"))
@@ -179,7 +182,7 @@ def main(argv=None) -> int:
     if args.params:
         items = [{"category": "slot", "params": json.loads(args.params)}]
     elif args.from_candidates:
-        cand = json.loads((_HERE / "output" / "datasets" / "candidates.json").read_text(encoding="utf-8"))
+        cand = json.loads((output_root() / "datasets" / "candidates.json").read_text(encoding="utf-8"))
         cands = cand.get("candidates", [])
         if args.family:
             cands = [c for c in cands if c.get("family") == args.family]
@@ -199,7 +202,7 @@ def main(argv=None) -> int:
         out.append({"category": it["category"], "params": it["params"], **r})
 
     _HERE.joinpath("output", "datasets").mkdir(parents=True, exist_ok=True)
-    dst = _HERE / "output" / "datasets" / "descriptions_llm.json"
+    dst = output_root() / "datasets" / "descriptions_llm.json"
     dst.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"-> {dst}")
     return 0

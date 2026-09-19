@@ -4,6 +4,9 @@ import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
+
+# The output tree no longer sits beside this file; see _paths.py.
+from _paths import output_root  # noqa: E402
 ROOT = _HERE.parent
 OUTPUT = ROOT / "app" / "text-to-cad" / "server" / "output"
 sys.path.insert(0, str(_HERE))
@@ -60,7 +63,7 @@ chk("mon_sweep_q2 design_id 有值（extracted 兜底）", bool(q2 and q2["desig
 chk("mon_sweep_q2 fingerprint=null（无 brep）", q2 and q2["b_rep_fingerprint"] is None)
 
 # ── 6. 不可行样本 ──
-inf = json.loads((_HERE / "output" / "infeasible_samples.json").read_text(encoding="utf-8"))
+inf = json.loads((output_root() / "infeasible_samples.json").read_text(encoding="utf-8"))
 chk("infeasible_samples 非空", inf["count"] > 0, f"count={inf['count']}")
 chk("infeasible 有 error_code/evidence",
     all(s.get("error_code") and s.get("evidence") for s in inf["samples"]))

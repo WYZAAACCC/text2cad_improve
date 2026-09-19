@@ -28,6 +28,9 @@ import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
+
+# The output tree no longer sits beside this file; see _paths.py.
+from _paths import output_root  # noqa: E402
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 ROOT = _HERE.parent
@@ -55,7 +58,7 @@ from seekflow_engineering_tools.generative_cad.authoring.strict_schema import ( 
 
 MODEL_CONFIG = LlmModelConfig(model="deepseek-v4-pro", base_url="https://api.deepseek.com/beta")
 DEFAULT_BASE = ROOT / "app" / "text-to-cad" / "server" / "output" / "b572661c219c4952"
-DEFAULT_OUT = _HERE / "output" / "fillet_select"
+DEFAULT_OUT = output_root() / "fillet_select"
 
 # 组件规格：(定位 op, 类型, edge_factor, 坐标语义, 半径参考 min/max)
 COMPONENT_SPECS = [

@@ -27,6 +27,9 @@ import uuid
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
+
+# The output tree no longer sits beside this file; see _paths.py.
+from _paths import output_root  # noqa: E402
 ROOT = _HERE.parent
 sys.path.insert(0, str(ROOT / "app" / "text-to-cad" / "server"))
 sys.path.insert(0, str(ROOT / "integrations" / "engineering_tools" / "src"))
@@ -292,7 +295,7 @@ def main(argv=None) -> int:
         vok = "PASS" if v.get("ok") else "FAIL"
         print(f"{r['name']:16s} {status:12s} {vok:6s} {','.join(fails)[:60]}")
     # 存汇总 JSON
-    summ_path = _HERE / "output" / "param_sweep" / "summary.json"
+    summ_path = output_root() / "param_sweep" / "summary.json"
     summ_path.parent.mkdir(parents=True, exist_ok=True)
     summ_path.write_text(json.dumps(results, ensure_ascii=False, indent=2, default=str),
                          encoding="utf-8")
