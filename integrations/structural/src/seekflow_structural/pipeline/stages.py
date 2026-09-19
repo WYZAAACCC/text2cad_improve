@@ -11,7 +11,11 @@ carries; `assembly` decides
 the physics and, through its face-finding sub-stage, which faces the load
 enters through; `mesh` spends resolution knowing where the load is; then the
 deterministic half materialises, solves and post-processes; `verify` judges
-what may be quoted.
+what may be quoted; `feedback` reads the judged results and decides what the
+next revision of the part should be. The last of those is the only stage that
+looks forward rather than at the part in front of it, and it is deliberately
+last: it rests on the verdicts, so a change is never asked for on the strength
+of a number that has not settled.
 
 `assembly` is one stage rather than several because its parts share a single
 evidence loop - the criterion the agent declares and the measurements it is
@@ -34,6 +38,7 @@ class Stage(str, Enum):
     SOLVE = "solve"
     POSTPROCESS = "postprocess"
     VERIFY = "verify"
+    FEEDBACK = "feedback"
     COMPLETE = "complete"
 
 
@@ -48,6 +53,7 @@ STAGE_ORDER: tuple[Stage, ...] = (
     Stage.SOLVE,
     Stage.POSTPROCESS,
     Stage.VERIFY,
+    Stage.FEEDBACK,
     Stage.COMPLETE,
 )
 
@@ -71,6 +77,11 @@ REQUIRES: dict[Stage, tuple[str, ...]] = {
     Stage.SOLVE: ("model", "domain", "load_surface", "physics", "mesh"),
     Stage.POSTPROCESS: ("physics", "solve"),
     Stage.VERIFY: ("physics", "solve"),
+    # Changing the design on the strength of a number the verification stage
+    # has not allowed to be quoted is how a loop converges on an artefact, so
+    # the verdicts are a named requirement of the stage that decides what to
+    # change rather than something it is trusted to go and read.
+    Stage.FEEDBACK: ("physics", "solve", "verdicts"),
     Stage.COMPLETE: (),
 }
 
@@ -92,6 +103,10 @@ PRODUCES: dict[Stage, str | None] = {
     Stage.SOLVE: "solve",
     Stage.POSTPROCESS: None,
     Stage.VERIFY: "verdicts",
+    # The change request the next revision is built from. Written here and
+    # applied elsewhere: a stage that both diagnosed a part and rebuilt it
+    # would leave no record of which measurement asked for which change.
+    Stage.FEEDBACK: "feedback",
     Stage.COMPLETE: None,
 }
 

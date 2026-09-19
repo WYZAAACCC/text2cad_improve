@@ -203,3 +203,90 @@ def test_a_cylinder_outside_the_part_is_still_refused():
     with pytest.raises(StructuralError) as exc:
         mesh._submit(action, state)
     assert exc.value.diagnostic.code == "region_outside_part"
+
+
+# --- the study behind the run's noise floor --------------------------------
+#
+# The floor the loop's scoring compares a difference against is read from the
+# two-level study these tests are about. It used to be reachable only as a
+# tool the agent might call, and both ways of not calling it were measured: a
+# supplied plan runs with no agent at all, and an agent submitted after
+# thirteen calls without ever calling it. Either way the revision closed with
+# `floors: {}` and the loop fell back to the constant.
+
+class _Job:
+    def __init__(self):
+        self.events = []
+
+    def event(self, payload):
+        self.events.append(payload)
+
+
+class _Ctx:
+    def __init__(self):
+        self.job = _Job()
+
+
+class _Plan:
+    web_size_mm = 8.0
+    regions: list = []
+
+
+class _Case:
+    mesh = _Plan()
+
+
+def test_the_stage_runs_the_study_the_agent_did_not(monkeypatch):
+    calls = []
+
+    def fake(state, web, regions):
+        # The real one marks the study as run; a stub that does not would test
+        # a stage that calls the study forever.
+        calls.append((web, regions))
+        state.convergence_run = True
+        return {"ok": True}
+
+    monkeypatch.setattr(mesh, "_run_convergence", fake)
+    state = a_state()
+    ctx = _Ctx()
+    mesh._ensure_convergence(ctx, _Case(), state)
+    assert calls == [(8.0, [])]
+    assert state.convergence_run is True
+    assert [event["kind"] for event in ctx.job.events] == ["convergence_checked"]
+
+
+def test_a_study_the_agent_already_ran_is_not_run_again(monkeypatch):
+    """The agent's own call was the study; a second one is two more solves."""
+    calls = []
+    monkeypatch.setattr(
+        mesh, "_run_convergence",
+        lambda state, web, regions: calls.append(1) or {"ok": True},
+    )
+    state = a_state()
+    state.convergence_run = True
+    ctx = _Ctx()
+    mesh._ensure_convergence(ctx, _Case(), state)
+    assert calls == []
+    assert ctx.job.events == []
+
+
+def test_a_study_that_fails_is_recorded_rather_than_passed_over(monkeypatch):
+    """A missing floor is a state the report names. Invisible is not the same.
+
+    The agent path already tolerates a failure - a tool that raises comes back
+    as a tool reply the model can react to - so this path continues as well.
+    What it must not do is continue without saying so, which is how the
+    absence went unnoticed across a whole run.
+    """
+    def boom(state, web, regions):
+        raise RuntimeError("no space left on device")
+
+    monkeypatch.setattr(mesh, "_run_convergence", boom)
+    state = a_state()
+    ctx = _Ctx()
+    mesh._ensure_convergence(ctx, _Case(), state)
+    assert state.convergence_run is False
+    (event,) = ctx.job.events
+    assert event["kind"] == "convergence_failed"
+    assert "no space left on device" in event["error"]
+    assert "noise floor" in event["consequence"]

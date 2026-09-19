@@ -345,6 +345,123 @@ class QuantityVerdict(Model):
     rationale: str = ""
 
 
+class Evidence(Model):
+    """One measured quantity a finding rests on, and where it was read.
+
+    A finding is an argument, and this is its premises. Each entry names a
+    quantity and the measurement that produced it, so the harness can go and
+    read the same number again and see whether it is still there. A premise
+    that cannot be re-read is not evidence, it is a recollection.
+    """
+
+    quantity: str
+    value: float
+    where: str = ""
+    source: str = ""
+
+
+class ProposedChange(Model):
+    """A change to one named design variable of the generation side.
+
+    `parameter` is the generator's own name for the variable - the list its
+    authoring agent is given - and not a description of a change. A finding
+    that says "thicken the web" cannot be applied by anything; one that names
+    `web_outer_half_thickness_mm` can, and can be refused by name when the
+    variable does not exist or the change exceeds what the generator will
+    accept.
+    """
+
+    parameter: str
+    current_value: float | None = None
+    proposed_value: float | None = None
+    relative_change: float | None = None
+    rationale: str = ""
+
+
+class Prediction(Model):
+    """What the change is expected to do, in a form the next run can refute.
+
+    This is what makes the loop a loop rather than a sequence. Every finding
+    commits to a metric and a direction before the change is made, so the next
+    revision does not merely produce a new number - it produces a verdict on
+    the reasoning that asked for the change. A prediction that is never
+    checked is indistinguishable from a guess that happened to be followed by
+    an improvement.
+    """
+
+    metric: str
+    direction: Literal["increase", "decrease"]
+    expected_relative_change: float
+    at: str = ""
+
+
+class Finding(Model):
+    """One thing about this result that a design change should address.
+
+    `mechanism` is from a closed vocabulary rather than free prose, because
+    the vocabulary is what the harness can check. Each mechanism has a
+    signature in the measurements - a hoop-driven peak has hoop as its
+    dominant component, an idealisation edge sits on a symmetry plane or a
+    sector boundary - and a finding whose stated mechanism does not match its
+    own evidence is reported as inconsistent rather than accepted. That check
+    is the same shape as the one the face-finding stage makes: the agent
+    declares, and the harness measures the declaration against something the
+    agent did not choose.
+
+    `unresolved` is a first-class answer. An agent that cannot attribute a
+    peak must be able to say so without inventing a mechanism, exactly as the
+    verification stage reports `unverified` rather than the absence of a
+    contradiction.
+    """
+
+    id: str
+    feature: str = ""
+    faces: list[int] = Field(default_factory=list)
+    role_keys: list[str] = Field(default_factory=list)
+    radius_mm: float | None = None
+    z_mm: float | None = None
+    mechanism: Literal[
+        "stress_concentration",
+        "section_overload",
+        "hoop_driven",
+        "radial_driven",
+        "thermal_gradient",
+        "load_application",
+        "idealisation_edge",
+        "unresolved",
+    ]
+    severity_metric: str = ""
+    severity_value: float | None = None
+    evidence: list[Evidence] = Field(default_factory=list)
+    change: ProposedChange | None = None
+    prediction: Prediction | None = None
+    # What the harness found when it re-read the evidence and compared the
+    # mechanism against it. Empty means nothing was checked, which is not the
+    # same as nothing being wrong.
+    consistency: list[Comparison] = Field(default_factory=list)
+    rationale: str = ""
+
+
+class FeedbackReport(Model):
+    """What this revision's results say the next revision should be.
+
+    `verdicts_respected` records which quantities the findings were allowed to
+    rest on. Optimising against a number the verification stage marked
+    `suspect` or `confirmed_wrong` is how a loop converges on an artefact, and
+    the record of what was excluded is the only way to see afterwards that it
+    happened.
+    """
+
+    findings: list[Finding] = Field(default_factory=list)
+    summary: str = ""
+    # The quantities that were not allowed to carry a finding, and why.
+    excluded_quantities: list[str] = Field(default_factory=list)
+    # What the agent says it could not measure, in its own words. An empty
+    # list here would mean it found everything it needed, which is a claim.
+    limits: list[str] = Field(default_factory=list)
+    written: Written
+
+
 class Case(Model):
     schema_version: Literal["structural_case_v1"] = "structural_case_v1"
     case_id: str
@@ -357,6 +474,7 @@ class Case(Model):
     mesh: MeshPlan | None = None
     solve: SolveRecord | None = None
     verdicts: list[QuantityVerdict] = Field(default_factory=list)
+    feedback: FeedbackReport | None = None
 
     def stage_hash(self) -> str:
         from seekflow_structural.serialize import digest

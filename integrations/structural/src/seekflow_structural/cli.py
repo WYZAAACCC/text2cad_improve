@@ -229,6 +229,7 @@ def _orchestrator(
     """
     from seekflow_structural.agents import assembly as assembly_stage
     from seekflow_structural.agents import domain as domain_stage
+    from seekflow_structural.agents import feedback as feedback_stage
     from seekflow_structural.agents import mesh as mesh_stage
     from seekflow_structural.agents import setup as setup_stage
     from seekflow_structural.agents import verify as verify_stage
@@ -264,6 +265,10 @@ def _orchestrator(
     orchestrator.register(Stage.MATERIALIZE, materialize_stage.materialize)
     orchestrator.register(Stage.SOLVE, solve_stage.stage_solve)
     orchestrator.register(Stage.POSTPROCESS, solve_stage.stage_postprocess)
+    # Registered on both paths. A seeded run replays a case built from an
+    # earlier run's artifacts, and deciding what to change about that case is
+    # the whole point of reading it - so this stage is never a pass-through.
+    orchestrator.register(Stage.FEEDBACK, feedback_stage.feedback)
     return orchestrator
 
 
@@ -300,6 +305,24 @@ def main(argv: list[str] | None = None) -> int:
             "DEEPSEEK_API_KEY"
         ))
         p.add_argument("--model", default=None)
+        p.add_argument("--mesh-plan", type=Path, help=(
+            "a meshing plan to use instead of letting the meshing agent "
+            "choose one. Two runs given the same plan are resolved by the same "
+            "rule, which is what makes a difference between their peaks "
+            "attributable to their geometry rather than to their meshes."
+        ))
+        p.add_argument("--face-selection", type=Path, help=(
+            "a load surface to use instead of letting the face-finding agent "
+            "choose one, as the case.json's `load_surface` block from an "
+            "earlier run. Two runs loaded through different faces are not the "
+            "same experiment however equal their resultant force is."
+        ))
+        p.add_argument("--domain", type=Path, help=(
+            "a domain decision to use instead of letting the domain agent "
+            "choose one, as the case.json's `domain` block from an earlier "
+            "run. Which piece of the part is cut out is part of the "
+            "experiment, not of the design."
+        ))
         p.add_argument("--ansys-exe", type=Path)
         p.add_argument("--memory-mb", type=int, default=12000)
         # Bootstrap only: build the case from artifacts an earlier run left
@@ -388,6 +411,18 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.ansys_exe:
         os.environ["ANSYS181_EXE"] = str(args.ansys_exe.resolve())
+    mesh_plan = (
+        json.loads(args.mesh_plan.read_text(encoding="utf-8"))
+        if getattr(args, "mesh_plan", None) else None
+    )
+    face_selection = (
+        json.loads(args.face_selection.read_text(encoding="utf-8"))
+        if getattr(args, "face_selection", None) else None
+    )
+    domain_decision = (
+        json.loads(args.domain.read_text(encoding="utf-8"))
+        if getattr(args, "domain", None) else None
+    )
     os.environ["STRUCTURAL_MEMORY_MB"] = str(args.memory_mb)
 
     try:
@@ -400,6 +435,9 @@ def main(argv: list[str] | None = None) -> int:
             params_path=(str(args.params.resolve()) if args.params else ""),
             brief=brief,
             brief_path=(str(args.brief.resolve()) if args.brief else ""),
+            mesh_plan=mesh_plan,
+            face_selection=face_selection,
+            domain_decision=domain_decision,
         )
     except StructuralError as exc:
         print(json.dumps(

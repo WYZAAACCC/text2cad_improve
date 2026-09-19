@@ -169,13 +169,45 @@ def run_agent(
         remaining = spec.max_calls - outcome.calls
         narrowed = remaining <= 1 and spec.terminal_model is not None
         schema_model = spec.terminal_model if narrowed else spec.action_model
-        result = caller.call_strict_tool(
-            messages=conversation,
-            tool_name=spec.tool_name,
-            tool_description=spec.tool_description,
-            tool_schema=schema_model.model_json_schema(),
-            model_config=model_config,
-        )
+        try:
+            result = caller.call_strict_tool(
+                messages=conversation,
+                tool_name=spec.tool_name,
+                tool_description=spec.tool_description,
+                tool_schema=schema_model.model_json_schema(),
+                model_config=model_config,
+            )
+        except Exception as exc:
+            # A call the provider could not parse is a call the agent can
+            # still make again. Every other malformed submission is already
+            # answered with a tool reply the model can react to - a schema
+            # mismatch is caught below and costs a turn, not the run - and a
+            # malformed JSON body is the same kind of failure arriving one
+            # step earlier.
+            #
+            # Measured on the fifth real run: the model emitted a call whose
+            # arguments were 2,139 characters and not valid JSON, and the
+            # whole revision ended with no result at all - the solve, the
+            # mesh and the diagnosis were all thrown away over a stray
+            # character in the model's own output.
+            outcome.calls += 1
+            outcome.rejected.append({
+                "call": outcome.calls,
+                "narrowed": narrowed,
+                "arguments": None,
+                "error": f"{type(exc).__name__}: {exc}",
+            })
+            conversation.append({
+                "role": "user",
+                "content": (
+                    f"That call could not be read: {exc}\n\n"
+                    "The arguments have to be one valid JSON object matching "
+                    "the schema. Nothing was run. Send it again, and if it is "
+                    "long, send it shorter - a call that is too large to "
+                    "serialise reliably is one worth splitting or trimming."
+                ),
+            })
+            continue
         outcome.calls += 1
 
         try:

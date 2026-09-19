@@ -100,6 +100,39 @@ def assembly(ctx: RunContext, *, api_key_file: Path | None = None,
             "disagreeing_quantities": [f.quantity for f in disagreeing],
         })
 
+    # A selection handed to the run wins over finding one.
+    #
+    # The reason is comparison. Two revisions whose loads enter through
+    # different faces are not the same experiment: measured on D27, revision
+    # one was loaded on 24 faces totalling 2,679 mm2 and revision two on 8
+    # totalling 665 mm2, and since both were given the same resultant force
+    # the second was pressed at 4.6 times the pressure. The peak moved onto
+    # the loaded face and rose by 122% - over a change of one fillet radius
+    # from 0.698 mm to 0.85 mm.
+    #
+    # The faces are named by index and the index is stable across a revision:
+    # taking revision one's 24 indices against revision two's geometry hits
+    # 24 of 24, totalling 2,611 mm2 against 2,679 - the 2.5% being the fillet
+    # itself. So the same faces can simply be named again.
+    if ctx.face_selection is not None:
+        from seekflow_structural.case.model import LoadSurface, Written
+
+        payload = dict(ctx.face_selection)
+        payload["written"] = Written(
+            by_stage="assembly", kind="user_input",
+            source="a face selection supplied to the run, not chosen by the agent",
+        )
+        case.load_surface = LoadSurface.model_validate(payload)
+        ctx.job.event({
+            "kind": "faces_selected",
+            "stage": "assembly",
+            "from": "supplied selection",
+            "feature": case.load_surface.feature,
+            "face_count": len(case.load_surface.face_indices),
+            "load_radius_mm": case.load_surface.load_radius_mm,
+        })
+        return case
+
     requirement = requirement_for(case.physics)
     outcome, direction = _find_faces(
         ctx, requirement=requirement, api_key_file=api_key_file,

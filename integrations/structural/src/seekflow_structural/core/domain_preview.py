@@ -29,6 +29,47 @@ def _unit(vector):
     return [value / norm for value in vector]
 
 
+def _verdict(counts: dict, areas: dict, full: bool) -> tuple[bool, str]:
+    """Whether a cut sector can be used, in the terms the solver needs.
+
+    A cyclic sector is solved by tying its two cut faces to each other, so the
+    two have to be the same shape. The face count on each plane is how that is
+    checked, and it is arithmetic the caller should not have to do: this is the
+    one thing about a preview that decides whether to stop, and leaving it as
+    two integers in a reply of eleven fields is how an agent came to cut nine
+    angles, pass five usable ones, and run out of budget without submitting.
+
+    A cut costs three to four minutes, so a sweep of the period - eighteen
+    calls at eighteen degrees - cannot finish inside any budget. The verdict is
+    here so that the first angle that works can be recognised as the answer.
+    """
+    if full:
+        return True, (
+            "the whole part is the domain; it has no cut planes to tie, so "
+            "there is nothing here that can disagree"
+        )
+    if counts["low"] <= 0 or counts["high"] <= 0:
+        return False, (
+            f"a cut plane carries no face ({counts['low']} low, "
+            f"{counts['high']} high). The sector boundary lies in empty space "
+            "at that angle, so there is no surface to tie - the sector is not "
+            "a piece of this part."
+        )
+    if counts["low"] != counts["high"]:
+        return False, (
+            f"the two cut planes carry different numbers of faces "
+            f"({counts['low']} low, {counts['high']} high), so tying them to "
+            "each other would join shapes that do not match. A boundary is "
+            "running through a feature and cutting it in two. Turn the sector "
+            "and cut again."
+        )
+    return True, (
+        f"both cut planes carry {counts['low']} face(s) and "
+        f"{areas['low']:.3f} mm2 each, so the two boundaries are the same "
+        "shape and can be tied. This sector is usable as it stands."
+    )
+
+
 class DomainPreviewer:
     """Holds the part open so a candidate domain can be cut and measured.
 
@@ -233,6 +274,17 @@ class DomainPreviewer:
                 )
             out, _ = gmsh.model.occ.intersect([(3, body)], [(3, tool)])
             gmsh.model.occ.synchronize()
+            # Everything the cut produced, recorded before anything is judged,
+            # because the `finally` below is the only thing that takes it back
+            # out. It used to be recorded after the single-solid check, so a
+            # cut that came apart in two leaked both pieces into the model and
+            # every later preview measured a part that had grown. Measured:
+            # sweeping theta_low from 0 to 8, the first cut (0 degrees, which
+            # holds together) reported 1 face on the symmetry plane, the next
+            # one came apart, and from then on the count read 3, 3, 3, 5, 7 as
+            # each failed cut piled up behind it. A measurement that depends on
+            # how many times it has been taken is not a measurement.
+            made = [(dim, tag) for dim, tag in out]
             solids = [tag for dim, tag in out if dim == 3]
             if len(solids) != 1:
                 return {
@@ -241,14 +293,19 @@ class DomainPreviewer:
                         "theta_low_deg": None if full else theta_low,
                         "z_symmetry": z_symmetry,
                     },
+                    "usable": False,
+                    "why": (
+                        f"the cut produced {len(solids)} solids instead of 1, "
+                        "so this angle does not carve a single connected piece "
+                        "out of the part. It is not a domain - turn the sector "
+                        "and cut again."
+                    ),
                     "error": (
                         f"cut produced {len(solids)} solids instead of 1 - this "
                         "domain does not carve a single connected piece out of "
                         "the part"
                     ),
                 }
-            made = [(3, tag) for tag in solids]
-
             volume = float(gmsh.model.occ.getMass(3, solids[0]))
             area = self._surface_area()
             counts, areas = self._cut_plane_faces(
@@ -267,6 +324,7 @@ class DomainPreviewer:
             # means the cut respects the part's structure; large means material
             # was removed that the full part would have kept, so this domain
             # models something other than the part.
+            usable, why = _verdict(counts, areas, full)
             return {
                 "domain": {
                     "sector_deg": round(sector, 6),
@@ -274,6 +332,8 @@ class DomainPreviewer:
                     "z_symmetry": z_symmetry,
                     "type": "full_360" if full else "cyclic_sector",
                 },
+                "usable": usable,
+                "why": why,
                 "solids": len(solids),
                 "volume_mm3": round(volume, 3),
                 "volume_ratio_of_whole": round(volume_ratio, 6),

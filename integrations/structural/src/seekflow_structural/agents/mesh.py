@@ -213,6 +213,10 @@ class MeshState:
     element_budget: int = 150_000
     mesh_report: dict | None = None
     submitted: dict | None = None
+    # Whether the two-level study behind the run's noise floor has been run.
+    # The agent may run it early with the tool; the stage runs it before
+    # closing if the agent did not - see `_ensure_convergence`.
+    convergence_run: bool = False
 
 
 def _geometry(action, state: MeshState) -> dict:
@@ -328,23 +332,81 @@ def _mesh_and_measure(action, state: MeshState) -> dict:
     return {"ok": True, "result": report}
 
 
-def _convergence(action, state: MeshState) -> dict:
-    if not action.regions:
-        raise StructuralError(
-            "no_regions", "convergence_check requires regions", "mesh"
-        )
-    config = _config_from(state, action.web_size_mm, action.regions)
+def _run_convergence(state: MeshState, web_size, regions) -> dict:
+    """Mesh and solve at two levels, leaving both results on disk.
+
+    `results.mesh_noise_floor` reads what this writes, and the loop's scoring
+    reads the floor from there: how far this run's own numbers move when only
+    the mesh changes. A run that never gets here reports no floor at all,
+    which is not the same as a floor of zero.
+    """
+    config = _config_from(state, web_size, regions)
     case = {
         "bundle": str(state.bundle),
         "face_intent": str(state.work_dir / "face_intent.json"),
         "intent_template": str(state.work_dir / "intent.json"),
         "element_budget": state.element_budget,
     }
+    result = convergence_check(config, case, state.work_dir / "convergence")
+    state.convergence_run = True
+    return result
+
+
+def _ensure_convergence(ctx: RunContext, case, state: MeshState) -> None:
+    """Run the study unless something already did, on the plan that was built.
+
+    The study used to be reachable only as a tool the agent might call, and
+    both ways of not calling it were measured:
+
+    - A supplied plan runs with no agent at all, so nothing called it, and
+      every revision of the first controlled comparison closed with
+      `floors: {}` and fell back to the constant.
+    - An agent with the tool available submitted after thirteen calls without
+      ever calling it, nine of them the same repeated inspection, and that
+      revision reported no floor either.
+
+    So it belongs to the stage rather than to the agent's judgement. The agent
+    can still call it early - a plan informed by knowing how sensitive the
+    part is to resolution is a better plan - and this only guarantees the
+    measurement exists before the stage closes.
+
+    A failure here is recorded and the stage continues. The agent path already
+    tolerates one, because a tool that raises comes back as a tool reply, and
+    a floor that is missing is a state the report already names; what it must
+    not be is a state nobody can see.
+    """
+    if state.convergence_run:
+        return
+    plan = case.mesh
+    try:
+        _run_convergence(state, plan.web_size_mm, plan.regions)
+        ctx.job.event({
+            "kind": "convergence_checked",
+            "stage": "mesh",
+            "from": "run by the stage, on the plan it built",
+            "web_size_mm": plan.web_size_mm,
+        })
+    except Exception as exc:
+        ctx.job.event({
+            "kind": "convergence_failed",
+            "stage": "mesh",
+            "error": f"{type(exc).__name__}: {exc}",
+            "consequence": (
+                "this revision reports no mesh noise floor, so a difference "
+                "measured against it is compared with the constant instead of "
+                "with a measurement of this part"
+            ),
+        })
+
+
+def _convergence(action, state: MeshState) -> dict:
+    if not action.regions:
+        raise StructuralError(
+            "no_regions", "convergence_check requires regions", "mesh"
+        )
     return {
         "ok": True,
-        "result": convergence_check(
-            config, case, state.work_dir / "convergence"
-        ),
+        "result": _run_convergence(state, action.web_size_mm, action.regions),
     }
 
 
@@ -596,6 +658,49 @@ def mesh(ctx: RunContext, *, api_key_file: Path | None = None,
     )
     _stage_inputs(ctx, case, work_dir)
 
+    # A plan handed to the run wins over asking for one. The reason it exists
+    # is comparison: two revisions meshed by their own agents are meshed by two
+    # different rules, and a peak that differs between them may differ because
+    # one was resolved more finely. Measured on D27: revision one was meshed at
+    # 1.0 mm at the rim and 8 mm in the web, revision two at 0.6 mm and 5 mm -
+    # 240,051 nodes against 391,253 - over a change of one fillet radius from
+    # 0.698 mm to 0.85 mm on a disc of radius 300 mm.
+    if ctx.mesh_plan is not None:
+        from seekflow_structural.case.model import MeshPlan, Written
+
+        plan = dict(ctx.mesh_plan)
+        plan["written"] = Written(
+            by_stage="mesh", kind="user_input",
+            source="a meshing plan supplied to the run, not chosen by the agent",
+        )
+        case.mesh = MeshPlan.model_validate(plan)
+        # `_build_final_mesh` reads the refinement from the agent's
+        # submission, and there is no agent here. Filling it with the supplied
+        # plan is not a stand-in for a decision - it is the decision, made by
+        # whoever handed the plan in. The geometry block of the config still
+        # comes from this run's case, so the sector angle and the axial extent
+        # are this model's and only the resolution is borrowed.
+        state.submitted = {
+            "refinement": {
+                "web_size_mm": plan.get("web_size_mm"),
+                "regions": plan.get("regions") or [],
+            }
+        }
+        ctx.job.event({
+            "kind": "mesh_planned",
+            "stage": "mesh",
+            "from": "supplied plan",
+            "regions": [r.name for r in case.mesh.regions],
+            "web_size_mm": case.mesh.web_size_mm,
+        })
+        built = _build_final_mesh(ctx, case, state)
+        case.mesh.measured = built
+        # There is no agent on this path, so nothing would call the study and
+        # the revision would close with no floor. Run it here on the plan that
+        # was built.
+        _ensure_convergence(ctx, case, state)
+        return case
+
     caller, model_config = build_caller(api_key_file)
     outcome = run_agent(
         spec(max_calls=max_calls), caller=caller,
@@ -642,6 +747,12 @@ def mesh(ctx: RunContext, *, api_key_file: Path | None = None,
         "elements": built.get("elements"),
         "mapped_face_count": built.get("mapped_face_count"),
     })
+    # The agent may have run the study already; if it did not, run it on the
+    # plan it submitted. Submitting without one costs the run its own noise
+    # floor, and measured, an agent will do that - one submitted after
+    # thirteen calls, nine of them the same repeated inspection, without ever
+    # asking how much of its answer was the mesh.
+    _ensure_convergence(ctx, case, state)
     return case
 
 

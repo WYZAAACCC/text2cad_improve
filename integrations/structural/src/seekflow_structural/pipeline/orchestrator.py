@@ -71,6 +71,31 @@ class RunContext:
     # because a person who typed a number meant that number.
     brief: str = ""
     brief_path: str = ""
+    # A meshing plan to use instead of asking the agent for one. It exists so
+    # that two revisions can be meshed by the same rule: the size field is a
+    # function of space, not of the model, so holding it fixed is what makes a
+    # peak difference between two designs attributable to the designs rather
+    # than to one of them having been resolved more finely.
+    mesh_plan: dict | None = None
+    # A load surface to use instead of asking the face-finding agent for one.
+    # It exists for the same reason as `mesh_plan`: two revisions have to be
+    # loaded the same way before a difference between their stresses can be
+    # attributed to their geometry. Measured on D27, revision one applied the
+    # blade load to 24 faces totalling 2,679 mm2 and revision two to 8 faces
+    # totalling 665 mm2 - the same resultant force pressed onto a quarter of
+    # the area, at 4.6 times the pressure, which put the peak on the loaded
+    # face and raised it by 122%.
+    face_selection: dict | None = None
+    # A domain decision to use instead of asking the agent for one: which
+    # piece of the part is analysed, and where the sector starts. It belongs
+    # with the other two - an experiment is the same experiment only if the
+    # same piece of the part was cut out of it.
+    #
+    # Measured: on the fourth run of one disc the domain agent spent its whole
+    # budget calling `probe_periodicity` ten times with identical arguments and
+    # never decided, which ended a revision that the solve would otherwise
+    # have measured.
+    domain_decision: dict | None = None
     started: float = field(default_factory=time.monotonic)
     calls: int = 0
 
@@ -182,12 +207,16 @@ class Orchestrator:
         params_path: str = "",
         brief: str = "",
         brief_path: str = "",
+        mesh_plan: dict | None = None,
+        face_selection: dict | None = None,
+        domain_decision: dict | None = None,
     ) -> dict:
         job = JobStore(self.output_root, job_id)
         with job.lock():
             return self._run_locked(
                 job, case, resume, allow_unconfirmed, params or {}, params_path,
-                brief, brief_path,
+                brief, brief_path, mesh_plan, face_selection,
+                domain_decision,
             )
 
     def _run_locked(
@@ -200,6 +229,9 @@ class Orchestrator:
         params_path: str = "",
         brief: str = "",
         brief_path: str = "",
+        mesh_plan: dict | None = None,
+        face_selection: dict | None = None,
+        domain_decision: dict | None = None,
     ) -> dict:
         store = CaseStore(job)
         state = store.state()
@@ -228,6 +260,9 @@ class Orchestrator:
             params_path=params_path,
             brief=brief,
             brief_path=brief_path,
+            mesh_plan=mesh_plan,
+            face_selection=face_selection,
+            domain_decision=domain_decision,
         )
         job.event(
             {

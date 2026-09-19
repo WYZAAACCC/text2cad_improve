@@ -32,7 +32,7 @@ from pathlib import Path
 from seekflow_structural.case.model import Case, QuantityVerdict
 from seekflow_structural.errors import StructuralError
 from seekflow_structural.pipeline.orchestrator import RunContext
-from seekflow_structural.tools import checks
+from seekflow_structural.tools import checks, results
 
 # What a reader would want to quote, and therefore what has to be judged.
 QUOTABLE = (
@@ -142,6 +142,29 @@ def build_verdicts(ctx: RunContext, case: Case) -> list[QuantityVerdict]:
     convergence = checks.mesh_convergence(
         _convergence_change(ctx)
     )
+    # Each quantity gets the convergence evidence about *itself*.
+    #
+    # Attaching the whole list to every quantity made one metric's movement
+    # settle every other metric's verdict: `classify` filters the evidence by
+    # name, every convergence comparison shares the `mesh_convergence` prefix,
+    # and `any` over them then says a peak has moved because a displacement
+    # did. Measured on D27, where the four movements are 5.09%, 4.94%, 0.63%
+    # and 0.02% - so the two numbers that had settled were being reported as
+    # unsettled alongside the two that had not.
+    convergence_for = {
+        comparison.name.split(".", 1)[1]: [comparison]
+        for comparison in convergence
+        if "." in comparison.name
+    }
+
+    def settled_evidence(quantity: str):
+        """The convergence comparisons about this quantity, if any were made."""
+        if convergence_for:
+            return convergence_for.get(quantity, [])
+        # No study was run, or none of its numbers could be compared - so the
+        # one comparison saying so is attached to everything, which is what it
+        # is about.
+        return convergence
     # The load-surface check above compares a force against a target force and
     # is silent about direction, so a load applied to the wrong face passes it
     # as long as it sums to the right magnitude. Measured: nine wrong
@@ -161,19 +184,30 @@ def build_verdicts(ctx: RunContext, case: Case) -> list[QuantityVerdict]:
     # minimum safety factor as much as the peak at the load. Confining it to
     # the load-surface number would leave the headline numbers saying
     # "unverified" about a solve that answered a different question.
+    # The convergence evidence is attached to every quantity, for the same
+    # reason the direction check is. A number that moved between mesh levels
+    # has not settled wherever it sits, and confining the evidence to the peak
+    # at the load left the headline number unchecked against the one
+    # measurement that bore on it.
+    #
+    # Measured on D27, and it was the wrong way round: the peak von Mises
+    # stress moved 5.09% between a mesh of 181,362 nodes and one of 194,011,
+    # while the peak on the loaded surface moved 0.63%. The convergence check
+    # was the only one that could have said so, and it was attached to the
+    # number that did not need it.
     specs = {
         "max_von_mises_mpa": [
             reactions, temperature, symmetry_check, load_direction
-        ],
+        ] + settled_evidence("max_von_mises_mpa"),
         "max_load_surface_von_mises_mpa": [
             load_surface, load_direction
-        ] + convergence,
+        ] + settled_evidence("max_load_surface_von_mises_mpa"),
         "min_safety_factor": [
             temperature, symmetry_check, load_direction
-        ],
+        ] + settled_evidence("min_safety_factor"),
         "max_displacement_mm": [
             reactions, symmetry_check, load_direction
-        ],
+        ] + settled_evidence("max_displacement_mm"),
     }
 
     values = {
@@ -202,21 +236,38 @@ def build_verdicts(ctx: RunContext, case: Case) -> list[QuantityVerdict]:
 
 
 def _convergence_change(ctx: RunContext) -> dict | None:
-    """The convergence report, if the meshing stage ran one."""
+    """How far each reported quantity moved between two mesh levels.
+
+    Read from the two levels' own metrics when no summary was written, which
+    is the usual case: nothing in this package writes
+    `convergence_report.json`, so the first branch never fired and this
+    function returned None on every run that had in fact run a study. The
+    meshing stage had already paid for the second solve; the only thing
+    missing was the subtraction.
+
+    What that cost: measured on D27, the peak von Mises stress moved 5.09%
+    between a mesh of 181,362 nodes and one of 194,011, and every verdict came
+    back `unverified` - which says no second opinion exists. One did.
+    """
     path = ctx.path / "mesh" / "convergence" / "convergence_report.json"
     if path.is_file():
-        return json.loads(path.read_text(encoding="utf-8")).get(
+        summary = json.loads(path.read_text(encoding="utf-8")).get(
             "relative_change_percent"
         )
+        if summary:
+            return summary
     # a convergence run may have been written beside the mesh instead
     for candidate in (ctx.path / "mesh").rglob("convergence*.json"):
+        if candidate.name == "convergence_report.json":
+            continue
         try:
             payload = json.loads(candidate.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
         if "relative_change_percent" in payload:
             return payload["relative_change_percent"]
-    return None
+    # Neither summary form exists, so the two levels are compared here.
+    return results.mesh_convergence_percent(ctx.path)
 
 
 def _rationale(name: str, description: str, verdict: str, value,

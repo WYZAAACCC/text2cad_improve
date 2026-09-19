@@ -708,3 +708,58 @@ def test_a_call_rewritten_in_different_words_is_still_the_same_call():
     assert _json.loads(caller.seen[2][-1]["content"])[
         "identical_to_the_previous_call"
     ] is True
+
+class _FlakyCaller(FakeCaller):
+    """A caller whose first call comes back unparseable, and whose next does not.
+
+    The provider raises before the loop ever sees arguments, so this is a
+    failure arriving one step earlier than a schema mismatch - and the loop
+    used to let it end the run.
+    """
+
+    def call_strict_tool(self, **kwargs):
+        if not self.seen:
+            self.seen.append(kwargs["messages"])
+            raise RuntimeError(
+                "Tool call arguments were not valid JSON: Expecting ':' "
+                "delimiter: line 1 column 2139 (char 2138)"
+            )
+        return super().call_strict_tool(**kwargs)
+
+
+def test_a_call_the_provider_cannot_parse_costs_a_turn_not_the_run():
+    """Measured on the fifth real run: the model emitted a call whose
+    arguments were 2,139 characters and not valid JSON, and the whole
+    revision ended with no result - the mesh, the solve and the diagnosis all
+    thrown away over a stray character in the model's own output.
+
+    Every other malformed submission is answered with a reply the model can
+    act on. This is the same failure arriving earlier, and it gets the same
+    treatment: a rejection in the record, and another turn.
+    """
+    import json as _json
+
+    from seekflow_structural.runtime.loop import run_agent
+
+    caller = _FlakyCaller([
+        {"action": "look", "rationale": "second attempt"},
+        {"action": "stop", "rationale": "done"},
+    ])
+    spec = AgentSpec(
+        name="t", tool_name="t", tool_description="t",
+        action_model=EchoAction, system_prompt="s", user_prompt="u",
+        submit_actions=frozenset({"stop"}), max_calls=6,
+    )
+    outcome = run_agent(
+        spec, caller=caller, model_config=None,
+        dispatch=lambda action, context: {"ok": True, "result": action.action},
+    )
+    # The dispatch returns the action name as its result, so a run that
+    # survived the bad call and then decided ends with "stop".
+    assert outcome.final == "stop"
+    assert len(outcome.rejected) == 1
+    assert "not valid JSON" in outcome.rejected[0]["error"]
+    # And the model is told what went wrong, in the transcript it is given
+    # next - otherwise it has no way to know the call was never run.
+    transcript = _json.dumps(caller.seen, ensure_ascii=False)
+    assert "could not be read" in transcript

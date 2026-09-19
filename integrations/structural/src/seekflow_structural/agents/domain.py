@@ -33,6 +33,7 @@ from seekflow_structural.core.domain_preview import DomainPreviewer
 from seekflow_structural.core.mesh_profile import (
     azimuthal_feature_profile,
     dominant_periods,
+    finest_confirmed_order,
     probe_periodicity,
     test_finer_periods,
 )
@@ -90,10 +91,14 @@ Your tools, all measured from the geometry:
   of periods worth testing, not as the answer.
 - probe_periodicity: for each order you name, the fraction of surface area
   that maps onto itself when rotated by one period, and where the part that
-  does NOT map sits. residual_bins_holding_90pct is the count of bins needed
-  to cover 90% of the residual: a handful beside a high fraction is a
-  confirmed period, a large share is a period the part does not have however
-  close the fraction looks.
+  does NOT map sits. `confirmed_period` is that residual judged for you: a
+  real period leaves the closing seam in a few azimuth bins, a period the part
+  does not have spreads its residual over every feature that failed to line
+  up. The reply also names `finest_confirmed_order` among the orders you gave,
+  and marks each coarser order with the finer one that `explained_by_finer_order`
+  - because a part repeating every 18 degrees necessarily repeats every 36, 72
+  and 180, so several orders score alike and only the finest of them can be the
+  repeat unit. Name a spread of orders and read which one survives.
 - test_finer_periods: given an order you believe is a repeat unit, probe every
   order that could be a finer one. This settles "is this the finest period?"
   in one call. Call it once, on your candidate, rather than walking the orders
@@ -101,9 +106,17 @@ Your tools, all measured from the geometry:
   be a repeat unit whatever it scores.
 - preview_domain: cut the candidate domain and report the fraction of the
   part's volume it holds against the fraction a true repeat unit would have,
-  plus the faces lying on each cut plane. This is the decisive confirmation,
-  and a cut costs a couple of minutes, so reach for it once you have narrowed
-  to the domain you intend to submit.
+  plus the faces lying on each cut plane. It also answers the question you
+  actually have, as `usable` and `why`: whether those two planes carry the same
+  number of faces and can therefore be tied to each other. Take that verdict as
+  settled - it is arithmetic on the measurement, not advice.
+  **A cut costs three to four minutes.** Start at `theta_low_deg = sector_deg /
+  2` - the middle of the period, as far as the sector can be from whatever sits
+  at its boundaries - and if that angle is not usable, try one or two more.
+  The first usable angle is your answer: any rotation of a repeat unit is the
+  same repeat unit, so there is nothing to gain by looking further. Sweeping
+  the period one degree at a time cannot finish - at 18 degrees that is
+  eighteen cuts - and will cost you the budget you need to submit.
 
 A sector's two boundary planes must carry the same number of faces: a cyclic
 sector is solved by tying its two cut faces to each other, which is only
@@ -204,11 +217,43 @@ def _probe(action, state: DomainState) -> dict:
         raise StructuralError(
             "too_many_orders", "at most 24 orders per probe", "domain"
         )
+    rows = probe_periodicity(state.open_previewer().faces(), action.orders)
+    # The reply says which of the orders named could be the repeat unit, and
+    # which are only multiples of a finer one in the same call. Five orders
+    # scoring 0.989 on D27 look like five candidates and are one: 10, 5, 4 and
+    # 2 are all multiples of 18 degrees. Reported as a measurement because it
+    # is one - the caller named the orders, and which of them is a multiple of
+    # which is arithmetic, not a judgement. An agent left to infer it swept the
+    # whole divisor space of 360 over twelve calls and decided nothing.
+    finest = finest_confirmed_order(rows)
     return {
         "ok": True,
-        "result": probe_periodicity(
-            state.open_previewer().faces(), action.orders
-        ),
+        "result": {
+            "orders": rows,
+            "finest_confirmed_order": (
+                {"order": finest["order"], "period_deg": finest["period_deg"],
+                 "matched_area_fraction": finest["matched_area_fraction"]}
+                if finest else None
+            ),
+            "note": (
+                "`confirmed_period` is the residual test already made: a real "
+                "period leaves the closing seam in a few azimuth bins, a "
+                "period the part does not have spreads its residual over "
+                "every feature that failed to line up. A coarse order is "
+                "`explained_by_finer_order` when a finer confirmed order in "
+                "this same call entails it, so it is not a candidate. "
+                + (
+                    f"The repeat unit among the orders you named is "
+                    f"{finest['order']} ({finest['period_deg']:.4g} deg), and "
+                    "`test_finer_periods` on it is what settles whether "
+                    "anything finer still holds."
+                    if finest else
+                    "None of the orders you named is a confirmed period. Name "
+                    "orders around the shortlist `inspect_azimuthal_profile` "
+                    "gave you."
+                )
+            ),
+        },
     }
 
 
@@ -337,6 +382,24 @@ def domain(ctx: RunContext, *, api_key_file: Path | None = None,
             "first",
             "domain",
         )
+
+    if ctx.domain_decision is not None:
+        from seekflow_structural.case.model import DomainDecision, Written
+
+        payload = dict(ctx.domain_decision)
+        payload["written"] = Written(
+            by_stage="domain", kind="user_input",
+            source="a domain decision supplied to the run, not chosen by the agent",
+        )
+        case.domain = DomainDecision.model_validate(payload)
+        ctx.job.event({
+            "kind": "domain_decided",
+            "stage": "domain",
+            "from": "supplied decision",
+            "sector_deg": case.domain.sector_deg,
+            "theta_low_deg": case.domain.theta_low_deg,
+        })
+        return case
 
     bundle = Path(case.bundle.path)
     state = DomainState(

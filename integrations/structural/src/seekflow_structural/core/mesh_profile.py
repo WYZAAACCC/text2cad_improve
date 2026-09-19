@@ -440,10 +440,15 @@ def probe_periodicity(faces, orders: list[int]) -> list[dict]:
 
     `matched_area_fraction` near 1 means the surface genuinely repeats at that
     period. A part repeating every 6 degrees also repeats every 12 and every
-    30, so any whole multiple of the true period also scores 1: it is the
-    *smallest* order scoring 1 that is the repeat unit. An order scoring well
-    below 1 is a period the part does not have - and a sector at that angle
-    would silently analyse a different part from the one handed in.
+    30, so any whole multiple of the true period also scores 1. That is the
+    trap: on a 20-fold part the orders 20, 10, 5, 4 and 2 all score the same
+    0.989, and reading the *smallest* of them gives 180 degrees - a sector
+    that tiles the part and analyses a twentieth of it. Validity at a coarse
+    period is *implied* by validity at a finer one, so the repeat unit is the
+    **largest** order that is a confirmed period, and the only one no finer
+    order in the same call explains. Each row reports that relation as
+    `explained_by_finer_order`, so the answer is in the reply rather than in
+    a rule the reader has to know.
 
     A fraction short of 1 is not by itself a rejection, which is why the
     residual is reported alongside it. Real CAD leaves a seam where the model
@@ -451,8 +456,8 @@ def probe_periodicity(faces, orders: list[int]) -> list[dict]:
     therefore scores slightly under 1 with its residual piled into one or two
     azimuth bins. A wrong period scores under 1 too, but scatters its residual
     over every feature the rotation failed to line up, so it fills many bins.
-    `residual_bins_holding_90pct` separates the two: read it against
-    `residual_bins`, and against the same number at neighbouring orders.
+    `residual_bins_holding_90pct` separates the two, and `confirmed_period` is
+    that comparison made rather than left to the reader.
 
     Several orders in one call, because a hypothesis about a repeat unit is
     usually a short list of candidates rather than a single guess.
@@ -469,6 +474,7 @@ def probe_periodicity(faces, orders: list[int]) -> list[dict]:
                     "order": order,
                     "period_deg": round(period, 8),
                     "matched_area_fraction": None,
+                    "confirmed_period": False,
                     "below_probe_resolution": True,
                     "note": (
                         f"a period of {period:.6g} deg is finer than this "
@@ -489,8 +495,9 @@ def probe_periodicity(faces, orders: list[int]) -> list[dict]:
                 "matched_area_fraction": round(
                     repeat["matched_area_fraction"], 5
                 ),
+                "confirmed_period": _is_confirmed_period(repeat),
                 "unmatched_face_count": repeat["unmatched_face_count"],
-                "unmatched_area_mm2": round(repeat["unmatched_area_mm2"], 4),
+                "unmatched_area_mm2": repeat["unmatched_area_mm2"],
                 "residual_bins": repeat["residual_bins"],
                 "residual_bins_holding_90pct": repeat[
                     "residual_bins_holding_90pct"
@@ -501,7 +508,80 @@ def probe_periodicity(faces, orders: list[int]) -> list[dict]:
                 "face_count": len(faces),
             }
         )
+    return _annotate_multiples(results)
+
+
+# How concentrated a period's residual has to be to count as a real period.
+#
+# A confirmed period's residual is the seam where the model was closed: a small
+# pile in a few azimuth bins. A period the part does not have spreads its
+# residual over every feature the rotation failed to line up. Measured on D27,
+# the 18-degree period puts 90% of its residual in 5 of 72 bins and the
+# 180-degree multiple in 4 - while 30 degrees needs 25 bins and 20 degrees
+# needs 63. The threshold sits between the two groups by a factor of two on
+# either side, and the share rather than the count is what makes it independent
+# of how finely the profile was binned.
+SEAM_BIN_SHARE_MAX = 0.15
+
+
+def _is_confirmed_period(repeat: dict) -> bool:
+    bins = repeat.get("residual_bins") or 0
+    if not bins:
+        return False
+    holding = repeat.get("residual_bins_holding_90pct")
+    if holding is None:
+        return False
+    return holding / bins <= SEAM_BIN_SHARE_MAX
+
+
+def _annotate_multiples(results: list[dict]) -> list[dict]:
+    """Say, for each order, whether a finer confirmed order in the same call
+    already accounts for it.
+
+    This is the measurement the probe was missing. Five orders scoring 0.989
+    look like five candidate repeat units and are not: 10, 5, 4 and 2 are all
+    multiples of 20's period, and a part that repeats every 18 degrees
+    necessarily repeats every 36, 72, 90 and 180. Reporting the relation is
+    what turns the reply into an answer - without it the reader has to know
+    the rule, and an agent that did not know it swept the whole divisor space
+    of 360 over twelve calls and produced nothing.
+    """
+    confirmed = [
+        row["order"] for row in results
+        if row.get("confirmed_period")
+        and isinstance(row.get("order"), int)
+        and row["order"] > 0
+    ]
+    for row in results:
+        order = row.get("order")
+        row["explained_by_finer_order"] = None
+        if not isinstance(order, int) or order < 1:
+            continue
+        finer = [
+            other for other in confirmed
+            if other > order and other % order == 0
+        ]
+        if finer:
+            row["explained_by_finer_order"] = max(finer)
     return results
+
+
+def finest_confirmed_order(results: list[dict]) -> dict | None:
+    """The one order in a probe's reply that could be the repeat unit.
+
+    The largest confirmed period, and the only one no finer order explains. A
+    caller that named a coarse order and a finer one in the same call gets the
+    finer one back, which is the whole point of naming several.
+    """
+    candidates = [
+        row for row in results
+        if row.get("confirmed_period")
+        and row.get("explained_by_finer_order") is None
+        and isinstance(row.get("order"), int)
+    ]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda row: row["order"])
 
 
 _PRIMES = (
