@@ -22,6 +22,7 @@ from seekflow_structural.pipeline.materialize import (
     MESH_DIR,
     MESH_FILE,
     SOLVE_DIR,
+    deck_axis_for,
     intent_from_case,
 )
 from seekflow_structural.pipeline.orchestrator import RunContext
@@ -150,7 +151,10 @@ def read_results(ctx: RunContext) -> dict:
         )
 
     intent = intent_from_case(
-        case, ctx.path / MESH_DIR / MESH_FILE, selection_path(ctx)
+        case,
+        ctx.path / MESH_DIR / MESH_FILE,
+        selection_path(ctx),
+        axis=deck_axis_for(case),
     )
     metrics = _post(
         intent, directory, selection_path(ctx), directory / LOAD_AUDIT

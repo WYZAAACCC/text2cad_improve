@@ -143,17 +143,31 @@ def _solve(config: dict, job_dir: Path, case: dict) -> dict:
 
     selection = job_dir / "selected_face_nodes.json"
     if not selection.is_file():
-        subprocess.run(
-            [
-                sys.executable,
-                str(ROOT / "_structural_experiment/map_solid_faces.py"),
-                str(Path(case["bundle"]).resolve()),
-                str(Path(case["face_intent"]).resolve()),
-                str((job_dir / "mesh.inp").resolve()),
-                str(selection.resolve()),
-            ],
-            check=True,
-            capture_output=True,
+        from seekflow_structural.tools import geometry
+        from seekflow_structural.tools.frames import Normalisation
+
+        face_payload = json.loads(
+            Path(case["face_intent"]).read_text(encoding="utf-8")
+        )
+        final = face_payload.get("final") or {}
+        mesh_config = json.loads(
+            Path(case["mesh_config"]).read_text(encoding="utf-8")
+        )
+        frame = (mesh_config.get("geometry") or {}).get("frame") or {}
+        mapping = geometry.map_selection_to_nodes(
+            Path(case["bundle"]).resolve(),
+            str(final.get("feature") or ""),
+            int(final.get("solid_index") or 0),
+            [int(value) for value in final.get("selected_face_indices") or []],
+            job_dir / "mesh.inp",
+            normalisation=Normalisation(
+                frame.get("axis_origin_mm") or [0.0, 0.0, 0.0],
+                frame.get("axis_direction_mm") or [0.0, 0.0, 1.0],
+            ),
+        )
+        selection.write_text(
+            json.dumps(mapping, ensure_ascii=False, indent=2),
+            encoding="utf-8",
         )
 
     template = json.loads(Path(case["intent_template"]).read_text(encoding="utf-8"))

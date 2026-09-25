@@ -13,6 +13,7 @@ angle, because there is no config file to hold one.
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from seekflow_structural.case.model import Case, MeshPlan, SolveRecord, Written
@@ -29,9 +30,79 @@ MESH_DIR = "mesh"
 SOLVE_DIR = "solve"
 MESH_FILE = "mesh.inp"
 
+# A selected load surface is the denominator of the pressure. If the mesh
+# reaches none of a selected face, the solver receives a higher pressure and a
+# load path the engineer did not choose. A sector or half-thickness model can
+# legitimately map slightly less CAD area as the idealisation clips the faces;
+# the floor catches a missing repeated sector while permitting that measured
+# model-area effect.
+LOAD_SURFACE_MIN_COVERAGE = 0.95
+
 
 def mesh_path(ctx: RunContext) -> Path:
     return ctx.path / MESH_DIR / MESH_FILE
+
+
+def load_surface_coverage(selection_path: Path, case: Case) -> dict:
+    """How much of the declared load surface actually reached the mesh.
+
+    `selected_face_nodes.json` carries every selected face, including the
+    zero-node rows the mapper could not place. Counting the row areas rather
+    than the rows with nodes is what hid a 30% load coverage on D27. This
+    measurement therefore counts area only on faces that mapped at least one
+    node, and compares it with the area the selection declared.
+    """
+    payload = json.loads(Path(selection_path).read_text(encoding="utf-8"))
+    per_face = payload.get("per_face") or {}
+    selected = [
+        int(value) for value in (case.load_surface.face_indices
+                                 if case.load_surface else [])
+    ]
+    mapped: list[int] = []
+    mapped_area = 0.0
+    for key, row in per_face.items():
+        try:
+            face_index = int(key)
+            node_count = int(row.get("node_count") or 0)
+        except (AttributeError, TypeError, ValueError):
+            continue
+        if node_count <= 0:
+            continue
+        mapped.append(face_index)
+        mapped_area += float(row.get("area_mm2") or 0.0)
+    missing = sorted(set(selected) - set(mapped))
+    declared_area = float(
+        case.load_surface.area_mm2_total if case.load_surface else 0.0
+    )
+    coverage = mapped_area / declared_area if declared_area > 0 else None
+    complete = bool(
+        selected and not missing and coverage is not None
+        and coverage >= LOAD_SURFACE_MIN_COVERAGE
+    )
+    return {
+        "selected_face_count": len(selected),
+        "mapped_face_count": len(mapped),
+        "missing_face_count": len(missing),
+        "missing_face_indices": missing[:12],
+        "declared_area_mm2": round(declared_area, 6),
+        "mapped_area_mm2": round(mapped_area, 6),
+        "area_coverage_fraction": (
+            round(coverage, 6) if coverage is not None else None
+        ),
+        "minimum_coverage_fraction": LOAD_SURFACE_MIN_COVERAGE,
+        "complete": complete,
+    }
+
+
+def deck_axis_for(case: Case):
+    """The axis a deck written in the normalised frame must name.
+
+    `None` means no override is needed because the source frame is already the
+    deck frame. `(0, 0, 1)` is not a guess: it is the post-normalisation axis
+    the mesher, face mapper, APDL writer and postprocessor all receive.
+    """
+    normalisation = normalisation_for(case)
+    return None if normalisation.is_identity else (0.0, 0.0, 1.0)
 
 
 def normalisation_for(case: Case):
@@ -203,6 +274,16 @@ def mesh_config_from_case(case: Case, mesh: MeshPlan | None) -> dict:
         "step_file": str(Path(case.bundle.path) / "model.step"),
         "geometry": {
             # Written from the case, never read from a file.
+            "frame": {
+                "axis_origin_mm": list(
+                    model.frame.axis_origin_mm.as_tuple()
+                    if model.frame else (0.0, 0.0, 0.0)
+                ),
+                "axis_direction_mm": list(
+                    model.frame.axis_direction.as_tuple()
+                    if model.frame else (0.0, 0.0, 1.0)
+                ),
+            },
             "sector_deg": 360.0 if domain.sector_deg is None
             else float(domain.sector_deg),
             "theta_low_deg": float(domain.theta_low_deg),
@@ -267,6 +348,21 @@ def materialize(ctx: RunContext) -> Case:
             "nodes before the deck can carry a load",
             "materialize",
         )
+    coverage = load_surface_coverage(selection, case)
+    if not coverage["complete"]:
+        missing = coverage["missing_face_indices"]
+        fraction = coverage["area_coverage_fraction"]
+        shown = "unmeasurable" if fraction is None else f"{fraction:.2%}"
+        raise StructuralError(
+            "load_surface_not_materialised",
+            "the mesh did not materialise the complete selected load surface: "
+            f"{coverage['mapped_face_count']}/{coverage['selected_face_count']} "
+            f"faces mapped, area coverage {shown}"
+            + (f", missing face indices {missing}" if missing else "")
+            + ". A partial surface would raise the pressure and change the "
+              "load path, so the solve is refused rather than learnt from.",
+            "materialize",
+        )
 
     solve_dir = ctx.path / SOLVE_DIR
     solve_dir.mkdir(parents=True, exist_ok=True)
@@ -276,10 +372,18 @@ def materialize(ctx: RunContext) -> Case:
     # +Z this is the identity and the mesh is passed through untouched - which
     # is what makes the change safe to add under work that already ran.
     normalisation = normalisation_for(case)
-    if normalisation.is_identity:
+    frame_already_applied = bool(
+        case.mesh and (case.mesh.measured or {}).get("frame_applied")
+    )
+    if normalisation.is_identity or frame_already_applied:
         deck_mesh = mesh_inp
     else:
-        deck_mesh = ctx.path / MESH_DIR / "mesh_normalised.inp"
+        # Normalise the canonical mesh in place.  reads the
+        # whole file before writing, so the source coordinates are not lost
+        # while the rewrite is in progress. Keeping one canonical mesh path is
+        # what lets the APDL deck and postprocessor read the same coordinates
+        # without either of them guessing which normalised copy was used.
+        deck_mesh = mesh_inp
         moved = normalise_mesh(mesh_inp, deck_mesh, normalisation)
         if not moved:
             raise StructuralError(
@@ -299,15 +403,19 @@ def materialize(ctx: RunContext) -> Case:
             ),
         })
     intent = intent_from_case(
-        case, deck_mesh, selection,
-        axis=(0.0, 0.0, 1.0) if not normalisation.is_identity else None,
+        case, deck_mesh, selection, axis=deck_axis_for(case),
     )
 
+    # Everything below this line must use the mesh the deck actually binds.
+    # When the mesher has already applied the case frame, `deck_mesh` is the
+    # original path; when this stage had to normalise it, `deck_mesh` is the
+    # rewritten file. Passing `mesh_inp` here would silently bind the APDL
+    # deck to the unnormalised coordinates while the intent described +Z.
     materialized = materialize_intent(
-        intent, mesh_inp, selection, solve_dir, config
+        intent, deck_mesh, selection, solve_dir, config
     )
     solve_inp = render_apdl(
-        intent, mesh_inp, solve_dir, Path(materialized["load_table"]), config
+        intent, deck_mesh, solve_dir, Path(materialized["load_table"]), config
     )
 
     ctx.record_call(

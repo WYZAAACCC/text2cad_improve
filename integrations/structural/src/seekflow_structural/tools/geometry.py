@@ -6,15 +6,16 @@ and a place in the feature tree. Nothing here knows what a "load face" or a
 "constraint face" is, and nothing here decides - every call returns a measured
 set, and the agent reads it.
 
-The cylindrical quantities are still taken about global Z, because that is
-what `role_facts` measures today. Generalising them to the axis the case chose
-is a separate change: doing it here alone would leave the mesher and the
-post-processor describing radii about a different axis than this does, which
-is precisely the silent disagreement the case object exists to prevent.
+The raw OCAF facts are measured in the model's source frame. When a case
+normalisation is supplied, the numeric facts returned to the agent are
+transformed into the case frame before filtering; the face index itself stays
+the source TopoDS index. The same transform is supplied to mesh generation and
+face-to-node mapping, so every downstream radius and normal has one meaning.
 """
 from __future__ import annotations
 
 from pathlib import Path
+import math
 
 from seekflow_structural.core.pattern_solids import (
     _explode_solids,
@@ -115,8 +116,84 @@ def solids(session, feature: str) -> list[dict]:
     return out
 
 
-def face_rows(session, feature: str, solid_index: int) -> list[dict]:
-    """Every face of one solid, measured."""
+def _case_frame_facts(facts: dict, normalisation) -> dict:
+    """Express one face's measured facts in the case frame.
+
+    The OCAF face is opened once and its facts are transformed here, not in a
+    second geometry backend. The face index remains the original TopoDS index;
+    only the numeric frame an agent filters on changes.
+    """
+    if normalisation is None or facts is None:
+        return facts
+    out = dict(facts)
+    out["source_centroid_mm"] = facts.get("centroid_mm")
+    out["source_normal_xyz"] = facts.get("normal_xyz")
+    out["source_bbox_mm"] = facts.get("bbox_mm")
+    out["source_plane_axis"] = facts.get("plane_axis")
+    centroid = facts.get("centroid_mm")
+    if centroid is not None:
+        x, y, z = normalisation.point(*centroid)
+        out["centroid_mm"] = [x, y, z]
+        radius = math.hypot(x, y)
+        out["centroid_cyl_mm_deg"] = [
+            radius,
+            math.degrees(math.atan2(y, x)),
+            z,
+        ]
+    normal = facts.get("normal_xyz")
+    if normal is not None:
+        nx, ny, nz = normalisation.direction(*normal)
+        out["normal_xyz"] = [nx, ny, nz]
+        centroid = out.get("centroid_mm") or [0.0, 0.0, 0.0]
+        radius = math.hypot(centroid[0], centroid[1])
+        if radius > 1e-12:
+            radial = [centroid[0] / radius, centroid[1] / radius, 0.0]
+            tangential = [-radial[1], radial[0], 0.0]
+            out["normal_cylindrical"] = {
+                "radial": sum([nx, ny, nz][i] * radial[i] for i in range(3)),
+                "tangential": sum(
+                    [nx, ny, nz][i] * tangential[i] for i in range(3)
+                ),
+                "axial": nz,
+            }
+        else:
+            out["normal_cylindrical"] = {
+                "radial": None, "tangential": None, "axial": nz
+            }
+    bbox = facts.get("bbox_mm")
+    if bbox is not None:
+        corners = [
+            normalisation.point(x, y, z)
+            for x in (bbox[0], bbox[3])
+            for y in (bbox[1], bbox[4])
+            for z in (bbox[2], bbox[5])
+        ]
+        out["bbox_mm"] = [
+            min(point[0] for point in corners),
+            min(point[1] for point in corners),
+            min(point[2] for point in corners),
+            max(point[0] for point in corners),
+            max(point[1] for point in corners),
+            max(point[2] for point in corners),
+        ]
+    plane = facts.get("plane_axis")
+    if plane is not None:
+        origin = plane.get("origin_mm")
+        direction = plane.get("direction")
+        if origin is not None:
+            plane = dict(plane)
+            plane["origin_mm"] = list(normalisation.point(*origin))
+        if direction is not None:
+            plane = dict(plane)
+            plane["direction"] = list(normalisation.direction(*direction))
+        out["plane_axis"] = plane
+    return out
+
+
+def face_rows(
+    session, feature: str, solid_index: int, normalisation=None
+) -> list[dict]:
+    """Every face of one solid, measured in the requested case frame."""
     loaded = _load_solids(session, feature)
     if not 0 <= solid_index < len(loaded):
         raise StructuralError(
@@ -125,7 +202,16 @@ def face_rows(session, feature: str, solid_index: int) -> list[dict]:
             f"feature {feature!r}",
             "facefind",
         )
-    return [face_facts(face) for face in faces_of_solid(loaded[solid_index])]
+    out = []
+    for index, face in enumerate(faces_of_solid(loaded[solid_index])):
+        row = _case_frame_facts(face_facts(face), normalisation)
+        # The row's index is not a geometric fact, but it is the handle the
+        # agent and the benchmark use to name the face. Keeping it beside the
+        # measured facts avoids a second enumeration order being assumed
+        # somewhere else.
+        row["face_index"] = index
+        out.append(row)
+    return out
 
 
 def faces_of_solid(solid):
@@ -433,7 +519,7 @@ def _plane_distance(coord, facts):
 
 def map_selection_to_nodes(
     bundle, feature: str, solid_index: int, face_indices, mesh_inp,
-    tolerance_mm: float = 1e-4,
+    tolerance_mm: float = 1e-4, normalisation=None,
 ) -> dict:
     """Which mesh nodes lie on each selected face.
 
@@ -462,7 +548,7 @@ def map_selection_to_nodes(
                     f"face index {face_index} does not exist on {feature!r}",
                     "mesh",
                 )
-            facts = face_facts(faces[face_index])
+            facts = _case_frame_facts(face_facts(faces[face_index]), normalisation)
             matches = []
             worst = 0.0
             for node_id, coord in nodes.items():

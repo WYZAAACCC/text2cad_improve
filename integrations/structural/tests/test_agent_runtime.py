@@ -27,7 +27,6 @@ from seekflow_structural.case.model import (
 )
 from seekflow_structural.errors import StructuralError
 from seekflow_structural.runtime.loop import (
-    AgentOutcome,
     AgentSpec,
     dispatch_table,
     run_agent,
@@ -167,11 +166,6 @@ def test_every_reply_carries_the_remaining_budget():
     caller = FakeCaller([
         {"action": "look"}, {"action": "stop"},
     ])
-    seen_payloads = []
-
-    def capture(action, context):
-        payload = {"ok": True}
-        return payload
 
     def spy(action, context):
         return {"ok": True}
@@ -641,7 +635,7 @@ def test_a_repeated_call_is_told_that_it_repeats():
 
     same = {"action": "look", "value": 7}
     caller = FakeCaller([same, same, same, {"action": "stop"}])
-    outcome = run_agent(
+    run_agent(
         echo_spec(max_calls=6), caller=caller, model_config=None,
         dispatch=dispatch,
     )
@@ -763,3 +757,57 @@ def test_a_call_the_provider_cannot_parse_costs_a_turn_not_the_run():
     # next - otherwise it has no way to know the call was never run.
     transcript = _json.dumps(caller.seen, ensure_ascii=False)
     assert "could not be read" in transcript
+
+
+def test_repeated_queries_force_the_agent_to_decide():
+    import json as _json
+
+    dispatched: list[int] = []
+
+    def dispatch(action, context):
+        if action.action == "look":
+            dispatched.append(action.value)
+        return {"ok": True, "result": action.action}
+
+    same = {"action": "look", "value": 7}
+    caller = FakeCaller([
+        same, same, same,
+        {"action": "look", "value": 8},
+        {"action": "stop"},
+    ])
+    outcome = run_agent(
+        echo_spec(max_calls=10, terminal=True), caller=caller,
+        model_config=None, dispatch=dispatch,
+    )
+
+    assert dispatched == [7, 7]
+    assert outcome.final == "stop"
+    transcript = _json.dumps(caller.seen, ensure_ascii=False)
+    assert "must_decide_now" in transcript
+    assert "look" not in caller.seen_schemas[3]["action"]["enum"]
+
+
+def test_an_identical_call_is_refused_after_two_prior_answers():
+    """A deterministic tool must not be allowed to consume the budget."""
+    import json as _json
+
+    dispatched: list[int] = []
+
+    def dispatch(action, context):
+        if action.action == "look":
+            dispatched.append(action.value)
+        return {"ok": True, "result": action.action}
+
+    same = {"action": "look", "value": 7}
+    caller = FakeCaller([same, same, same, {"action": "stop"}])
+    outcome = run_agent(
+        echo_spec(max_calls=6), caller=caller, model_config=None,
+        dispatch=dispatch,
+    )
+
+    assert dispatched == [7, 7]
+    assert outcome.final == "stop"
+    reply = _json.loads(caller.seen[3][-1]["content"])
+    assert reply["error_code"] == "duplicate_call_refused"
+    assert reply["identical_to_the_previous_call"] is True
+    assert outcome.rejected[-1]["error"].startswith("this call has the same")

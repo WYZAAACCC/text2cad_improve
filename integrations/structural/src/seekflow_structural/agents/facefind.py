@@ -16,18 +16,16 @@ which is why the harness no longer has to know what a load face is.
 """
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
 from seekflow_structural.case.model import Criterion, LoadSurface, Written, Vec3
 from seekflow_structural.errors import StructuralError
 from seekflow_structural.evolution import query as evolution_query
 from seekflow_structural.evolution import store
-from seekflow_structural.pipeline.orchestrator import RunContext
 from seekflow_structural.runtime import analysis
 from seekflow_structural.runtime.loop import (
     AgentSpec,
@@ -40,6 +38,27 @@ from seekflow_structural.tools import criteria as criteria_tool
 from seekflow_structural.tools import geometry
 
 MAX_FACES_PER_PAGE = 60
+
+# A load applied through a finished bearing surface has a direction, and the
+# faces that actually carry it align with that direction. Other tooth flanks
+# can point the same way and still be relief/non-working surfaces; on D27 the
+# working flanks formed one radial-alignment family at 0.715..0.869 while the
+# non-working tooth faces formed a second at 0.261..0.511. The gap between the
+# families is measured rather than assumed. When it is this clear, a selection
+# that mixes the families (or omits the strongly aligned one) is refused before
+# a mesh and solve are paid for.
+MIN_ALIGNMENT_GAP = 0.15
+MIN_STRONG_FAMILY_AREA_FRACTION = 0.05
+# A blade root load enters at the outer rim. Before the normal families are
+# compared, the measured radii have to show that outer load band as a separate
+# group; otherwise the gate declines instead of inventing one.
+MIN_RADIAL_GAP_FRACTION = 0.05
+# Even when the population has no significant separation, a face whose normal
+# is nearly tangential cannot be a bearing flank for a radial blade load. The
+# measured D25/D26 failure selected faces at `-normal_radial` 0.01..0.04 and
+# passed because the population gap was too small to gate. This floor is a
+# physical direction check, not a family split.
+MIN_RADIAL_LOAD_ALIGNMENT = 0.20
 
 # How much of a reply a listing may take. A delimited face row is about fifty
 # characters, so this carries roughly four hundred of them - which covers the
@@ -180,13 +199,10 @@ class Action(ToolAction):
     limit: int = Field(
         default=0,
         description=(
-            "how many matched faces to list. 0 - the default - lists none and "
-            "returns only the summary, which is usually all you need: the "
-            "summary describes the whole matched set in a few hundred "
-            "characters, while a page of 60 faces costs several thousand and "
-            "says less about the set than the summary does. Set a positive "
-            "limit only once a query has narrowed the set to something you "
-            "can read in full."
+            "how many matched faces to list. 0 - the default - lets the "
+            "harness list the whole set when its compact text fits the reply "
+            "budget, and otherwise returns as much as fits plus the summary. "
+            "Set a positive limit to request a bounded page of at most 60."
         ),
     )
     face_indices: list[int] = Field(
@@ -266,12 +282,18 @@ Your tools:
   returns an empty set that looks like a fact about the part.
 
   The answer is a SUMMARY of the whole matched set: its surface types with
-  counts, and the range of area, radius, axial position and normal components
-  across it. It also reports filters_applied, so you can see what you actually
-  asked for. Listing the faces themselves costs far more and says less about
-  the set than the summary does, so it is off unless you ask: set limit to a
-  positive number to get that many faces back. Filter until the summary
-  describes what you mean, then list that set to read it.
+  counts, the range of area, radius, axial position and normal components
+  across it, and a sector-coverage count when only one repeating sector is
+  solved. It also reports filters_applied and whether the compact listing fits
+  the reply budget. For a `flank_surface_normal` load it reports
+  `load_normal_alignment`: the outer radial load band and the strongly aligned
+  normal family measured inside it. `strong_family.measured_query_bounds` gives
+  the signed bounds of that family - for a centrifugal blade load,
+  `normal_radial_max` is negative because the useful pressure direction is
+  inward on the face normal. When those families have a significant gap,
+  submission is refused if they are mixed or if the strong family is
+  incomplete. Filter until the summary describes what you mean, then read the
+  listed set or ask for a bounded page with limit.
 
   origin_relation and origin_operand are not measurements. They ask where a
   face came from - whether the operation produced it or carried it through,
@@ -349,12 +371,25 @@ class FaceFinderState:
     solid_index: int = 0
     rows: list[dict] = field(default_factory=list)
     cache: dict = field(default_factory=dict)
+    # The transform from the model's source frame into the case frame. The
+    # face index stays in the source topology; only the numeric facts the
+    # agent filters on are transformed.
+    normalisation: object | None = None
     submitted: dict | None = None
     # Where a written script runs, and what it is handed. A state built for an
     # offline test leaves these unset, which is what makes `run_analysis`
     # refuse rather than reach for a session that is not there.
     bundle: Path | None = None
     sector: dict | None = None
+    # Set by the assembly stage for a load the deck will apply as surface
+    # pressure. The current mapper can materialise a planar face; submitting a
+    # curved face records a selection that later maps to no element face.
+    require_planar: bool = False
+    # The declared relationship between the load and the selected surface.
+    # `flank_surface_normal` means the load presses along the face normal; for
+    # a centrifugal blade load the useful normal family is the one pointing
+    # most directly towards the axis. Other rules are not given this gate.
+    load_direction_rule: str = ""
     workdir: Path | None = None
     analyses: list[dict] = field(default_factory=list)
     # The face-evolution index, when one was built for this bundle. Absent is
@@ -422,7 +457,10 @@ def _origins_for(state: FaceFinderState, feature: str, solid_index: int) -> dict
 def _rows_for(state: FaceFinderState, feature: str, solid_index: int):
     key = (feature, solid_index)
     if key not in state.cache:
-        rows = geometry.face_rows(state.session, feature, solid_index)
+        rows = geometry.face_rows(
+            state.session, feature, solid_index,
+            normalisation=state.normalisation,
+        )
         state.cache[key] = evolution_query.decorate(
             rows, _origins_for(state, feature, solid_index)
         )
@@ -463,6 +501,338 @@ def _filters(action: Action) -> dict:
         "normal_axial": _bounds(
             action.normal_axial_min, action.normal_axial_max
         ),
+    }
+
+
+def _sector_report(rows: list[dict], state: FaceFinderState) -> dict:
+    """How much of a candidate set lies in the sector that will be solved.
+
+    The domain stage solves one repeating sector while the CAD body still
+    contains every copy. A filter written on origin, normal and radius can
+    therefore match the correct physical feature in twenty sectors and still
+    describe a set the mesh cannot contain. This is a measured residual, not a
+    hidden preference: it says how many matched faces are inside and outside
+    the sector actually meshed.
+    """
+    sector = state.sector or {}
+    low = sector.get("theta_low_deg")
+    high = sector.get("theta_high_deg")
+    if low is None or high is None:
+        return {"applicable": False}
+    low = float(low)
+    high = float(high)
+    if high <= low:
+        high += 360.0
+
+    inside: list[int] = []
+    outside: list[int] = []
+    for index, row in enumerate(rows):
+        (inside if _inside_sector(row, state) else outside).append(index)
+    return {
+        "applicable": True,
+        "theta_low_deg": low,
+        "theta_high_deg": high % 360.0,
+        "inside_count": len(inside),
+        "outside_count": len(outside),
+        "outside_indices": outside[:12],
+    }
+
+
+def _inside_sector(row: dict, state: FaceFinderState) -> bool:
+    """Whether this face's centroid lies in the part that will be meshed."""
+    sector = state.sector or {}
+    low = sector.get("theta_low_deg")
+    high = sector.get("theta_high_deg")
+    if low is None or high is None:
+        return True
+    low = float(low)
+    high = float(high)
+    if high <= low:
+        high += 360.0
+    theta = float((row.get("centroid_cyl_mm_deg") or [0.0, 0.0, 0.0])[1])
+    while theta < low:
+        theta += 360.0
+    return theta <= high
+
+
+def _weak_alignment_problems(selected: list[dict]) -> tuple[list[dict], list[str]]:
+    weak = []
+    for row in selected:
+        radial = (row.get("normal_cylindrical") or {}).get("radial")
+        if radial is None or -float(radial) < MIN_RADIAL_LOAD_ALIGNMENT:
+            weak.append(row)
+    if not weak:
+        return weak, []
+    areas = sum(float(row.get("area_mm2") or 0.0) for row in weak)
+    return weak, [
+        "selection_includes_non_radial_faces: "
+        f"{len(weak)} selected face(s) covering {areas:.4g} mm^2 have "
+        f"-normal_radial below {MIN_RADIAL_LOAD_ALIGNMENT:.2f}. For a radial "
+        "blade load these are tangential/non-working surfaces, not bearing "
+        "flanks."
+    ]
+
+
+def _alignment_family_report(
+    all_rows: list[dict], selected: list[dict], state: FaceFinderState
+) -> dict:
+    """Separate the strongly aligned load-normal family from neighbouring faces.
+
+    The separation is not a hard-coded normal threshold. Candidate faces are
+    ordered by how directly their pressure opposes the centrifugal load
+    (`-normal_radial`), and the largest gap in that distribution defines the
+    two families when the gap is materially larger than ordinary variation.
+    The gate is active only for `flank_surface_normal`; it is a measurement of
+    the declared load path, not a guess about what every face on every part
+    means.
+    """
+    if state.load_direction_rule != "flank_surface_normal":
+        return {"applicable": False, "direction_rule": state.load_direction_rule}
+
+    candidates: list[tuple[float, float, dict]] = []
+    for row in all_rows:
+        if state.require_planar and str(row.get("surface_type") or "") != "plane":
+            continue
+        if not _inside_sector(row, state):
+            continue
+        radius = (row.get("centroid_cyl_mm_deg") or [None, None, None])[0]
+        radial = (row.get("normal_cylindrical") or {}).get("radial")
+        if radius is None or radial is None:
+            continue
+        alignment = -float(radial)
+        if alignment <= 0.0:
+            continue
+        candidates.append((float(radius), alignment, row))
+
+    weak, weak_problems = _weak_alignment_problems(selected)
+    if len(candidates) < 8:
+        return {
+            "applicable": True,
+            "direction_rule": state.load_direction_rule,
+            "candidate_face_count": len(candidates),
+            "separation": {"significant": False, "reason": "too_few_candidates"},
+            "weak_alignment_face_count": len(weak),
+            "problems": weak_problems,
+        }
+
+    def largest_gap(values: list[float]) -> tuple[float, float, float]:
+        ordered = sorted(values)
+        gaps = [
+            (
+                ordered[index + 1] - ordered[index],
+                ordered[index],
+                ordered[index + 1],
+            )
+            for index in range(len(ordered) - 1)
+        ]
+        return max(gaps, key=lambda item: item[0])
+
+    candidate_area = sum(
+        float(row.get("area_mm2") or 0.0)
+        for _radius, _alignment, row in candidates
+    )
+    radial_gap, radial_lower, radial_upper = largest_gap(
+        [radius for radius, _alignment, _row in candidates]
+    )
+    radial_scale = max(radius for radius, _alignment, _row in candidates)
+    outer = [
+        (alignment, row) for radius, alignment, row in candidates
+        if radius >= radial_upper
+    ]
+    outer_area = sum(
+        float(row.get("area_mm2") or 0.0) for _alignment, row in outer
+    )
+    outer_area_fraction = outer_area / candidate_area if candidate_area else 0.0
+    radial_significant = (
+        radial_gap >= MIN_RADIAL_GAP_FRACTION * max(radial_scale, 1.0)
+        and len(outer) >= 4
+        and outer_area_fraction >= MIN_STRONG_FAMILY_AREA_FRACTION
+    )
+    if not radial_significant:
+        return {
+            "applicable": True,
+            "direction_rule": state.load_direction_rule,
+            "candidate_face_count": len(candidates),
+            "candidate_area_mm2": round(candidate_area, 6),
+            "separation": {
+                "significant": False,
+                "reason": "no_distinct_outer_load_band",
+                "radial": {
+                    "largest_gap": round(radial_gap, 6),
+                    "lower_family_radius_max": round(radial_lower, 6),
+                    "upper_family_radius_min": round(radial_upper, 6),
+                },
+            },
+            "weak_alignment_face_count": len(weak),
+            "problems": weak_problems,
+        }
+
+    normal_gap, normal_lower, normal_upper = largest_gap(
+        [alignment for alignment, _row in outer]
+    )
+    strong = [row for alignment, row in outer if alignment >= normal_upper]
+    strong_area = sum(float(row.get("area_mm2") or 0.0) for row in strong)
+    strong_area_fraction = strong_area / outer_area if outer_area else 0.0
+    normal_significant = (
+        normal_gap >= MIN_ALIGNMENT_GAP
+        and len(strong) >= 2
+        and strong_area_fraction >= MIN_STRONG_FAMILY_AREA_FRACTION
+    )
+    significant = radial_significant and normal_significant
+
+    if not normal_significant:
+        return {
+            "applicable": True,
+            "direction_rule": state.load_direction_rule,
+            "candidate_face_count": len(candidates),
+            "candidate_area_mm2": round(candidate_area, 6),
+            "separation": {
+                "significant": False,
+                "reason": "no_distinct_normal_family_in_outer_band",
+                "radial": {
+                    "largest_gap": round(radial_gap, 6),
+                    "lower_family_radius_max": round(radial_lower, 6),
+                    "upper_family_radius_min": round(radial_upper, 6),
+                },
+                "normal": {
+                    "largest_gap": round(normal_gap, 6),
+                    "lower_family_alignment_max": round(normal_lower, 6),
+                    "upper_family_alignment_min": round(normal_upper, 6),
+                },
+            },
+            "weak_alignment_face_count": len(weak),
+            "problems": weak_problems,
+        }
+
+    selected_ids = {id(row) for row in selected}
+    strong_ids = {id(row) for row in strong}
+    extra_selected = [row for row in selected if id(row) not in strong_ids]
+    missing_strong = [row for row in strong if id(row) not in selected_ids]
+    extra_area = sum(
+        float(row.get("area_mm2") or 0.0) for row in extra_selected
+    )
+    missing_area = sum(
+        float(row.get("area_mm2") or 0.0) for row in missing_strong
+    )
+
+    problems: list[str] = []
+    if extra_selected:
+        problems.append(
+            "selection_mixes_normal_families: the measured outer load band "
+            f"begins at r = {radial_upper:.4g} mm and its strongly aligned "
+            f"family begins at radial alignment {normal_upper:.3f} "
+            f"(normal_radial <= {-normal_upper:.3f}); the "
+            f"selection includes {len(extra_selected)} other face(s) covering "
+            f"{extra_area:.4g} mm^2. They are outside the finished "
+            "`flank_surface_normal` load path: either the wrong radial band or "
+            "the non-working side of the tooth."
+        )
+    if missing_strong:
+        problems.append(
+            "selection_misses_strong_normal_family: "
+            f"{len(missing_strong)} strongly aligned face(s) covering "
+            f"{missing_area:.4g} mm^2 are omitted. The surface-pressure load "
+            "would enter only part of the measured bearing family."
+        )
+
+    return {
+        "applicable": True,
+        "direction_rule": state.load_direction_rule,
+        "candidate_face_count": len(candidates),
+        "candidate_area_mm2": round(candidate_area, 6),
+        "separation": {
+            "significant": significant,
+            "radial": {
+                "largest_gap": round(radial_gap, 6),
+                "lower_family_radius_max": round(radial_lower, 6),
+                "upper_family_radius_min": round(radial_upper, 6),
+            },
+            "normal": {
+                "largest_gap": round(normal_gap, 6),
+                "lower_family_alignment_max": round(normal_lower, 6),
+                "upper_family_alignment_min": round(normal_upper, 6),
+            },
+        },
+        "strong_family": {
+            "face_count": len(strong),
+            "face_indices": sorted(
+                int(row["face_index"]) for row in strong
+                if row.get("face_index") is not None
+            ),
+            "area_mm2": round(strong_area, 6),
+            "area_fraction": round(strong_area_fraction, 6),
+            "measured_query_bounds": {
+                "radial_min": round(radial_upper, 6),
+                "normal_radial_max": round(-normal_upper, 6),
+            },
+        },
+        "selected": {
+            "face_count": len(selected),
+            "outside_strong_family_face_count": len(extra_selected),
+            "outside_strong_family_area_mm2": round(extra_area, 6),
+            "missing_strong_family_face_count": len(missing_strong),
+            "missing_strong_family_area_mm2": round(missing_area, 6),
+        },
+        "problems": problems,
+        "note": (
+            "`strong_family` is the strongly aligned family inside the outer "
+            "radial band measured from this model. It is not a face list: the "
+            "gate acts only when both the radial band and the normal family "
+            "have a significant measured gap."
+        ),
+    }
+
+
+def _submission_readiness(
+    rows: list[dict], state: FaceFinderState, *,
+    all_rows: list[dict] | None = None,
+) -> dict:
+    """Whether a set can be solved, before it is recorded as the decision.
+
+    Two failures are structural rather than a matter of engineering taste. A
+    face outside the solved sector is not in the mesh; a curved face is not
+    mappable by the current surface-pressure emission path. Both used to pass
+    selection and only became visible as a missing fraction of the load after a
+    mesh and solve had already been paid for.
+    """
+    sector = _sector_report(rows, state)
+    surface_types: dict[str, int] = {}
+    for row in rows:
+        kind = str(row.get("surface_type") or "unknown")
+        surface_types[kind] = surface_types.get(kind, 0) + 1
+    non_planar = [
+        index for index, row in enumerate(rows)
+        if str(row.get("surface_type") or "") != "plane"
+    ]
+    problems: list[str] = []
+    if sector.get("applicable") and sector.get("outside_count"):
+        problems.append(
+            "selection_outside_sector: "
+            f"{sector['outside_count']} of {len(rows)} faces have centroids "
+            f"outside theta {sector['theta_low_deg']:g}.."
+            f"{sector['theta_high_deg']:g} deg; add a theta filter for the "
+            "solved sector. Outside indices: "
+            + ", ".join(str(value) for value in sector["outside_indices"])
+        )
+    if state.require_planar and non_planar:
+        problems.append(
+            "selection_not_mappable: the load is emitted as surface pressure, "
+            "whose current mapper accepts planar CAD faces only; "
+            f"{len(non_planar)} selected face(s) are not planes (indices: "
+            + ", ".join(str(value) for value in non_planar[:12])
+            + "). Narrow surface_types to ['plane'] or choose planar faces."
+        )
+    alignment = _alignment_family_report(all_rows or rows, rows, state)
+    problems.extend(alignment.get("problems") or [])
+    return {
+        "ready": not problems,
+        "problems": problems,
+        "sector": sector,
+        "load_normal_alignment": alignment,
+        "surface_types": surface_types,
+        "planar_count": len(rows) - len(non_planar),
+        "non_planar_count": len(non_planar),
+        "non_planar_indices": non_planar[:12],
     }
 
 
@@ -608,6 +978,12 @@ def _query_faces(action, state: FaceFinderState) -> dict:
             # written without seeing every face - it says what the matched set
             # is made of, so the next filter can be chosen from its shape.
             "summary": geometry.summarise(rows, matched),
+            "sector_coverage": _sector_report(
+                [rows[index] for index in matched], state
+            ),
+            "load_normal_alignment": _alignment_family_report(
+                rows, [rows[index] for index in matched], state
+            ),
             "listing": listing,
             "note": note,
         },
@@ -712,6 +1088,9 @@ def _check_criterion(action, state: FaceFinderState) -> dict:
         Vec3(x=0.0, y=0.0, z=1.0),
     )
     result["checked_face_count"] = len(selected)
+    result["submission"] = _submission_readiness(
+        selected, state, all_rows=rows
+    )
     return {"ok": True, "result": result}
 
 
@@ -734,6 +1113,15 @@ def _submit_faces(action, state: FaceFinderState) -> dict:
     rows = _rows_for(state, action.feature, action.solid_index)
     face_indices, method = _resolve_indices(action, rows, "submit_faces")
     selected = [rows[index] for index in face_indices]
+    readiness = _submission_readiness(selected, state, all_rows=rows)
+    if readiness["problems"]:
+        first = readiness["problems"][0].split(":", 1)[0]
+        raise StructuralError(
+            first,
+            "the submitted set is not the set this analysis can solve: "
+            + " | ".join(readiness["problems"]),
+            "facefind",
+        )
     residuals = criteria_tool.check_selection(
         action.criterion,
         selected,
@@ -759,6 +1147,7 @@ def _submit_faces(action, state: FaceFinderState) -> dict:
         "selection_method": method,
         "criterion": action.criterion.model_dump(mode="json"),
         "criterion_residuals": residuals,
+        "submission_readiness": readiness,
         "area_mm2_total": round(total_area, 6),
         "load_radius_mm": round(weighted, 6),
         "radius_min_mm": round(min(radii), 6) if radii else None,
@@ -910,7 +1299,9 @@ def _scope_lines(sector_deg: float | None, theta_low_deg: float) -> str:
         f"{theta_low_deg:g} to {high:g} degrees about the rotation axis, out "
         f"of a full revolution. Only that sector is meshed and solved, so it "
         f"is the only place a selection can land; the same faces recur in "
-        f"every sector and one sector's worth is what is wanted."
+        f"every sector and one sector's worth is what is wanted. A submission "
+        f"whose faces fall outside this sector is refused with their indices, "
+        f"because they are not in the mesh."
     )
 
 

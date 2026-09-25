@@ -232,6 +232,29 @@ def test_a_finding_with_no_prediction_is_recorded_as_untested(tmp_path):
     assert "no prediction" in observation["note"]
 
 
+def test_multiple_changes_in_one_revision_are_not_scored(tmp_path):
+    system = _System([1482.0, 1400.0])
+
+    def diagnose(metrics, verdicts, space, job_dir):
+        out = _diagnose_factory([-0.05])(metrics, verdicts, space, job_dir)
+        second = json.loads(json.dumps(out[0]))
+        second["id"] = "F2"
+        second["change"]["parameter"] = "web_outer_half_thickness_mm"
+        return [out[0], second]
+
+    loop = iterate.Loop(
+        master_dir=_master(tmp_path), root=tmp_path / "revisions",
+        lineage="D27", params={"rim_mm": 30.0},
+        generate=system.generate, solve=system.solve,
+        diagnose=diagnose, revise=_revise_ok,
+        knowledge_path=tmp_path / "knowledge.json",
+    )
+    result = loop.run(2)
+    assert result.revisions[1].observations == []
+    assert any("2 design changes were applied together" in limit
+               for limit in result.revisions[1].limits)
+
+
 def test_a_change_that_also_made_something_else_worse_says_so(tmp_path):
     """A rule that lowers the peak by raising the displacement is not working."""
     system = _System([1482.0, 1400.0])
@@ -257,6 +280,43 @@ def test_a_change_that_also_made_something_else_worse_says_so(tmp_path):
                for entry in observation["side_effects"])
 
 
+def test_the_opposite_direction_is_recorded_as_a_separate_rule():
+    base = knowledge.KnowledgeBase()
+    base.upsert(knowledge.KnowledgeEntry(
+        id="radial_driven::rim_half_thickness_mm",
+        mechanism="radial_driven",
+        parameter="rim_half_thickness_mm",
+        direction="decrease",
+        expected_metric="max_von_mises_mpa",
+        expected_direction="decrease",
+    ))
+    iterate.score_applied(
+        [{
+            "id": "F1",
+            "mechanism": "radial_driven",
+            "feature": "rim",
+            "change": {
+                "parameter": "rim_half_thickness_mm",
+                "relative_change": 0.10,
+            },
+            "prediction": {
+                "metric": "max_von_mises_mpa",
+                "direction": "increase",
+                "expected_relative_change": 0.05,
+            },
+        }],
+        {"stress": {"max_von_mises_mpa": 100.0}},
+        {"stress": {"max_von_mises_mpa": 105.0}},
+        revision="rev-000002",
+        base=base,
+    )
+    original = base.get("radial_driven::rim_half_thickness_mm")
+    opposite = base.get("radial_driven::rim_half_thickness_mm::increase")
+    assert original is not None and original.observations == []
+    assert opposite is not None and opposite.direction == "increase"
+    assert len(opposite.observations) == 1
+
+
 def test_a_rule_that_holds_three_times_becomes_trusted(tmp_path):
     """The whole point of keeping the record."""
     _loop(
@@ -267,6 +327,41 @@ def test_a_rule_that_holds_three_times_becomes_trusted(tmp_path):
     assert entry is not None
     assert entry.confirmations >= 3
     assert entry.status == "trusted"
+
+
+def test_a_relative_only_increase_is_recorded_as_an_increase():
+    """The sign of a relative change is the sign of the design change.
+
+    The previous implementation compared missing absolute values through
+    `or 0`, so every relative-only increase was stored as a decrease. That is
+    not a formatting detail: the knowledge entry names what to do, and the
+    revise agent reads the direction as the rule.
+    """
+    base = knowledge.KnowledgeBase()
+    observations = iterate.score_applied(
+        [{
+            "id": "F1",
+            "mechanism": "radial_driven",
+            "feature": "rim",
+            "change": {
+                "parameter": "rim_half_thickness_mm",
+                "relative_change": 0.10,
+            },
+            "prediction": {
+                "metric": "max_von_mises_mpa",
+                "direction": "increase",
+                "expected_relative_change": 0.05,
+            },
+        }],
+        {"stress": {"max_von_mises_mpa": 100.0}},
+        {"stress": {"max_von_mises_mpa": 105.0}},
+        revision="rev-000002",
+        base=base,
+    )
+    entry = base.get("radial_driven::rim_half_thickness_mm")
+    assert entry is not None
+    assert entry.direction == "increase"
+    assert observations[0]["outcome"] == "confirmed"
 
 
 # --- when the loop should stop -------------------------------------------
@@ -393,3 +488,44 @@ def test_why_a_revision_failed_is_in_the_report_not_only_the_json(tmp_path):
     blob = "\n".join(iterate.report_lines(result))
     assert "PCDM_SS_WriteFailure" in blob
     assert "RuntimeError" in blob
+
+def test_an_unchanged_final_solid_stops_before_the_second_solve(tmp_path):
+    """A document edit that never reached the STEP must not buy a solve."""
+    system = _System([1482.0, 1400.0])
+    probes: list[dict] = []
+
+    def probe(bundle, space, target=None):
+        facts = {
+            "r_min_mm": 60.0,
+            "r_max_mm": 300.0,
+            "z_min_mm": -38.0,
+            "z_max_mm": 38.0,
+            "total_volume_mm3": 1000.0,
+            "total_surface_area_mm2": 500.0,
+            "face_count": 10,
+            "surface_cells": [{
+                "key": [0, 0, 0, False],
+                "r_mm": 208.0,
+                "z_mm": 0.0,
+                "theta_deg": 12.0,
+                "face_count": 1,
+                "area_mm2": 10.0,
+            }],
+        }
+        probes.append(facts)
+        return facts
+
+    loop = iterate.Loop(
+        master_dir=_master(tmp_path), root=tmp_path / "revisions",
+        lineage="D27", params={"rim_mm": 30.0},
+        generate=system.generate, solve=system.solve,
+        diagnose=_diagnose_factory([-0.05]), revise=_revise_ok,
+        knowledge_path=tmp_path / "knowledge.json", design_probe=probe,
+    )
+    result = loop.run(2)
+    assert system.calls == 1
+    assert len(result.revisions) == 2
+    assert result.revisions[1].design_effect["target_changed"] is False
+    assert any("did not reach the measured STEP target" in note
+               for note in result.limits)
+

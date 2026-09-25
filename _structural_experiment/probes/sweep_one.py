@@ -14,6 +14,7 @@ mean running them again.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import pathlib
 import sys
@@ -76,14 +77,33 @@ class Recorder:
 
 
 def main() -> int:
-    tag = sys.argv[1] if len(sys.argv) > 1 else "0"
-    out_dir = pathlib.Path(sys.argv[2]) if len(sys.argv) > 2 else (
-        REPO / "_structural_experiment" / "output" / "sweep"
-    )
+    parser = argparse.ArgumentParser()
+    parser.add_argument("tag")
+    parser.add_argument("outdir", nargs="?", type=pathlib.Path,
+                        default=REPO / "_structural_experiment" / "output" / "sweep")
+    parser.add_argument("--bundle", type=pathlib.Path, default=BUNDLE)
+    parser.add_argument("--index", type=pathlib.Path, default=INDEX)
+    parser.add_argument("--sector-deg", type=float, default=18.0)
+    parser.add_argument("--theta-low-deg", type=float, default=9.0)
+    parser.add_argument("--max-calls", type=int, default=MAX_CALLS)
+    args = parser.parse_args()
+    tag = args.tag
+    out_dir = args.outdir
+    bundle = args.bundle.resolve()
+    sector = {
+        "theta_low_deg": args.theta_low_deg,
+        "theta_high_deg": (args.theta_low_deg + args.sector_deg) % 360.0,
+    }
+    evolution_db = args.index.resolve() if args.index.exists() else None
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"run_{tag}.json"
 
-    record: dict = {"tag": tag, "max_calls": MAX_CALLS}
+    record: dict = {
+        "tag": tag,
+        "max_calls": args.max_calls,
+        "bundle": str(bundle),
+        "sector": sector,
+    }
     started = time.monotonic()
     attempts = 0
 
@@ -96,10 +116,12 @@ def main() -> int:
         attempts += 1
         session = None
         try:
-            session = geometry.open_bundle(BUNDLE)
+            session = geometry.open_bundle(bundle)
             state = facefind.FaceFinderState(
-                session=session, bundle=BUNDLE, evolution_db=INDEX,
-                sector=dict(SECTOR),
+                session=session, bundle=bundle, evolution_db=evolution_db,
+                sector=dict(sector),
+                require_planar=True,
+                load_direction_rule="flank_surface_normal",
                 workdir=(REPO / "_structural_experiment" / "work"
                          / "sweep_analyses" / tag / str(attempts)),
             )
@@ -107,7 +129,9 @@ def main() -> int:
             recorder = Recorder(caller)
             spec = facefind.spec(
                 requirement=REQUIREMENTS["flank_surface_normal"],
-                sector_deg=18.0, theta_low_deg=9.0, max_calls=MAX_CALLS,
+                sector_deg=args.sector_deg,
+                theta_low_deg=args.theta_low_deg,
+                max_calls=args.max_calls,
             )
             outcome = loop_mod.run_agent(
                 spec, caller=recorder, model_config=config,
@@ -118,6 +142,7 @@ def main() -> int:
             record.update({
                 "ok": True,
                 "attempts": attempts,
+                "model": config.model,
                 "calls": outcome.calls,
                 "exhausted": outcome.exhausted,
                 "submitted": bool(final.get("accepted")),
@@ -129,7 +154,12 @@ def main() -> int:
                 "criterion_satisfied": (
                     (final.get("criterion_residuals") or {}).get("satisfied")
                 ),
+                "load_normal_alignment": (
+                    final.get("submission_readiness") or {}
+                ).get("load_normal_alignment"),
                 "turns": recorder.turns,
+                "trace": outcome.trace,
+                "rejected": outcome.rejected,
                 "conversation": recorder.last_messages,
                 "analyses": state.analyses,
             })

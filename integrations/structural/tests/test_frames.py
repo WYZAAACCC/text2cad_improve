@@ -17,17 +17,13 @@ exercises.
 """
 from __future__ import annotations
 
-import math
-
 import pytest
 
 from seekflow_structural.tools.frames import (
     IDENTITY,
     Normalisation,
     distance_from_axis,
-    matmul,
     normalise_mesh,
-    rotation_to_z,
 )
 
 
@@ -47,6 +43,13 @@ def test_an_axis_pointing_down_z_is_turned_back():
     x, y, z = n.point(0.0, 0.0, 5.0)
     assert (x, y) == pytest.approx((0.0, 0.0), abs=1e-12)
     assert z == pytest.approx(-5.0)
+
+
+def test_inverse_point_returns_to_the_source_frame():
+    n = Normalisation((10.0, -4.0, 2.5), (0.2, 0.3, 0.93))
+    point = (17.0, 3.0, -5.0)
+    case_point = n.point(*point)
+    assert n.inverse_point(*case_point) == pytest.approx(point, abs=1e-12)
 
 
 def test_distance_from_the_axis_survives_the_transform():
@@ -145,3 +148,103 @@ def test_an_axis_through_the_origin_is_not_a_no_op_for_a_displaced_part():
     assert distance_from_axis(
         n.point(160.0, 50.0, 0.0), (0, 0, 0), (0, 0, 1)
     ) == pytest.approx(60.0)
+
+def test_a_non_global_axis_is_converted_to_the_deck_axis_contract():
+    from seekflow_structural.case.model import (
+        BundleRef,
+        Case,
+        Frame,
+        ModelFacts,
+        Vec3,
+        Written,
+    )
+    from seekflow_structural.pipeline.materialize import deck_axis_for
+
+    frame = Frame(
+        axis_origin_mm=Vec3(x=10.0, y=-5.0, z=2.0),
+        axis_direction=Vec3(x=0.2, y=0.3, z=0.93),
+    )
+    case = Case(
+        case_id="tilted",
+        bundle=BundleRef(path="."),
+        model=ModelFacts(
+            bounds_min_mm=Vec3(x=-1.0, y=-1.0, z=-1.0),
+            bounds_max_mm=Vec3(x=1.0, y=1.0, z=1.0),
+            r_max_mm=1.0,
+            frame=frame,
+            written=Written(by_stage="frame", kind="measured"),
+        ),
+    )
+    assert deck_axis_for(case) == (0.0, 0.0, 1.0)
+
+
+def test_an_identity_frame_needs_no_deck_axis_override():
+    from seekflow_structural.case.model import (
+        BundleRef,
+        Case,
+        Frame,
+        ModelFacts,
+        Vec3,
+        Written,
+    )
+    from seekflow_structural.pipeline.materialize import deck_axis_for
+
+    case = Case(
+        case_id="z",
+        bundle=BundleRef(path="."),
+        model=ModelFacts(
+            bounds_min_mm=Vec3(x=-1.0, y=-1.0, z=-1.0),
+            bounds_max_mm=Vec3(x=1.0, y=1.0, z=1.0),
+            r_max_mm=1.0,
+            frame=Frame(
+                axis_origin_mm=Vec3(x=0.0, y=0.0, z=0.0),
+                axis_direction=Vec3(x=0.0, y=0.0, z=1.0),
+            ),
+            written=Written(by_stage="frame", kind="measured"),
+        ),
+    )
+    assert deck_axis_for(case) is None
+
+def test_the_gmsh_and_structural_frame_transforms_agree():
+    """One frame contract, two runtimes: drift here changes every radius."""
+    import importlib.util
+    from pathlib import Path
+
+    repo = Path(__file__).resolve().parents[3]
+    path = repo / "app" / "text-to-cad" / "server" / "fea3d" / "mesh_sector.py"
+    spec = importlib.util.spec_from_file_location("mesh_sector_frame_test", path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec is not None and spec.loader is not None
+    spec.loader.exec_module(module)
+    for origin, direction in (
+        ((0.0, 0.0, 0.0), (0.0, 0.0, 1.0)),
+        ((100.0, 50.0, 7.0), (0.0, 0.0, 1.0)),
+        ((10.0, -5.0, 2.0), (0.2, 0.3, 0.93)),
+        ((0.0, 0.0, 0.0), (0.0, 0.0, -1.0)),
+    ):
+        expected = Normalisation(origin, direction)
+        actual = module.case_frame_transform(origin, direction)
+        for row_actual, row_expected in zip(
+            actual["rotation"], expected.rotation, strict=True
+        ):
+            assert row_actual == pytest.approx(row_expected, abs=1e-12)
+        assert actual["translation"] == pytest.approx(
+            expected.translation, abs=1e-12
+        )
+
+
+
+def test_frame_reads_a_declared_axis_before_setup_has_run():
+    from seekflow_structural.case.model import Vec3
+    from seekflow_structural.pipeline.frame import _declared_axis_from_params
+
+    assert _declared_axis_from_params({
+        "rotation": {
+            "axis_origin_mm": [1, 2, 3],
+            "axis_direction": [0.0, -0.5, 0.8660254037844387],
+        }
+    }) == (
+        Vec3(x=1.0, y=2.0, z=3.0),
+        Vec3(x=0.0, y=-0.5, z=0.8660254037844387),
+    )
+    assert _declared_axis_from_params({"rotation": {"rpm": 15000}}) is None

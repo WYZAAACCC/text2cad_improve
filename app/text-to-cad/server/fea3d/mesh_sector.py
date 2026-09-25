@@ -12,7 +12,8 @@
 依赖: pip install gmsh
 """
 from __future__ import annotations
-import json, math, sys
+import json
+import math
 from pathlib import Path
 import gmsh
 
@@ -23,6 +24,83 @@ PROJECT_ROOT = Path(__file__).resolve().parents[4]  # 仓库根
 def _unit(v):
     n = math.sqrt(sum(x * x for x in v))
     return [x / n for x in v]
+
+
+def case_frame_transform(origin, direction) -> dict:
+    """The rigid transform taking `direction` to global +Z.
+
+    Kept as a pure function so the Gmsh path and the structural package's
+    `Normalisation` can be compared directly. The two must agree; if they do
+    not, the mesh and the CAD facts are expressed in different frames and a
+    partial solve can look plausible.
+    """
+    origin = [float(value) for value in origin]
+    direction = _unit([float(value) for value in direction])
+    cross = [
+        direction[1] * 1.0 - direction[2] * 0.0,
+        direction[2] * 0.0 - direction[0] * 1.0,
+        direction[0] * 0.0 - direction[1] * 0.0,
+    ]
+    sine = math.sqrt(sum(value * value for value in cross))
+    cosine = max(-1.0, min(1.0, direction[2]))
+    if sine > 1e-15:
+        axis = [value / sine for value in cross]
+        angle = math.atan2(sine, cosine)
+    elif cosine < 0.0:
+        axis = [1.0, 0.0, 0.0]
+        angle = math.pi
+    else:
+        axis = [0.0, 0.0, 1.0]
+        angle = 0.0
+    if angle:
+        kx, ky, kz = axis
+        k = [[0.0, -kz, ky], [kz, 0.0, -kx], [-ky, kx, 0.0]]
+        k2 = [
+            [sum(k[i][m] * k[m][j] for m in range(3)) for j in range(3)]
+            for i in range(3)
+        ]
+        sin, cos = math.sin(angle), math.cos(angle)
+        rotation = [
+            [
+                (1.0 if i == j else 0.0)
+                + sin * k[i][j] + (1.0 - cos) * k2[i][j]
+                for j in range(3)
+            ]
+            for i in range(3)
+        ]
+    else:
+        rotation = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+    rotated_origin = [
+        sum(rotation[i][j] * origin[j] for j in range(3))
+        for i in range(3)
+    ]
+    return {
+        "axis": axis,
+        "angle": angle,
+        "rotation": rotation,
+        "translation": [rotated_origin[0], rotated_origin[1], 0.0],
+    }
+
+
+def _apply_case_frame(dimtags, origin, direction) -> None:
+    """Move imported geometry so the case axis is global +Z through origin."""
+    transform = case_frame_transform(origin, direction)
+    if (
+        abs(transform["angle"]) < 1e-15
+        and all(abs(value) < 1e-15 for value in transform["translation"])
+    ):
+        return
+    if abs(transform["angle"]) >= 1e-15:
+        axis = transform["axis"]
+        gmsh.model.occ.rotate(
+            dimtags, 0.0, 0.0, 0.0,
+            axis[0], axis[1], axis[2], transform["angle"],
+        )
+    translation = transform["translation"]
+    gmsh.model.occ.translate(
+        dimtags, -translation[0], -translation[1], 0.0
+    )
+    gmsh.model.occ.synchronize()
 
 
 def _squared(axis: str, centre: float) -> str:
@@ -175,6 +253,14 @@ def build(cfg: dict, job_dir: Path, gui: bool = False) -> dict:
         disc = gmsh.model.occ.importShapes(step_path)
         vols = [t for d, t in disc if d == 3]
         assert len(vols) == 1, f"STEP 应含 1 个实体, 实得 {len(vols)}"
+        frame = gcfg.get("frame") or {}
+        if frame:
+            _apply_case_frame(
+                [(3, vol) for vol in vols],
+                frame.get("axis_origin_mm") or [0.0, 0.0, 0.0],
+                frame.get("axis_direction_mm") or [0.0, 0.0, 1.0],
+            )
+            print("[mesh] case frame applied: rotation axis -> global +Z")
         print(f"[mesh] STEP loaded, 实体数: {len(vols)}")
 
         # ---- 2. 分析域刀具 ----
@@ -448,6 +534,8 @@ def build(cfg: dict, job_dir: Path, gui: bool = False) -> dict:
             "nodes": len(ntags),
             "elements": len(eids),
             "element_type": "tet10/SOLID187",
+            "frame_applied": bool(gcfg.get("frame")),
+            "frame": gcfg.get("frame"),
             "domain": {
                 "type": "full_360" if full else "cyclic_sector",
                 "sector_deg": round(sector, 6),

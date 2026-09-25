@@ -158,7 +158,7 @@ def test_setting_a_refused_parameter_leaves_the_design_alone(tmp_path):
     before = state.workspace.params()
     with pytest.raises(StructuralError) as excinfo:
         revise._set_parameter(
-            _Call(parameter="neck_half_width_mm", value=9.0), state
+            _Call(parameter="neck_half_width_mm", value=9.0, finding_id="F1"), state
         )
     assert "change_refused" in str(excinfo.value.diagnostic.code)
     assert state.workspace.params() == before
@@ -170,7 +170,7 @@ def test_setting_a_permitted_parameter_changes_only_the_copy(tmp_path):
         state.workspace.master_dir / "param_templates.py"
     )
     revise._set_parameter(
-        _Call(parameter="rim_half_thickness_mm", value=28.0), state
+        _Call(parameter="rim_half_thickness_mm", value=28.0, finding_id="F1"), state
     )
     # Written under the template's name, which is the one `generate.py` passes
     # to `param_templates.build`; the planning agent's name would be a key the
@@ -189,18 +189,35 @@ def test_rewriting_a_script_changes_the_copy_and_checks_the_master(tmp_path):
     state = _state(tmp_path)
     revise._write_script(
         _Call(script="param_templates.py",
-              content="def build(p):\n    return {'revised': True}\n"),
+              content="def build(p):\n    return {'revised': True}\n",
+              finding_id="F1"),
         state,
     )
     assert state.workspace.changed_files() == ["param_templates.py"]
     assert state.workspace.verify_master_untouched() is None
 
 
+def test_a_script_cannot_be_attributed_to_a_diagnosis_without_a_change(tmp_path):
+    state = _state(tmp_path, findings=[
+        {"id": "F1", "mechanism": "unresolved", "change": None},
+    ])
+    with pytest.raises(StructuralError) as excinfo:
+        revise._write_script(
+            _Call(script="param_templates.py", content="x = 1\n",
+                  finding_id="F1"),
+            state,
+        )
+    assert "script_without_a_structured_change" in str(
+        excinfo.value.diagnostic.code
+    )
+
+
 def test_rewriting_a_script_that_is_not_in_the_workspace_is_refused(tmp_path):
     state = _state(tmp_path)
     with pytest.raises(StructuralError) as excinfo:
         revise._write_script(
-            _Call(script="not_a_template.py", content="x = 1\n"), state
+            _Call(script="not_a_template.py", content="x = 1\n",
+                  finding_id="F1"), state
         )
     assert "unknown_script" in str(excinfo.value.diagnostic.code)
 
@@ -238,10 +255,72 @@ def test_a_finding_reported_as_applied_with_no_change_behind_it_is_refused(tmp_p
     assert "F1" in str(excinfo.value)
 
 
+def test_a_diagnosis_with_no_change_cannot_be_reported_as_applied(tmp_path):
+    state = _state(tmp_path, findings=[
+        {"id": "F1", "mechanism": "unresolved", "change": None},
+    ])
+    state.applied.append({
+        "finding": "F1", "parameter": "rim_mm", "asked_for_as": "rim_mm",
+        "before": 30.0, "after": 27.0,
+        "patch": {"path": "/params/rim_mm", "old_value": 30.0,
+                  "new_value": 27.0},
+    })
+    with pytest.raises(StructuralError) as excinfo:
+        revise._submit_revision(_Call(applied=["F1"], skipped=[]), state)
+    assert "applied_finding_has_no_change" in str(
+        excinfo.value.diagnostic.code
+    )
+
+
+def test_set_parameter_cannot_edit_on_behalf_of_a_no_change_diagnosis(tmp_path):
+    state = _state(tmp_path, findings=[
+        {"id": "F1", "mechanism": "unresolved", "change": None},
+    ])
+    with pytest.raises(StructuralError) as excinfo:
+        revise._set_parameter(
+            _Call(parameter="rim_half_thickness_mm", value=27.0,
+                  finding_id="F1"),
+            state,
+        )
+    assert "finding_has_no_structured_change" in str(
+        excinfo.value.diagnostic.code
+    )
+    assert state.workspace.document_edits() == []
+
+
+def test_a_change_for_a_skipped_finding_is_refused_at_submission(tmp_path):
+    state = _state(tmp_path, findings=[
+        {"id": "F1", "mechanism": "hoop_driven", "change": {
+            "parameter": "rim_half_thickness_mm", "relative_change": -0.1}},
+        {"id": "F2", "mechanism": "hoop_driven", "change": {
+            "parameter": "bore_mm", "relative_change": 0.1}},
+    ])
+    # Simulate a legacy/manual write for F2 that is then reported as skipped.
+    state.applied.append({
+        "finding": "F2", "parameter": "bore_mm", "asked_for_as": "bore_mm",
+        "before": 120.0, "after": 132.0,
+        "patch": {"path": "/params/bore_mm", "old_value": 120.0,
+                  "new_value": 132.0},
+    })
+    revise._set_parameter(
+        _Call(parameter="rim_half_thickness_mm", value=27.0,
+              finding_id="F1"),
+        state,
+    )
+    with pytest.raises(StructuralError) as excinfo:
+        revise._submit_revision(
+            _Call(applied=["F1"], skipped=[{"id": "F2", "reason": "no"}]),
+            state,
+        )
+    assert "change_for_unapplied_finding" in str(
+        excinfo.value.diagnostic.code
+    )
+
+
 def test_a_change_records_the_finding_it_was_made_for(tmp_path):
     state = _state(tmp_path)
     revise._set_parameter(
-        _Call(parameter="rim_half_thickness_mm", value=28.0, finding_id="F1"),
+        _Call(parameter="rim_half_thickness_mm", value=27.0, finding_id="F1"),
         state,
     )
     assert state.applied[-1]["finding"] == "F1"
@@ -253,7 +332,7 @@ def test_a_change_made_for_one_finding_does_not_back_another(tmp_path):
     """The check is which finding each change was for, not how many there are."""
     state = _state(tmp_path)
     revise._set_parameter(
-        _Call(parameter="rim_half_thickness_mm", value=28.0, finding_id="F1"),
+        _Call(parameter="rim_half_thickness_mm", value=27.0, finding_id="F1"),
         state,
     )
     with pytest.raises(StructuralError) as excinfo:
@@ -289,16 +368,38 @@ def test_the_change_the_finding_asked_for_is_accepted(tmp_path):
          "change": {"parameter": "rim_mm", "relative_change": -0.1}},
     ])
     revise._set_parameter(
-        _Call(parameter="rim_mm", value=28.0, finding_id="F1"), state,
+        _Call(parameter="rim_mm", value=27.0, finding_id="F1"), state,
     )
     revise._submit_revision(_Call(applied=["F1"], skipped=[]), state)
     assert state.submitted["applied"] == ["F1"]
 
 
-def test_a_skip_with_a_reason_is_accepted_and_recorded(tmp_path):
-    state = _state(tmp_path)
+def test_a_change_made_for_a_finding_has_to_be_the_proposed_magnitude(tmp_path):
+    state = _state(tmp_path, findings=[
+        {"id": "F1", "mechanism": "hoop_driven", "feature": "rim",
+         "change": {"parameter": "rim_mm", "relative_change": -0.1}},
+    ])
     revise._set_parameter(
-        _Call(parameter="rim_half_thickness_mm", value=28.0, finding_id="F1"),
+        _Call(parameter="rim_mm", value=28.0, finding_id="F1"), state,
+    )
+    with pytest.raises(StructuralError) as excinfo:
+        revise._submit_revision(_Call(applied=["F1"], skipped=[]), state)
+    assert "applied_a_different_magnitude" in str(
+        excinfo.value.diagnostic.code
+    )
+    assert "27" in str(excinfo.value) and "28" in str(excinfo.value)
+
+
+def test_a_skip_with_a_reason_is_accepted_and_recorded(tmp_path):
+    state = _state(tmp_path, findings=[
+        {"id": "F1", "mechanism": "hoop_driven", "feature": "bore",
+         "change": {"parameter": "rim_half_thickness_mm",
+                    "relative_change": -0.1}},
+        {"id": "F2", "mechanism": "unresolved", "feature": "rim",
+         "change": None},
+    ])
+    revise._set_parameter(
+        _Call(parameter="rim_half_thickness_mm", value=27.0, finding_id="F1"),
         state,
     )
     revise._submit_revision(
@@ -312,6 +413,57 @@ def test_a_skip_with_a_reason_is_accepted_and_recorded(tmp_path):
     )
     assert state.submitted["applied"] == ["F1"]
     assert state.submitted["skipped"][0]["id"] == "F2"
+
+
+def test_a_finding_missing_from_both_lists_is_refused(tmp_path):
+    state = _state(tmp_path, findings=[
+        {"id": "F1", "mechanism": "unresolved", "change": None},
+        {"id": "F2", "mechanism": "unresolved", "change": None},
+    ])
+    with pytest.raises(StructuralError) as excinfo:
+        revise._submit_revision(
+            _Call(applied=[], skipped=[{"id": "F1", "reason": "no control"}]),
+            state,
+        )
+    assert "findings_not_reported" in str(excinfo.value.diagnostic.code)
+    assert "F2" in str(excinfo.value)
+
+
+def test_an_unknown_skipped_finding_is_refused(tmp_path):
+    state = _state(tmp_path)
+    with pytest.raises(StructuralError) as excinfo:
+        revise._submit_revision(
+            _Call(applied=[], skipped=[{"id": "F99", "reason": "unknown"}]),
+            state,
+        )
+    assert "unknown_finding" in str(excinfo.value.diagnostic.code)
+
+
+def test_a_skip_without_a_reason_is_refused(tmp_path):
+    state = _state(tmp_path)
+    with pytest.raises(StructuralError) as excinfo:
+        revise._submit_revision(
+            _Call(applied=[], skipped=[{"id": "F1", "reason": ""}]),
+            state,
+        )
+    assert "skip_without_reason" in str(excinfo.value.diagnostic.code)
+
+
+def test_a_finding_cannot_be_both_applied_and_skipped(tmp_path):
+    state = _state(tmp_path)
+    revise._set_parameter(
+        _Call(parameter="rim_half_thickness_mm", value=27.0,
+              finding_id="F1"),
+        state,
+    )
+    with pytest.raises(StructuralError) as excinfo:
+        revise._submit_revision(
+            _Call(applied=["F1"], skipped=[{"id": "F1", "reason": "duplicate"}]),
+            state,
+        )
+    assert "finding_both_applied_and_skipped" in str(
+        excinfo.value.diagnostic.code
+    )
 
 
 # --- what it can see -----------------------------------------------------
@@ -474,6 +626,59 @@ def _document_state(tmp_path: Path, findings=None) -> revise.ReviseState:
     )
 
 
+def test_a_mirrored_profile_vertex_must_move_with_its_counterpart(
+    tmp_path, monkeypatch
+):
+    state = _document_state(tmp_path, findings=[
+        {"id": "F1", "mechanism": "hoop_driven", "feature": "bore",
+         "change": {"parameter": "disc_poly.points[0].x_mm",
+                    "relative_change": 0.1}},
+    ])
+    document = state.workspace.document()
+    document["nodes"][0]["params"]["points"] = [
+        {"x_mm": 60.0, "y_mm": -38.0},
+        {"x_mm": 160.0, "y_mm": 0.0},
+        {"x_mm": 60.0, "y_mm": 38.0},
+    ]
+    state.workspace.write_document(document)
+    state.workspace.write_document_base(document)
+    def positions(document, node):
+        points = document["nodes"][0]["params"]["points"]
+        return {"vertices": [
+            {"index": index, "r_mm": point["x_mm"],
+             "z_mm": point["y_mm"]}
+            for index, point in enumerate(points)
+        ]}
+
+    monkeypatch.setattr(revise.document_tools, "world_positions", positions)
+    assert revise.coupled_vertex_parameters(
+        document, "disc_poly.points[0].x_mm"
+    ) == ["disc_poly.points[2].x_mm"]
+
+    revise._set_parameter(
+        _Call(parameter="disc_poly.points[0].x_mm", value=66.0,
+              finding_id="F1"),
+        state,
+    )
+    with pytest.raises(StructuralError) as excinfo:
+        revise._submit_revision(_Call(applied=["F1"], skipped=[]), state)
+    assert "coupled_parameter_not_updated" in str(
+        excinfo.value.diagnostic.code
+    )
+
+    revise._set_parameter(
+        _Call(parameter="disc_poly.points[2].x_mm", value=66.0,
+              finding_id="F1"),
+        state,
+    )
+    revise._submit_revision(_Call(applied=["F1"], skipped=[]), state)
+    edits = state.workspace.document_edits()
+    assert {edit["path"] for edit in edits} == {
+        "/nodes/disc_poly/params/points/0/x_mm",
+        "/nodes/disc_poly/params/points/2/x_mm",
+    }
+
+
 def test_a_template_parameter_cannot_be_changed_once_a_document_exists(tmp_path):
     """The name is real and the file it reaches is not read."""
     state = _document_state(tmp_path)
@@ -504,9 +709,9 @@ def test_the_template_path_still_works_before_a_document_exists(tmp_path):
     """The refusal is about which file the generator reads, not the name."""
     state = _state(tmp_path)
     revise._set_parameter(
-        _Call(parameter="rim_mm", value=28.0, finding_id="F1"), state,
+        _Call(parameter="rim_mm", value=27.0, finding_id="F1"), state,
     )
-    assert state.workspace.params()["rim_mm"] == 28.0
+    assert state.workspace.params()["rim_mm"] == 27.0
 
 
 def test_replacing_a_script_is_refused_while_a_document_exists(tmp_path):
@@ -527,20 +732,76 @@ def test_replacing_a_script_is_refused_while_a_document_exists(tmp_path):
 def test_changing_a_document_parameter_lands_and_is_recorded(tmp_path):
     state = _document_state(tmp_path)
     revise._set_parameter(
-        _Call(parameter="disc_poly.points[1].y_mm", value=41.0,
+        _Call(parameter="disc_poly.points[1].y_mm", value=41.8,
               finding_id="F1"),
         state,
     )
     revise._submit_revision(_Call(applied=["F1"], skipped=[]), state)
-    assert state.workspace.document()["nodes"][0]["params"]["points"][1] == {
-        "x_mm": 240.0, "y_mm": 41.0,
-    }
+    point = state.workspace.document()["nodes"][0]["params"]["points"][1]
+    assert point["x_mm"] == 240.0
+    assert point["y_mm"] == pytest.approx(41.8)
     edits = state.workspace.document_edits()
     assert [edit["path"] for edit in edits] == [
         "/nodes/disc_poly/params/points/1/y_mm"
     ]
     assert edits[0]["old_value"] == 38.0
-    assert edits[0]["new_value"] == 41.0
+    assert edits[0]["new_value"] == pytest.approx(41.8)
+
+
+def test_a_relative_change_on_a_document_parameter_is_resolved_from_it(
+    tmp_path,
+):
+    """The fraction is taken of the document's value, which is where it is.
+
+    Measured on D27: a finding that stated only `relative_change` - the shape
+    the feedback prompt asks for, since the current value is in the design and
+    the agent should not be doing the arithmetic - was refused with
+    `no_value`, because the current value was looked up among the template
+    parameters, which do not carry document names at all. The revision agent
+    had to skip the finding, so the change the diagnosis asked for was never
+    made and the revision that was built and solved tested nothing.
+    """
+    state = _document_state(tmp_path)
+    revise._set_parameter(
+        _Call(parameter="disc_poly.points[1].y_mm", relative_change=0.25,
+              finding_id="F1"),
+        state,
+    )
+    assert state.applied[0]["before"] == 38.0
+    assert state.applied[0]["after"] == pytest.approx(47.5)
+    assert state.workspace.document()["nodes"][0]["params"]["points"][1][
+        "y_mm"
+    ] == pytest.approx(47.5)
+
+
+def test_checking_a_relative_change_on_a_document_parameter_reports_both(
+    tmp_path,
+):
+    """`check_change` is handed the same value the write would use."""
+    state = _document_state(tmp_path)
+    out = revise._check_change(
+        _Call(parameter="disc_poly.points[1].y_mm", relative_change=0.25),
+        state,
+    )["result"]
+    assert out["would_be_applied"] is True
+    magnitude = next(
+        item for item in out["checks"] if item["check"] == "magnitude"
+    )
+    assert magnitude["relative_change"] == pytest.approx(0.25)
+    assert "38" in magnitude["note"] and "47.5" in magnitude["note"]
+
+
+def test_a_relative_change_on_an_unknown_name_is_still_refused(tmp_path):
+    """Resolving from the document must not turn a bad name into a value."""
+    state = _document_state(tmp_path)
+    with pytest.raises(StructuralError) as excinfo:
+        revise._set_parameter(
+            _Call(parameter="disc_poly.radius_mm", relative_change=0.1,
+                  finding_id="F1"),
+            state,
+        )
+    assert "no_value" in str(excinfo.value.diagnostic.code)
+    assert state.workspace.document_edits() == []
 
 
 def test_applying_no_change_to_a_document_does_not_count_as_one(tmp_path):
@@ -625,3 +886,92 @@ def test_a_document_diff_is_empty_until_something_is_written(tmp_path):
         "/nodes/n_fillet_0/params/radius_mm"
     ]
 
+def test_a_finding_can_make_a_coordinated_edit_of_one_feature(tmp_path):
+    """Optional feature relations allow a multi-parameter joint revision."""
+    document = {"nodes": [
+        {"id": "slot_fillet_0", "op": "fillet_sketch",
+         "component": "slot_cutter",
+         "params": {"radius_mm": 0.5, "at_vertex_index": [1]}},
+        {"id": "slot_fillet_1", "op": "fillet_sketch",
+         "component": "slot_cutter",
+         "params": {"radius_mm": 0.6, "at_vertex_index": [2]}},
+    ]}
+    space = workspace.Workspace.create(
+        master_dir=_master(tmp_path), root=tmp_path / "rev-000002",
+        lineage="D27", revision="rev-000002", params={}, document=document,
+    )
+    state = revise.ReviseState(
+        workspace=space,
+        findings=[{
+            "id": "F1", "mechanism": "stress_concentration",
+            "feature": "slot fillet",
+            "change": {"parameter": "slot_fillet_0.radius_mm",
+                       "relative_change": 0.1},
+        }],
+        base=knowledge.KnowledgeBase.load(tmp_path / "none.json"),
+    )
+    revise._set_parameter(
+        _Call(parameter="slot_fillet_0.radius_mm", value=0.55,
+              finding_id="F1"),
+        state,
+    )
+    revise._set_parameter(
+        _Call(parameter="slot_fillet_1.radius_mm", value=0.66,
+              finding_id="F1"),
+        state,
+    )
+    revise._submit_revision(_Call(applied=["F1"], skipped=[]), state)
+    edits = state.workspace.document_edits()
+    assert {edit["path"] for edit in edits} == {
+        "/nodes/slot_fillet_0/params/radius_mm",
+        "/nodes/slot_fillet_1/params/radius_mm",
+    }
+
+
+
+def test_a_no_op_parameter_write_is_refused_before_it_is_recorded(tmp_path):
+    state = _document_state(tmp_path)
+    document = state.workspace.document()
+    before = document["nodes"][0]["params"]["points"][1]["y_mm"]
+    with pytest.raises(StructuralError) as excinfo:
+        revise._set_parameter(
+            _Call(parameter="disc_poly.points[1].y_mm", value=before,
+                  finding_id="F1"),
+            state,
+        )
+    assert "change_without_geometric_effect" in str(
+        excinfo.value.diagnostic.code
+    )
+    assert state.applied == []
+
+
+def test_the_same_parameter_value_cannot_be_recorded_twice(tmp_path):
+    state = _document_state(tmp_path)
+    revise._set_parameter(
+        _Call(parameter="disc_poly.points[1].y_mm", value=42.0,
+              finding_id="F1"),
+        state,
+    )
+    with pytest.raises(StructuralError) as excinfo:
+        revise._set_parameter(
+            _Call(parameter="disc_poly.points[1].y_mm", value=42.0,
+                  finding_id="F1"),
+            state,
+        )
+    assert "parameter_already_edited" in str(excinfo.value.diagnostic.code)
+    assert len(state.applied) == 1
+
+
+def test_finding_magnitudes_are_normalised_before_the_agent_sees_them():
+    findings = [{
+        "id": "F1",
+        "change": {
+            "parameter": "bore",
+            "current_value": 63.0,
+            "proposed_value": 66.0,
+            "relative_change": 0.0476,
+        },
+    }]
+    out = revise.normalise_finding_changes(findings)
+    assert out[0]["change"]["relative_change"] == pytest.approx(3.0 / 63.0)
+    assert findings[0]["change"]["relative_change"] == 0.0476

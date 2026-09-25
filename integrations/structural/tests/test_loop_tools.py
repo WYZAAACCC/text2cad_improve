@@ -516,6 +516,19 @@ def test_a_run_that_already_diagnosed_itself_is_not_diagnosed_again(tmp_path):
     assert found == existing
 
 
+def test_the_feedback_adapter_defaults_to_the_measured_flash_budget():
+    import inspect
+
+    from seekflow_structural.agents import feedback
+
+    assert inspect.signature(loop_wiring.make_diagnose).parameters[
+        "max_calls"
+    ].default == 32
+    assert inspect.signature(feedback.feedback).parameters[
+        "max_calls"
+    ].default == 32
+
+
 def test_the_two_adapters_have_the_signatures_the_loop_calls(tmp_path):
     """The loop calls these positionally; a mismatch is a TypeError mid-run."""
     import inspect
@@ -616,6 +629,14 @@ def _placed_doc():
          "inputs": [{"node": "ext"}],
          "params": {"count": 60, "radius_mm": 300.0, "axis": "Z"}},
     ]}
+
+
+def test_dependency_graph_links_features_without_a_family_template():
+    graph = document_tools.dependency_graph(_placed_doc())
+    kinds = {edge["kind"] for edge in graph["edges"]}
+    assert {"consumes", "rounds_vertex", "pattern_source"} <= kinds
+    assert "disc_body" in graph["feature_groups"]
+    assert "slot_cutter" in graph["feature_groups"]
 
 
 def test_a_meridional_profile_reports_its_points_as_radius_and_axial():
@@ -791,3 +812,59 @@ def test_something_far_away_is_not_returned():
     assert "tooth.radius_mm" not in near, (
         "the fir-tree fillet is at r = 284 and cannot reach r = 208"
     )
+
+def _feature_doc():
+    return {"nodes": [
+        {"id": "disc_sketch", "op": "create_2d_sketch", "component": "disc_body",
+         "params": {"plane": "XZ", "origin_x_mm": 0.0, "origin_y_mm": 0.0}},
+        {"id": "disc_poly", "op": "add_polyline", "component": "disc_body",
+         "inputs": [{"node": "disc_sketch", "output": "sketch"}],
+         "params": {"points": [
+             {"x_mm": 60.0, "y_mm": -38.0},
+             {"x_mm": 240.0, "y_mm": 0.0},
+             {"x_mm": 60.0, "y_mm": 38.0},
+         ]}},
+        {"id": "disc_fillet", "op": "fillet_sketch", "component": "disc_body",
+         "params": {"radius_mm": 2.0, "at_vertex_index": [1]}},
+        {"id": "hole_poly", "op": "add_polyline", "component": "feat_holes",
+         "params": {"points": [
+             {"x_mm": -6.0, "y_mm": -6.0},
+             {"x_mm": 6.0, "y_mm": -6.0},
+             {"x_mm": 6.0, "y_mm": 6.0},
+             {"x_mm": -6.0, "y_mm": 6.0},
+         ]}},
+        {"id": "slot_fillet_0", "op": "fillet_sketch",
+         "component": "slot_cutter",
+         "params": {"radius_mm": 0.5, "at_vertex_index": [1]}},
+        {"id": "slot_fillet_1", "op": "fillet_sketch",
+         "component": "slot_cutter",
+         "params": {"radius_mm": 0.6, "at_vertex_index": [2]}},
+        {"id": "hole_pattern", "op": "circular_pattern_component",
+         "component": "__assembly__",
+         "inputs": [{"node": "hole_poly", "output": "body"}],
+         "params": {"count": 20, "radius_mm": 208.0,
+                    "start_angle_deg": 0.0}},
+    ]}
+
+
+def test_the_dependency_graph_exposes_feature_level_joint_edits():
+    graph = document_tools.dependency_graph(_feature_doc())
+    kinds = {group["kind"] for group in graph["joint_edit_groups"]}
+    assert {"mirror_vertex_pair", "fillet_family", "pattern_instances",
+            "profile_contour", "feature_bundle"} <= kinds
+    assert graph["feature_groups"]["slot_cutter"] == [
+        "slot_fillet_0", "slot_fillet_1"
+    ]
+
+
+def test_joint_parameters_separates_mandatory_pairs_from_optional_families():
+    document = _feature_doc()
+    assert document_tools.joint_parameters(
+        document, "disc_poly.points[0].x_mm", required_only=True
+    ) == ["disc_poly.points[2].x_mm"]
+    optional = document_tools.joint_parameters(
+        document, "slot_fillet_0.radius_mm"
+    )
+    assert "slot_fillet_1.radius_mm" in optional
+    assert "slot_fillet_0.radius_mm" not in optional
+

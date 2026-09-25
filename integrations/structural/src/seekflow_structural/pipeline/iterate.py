@@ -34,6 +34,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
+import inspect
 from typing import Callable
 
 from seekflow_structural.tools import knowledge, results, workspace
@@ -51,6 +52,7 @@ GenerateFn = Callable[[workspace.Workspace], Path]
 SolveFn = Callable[[Path, workspace.Workspace], dict]
 DiagnoseFn = Callable[[dict, dict, workspace.Workspace, Path], list[dict]]
 ReviseFn = Callable[[list[dict], workspace.Workspace], dict]
+DesignProbeFn = Callable[..., dict]
 
 DEFAULT_REVISIONS = 3
 
@@ -80,6 +82,8 @@ class RevisionOutcome:
     # floor of zero.
     noise_floors: dict = field(default_factory=dict)
     changed_from_master: list[str] = field(default_factory=list)
+    design_facts: dict = field(default_factory=dict)
+    design_effect: dict = field(default_factory=dict)
     limits: list[str] = field(default_factory=list)
 
 
@@ -110,6 +114,8 @@ class LoopResult:
                     "observations": item.observations,
                     "noise_floors": item.noise_floors,
                     "changed_from_master": item.changed_from_master,
+                    "design_facts": item.design_facts,
+                    "design_effect": item.design_effect,
                     "limits": item.limits,
                 }
                 for item in self.revisions
@@ -146,20 +152,41 @@ def score_applied(
         prediction = finding.get("prediction") or {}
         metric = str(prediction.get("metric") or "max_von_mises_mpa")
         finding_id = str(finding.get("id") or "")
+        proposed = change.get("proposed_value")
+        current = change.get("current_value")
+        relative = change.get("relative_change")
+        if proposed is not None and current is not None:
+            direction = "increase" if float(proposed) > float(current) else "decrease"
+        elif relative is not None:
+            direction = "increase" if float(relative) >= 0.0 else "decrease"
+        else:
+            direction = (
+                "increase" if prediction.get("direction") == "increase"
+                else "decrease"
+            )
 
-        entry_id = f"{finding.get('mechanism')}::{parameter}"
+        base_id = f"{finding.get('mechanism')}::{parameter}"
+        conflict_id = f"{base_id}::{direction}"
+        entry_id = conflict_id
         entry = base.get(entry_id)
+        if entry is None:
+            entry = base.get(base_id)
+            if (entry is not None and entry.direction
+                    and direction and entry.direction != direction):
+                # An opposite change is a different hypothesis. Keeping it on
+                # the same entry would mix observations that tested opposite
+                # actions, so give the conflicting direction its own rule.
+                entry = None
+            else:
+                entry_id = base_id
+        if entry is not None and not entry.direction:
+            entry.direction = direction
         if entry is None:
             entry = base.upsert(knowledge.KnowledgeEntry(
                 id=entry_id,
                 mechanism=str(finding.get("mechanism") or "unresolved"),
                 parameter=parameter,
-                direction=(
-                    "increase"
-                    if (change.get("proposed_value") or 0)
-                    > (change.get("current_value") or 0)
-                    else "decrease"
-                ),
+                direction=direction,
                 at=str(finding.get("feature") or ""),
                 expected_metric=metric,
                 expected_direction=(
@@ -246,6 +273,7 @@ class Loop:
         revise: ReviseFn,
         knowledge_path: Path,
         metric: str = "max_von_mises_mpa",
+        design_probe: DesignProbeFn | None = None,
     ):
         self.master_dir = Path(master_dir)
         self.root = Path(root)
@@ -260,7 +288,22 @@ class Loop:
         self.revise = revise
         self.knowledge_path = Path(knowledge_path)
         self.metric = metric
+        self.design_probe = design_probe
         self.base = knowledge.KnowledgeBase.load(self.knowledge_path)
+
+    def _design_probe(
+        self, bundle: Path, space: workspace.Workspace, target: dict
+    ) -> dict:
+        """Call a probe with optional target context, preserving old callers."""
+        if self.design_probe is None:
+            return {}
+        try:
+            arity = len(inspect.signature(self.design_probe).parameters)
+        except (TypeError, ValueError):
+            arity = 2
+        if arity >= 3:
+            return self.design_probe(bundle, space, target)
+        return self.design_probe(bundle, space)
 
     def run(self, revisions: int = DEFAULT_REVISIONS) -> LoopResult:
         result = LoopResult(lineage=self.lineage)
@@ -275,6 +318,7 @@ class Loop:
 
         previous_metrics: dict | None = None
         previous_floors: dict = {}
+        previous_design_facts: dict = {}
         applied_findings: list[dict] = []
 
         for index in range(1, revisions + 1):
@@ -307,7 +351,50 @@ class Loop:
             # spent its whole budget sweeping sector angles and the revision
             # produced no result at all - through no fault of the design.
             try:
-                run = self.solve(self.generate(space), space)
+                bundle = self.generate(space)
+                target_context = {
+                    "findings": list(applied_findings),
+                    "changed_from_master": list(
+                        outcome.document_edits or []
+                    ),
+                    "revision": revision,
+                }
+                if self.design_probe is not None:
+                    outcome.design_facts = self._design_probe(
+                        bundle, space, target_context
+                    )
+                # The final solid is measured before the solve, because a
+                # change that did not reach the STEP must not buy a solver
+                # run and must not be recorded as a tested prediction.
+                if (
+                    previous_design_facts
+                    and outcome.design_facts
+                    and applied_findings
+                ):
+                    from seekflow_structural.pipeline.design_effect import (
+                        compare_design,
+                    )
+
+                    outcome.design_effect = compare_design(
+                        previous_design_facts,
+                        outcome.design_facts,
+                        applied_findings,
+                        self.document,
+                    )
+                    if outcome.design_effect.get("target_changed") is False:
+                        outcome.limits.append(
+                            "the generated STEP did not change in the target "
+                            "window of the applied finding; the solve was "
+                            "stopped before it could score a prediction "
+                            "against an unchanged solid"
+                        )
+                        result.revisions.append(outcome)
+                        result.limits.append(
+                            f"the loop stopped at {revision}: the document "
+                            "edit did not reach the measured STEP target"
+                        )
+                        break
+                run = self.solve(bundle, space)
             except Exception as exc:
                 outcome.limits.append(
                     f"{revision} produced no result: {type(exc).__name__}: "
@@ -337,18 +424,30 @@ class Loop:
             outcome.limits.extend(noise.get("limits") or [])
 
             if previous_metrics is not None and applied_findings:
-                # The larger of the two: either revision's mesh could have
-                # moved the number, so the smaller floor would understate how
-                # much of the difference is meshing.
-                combined = {
-                    metric: max(floors.get(metric, 0.0),
-                                previous_floors.get(metric, 0.0))
-                    for metric in set(floors) | set(previous_floors)
-                }
-                outcome.observations = score_applied(
-                    applied_findings, previous_metrics, outcome.metrics,
-                    revision=revision, base=self.base, noise_floors=combined,
-                )
+                if len(applied_findings) != 1:
+                    # One solve produces one outcome. A revision that changed
+                    # several variables cannot tell which prediction owns that
+                    # outcome, so record the limitation instead of crediting
+                    # every finding with the same result.
+                    outcome.limits.append(
+                        f"{len(applied_findings)} design changes were applied "
+                        "together; their predictions are not scored because "
+                        "the result cannot be attributed to one change"
+                    )
+                else:
+                    # The larger of the two: either revision's mesh could have
+                    # moved the number, so the smaller floor would understate
+                    # how much of the difference is meshing.
+                    combined = {
+                        metric: max(floors.get(metric, 0.0),
+                                    previous_floors.get(metric, 0.0))
+                        for metric in set(floors) | set(previous_floors)
+                    }
+                    outcome.observations = score_applied(
+                        applied_findings, previous_metrics, outcome.metrics,
+                        revision=revision, base=self.base,
+                        noise_floors=combined,
+                    )
             else:
                 outcome.limits.append(
                     "this is the first revision, so there was nothing to check"
@@ -384,6 +483,7 @@ class Loop:
             result.revisions.append(outcome)
             previous_metrics = outcome.metrics
             previous_floors = floors
+            previous_design_facts = outcome.design_facts
 
             # The next revision starts from this one's design, and every
             # revision after the first exists because a change was applied -

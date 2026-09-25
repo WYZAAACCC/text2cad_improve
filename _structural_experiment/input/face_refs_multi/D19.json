@@ -1,0 +1,25 @@
+{
+  "final": {
+    "accepted": true,
+    "feature": "n_final_cut",
+    "solid_index": 0,
+    "selected_face_indices": [
+      17,
+      25,
+      33,
+      41,
+      53,
+      61,
+      69,
+      77
+    ]
+  },
+  "reference_kind": "verified",
+  "family": "D19",
+  "feature": "n_final_cut",
+  "solid_index": 0,
+  "sector": {
+    "theta_low_deg": 3.0,
+    "theta_high_deg": 9.0
+  }
+}

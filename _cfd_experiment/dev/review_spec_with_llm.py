@@ -32,7 +32,7 @@ def main():
     p.add_argument("spec", type=Path)
     p.add_argument("output", type=Path)
     p.add_argument("--api-key-file", type=Path)
-    p.add_argument("--model", default="deepseek-v4-pro")
+    p.add_argument("--model", default="deepseek-v4-flash")
     p.add_argument("--base-url", default="https://api.deepseek.com/beta")
     p.add_argument("--timeout-s", type=int, default=120)
     p.add_argument(

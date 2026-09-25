@@ -27,7 +27,9 @@ sys.path.insert(0, str(REPO / "integrations" / "structural" / "src"))
 sys.path.insert(0, str(REPO / "integrations" / "engineering_tools" / "src"))
 sys.path.insert(0, str(REPO / "_param_experiment"))
 
+from seekflow_structural.core.mesh_profile import build_profile  # noqa: E402
 from seekflow_structural.pipeline import iterate  # noqa: E402
+from seekflow_structural.pipeline.design_effect import surface_cells  # noqa: E402
 from seekflow_structural.tools import (  # noqa: E402
     knowledge, loop_wiring, parametric, workspace,
 )
@@ -48,6 +50,35 @@ D27_PARAMS = {
     "holes": 20, "pcd_mm": 208, "hdia_mm": 12,
     "grooves": 1, "gw_mm": 10, "gd_mm": 9,
 }
+
+
+def _frame_kwargs(case_path: Path | None) -> dict:
+    """The axis the generated STEP should be measured about, when known."""
+    if case_path is None:
+        return {}
+    path = Path(case_path)
+    if path.is_dir():
+        path = path / "case.json"
+    if not path.is_file():
+        return {}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    frame = ((payload.get("model") or {}).get("frame") or {})
+    origin = frame.get("axis_origin_mm")
+    direction = frame.get("axis_direction")
+    if origin is None or direction is None:
+        return {}
+
+    def components(value):
+        if isinstance(value, dict):
+            return [value["x"], value["y"], value["z"]]
+        return list(value)
+
+    origin = components(origin)
+    direction = components(direction)
+    return {
+        "axis_origin_mm": [float(v) for v in origin],
+        "axis_direction_mm": [float(v) for v in direction],
+    }
 
 
 def _experiment_from(case_path: Path) -> dict:
@@ -83,6 +114,12 @@ def main() -> int:
     parser.add_argument("--brief", type=Path,
                         default=REPO / "_structural_experiment" / "input"
                         / "d27_brief.md")
+    parser.add_argument("--case-params", type=Path, default=None,
+                        help=(
+                            "the physical case JSON for this design family. "
+                            "It is passed to the structural run so a family "
+                            "other than D27 does not inherit D27's physics."
+                        ))
     parser.add_argument("--document", type=Path, default=None,
                         help=(
                             "the generated design the run starts from - the "
@@ -107,7 +144,7 @@ def main() -> int:
     parser.add_argument("--api-key-file", type=Path,
                         default=REPO / "_archive" / "apikey.txt")
     parser.add_argument("--ansys-exe", type=Path, default=None)
-    parser.add_argument("--feedback-calls", type=int, default=24)
+    parser.add_argument("--feedback-calls", type=int, default=32)
     parser.add_argument("--revise-calls", type=int, default=16)
     parser.add_argument("--timeout-s", type=int, default=5400)
     args = parser.parse_args()
@@ -151,16 +188,29 @@ def main() -> int:
     # `--experiment`, it never does, and every revision - including the first -
     # is held to a load case and a mesh that some earlier run established.
     established_here = [not experiment]
+    established_frame: dict = _frame_kwargs(args.experiment)
 
     def solve(bundle: Path, space: workspace.Workspace) -> dict:
         started = time.time()
         run = parametric.solve_bundle(
             bundle, space, job_id=f"{args.lineage}-{space.revision}",
             output_root=root / "jobs", brief_path=args.brief,
+            params_path=args.case_params,
             api_key_file=key, ansys_exe=args.ansys_exe, **experiment,
         )
         if established_here[0]:
             experiment.update(_experiment_from(Path(run["job"])))
+            case_path = Path(run["job"]) / "case.json"
+            if case_path.is_file():
+                frame = ((json.loads(case_path.read_text(encoding="utf-8"))
+                          .get("model") or {}).get("frame") or {})
+                origin = frame.get("axis_origin_mm")
+                direction = frame.get("axis_direction")
+                if origin is not None and direction is not None:
+                    established_frame.update({
+                        "axis_origin_mm": [float(v) for v in origin],
+                        "axis_direction_mm": [float(v) for v in direction],
+                    })
             established_here[0] = False
             print(f"[{space.revision}] established the experiment: "
                   f"{', '.join(sorted(experiment)) or '(nothing to hold)'}",
@@ -173,6 +223,26 @@ def main() -> int:
               flush=True)
         return run
 
+    def inspect_design(
+        bundle: Path, space: workspace.Workspace, target: dict | None = None
+    ) -> dict:
+        profile = build_profile(
+            Path(bundle) / "model.step", 12,
+            **established_frame,
+        )
+        return {
+            "r_min_mm": profile.get("r_min_mm"),
+            "r_max_mm": profile.get("r_max_mm"),
+            "z_min_mm": profile.get("z_min_mm"),
+            "z_max_mm": profile.get("z_max_mm"),
+            "face_count": profile.get("face_count"),
+            "total_volume_mm3": profile.get("total_volume_mm3"),
+            "total_surface_area_mm2": profile.get("total_surface_area_mm2"),
+            "bands": profile.get("bands"),
+            "surface_cells": surface_cells(profile),
+            "target_context": target or {},
+        }
+
     base = knowledge.KnowledgeBase.load(root / "knowledge.json")
     seed = (
         json.loads(args.document.read_text(encoding="utf-8"))
@@ -180,15 +250,21 @@ def main() -> int:
     )
     origin = args.document if seed else "(none - built from the template layer)"
     print(f"seed document: {origin}", flush=True)
+    family_params = dict(D27_PARAMS)
+    if args.case_params is not None:
+        family_params.update(
+            json.loads(args.case_params.read_text(encoding="utf-8"))
+        )
     loop = iterate.Loop(
         master_dir=MASTER, root=root / "revisions", lineage=args.lineage,
-        params=dict(D27_PARAMS), document=seed,
+        params=family_params, document=seed,
         generate=generate, solve=solve,
         diagnose=loop_wiring.make_diagnose(
-            api_key_file=key, max_calls=args.feedback_calls),
+            api_key_file=key, max_calls=args.feedback_calls, base=base),
         revise=loop_wiring.make_revise(
             base=base, api_key_file=key, max_calls=args.revise_calls),
         knowledge_path=root / "knowledge.json",
+        design_probe=inspect_design,
     )
 
     result = loop.run(args.revisions)

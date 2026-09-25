@@ -19,7 +19,7 @@ from seekflow_engineering_tools.generative_cad.llm.models import LlmModelConfig
 
 from seekflow_structural.errors import StructuralError
 
-DEFAULT_MODEL = "deepseek-v4-pro"
+DEFAULT_MODEL = "deepseek-v4-flash"
 DEFAULT_BASE_URL = "https://api.deepseek.com/beta"
 
 

@@ -128,6 +128,18 @@ class Normalisation:
             rotated[2] - self.translation[2],
         )
 
+    def inverse_point(self, x, y, z):
+        """Map a case-frame point back to the source model frame."""
+        translated = [
+            x + self.translation[0],
+            y + self.translation[1],
+            z + self.translation[2],
+        ]
+        rotate_transpose = [
+            [self.rotation[j][i] for j in range(3)] for i in range(3)
+        ]
+        return tuple(matmul(rotate_transpose, translated))
+
     def direction(self, x, y, z):
         """A vector, which rotates but does not translate."""
         return tuple(matmul(self.rotation, [x, y, z]))

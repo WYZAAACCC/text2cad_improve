@@ -23,7 +23,12 @@ import math
 from pathlib import Path
 
 
-def _inspect(step_path: Path, surface_size_mm: float):
+def _inspect(
+    step_path: Path,
+    surface_size_mm: float,
+    axis_origin_mm: list[float] | None = None,
+    axis_direction_mm: list[float] | None = None,
+):
     """Boundary triangulation plus kernel mass properties.
 
     Triangulating the boundary is far cheaper than a volume mesh, and binning
@@ -33,6 +38,11 @@ def _inspect(step_path: Path, surface_size_mm: float):
     """
     import gmsh
 
+    normalisation = None
+    if axis_origin_mm is not None and axis_direction_mm is not None:
+        from seekflow_structural.tools.frames import Normalisation
+
+        normalisation = Normalisation(axis_origin_mm, axis_direction_mm)
     gmsh.initialize()
     try:
         gmsh.option.setNumber("General.Terminal", 0)
@@ -57,6 +67,11 @@ def _inspect(step_path: Path, surface_size_mm: float):
             )
             for i in range(len(node_tags))
         }
+        if normalisation is not None:
+            points = {
+                tag: normalisation.point(*point)
+                for tag, point in points.items()
+            }
         _, _, conn = gmsh.model.mesh.getElements(2, -1)
         triangles = [
             (int(conn[0][3 * i]), int(conn[0][3 * i + 1]), int(conn[0][3 * i + 2]))
@@ -71,6 +86,8 @@ def _inspect(step_path: Path, surface_size_mm: float):
             if dim != 2:
                 continue
             cx, cy, cz = gmsh.model.occ.getCenterOfMass(2, tag)
+            if normalisation is not None:
+                cx, cy, cz = normalisation.point(cx, cy, cz)
             # Shortest topological edge of the face, from the kernel - not from
             # the tessellation, whose edge lengths only reflect how finely the
             # boundary happened to be triangulated. A short edge means the
@@ -88,8 +105,21 @@ def _inspect(step_path: Path, surface_size_mm: float):
                 # fillet torus - and is therefore invariant under every
                 # rotation about that axis. Detected from the edge's bounding
                 # box: centred on the axis, and as wide as it is deep.
-                bx0, by0, _, bx1, by1, _ = gmsh.model.getBoundingBox(1, abs(btag))
-                scale = max(bx1, by1, 1e-6)
+                bx0, by0, bz0, bx1, by1, bz1 = gmsh.model.getBoundingBox(
+                    1, abs(btag)
+                )
+                if normalisation is not None:
+                    corners = [
+                        normalisation.point(x, y, z)
+                        for x in (bx0, bx1)
+                        for y in (by0, by1)
+                        for z in (bz0, bz1)
+                    ]
+                    bx0 = min(point[0] for point in corners)
+                    bx1 = max(point[0] for point in corners)
+                    by0 = min(point[1] for point in corners)
+                    by1 = max(point[1] for point in corners)
+                scale = max(abs(bx1), abs(by1), 1e-6)
                 if (
                     bx1 > 0
                     and abs(bx0 + bx1) < 1e-4 * scale
@@ -659,10 +689,82 @@ def _triangle_area(a, b, c) -> float:
     return 0.5 * math.sqrt(nx * nx + ny * ny + nz * nz)
 
 
+def _triangle_surface_cells(
+    points: dict,
+    triangles: list[tuple[int, int, int]],
+    *,
+    radial_step_mm: float = 2.0,
+    axial_step_mm: float = 2.0,
+    angular_step_deg: float = 10.0,
+) -> list[dict]:
+    """Aggregate the boundary tessellation into local surface cells.
+
+    Whole-face centroids are the wrong coordinate for a cylindrical bore or a
+    full-revolution face: their centroid lies on the axis even though the
+    surface is tens of millimetres away from it. The triangulation carries the
+    actual radial position, so the pre-solve design-effect check uses these
+    cells rather than the face-centroid list.
+    """
+    if not triangles:
+        return []
+    radii = {tag: math.hypot(point[0], point[1]) for tag, point in points.items()}
+    z_values = [point[2] for point in points.values()]
+    r_min = min(radii.values())
+    z_min = min(z_values)
+    r_step = max(float(radial_step_mm), 1e-9)
+    z_step = max(float(axial_step_mm), 1e-9)
+    a_step = max(float(angular_step_deg), 1e-9)
+    cells: dict[tuple[int, int, int], dict] = {}
+    for tri in triangles:
+        a, b, c = points[tri[0]], points[tri[1]], points[tri[2]]
+        area = _triangle_area(a, b, c)
+        x = (a[0] + b[0] + c[0]) / 3.0
+        y = (a[1] + b[1] + c[1]) / 3.0
+        z = (a[2] + b[2] + c[2]) / 3.0
+        radius = math.hypot(x, y)
+        theta = math.degrees(math.atan2(y, x)) % 360.0
+        key = (
+            int(math.floor((radius - r_min) / r_step)),
+            int(math.floor((z - z_min) / z_step)),
+            int(math.floor(theta / a_step)) % int(round(360.0 / a_step)),
+        )
+        row = cells.setdefault(key, {
+            "key": list(key),
+            "face_count": 0,
+            "area_mm2": 0.0,
+            "r_mm": 0.0,
+            "z_mm": 0.0,
+            "theta_deg": 0.0,
+        })
+        row["face_count"] += 1
+        row["area_mm2"] += area
+        row["r_mm"] += radius * max(area, 1e-12)
+        row["z_mm"] += z * max(area, 1e-12)
+        row["theta_deg"] += theta * max(area, 1e-12)
+    out = []
+    for row in cells.values():
+        weight = max(row["area_mm2"], 1e-12)
+        row["r_mm"] = round(row["r_mm"] / weight, 6)
+        row["z_mm"] = round(row["z_mm"] / weight, 6)
+        row["theta_deg"] = round(row["theta_deg"] / weight, 6)
+        row["area_mm2"] = round(row["area_mm2"], 6)
+        out.append(row)
+    return sorted(out, key=lambda row: tuple(row["key"]))
+
+
 def build_profile(
-    step_path: Path, band_count: int = 12, surface_size_mm: float = 8.0
+    step_path: Path,
+    band_count: int = 12,
+    surface_size_mm: float = 8.0,
+    axis_origin_mm: list[float] | None = None,
+    axis_direction_mm: list[float] | None = None,
 ) -> dict:
-    volume, points, triangles, faces = _inspect(step_path, surface_size_mm)
+    volume, points, triangles, faces = _inspect(
+        step_path,
+        surface_size_mm,
+        axis_origin_mm=axis_origin_mm,
+        axis_direction_mm=axis_direction_mm,
+    )
     if not triangles:
         raise ValueError("model has no surface triangles")
 
@@ -721,6 +823,8 @@ def build_profile(
     # is the tool it uses to test that judgement.
     return {
         "step_file": str(step_path),
+        "frame_axis_origin_mm": axis_origin_mm,
+        "frame_axis_direction_mm": axis_direction_mm,
         "azimuthal_profile_5deg": azimuthal_feature_profile(faces, 72),
         "r_min_mm": round(r_min, 3),
         "r_max_mm": round(r_max, 3),
@@ -751,6 +855,7 @@ def build_profile(
         "characteristic_thickness_mm": round(thickness, 3),
         "band_count": band_count,
         "bands": bands,
+        "triangle_cells": _triangle_surface_cells(points, triangles),
     }
 
 

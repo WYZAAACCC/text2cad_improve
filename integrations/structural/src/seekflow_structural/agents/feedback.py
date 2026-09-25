@@ -45,6 +45,8 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import math
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -74,6 +76,7 @@ from seekflow_structural.tools import (
     design_variables,
     document as document_tools,
     face_join,
+    knowledge,
     results,
 )
 from seekflow_structural.tools.design_variables import (
@@ -85,12 +88,19 @@ from seekflow_structural.tools.design_variables import (
 # position is a property of the model rather than of the part.
 EDGE_TOLERANCE_MM = 0.5
 
+# A claimed measurement is re-read from the solved field at submission. The
+# tolerance allows ordinary decimal rounding in the agent's JSON while still
+# rejecting a number that was not measured.
+EVIDENCE_RELATIVE_TOLERANCE = 1e-4
+
 
 class Action(ToolAction):
     """The feedback agent's tool call."""
 
     action: Literal[
         "get_result_context",
+        "rank_problem_regions",
+        "snapshot_evidence",
         "query_nodes",
         "profile",
         "find_concentrations",
@@ -99,6 +109,7 @@ class Action(ToolAction):
         "face_stress",
         "locate_point",
         "list_document_params",
+        "get_rules",
         "check_finding",
         "submit_feedback",
         "needs_input",
@@ -141,6 +152,27 @@ class Action(ToolAction):
             "still count as one region. Leave unset to derive it from the "
             "mesh density, which is right unless you are looking for "
             "concentrations at a length you already have in mind."
+        ),
+    )
+    limit: int = Field(
+        default=6,
+        description="for rank_problem_regions: how many candidate regions to return",
+    )
+    reducer: Literal["max", "min", "mean", "sum"] = Field(
+        default="max",
+        description=(
+            "for snapshot_evidence: how to reduce the selected nodes. "
+            "`max`/`min` return the extreme and its node id; `mean` and `sum` "
+            "return the aggregate without a node."
+        ),
+    )
+    mechanism: str = Field(
+        default="",
+        description=(
+            "for get_rules: which mechanism to report the loop's record for, "
+            "by the same name the findings use - hoop_driven, radial_driven, "
+            "stress_concentration, section_overload, thermal_gradient. Empty "
+            "reports every mechanism the loop holds a rule for."
         ),
     )
     node: int = Field(default=0, description="a node id, for inspect_region")
@@ -214,6 +246,7 @@ class FeedbackState:
     # a peak *in* - which is what the first real run reported, and what
     # stopped the loop.
     bundle: Path | None = None
+    normalisation: object | None = None
     feature: str = ""
     solid_index: int = 0
     # The CAD document the model was built from. This is the surface a change
@@ -224,8 +257,17 @@ class FeedbackState:
     # the `sel` column - which is 1 on every row and carries nothing.
     load_nodes: set[int] = dataclasses.field(default_factory=set)
     load_faces: list[int] = dataclasses.field(default_factory=list)
+    # What the loop has already learnt. Absent is a supported state - a run
+    # that has no knowledge base attached loses one tool and nothing else -
+    # and the record is read rather than enforced, exactly as it is for the
+    # revision agent.
+    base: knowledge.KnowledgeBase | None = None
     submitted: dict | None = None
     checks: list[dict] = dataclasses.field(default_factory=list)
+    # Whether the deterministic region ranking has been measured. Submission
+    # waits for it because the ranking is what keeps a suspect global mesh peak
+    # from being treated as an addressable design problem.
+    ranked: bool = False
 
     def selection(self) -> dict | None:
         return self.context.get("selection")
@@ -274,6 +316,7 @@ def _get_result_context(action, state: FeedbackState) -> dict:
                 "max_displacement_mm": (metrics.get("displacement") or {}).get("max_mm"),
             },
             "radial_bands": metrics.get("radial_bands"),
+            "load_integrity": _load_integrity(state),
             "load": {
                 "target_force_n_per_slot": (metrics.get("load_audit") or {}).get(
                     "target_force_n_per_slot"
@@ -303,11 +346,475 @@ def _get_result_context(action, state: FeedbackState) -> dict:
     }
 
 
+def _load_integrity(state: FeedbackState) -> dict:
+    """What the load actually reached, as the emission path measured it.
+
+    The audit is written by the load path and, until now, this stage read
+    three fields out of it - the target force, the applied resultant and the
+    mechanism - of which the first two are equal by construction. So the one
+    question that has to be settled before a peak is treated as a property of
+    the design, whether the load reached the surface it was meant to reach,
+    had no measurement behind it here.
+
+    Two different things are reported apart, because they have different
+    meanings and the raw fraction in the audit conflates them. A selected face
+    that produced no element face at all received no load: nothing was pressed
+    there. A pressed face whose element faces cover only part of its CAD area
+    is a property of the model rather than of the selection - a half-thickness
+    model with z=0 symmetry contains half of every face that straddles the
+    mid-plane, and a sector contains one sector's worth.
+    """
+    audit = state.context.get("load_audit") or {}
+    emission = audit.get("emission") or {}
+    by_face = audit.get("area_accounting_by_face") or {}
+
+    unpressed: list[tuple[int, float]] = []
+    pressed_area = 0.0
+    reached_area = 0.0
+    lowest_coverage: float | None = None
+    for key, row in by_face.items():
+        try:
+            face_index = int(key)
+        except (TypeError, ValueError):
+            continue
+        occ = float(row.get("occ_area_mm2") or 0.0)
+        mapped = float(row.get("mapped_area_mm2") or 0.0)
+        if not row.get("element_face_count"):
+            unpressed.append((face_index, occ))
+            continue
+        if occ > 0:
+            coverage = mapped / occ
+            lowest_coverage = (
+                coverage if lowest_coverage is None
+                else min(lowest_coverage, coverage)
+            )
+        pressed_area += mapped
+        reached_area += occ
+    unpressed.sort()
+
+    selection_area = float(emission.get("occ_area_total_mm2") or 0.0)
+    unpressed_area = sum(area for _, area in unpressed)
+    limits: list[str] = []
+    if unpressed:
+        limits.append(
+            f"{len(unpressed)} of {len(by_face)} selected faces "
+            f"({unpressed_area:.4g} mm^2 of {selection_area:.4g} mm^2) produced "
+            "no element face, so no load reached them at all: "
+            + " | ".join(
+                str(text) for text in (emission.get("limits") or [])[:2]
+            )
+        )
+    if lowest_coverage is not None and lowest_coverage < 0.999:
+        limits.append(
+            "a pressed face carries element faces over only "
+            f"{lowest_coverage:.3f} of its CAD area. That is what a model that "
+            "contains part of the part looks like - a half thickness with z=0 "
+            "symmetry holds half of every face that straddles the mid-plane - "
+            "and it is not the same thing as a face the load never reached"
+        )
+    return {
+        "mechanism": emission.get("mechanism"),
+        "pressure_mpa": emission.get("pressure_mpa"),
+        "pressed_area_mm2": round(pressed_area, 4),
+        "reached_selection_area_mm2": round(reached_area, 4),
+        "declared_selection_area_mm2": round(selection_area, 4),
+        "mesh_coverage_of_reached_faces": (
+            round(pressed_area / reached_area, 6) if reached_area else None
+        ),
+        "lowest_single_face_coverage": (
+            round(lowest_coverage, 6) if lowest_coverage is not None else None
+        ),
+        "faces_with_no_element_face": [index for index, _ in unpressed],
+        "faces_with_no_element_face_area_mm2": round(unpressed_area, 4),
+        "limits": limits,
+    }
+
+
+def _entry_shape(entry) -> dict:
+    """One knowledge entry, with the observations behind its status."""
+    return {
+        "id": entry.id,
+        "status": entry.status,
+        "parameter": entry.parameter,
+        "direction": entry.direction,
+        "at": entry.at,
+        "expected_metric": entry.expected_metric,
+        "expected_direction": entry.expected_direction,
+        "confirmations": entry.confirmations,
+        "refutations": entry.refutations,
+        "note": entry.note,
+        "observations": [
+            {
+                "revision": item.revision,
+                "outcome": item.outcome,
+                "predicted_relative_change": item.predicted_relative_change,
+                "measured_relative_change": item.measured_relative_change,
+                "side_effects": item.side_effects,
+                "note": item.note,
+            }
+            for item in entry.observations
+        ],
+    }
+
+
+def _get_rules(action, state: FeedbackState) -> dict:
+    """The hypotheses the loop holds, and which of them it has never tested.
+
+    This agent decides what the next revision should be, and until now it
+    decided that with no sight of what the loop had learnt: the record of
+    hypotheses and outcomes was written by every revision and read by the
+    revision agent alone. A rule settles only when the same direction has been
+    proposed and measured more than once - one observation cannot tell a
+    mechanism from a coincidence - so an agent that cannot see the record has
+    nothing to propose from but its own reading of the field, and it drifts.
+
+    What is reported is the record and not advice. `untested` is the part
+    worth reading: a hypothesis for one of this part's mechanisms that the
+    loop has never measured is a question it already holds and has no evidence
+    for.
+    """
+    if state.base is None:
+        return {
+            "ok": True,
+            "result": {
+                "attached": False,
+                "limits": [
+                    "no knowledge base is attached to this run, so what the "
+                    "loop has already learnt cannot be read here. Every other "
+                    "tool works the same either way"
+                ],
+            },
+        }
+    wanted = [
+        part.strip()
+        for part in str(action.mechanism or "").split(",")
+        if part.strip()
+    ]
+    mechanisms = wanted or sorted(
+        {entry.mechanism for entry in state.base.entries}
+    )
+    out: dict[str, dict] = {}
+    untested: list[str] = []
+    for mechanism in mechanisms:
+        entries = state.base.for_mechanism(mechanism, include_refuted=True)
+        never = [
+            entry.id
+            for entry in entries
+            if entry.status != "refuted"
+            and not entry.observations
+            and entry.is_design_change
+        ]
+        untested.extend(never)
+        out[mechanism] = {
+            "rules": [
+                _entry_shape(entry)
+                for entry in entries if entry.status != "refuted"
+            ],
+            "retired": [
+                _entry_shape(entry)
+                for entry in entries if entry.status == "refuted"
+            ],
+            "untested": never,
+        }
+    return {
+        "ok": True,
+        "result": {
+            "attached": True,
+            "mechanisms": out,
+            "untested": untested,
+            "note": (
+                "`rules` is what the loop holds and how often each has held - "
+                "a record, not a recommendation, and `retired` names changes "
+                "that were already made and did not do what they were for. "
+                "`untested` names hypotheses for these mechanisms that this "
+                "loop has never measured. A change that tests one of them is "
+                "worth more than a change that tests nothing the record "
+                "already covers, because the loop can only tell a mechanism "
+                "from a coincidence by meeting it twice."
+            ),
+        },
+    }
+
+
+def _rank_problem_regions(action, state: FeedbackState) -> dict:
+    """Rank measured problem regions by whether they can be acted on.
+
+    The largest von Mises value on an FEA mesh is often a local load or mesh
+    artefact. Verification may mark it `suspect` while a lower, broad region is
+    stable and controllable. A flat list of concentrations leaves the agent to
+    re-discover that distinction from several tools; this one joins the
+    verification verdict, load/symmetry context, decay measurement and nearby
+    document parameters into one ranked list.
+
+    It does not choose the engineering mechanism. It removes a known blind
+    spot: a suspect global peak appearing above an actionable stable region.
+    """
+    limit = max(1, min(int(action.limit or 6), 12))
+    clusters = results.concentrations(
+        state.field.stressed(), action.relative_threshold, action.cell_mm
+    )
+    by_id = {node.nid: node for node in state.field.nodes}
+    verdicts = _quotable(state)
+    stress = state.metrics().get("stress") or {}
+    global_peak = float(clusters.get("peak_mpa") or 0.0)
+    global_verdict = verdicts.get("max_von_mises_mpa", "unverified")
+    load_verdict = verdicts.get(
+        "max_load_surface_von_mises_mpa", "unverified"
+    )
+    bad = {"suspect", "confirmed_wrong"}
+    ranked: list[dict] = []
+    for entry in clusters.get("concentrations") or []:
+        node = by_id.get(int(entry.get("peak_node") or 0))
+        if node is None:
+            continue
+        band = max(abs(node.r) * 0.25, 20.0)
+        neighbours = state.field.where(
+            r_min=node.r - band, r_max=node.r + band,
+            z_min=node.z - band, z_max=node.z + band,
+        )
+        fall = results.decay(state.field, node, nodes=neighbours)
+        half = (fall.get("reached") or {}).get("0.5") or {}
+        half_distance = half.get("distance_mm")
+        extent = float(entry.get("extent_mm") or 0.0)
+        shape_ratio = (
+            float(half_distance) / extent if half_distance is not None and extent
+            else None
+        )
+        components = entry.get("peak_components_mpa") or {}
+        dominant = (
+            max(components, key=lambda name: abs(float(components[name])))
+            if components else ""
+        )
+        on_loaded = node.nid in state.load_nodes
+        at_symmetry = abs(node.z) <= EDGE_TOLERANCE_MM
+        is_global = node.nid == stress.get("max_node")
+
+        reasons: list[str] = []
+        allowed = True
+        if is_global and global_verdict in bad:
+            allowed = False
+            reasons.append(
+                f"the global maximum is {global_verdict}; optimising it would "
+                "optimise a number the verification stage will not quote"
+            )
+        if on_loaded and load_verdict in bad:
+            allowed = False
+            reasons.append(
+                f"the loaded-surface maximum is {load_verdict}; check the "
+                "load model before changing the part"
+            )
+        if at_symmetry:
+            reasons.append(
+                f"the peak lies on the z={node.z:.4g} symmetry plane; decide "
+                "from the surrounding field whether this is a section maximum "
+                "or only a cut-face artefact before aiming a change at it"
+            )
+        if not reasons:
+            reasons.append("no verification veto applies")
+
+        nearby: list[dict] = []
+        if state.document is not None:
+            table = document_tools.reaching(state.document, float(node.r))
+            for name, meta in table.items():
+                at_r = meta.get("at_r_mm")
+                nearby.append({
+                    "parameter": name,
+                    "op": meta.get("op"),
+                    "component": meta.get("component"),
+                    "current_value": meta.get("value"),
+                    "at_r_mm": at_r,
+                    "distance_mm": (
+                        round(abs(float(at_r) - node.r), 6)
+                        if isinstance(at_r, (int, float)) else None
+                    ),
+                })
+            nearby.sort(key=lambda item: (
+                item["distance_mm"] is None, item["distance_mm"] or 0.0,
+                item["parameter"],
+            ))
+            nearby = nearby[:6]
+        if nearby:
+            reasons.append(
+                f"{len(nearby)} editable parameter(s) reach this radius"
+            )
+        elif state.document is not None:
+            reasons.append(
+                "no document parameter was measured as reaching this radius"
+            )
+
+        fraction = entry["peak_mpa"] / global_peak if global_peak else 0.0
+        score = fraction
+        if not allowed:
+            score *= 0.05
+        if nearby:
+            score *= 1.2
+        ranked.append({
+            **entry,
+            "dominant_component": dominant,
+            "on_a_loaded_face": on_loaded,
+            "at_a_symmetry_plane": at_symmetry,
+            "is_global_peak": is_global,
+            "verification": global_verdict if is_global else "local_region",
+            "mechanism_hint": (
+                "idealisation_edge" if at_symmetry else
+                "load_application" if on_loaded else
+                "hoop_driven" if dominant == "s_hoop" else
+                "radial_driven" if dominant == "s_radial" else
+                "unresolved"
+            ),
+            "shape_hint": (
+                "stress_concentration" if shape_ratio is not None
+                and shape_ratio < 0.3 else "section_overload"
+            ),
+            "half_fall_mm": half_distance,
+            "half_fall_to_extent": shape_ratio,
+            "optimisation_allowed": allowed,
+            "actionability": reasons,
+            "nearby_editable": nearby,
+            "rank_score": round(score, 9),
+        })
+    ranked.sort(
+        key=lambda item: (
+            item["optimisation_allowed"], item["rank_score"], item["peak_mpa"],
+            -item["peak_node"],
+        ),
+        reverse=True,
+    )
+    top = ranked[:limit]
+    state.ranked = True
+    return {
+        "ok": True,
+        "result": {
+            "global_peak_mpa": clusters.get("peak_mpa"),
+            "global_peak_verdict": global_verdict,
+            "relative_threshold": clusters.get("relative_threshold"),
+            "cell_mm": clusters.get("cell_mm"),
+            "ranked_regions": top,
+            "selected_region": next(
+                (item for item in top if item["optimisation_allowed"]), None
+            ),
+            "limits": list(clusters.get("limits") or []) + [
+                "the ranking does not decide the mechanism; it orders regions "
+                "by whether a design change there is admissible and editable"
+            ],
+        },
+    }
+
+
 def _where(state: FeedbackState, action) -> list[results.Node]:
     return state.field.where(
         r_min=action.r_min, r_max=action.r_max,
         z_min=action.z_min, z_max=action.z_max,
     )
+
+
+def _aggregate_evidence_value(
+    state: FeedbackState,
+    quantity: str,
+    reducer: str,
+    bounds: dict,
+) -> dict:
+    """Compute a replayable aggregate over the solved field."""
+    nodes = state.field.where(
+        r_min=bounds.get("r_min"),
+        r_max=bounds.get("r_max"),
+        z_min=bounds.get("z_min"),
+        z_max=bounds.get("z_max"),
+    )
+    values = [
+        (getattr(node, quantity), node)
+        for node in nodes
+        if getattr(node, quantity, None) is not None
+    ]
+    if not values:
+        raise StructuralError(
+            "no_aggregate_samples",
+            f"no node with a measured {quantity!r} falls inside those bounds",
+            "feedback",
+        )
+    numbers = [float(value) for value, _node in values]
+    if reducer == "max":
+        value, node = max(values, key=lambda pair: pair[0])
+        return {"value": float(value), "node": node.nid, "count": len(values)}
+    if reducer == "min":
+        value, node = min(values, key=lambda pair: pair[0])
+        return {"value": float(value), "node": node.nid, "count": len(values)}
+    if reducer == "mean":
+        return {"value": sum(numbers) / len(numbers), "node": None,
+                "count": len(values)}
+    if reducer == "sum":
+        return {"value": sum(numbers), "node": None, "count": len(values)}
+    raise StructuralError(
+        "unknown_reducer",
+        f"{reducer!r} is not one of max, min, mean, sum",
+        "feedback",
+    )
+
+
+def _aggregate_source(
+    quantity: str, reducer: str, bounds: dict
+) -> str:
+    selected = []
+    for name in ("r_min", "r_max", "z_min", "z_max"):
+        value = bounds.get(name)
+        if value is not None:
+            selected.append(f"{name}={float(value):.12g}")
+    return "agg:" + quantity + ":" + reducer + (":" + ";".join(selected)
+                                                   if selected else "")
+
+
+def _parse_aggregate_source(source: str) -> tuple[str, str, dict] | None:
+    parts = source.split(":", 3)
+    if len(parts) < 3 or parts[0] != "agg":
+        return None
+    quantity, reducer = parts[1], parts[2]
+    if reducer not in ("max", "min", "mean", "sum"):
+        return None
+    bounds: dict[str, float] = {}
+    if len(parts) == 4 and parts[3]:
+        for item in parts[3].split(";"):
+            if "=" not in item:
+                return None
+            name, raw = item.split("=", 1)
+            if name not in ("r_min", "r_max", "z_min", "z_max"):
+                return None
+            try:
+                bounds[name] = float(raw)
+            except ValueError:
+                return None
+    return quantity, reducer, bounds
+
+
+def _snapshot_evidence(action, state: FeedbackState) -> dict:
+    """Return a self-describing aggregate that can be re-read later."""
+    bounds = {
+        "r_min": action.r_min,
+        "r_max": action.r_max,
+        "z_min": action.z_min,
+        "z_max": action.z_max,
+    }
+    result = _aggregate_evidence_value(
+        state, action.quantity, action.reducer, bounds
+    )
+    source = _aggregate_source(action.quantity, action.reducer, bounds)
+    return {
+        "ok": True,
+        "result": {
+            "source": source,
+            "quantity": action.quantity,
+            "reducer": action.reducer,
+            "bounds": {key: value for key, value in bounds.items()
+                       if value is not None},
+            "value": round(result["value"], 6),
+            "node": result["node"],
+            "node_count": result["count"],
+            "note": (
+                "Cite this exact `source` string in evidence. The harness "
+                "recomputes it from the solved field; a remembered aggregate "
+                "without this source will not re-read."
+            ),
+        },
+    }
 
 
 def _query_nodes(action, state: FeedbackState) -> dict:
@@ -477,6 +984,7 @@ def _locate_point(action, state: FeedbackState) -> dict:
         state.bundle, feature=state.feature, solid_index=state.solid_index,
         point_mm=(node.x, node.y, node.z),
         cache_dir=state.job_dir / "mesh",
+        normalisation=state.normalisation,
     )
     payload["node"] = node.nid
     payload["node_stress"] = {
@@ -550,6 +1058,7 @@ def _list_document_params(action, state: FeedbackState) -> dict:
     by_component: dict[str, list[str]] = {}
     for name, entry in sorted(table.items()):
         by_component.setdefault(str(entry["component"]), []).append(name)
+    graph = document_tools.dependency_graph(state.document)
     return {
         "ok": True,
         "result": {
@@ -558,6 +1067,7 @@ def _list_document_params(action, state: FeedbackState) -> dict:
             "editable_count": len(table),
             "by_component": by_component,
             "editable": table,
+            "joint_edit_groups": graph.get("joint_edit_groups") or [],
             "note": (
                 "name a change as one of these, exactly - `<node_id>.<param>`, "
                 "for example `n_fillet_cutter_0.radius_mm`. Every one is a "
@@ -625,11 +1135,33 @@ def _verify_evidence(
                 note = f"a face measurement has no quantity called {quantity!r}"
             else:
                 actual = face[quantity]
+        elif source.startswith("agg:"):
+            parsed = _parse_aggregate_source(source)
+            if parsed is None:
+                note = (
+                    "this aggregate source is not well formed. Use the exact "
+                    "`source` returned by snapshot_evidence."
+                )
+            else:
+                quantity, reducer, bounds = parsed
+                try:
+                    actual = _aggregate_evidence_value(
+                        state, quantity, reducer, bounds
+                    )["value"]
+                except Exception as exc:  # noqa: BLE001
+                    note = f"aggregate could not be recomputed: {exc}"
         elif source.startswith("field:"):
             name = source.split(":", 1)[1]
             actual = _reported_scalar(state, name)
             if actual is None:
-                note = f"this run reports no scalar called {name!r}"
+                allowed = ", ".join(sorted(results.reported_scalars(state.metrics())))
+                note = (
+                    f"this run reports no scalar called {name!r}. `field:` "
+                    "sources are only for the reported global scalars: "
+                    + allowed
+                    + ". Use snapshot_evidence for band means, region maxima "
+                    "and other aggregates."
+                )
         else:
             note = (
                 f"{source!r} does not name where to look. Use node:<id>, "
@@ -985,11 +1517,47 @@ def _change_consistency(finding: dict, state: FeedbackState) -> list[Comparison]
             ))
     return out
 
+def _location_consistency(
+    finding: dict, state: FeedbackState
+) -> list[Comparison]:
+    """Whether the feature the finding names can be where it says it is.
+
+    A finding names the piece of geometry it is about and the radius the
+    problem sits at, and both are claims about the same model measured from
+    different places - the name out of the document, the radius out of the
+    field. A disagreement is reported and not enforced: a feature is described
+    in words, and a word the document does not use is a naming convention
+    rather than an error. What a mismatch does say is that the reasoning
+    cannot be followed from the model, and that is worth seeing before a
+    revision is spent on it.
+    """
+    reach = _feature_reach(finding, state.document)
+    if reach is None:
+        return []
+    spans = ", ".join(
+        f"{node_id} r = {low}..{high} mm"
+        for node_id, (low, high) in reach["spans_r_mm"].items()
+    )
+    return [Comparison(
+        name="location.feature",
+        left=f"{reach['feature']!r}",
+        right=f"a feature acting at r = {reach['peak_r_mm']} mm",
+        residual=0.0 if reach["reaches"] else 1.0,
+        relative=0.0 if reach["reaches"] else 1.0,
+        note=(
+            f"the named feature's own parameters act at {spans}; the finding "
+            f"places its problem at r = {reach['peak_r_mm']} mm"
+            if reach["spans_r_mm"] else "the named feature carries no radius"
+        ),
+    )]
+
+
 def check_finding(finding: dict, state: FeedbackState) -> list[Comparison]:
     """Everything the harness can measure about one finding's argument."""
     return (
         _verify_evidence(finding.get("evidence") or [], state)
         + _mechanism_consistency(finding, state)
+        + _location_consistency(finding, state)
         + _change_consistency(finding, state)
     )
 
@@ -1162,6 +1730,126 @@ def _reach_problem(finding: dict, document: dict | None) -> str | None:
     )
 
 
+# A feature name is prose, so the node it names is found by matching
+# whole words against the document's own node ids and never by substring: an
+# id like `disc_poly` must not be read out of the words "the disc profile".
+_FEATURE_TOKEN = re.compile(r"[^A-Za-z0-9_]+")
+
+
+def _feature_radius_span(
+    document: dict, node_id: str
+) -> tuple[float, float] | None:
+    """Where one document operation's own parameters act, in radius.
+
+    Read from the same `editable` table a change is checked against, so the
+    span and the change vocabulary cannot disagree about where an operation
+    is. Operations whose parameters carry no radius - a count, a plane that
+    does not move radially - contribute nothing and do not make the span
+    wrong; they make it partial, which is why the span is reported next to the
+    verdict rather than used silently.
+    """
+    radii = [
+        float(entry["at_r_mm"])
+        for entry in document_tools.editable(document).values()
+        if str(entry.get("node") or "") == node_id
+        and isinstance(entry.get("at_r_mm"), (int, float))
+    ]
+    return (min(radii), max(radii)) if radii else None
+
+
+def _feature_reach(finding: dict, document: dict | None) -> dict | None:
+    """Where the feature a finding names acts, and whether that covers the peak.
+
+    Returns None when the comparison cannot be made - no document, no stated
+    radius, no node id among the words the feature is described with - which
+    is not the same as the comparison passing. It declines rather than
+    concluding, exactly as `_reach` does, because a feature described in
+    words the document does not use is a naming convention and not an error.
+    """
+    if document is None:
+        return None
+    radius = finding.get("radius_mm")
+    if radius is None:
+        return None
+    text = str(finding.get("feature") or "")
+    node_ids = {
+        str(node.get("id"))
+        for node in (document.get("nodes") or [])
+        if isinstance(node, dict) and node.get("id")
+    }
+    named = sorted(
+        token for token in _FEATURE_TOKEN.split(text) if token in node_ids
+    )
+    if not named:
+        return None
+    spans = {}
+    for node_id in named:
+        span = _feature_radius_span(document, node_id)
+        if span is not None:
+            spans[node_id] = span
+    if not spans:
+        return None
+    peak = float(radius)
+    return {
+        "feature": text,
+        "named_features": named,
+        "spans_r_mm": {
+            node_id: [round(low, 3), round(high, 3)]
+            for node_id, (low, high) in spans.items()
+        },
+        "peak_r_mm": peak,
+        "reaches": any(
+            low - FILLET_REACH_MM <= peak <= high + FILLET_REACH_MM
+            for low, high in spans.values()
+        ),
+    }
+
+
+def _feature_reach_problem(finding: dict, document: dict | None) -> str | None:
+    """A finding whose own feature cannot be where it says the problem is.
+
+    Measured, and this check is the fix. A run located its peak at
+    r = 208.09 mm and named the feature it was about as the fir-tree flank of
+    the final cut. That operation's own parameters act at r = 277.9 to
+    300.0 mm; r = 208.087 mm is where the lightening holes are, and the one
+    editable parameter the model has exactly there is a vertex of the hole
+    profile - the same vertex an earlier revision had already moved and
+    measured the peak move with. The finding concluded that nothing editable
+    controlled the place, which was true of the feature it named and false of
+    the place the peak was at. The revision proposed no change, the loop
+    stopped, and nothing was learnt from a solve that had already been paid
+    for.
+
+    Both halves of the disagreement are the agent's own measurements - the
+    name comes from the document and the radius from the field - so reporting
+    it does not tell the agent which one is wrong, only that they cannot both
+    be right.
+    """
+    reach = _feature_reach(finding, document)
+    if reach is None or reach["reaches"]:
+        return None
+    if document is None:
+        return None
+    spans = " and ".join(
+        f"{node_id} acts at r = {low} to {high} mm"
+        for node_id, (low, high) in reach["spans_r_mm"].items()
+    )
+    available = sorted(
+        document_tools.reaching(document, reach["peak_r_mm"])
+    )
+    return (
+        f"the finding is about r = {reach['peak_r_mm']} mm and names "
+        f"{reach['feature']!r}, but {spans} - so the feature it names is not "
+        "where it says the problem is. The name and the radius are both its "
+        "own measurements and they cannot both be right: measure the node "
+        "again, locate_point it, and name the geometry that is actually there. "
+        "What this model does have at r = "
+        f"{reach['peak_r_mm']} mm is: "
+        + (", ".join(available) if available else "nothing")
+        + "."
+    )
+
+
 def finding_shape_problems(finding: dict,
                           document: dict | None = None) -> list[str]:
     """What about a finding's keys would make it unusable.
@@ -1270,10 +1958,19 @@ def finding_shape_problems(finding: dict,
         unreachable = _reach_problem(finding, document)
         if unreachable:
             problems.append(unreachable)
+    # And the geometry it names has to be where it says the problem is, which
+    # is checked whether or not a change is proposed - a finding that asks for
+    # nothing on the grounds that no parameter controls the place is only a
+    # finding if the place it names is the place it measured.
+    misplaced = _feature_reach_problem(finding, document)
+    if misplaced:
+        problems.append(misplaced)
     prediction = finding.get("prediction")
     if prediction:
-        missing = [key for key in ("metric", "direction")
-                   if key not in prediction]
+        missing = [
+            key for key in ("metric", "direction", "expected_relative_change")
+            if key not in prediction
+        ]
         if missing:
             problems.append(
                 "prediction is missing " + ", ".join(missing)
@@ -1286,6 +1983,178 @@ def finding_shape_problems(finding: dict,
                 "'increase' or 'decrease', with the size as a positive "
                 "fraction in expected_relative_change"
             )
+        size = prediction.get("expected_relative_change")
+        try:
+            size_number = float(size)
+        except (TypeError, ValueError):
+            size_number = None
+        if size_number is None or size_number < 0.0:
+            problems.append(
+                "prediction.expected_relative_change has to be a non-negative "
+                "number. Direction carries the sign; size carries only the "
+                "magnitude."
+            )
+    return problems
+
+
+def finding_argument_problems(
+    finding: dict, state: FeedbackState
+) -> list[str]:
+    """Measure the claims that must hold before a finding can be filed.
+
+    `finding_shape_problems` checks whether a finding can be read. This checks
+    whether its argument can survive the measurements the harness already
+    owns: evidence values have to re-read from the field, a geometry change has
+    to name a real document parameter, and a change has to carry the
+    falsifiable prediction that makes the next revision informative.
+
+    Mechanism agreement is deliberately not a rejection. Whether a radial peak
+    is best described as local concentration or section overload is engineering
+    judgement. Whether the number 1807.906 is actually present at node 246 is
+    not.
+    """
+    problems: list[str] = []
+    mechanism = str(finding.get("mechanism") or "")
+    position_mechanisms = {
+        "stress_concentration", "section_overload", "hoop_driven",
+        "radial_driven", "thermal_gradient",
+    }
+    non_design_mechanisms = {
+        "load_application", "idealisation_edge", "unresolved",
+    }
+
+    change = finding.get("change")
+    prediction = finding.get("prediction")
+    if change and not prediction:
+        problems.append(
+            "the finding asks for a geometry change but states no prediction. "
+            "The next revision can only test a change if the finding commits "
+            "to a metric, direction and expected size before the change is "
+            "made."
+        )
+    if prediction and not change:
+        problems.append(
+            "the finding states a prediction but asks for no change. There is "
+            "nothing for the next revision to test, so the prediction is not "
+            "an argument."
+        )
+    if mechanism in non_design_mechanisms and (change or prediction):
+        problems.append(
+            f"mechanism {mechanism!r} is not a geometry-change diagnosis; its "
+            "change and prediction must both be null. Report the model or "
+            "load-path problem without proposing a design edit."
+        )
+    if mechanism in position_mechanisms and change:
+        if finding.get("radius_mm") is None or finding.get("z_mm") is None:
+            problems.append(
+                f"mechanism {mechanism!r} proposes a geometry change but does "
+                "not state both radius_mm and z_mm. A change cannot be aimed "
+                "at a peak that the finding has not located."
+            )
+
+    if change and prediction:
+        metric = str(prediction.get("metric") or "")
+        reported = results.reported_scalars(state.metrics())
+        if metric not in reported or reported.get(metric) is None:
+            problems.append(
+                f"prediction names metric {metric!r}, which this solve did "
+                "not report as a number. The next revision would run and "
+                "could not test the prediction. Use one of: "
+                + ", ".join(sorted(reported)) + "."
+            )
+
+    normalised, _dropped = normalise_change(change or {})
+    parameter = str(normalised.get("parameter") or "")
+    proposed = normalised.get("proposed_value")
+    relative = normalised.get("relative_change")
+    current = normalised.get("current_value")
+    if (
+        proposed is not None
+        and relative is not None
+        and current is not None
+        and abs(float(current)) > 1e-12
+    ):
+        implied = float(current) * (1.0 + float(relative))
+        if not math.isclose(
+            float(proposed), implied, rel_tol=1e-4, abs_tol=1e-9
+        ):
+            problems.append(
+                f"change.proposed_value {float(proposed):g} and "
+                f"change.relative_change {float(relative):g} disagree: from "
+                f"the stated current value {float(current):g}, the relative "
+                f"change implies {implied:g}. State one magnitude, not two."
+            )
+    if state.document is not None and parameter and "." in parameter:
+        if document_tools.resolve(state.document, parameter) is None:
+            radius = finding.get("radius_mm")
+            available = (
+                sorted(document_tools.reaching(state.document, float(radius)))
+                if radius is not None else []
+            )
+            problems.append(
+                f"change names document parameter {parameter!r}, but this "
+                "model has no such operation parameter. "
+                + (
+                    "The measured editable parameters reaching r = "
+                    f"{float(radius):g} mm are: " + ", ".join(available) + "."
+                    if available else
+                    "Call list_document_params and name one of the parameters "
+                    "reported for this model."
+                )
+            )
+
+    comparisons = _verify_evidence(finding.get("evidence") or [], state)
+    for comparison in comparisons:
+        if comparison.relative is None:
+            problems.append(
+                f"{comparison.name} cannot be re-read from this solve: "
+                f"{comparison.note or comparison.right}. Evidence has to name "
+                "a source that exists in the result field."
+            )
+        elif comparison.relative > EVIDENCE_RELATIVE_TOLERANCE:
+            problems.append(
+                f"{comparison.name} does not re-read: {comparison.left}, but "
+                f"the field holds {comparison.right}. File the measured value, "
+                "not a recollection."
+            )
+    return problems
+
+
+def existing_feedback_problems(
+    findings: list[dict], state: FeedbackState
+) -> list[str]:
+    """Why a stored feedback file is no longer valid for this revision.
+
+    A stored job can survive a disk move or resume with a bundle path that no
+    longer resolves. The current loop has the revision document even then, so
+    it validates the stored findings against that document before deciding not
+    to rerun feedback.
+    """
+    problems: list[str] = []
+    if not findings:
+        return ["the stored feedback has no findings"]
+    ids = [
+        str(finding.get("id") or f"F{index + 1}")
+        for index, finding in enumerate(findings)
+    ]
+    duplicates = sorted(
+        finding_id for finding_id in set(ids) if ids.count(finding_id) > 1
+    )
+    if duplicates:
+        problems.append("duplicate finding ids: " + ", ".join(duplicates))
+    changes: list[str] = []
+    for index, finding in enumerate(findings):
+        parameter = str(((finding.get("change") or {}).get("parameter")) or "")
+        if parameter:
+            changes.append(f"{ids[index]}:{parameter}")
+        for problem in (finding_shape_problems(finding, state.document)
+                        + finding_argument_problems(finding, state)):
+            problems.append(f"finding {index}: {problem}")
+    if len(changes) > 1:
+        problems.append(
+            "multiple design changes in one stored submission: "
+            + ", ".join(changes)
+        )
     return problems
 
 
@@ -1300,9 +2169,49 @@ def _submit_feedback(action, state: FeedbackState) -> dict:
             "mechanism 'unresolved' rather than leaving it out.",
             "feedback",
         )
+    if not state.ranked:
+        raise StructuralError(
+            "missing_region_ranking",
+            "rank_problem_regions has not been run. It joins the peak regions "
+            "to the verification verdict, load and symmetry context, fall-off "
+            "shape and editable parameters; without it a suspect global peak "
+            "can be mistaken for a changeable design problem. Run it before "
+            "submitting findings.",
+            "feedback",
+        )
     known = {"stress_concentration", "section_overload", "hoop_driven",
              "radial_driven", "thermal_gradient", "load_application",
              "idealisation_edge", "unresolved"}
+    finding_ids = [
+        str(finding.get("id") or f"F{index + 1}")
+        for index, finding in enumerate(findings)
+    ]
+    duplicates = sorted(
+        finding_id for finding_id in set(finding_ids)
+        if finding_ids.count(finding_id) > 1
+    )
+    if duplicates:
+        raise StructuralError(
+            "duplicate_finding_id",
+            "these finding ids are used more than once: "
+            + ", ".join(duplicates),
+            "feedback",
+        )
+    design_changes: list[str] = []
+    for index, finding in enumerate(findings):
+        normalised, _dropped = normalise_change(finding.get("change") or {})
+        parameter = str(normalised.get("parameter") or "")
+        if parameter:
+            design_changes.append(f"{finding_ids[index]}:{parameter}")
+    if len(design_changes) > 1:
+        raise StructuralError(
+            "multiple_design_changes",
+            "one revision can test one design change, but this submission "
+            "contains " + ", ".join(design_changes) + ". Keep one finding with "
+            "a change and prediction; file the others as diagnosis without a "
+            "change so the next solve can attribute its result correctly.",
+            "feedback",
+        )
     for index, finding in enumerate(findings):
         mechanism = str(finding.get("mechanism") or "")
         if mechanism not in known:
@@ -1312,7 +2221,10 @@ def _submit_feedback(action, state: FeedbackState) -> dict:
                 "one of: " + ", ".join(sorted(known)),
                 "feedback",
             )
-        problems = finding_shape_problems(finding, state.document)
+        problems = (
+            finding_shape_problems(finding, state.document)
+            + finding_argument_problems(finding, state)
+        )
         if problems:
             raise StructuralError(
                 "finding_malformed",
@@ -1343,6 +2255,9 @@ class CommitAction(Action):
 
 DISPATCH = dispatch_table({
     "get_result_context": _get_result_context,
+    "get_rules": _get_rules,
+    "rank_problem_regions": _rank_problem_regions,
+    "snapshot_evidence": _snapshot_evidence,
     "query_nodes": _query_nodes,
     "profile": _profile,
     "find_concentrations": _find_concentrations,
@@ -1404,7 +2319,28 @@ The mechanisms, and what distinguishes each in the measurements you can take:
 Your tools:
 
 - get_result_context   what this run reported, what the verification stage
-  decided may be quoted, and what could not be measured. Read it first.
+  decided may be quoted, and what could not be measured. Read it first. It
+  also reports what the load actually reached: how much of the selected
+  surface was pressed, and which selected faces received no load at all.
+- get_rules            what the loop has already learnt about these mechanisms:
+  every rule it holds with how many times that rule has held and been refuted,
+  the changes it made and had to stop believing, and which hypotheses for these
+  mechanisms this loop has never measured. Read it before you decide. A change
+  that tests a hypothesis the record does not yet cover is worth more than a
+  change that tests nothing it covers, because a mechanism and a coincidence
+  look the same once and differ when the loop meets them twice.
+- rank_problem_regions  join stress concentrations to the verification
+  verdict, load/symmetry context, fall-off shape and editable parameters near
+  each radius. Call this immediately after get_result_context and start from
+  the highest-ranked region with `optimisation_allowed: true`. A region with
+  `optimisation_allowed: false` may still be diagnosed, but it must not carry a
+  geometry change.
+- snapshot_evidence    compute a replayable aggregate - max, min, mean or sum
+  - over nodes in an r/z box and return an exact `agg:<quantity>:<reducer>:<bounds>`
+  source string to cite in evidence. Use it for band means, regional maxima, section resultants and
+  other statistics that a single node cannot represent. A number cited under
+  a different source will not be accepted merely because the model believes
+  it was measured.
 - query_nodes          the field inside a box: count, extremes, mean, and the
   node holding each extreme. r_min/r_max/z_min/z_max; unset does not filter.
 - profile              one quantity binned along r, z or theta. This is what
@@ -1548,13 +2484,30 @@ turn, so it is worth checking one before filing it.
 Do not optimise a number the verification stage marked suspect or
 confirmed_wrong. A suspect number moved between mesh levels; a confirmed_wrong
 one is contradicted by two measurements that should agree. Building on either
-is how a loop converges on an artefact.
+is how a loop converges on an artefact. If rank_problem_regions reports an
+allowed region lower than a suspect global peak, the lower region is the one to
+diagnose and change. Submit no change only when every allowed region has no
+editable parameter that can affect it, and say which region and measurement
+rule out each candidate.
+
+The loop learns one observation at a time, and a rule only settles after
+the same direction has been proposed and measured more than once. So when a
+mechanism in `get_rules` has a hypothesis this loop has never tested, the
+change that tests it is a real answer to "what should the next revision be" -
+better than a change that tests nothing the record already covers, even if
+that other change is the one you would have reached for first.
 
 If the honest answer is that the results do not justify changing the disc -
 because the load was wrong, because the peak is an artefact of the model,
 because nothing is near a margin - then say that. Filing a finding that asks
 for a geometry change on the strength of a number that describes the model is
 worse than filing nothing.
+
+One revision can test only one design change. Submit at most one finding with
+a non-null `change`; file other diagnoses without a change so the next solve
+can attribute its result to one action. The prediction metric must be one the
+solve actually reported as a number, and the change must carry a prediction
+with both direction and expected_relative_change.
 
 Your last call offers only submit_feedback and needs_input. Budget accordingly.
 """
@@ -1593,8 +2546,9 @@ def spec(*, max_calls: int = DEFAULT_MAX_CALLS) -> AgentSpec:
         user_prompt=(
             "The solve has finished and the results have been judged. Decide "
             "what the next revision of this disc should be.\n\n"
-            "Start with get_result_context, then find where the stress "
-            "actually is before deciding what it means. Every finding you file "
+            "Start with get_result_context, then rank_problem_regions, then "
+            "measure the top allowed region before deciding what it means. "
+            "Every finding you file "
             "must rest on measurements you took, and carry a prediction the "
             "next run can refute."
         ),
@@ -1605,8 +2559,14 @@ def spec(*, max_calls: int = DEFAULT_MAX_CALLS) -> AgentSpec:
     )
 
 
-def _load_state(ctx: RunContext) -> FeedbackState:
+def _load_state(
+    ctx: RunContext,
+    base: knowledge.KnowledgeBase | None = None,
+    document_override: dict | None = None,
+) -> FeedbackState:
     """Read the field and everything the run said about it, once."""
+    from seekflow_structural.pipeline.materialize import normalisation_for
+
     solve_dir = Path(ctx.path) / "solve"
     case = ctx.case
     material = None
@@ -1639,8 +2599,8 @@ def _load_state(ctx: RunContext) -> FeedbackState:
         feature = case.load_surface.feature
         solid_index = case.load_surface.solid_index
 
-    document = None
-    if bundle is not None:
+    document = document_override
+    if document is None and bundle is not None:
         path = bundle / "document.json"
         if path.is_file():
             try:
@@ -1654,11 +2614,13 @@ def _load_state(ctx: RunContext) -> FeedbackState:
         solve_dir=solve_dir,
         job_dir=Path(ctx.path),
         bundle=bundle,
+        normalisation=(normalisation_for(case) if case is not None else None),
         feature=feature,
         solid_index=solid_index,
         document=document,
         load_nodes=load_nodes,
         load_faces=load_faces,
+        base=base,
     )
 
 
@@ -1736,7 +2698,9 @@ def to_case_feedback(state: FeedbackState) -> FeedbackReport:
 
 
 def feedback(ctx: RunContext, *, api_key_file: Path | None = None,
-             max_calls: int = 24) -> Case:
+             max_calls: int = DEFAULT_MAX_CALLS,
+             base: knowledge.KnowledgeBase | None = None,
+             document: dict | None = None) -> Case:
     """The stage: read the results and decide what the next revision should be.
 
     It writes the report into the case and into the job, and it does not
@@ -1750,7 +2714,7 @@ def feedback(ctx: RunContext, *, api_key_file: Path | None = None,
     if case is None:
         raise StructuralError("no_case", "feedback has no case", "feedback")
 
-    state = _load_state(ctx)
+    state = _load_state(ctx, base=base, document_override=document)
     caller, model_config = build_caller(api_key_file)
     outcome = run_agent(
         spec(max_calls=max_calls), caller=caller,

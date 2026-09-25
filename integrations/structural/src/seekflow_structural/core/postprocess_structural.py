@@ -120,7 +120,12 @@ def _node_temperatures(
     field = build_temperature_field(
         intent.temperature, intent.rotation, source_root=job_dir
     )
-    mesh_nodes = _read_mesh_coordinates(job_dir / "mesh.inp")
+    mesh_path = Path(intent.mesh_inp) if intent.mesh_inp else job_dir / "mesh.inp"
+    if not mesh_path.is_absolute():
+        mesh_path = job_dir / mesh_path
+    if not mesh_path.is_file():
+        mesh_path = job_dir / "mesh.inp"
+    mesh_nodes = _read_mesh_coordinates(mesh_path)
     points = [
         (
             node["nid"],

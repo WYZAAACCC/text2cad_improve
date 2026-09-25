@@ -1,0 +1,28 @@
+{
+  "final": {
+    "accepted": true,
+    "feature": "n_final_cut",
+    "solid_index": 0,
+    "selected_face_indices": [
+      3716,
+      3724,
+      3732
+    ],
+    "selection_method": "measured_candidate_fallback",
+    "criterion": {
+      "intent": "deterministic benchmark oracle"
+    }
+  },
+  "reference_kind": "measured_candidate_fallback",
+  "family": "D26",
+  "feature": "n_final_cut",
+  "solid_index": 0,
+  "sector": {
+    "theta_low_deg": 0.0,
+    "theta_high_deg": 5.294117647058823
+  },
+  "separation": {
+    "significant": false,
+    "reason": "too_few_candidates"
+  }
+}

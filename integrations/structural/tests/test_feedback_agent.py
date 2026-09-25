@@ -14,12 +14,14 @@ back. Each test below is one way that can fail.
 from __future__ import annotations
 
 import math
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from seekflow_structural.agents import feedback
 from seekflow_structural.pipeline.stages import REQUIRES, STAGE_ORDER, Stage
-from seekflow_structural.tools import results
+from seekflow_structural.tools import knowledge, results
 
 
 def _node(nid, x, y, z, s_eqv, s_radial=0.0, s_hoop=0.0, s_axial=0.0,
@@ -37,6 +39,10 @@ def _node(nid, x, y, z, s_eqv, s_radial=0.0, s_hoop=0.0, s_axial=0.0,
 
 
 def _state(nodes, **kwargs) -> feedback.FeedbackState:
+    # Most tests exercise a specialised check, not the submission gate. They
+    # start from the state a feedback run has after its mandatory ranking call;
+    # the gate itself is tested explicitly below.
+    kwargs.setdefault("ranked", True)
     return feedback.FeedbackState(
         field=results.ResultField(nodes=nodes),
         context=kwargs.pop("context", {"metrics": {}, "verdicts": []}),
@@ -110,6 +116,40 @@ def test_a_reported_scalar_is_read_from_the_metrics_not_remeasured():
     )
     assert bad[0].relative > 0.1
 
+
+def test_an_aggregate_evidence_source_can_be_replayed():
+    state = _state([
+        _node(1, 60.0, 0.0, 0.0, 100.0, s_hoop=100.0),
+        _node(2, 61.0, 0.0, 0.0, 150.0, s_hoop=150.0),
+        _node(3, 62.0, 0.0, 0.0, 200.0, s_hoop=200.0),
+    ])
+    action = feedback.Action(
+        action="snapshot_evidence", quantity="s_hoop", reducer="mean",
+        r_min=59.5, r_max=62.5,
+    )
+    snapshot = feedback._snapshot_evidence(action, state)["result"]
+    assert snapshot["value"] == pytest.approx(150.0)
+    assert snapshot["node_count"] == 3
+
+    comparisons = feedback._verify_evidence([{
+        "quantity": "s_hoop",
+        "value": snapshot["value"],
+        "source": snapshot["source"],
+    }], state)
+    assert comparisons[0].relative == pytest.approx(0.0)
+
+    wrong = feedback._verify_evidence([{
+        "quantity": "s_hoop",
+        "value": 130.0,
+        "source": snapshot["source"],
+    }], state)
+    assert wrong[0].relative > 0.0
+
+
+def test_the_prompt_explains_that_aggregate_evidence_has_a_source():
+    prompt = feedback.spec().system_prompt
+    assert "snapshot_evidence" in prompt
+    assert "agg:" in prompt
 
 # --- the mechanism has to match its signature ---------------------------
 
@@ -321,6 +361,216 @@ def test_a_document_parameter_is_the_one_that_passes_with_a_document():
     assert "currently 15.0" in comparisons[0].note
 
 
+# --- ranking what can actually be acted on -------------------------------
+
+
+def _rank_action(**kwargs):
+    values = {"limit": 6, "relative_threshold": 0.8, "cell_mm": 5.0}
+    values.update(kwargs)
+    return type("A", (), values)()
+
+
+def test_a_suspect_global_peak_does_not_outrank_a_stable_actionable_region():
+    nodes = [
+        _node(1, 210.0, 0.0, 0.0, 1800.0, s_hoop=100.0),
+        _node(2, 212.0, 0.0, 0.0, 1750.0, s_hoop=90.0),
+        _node(3, 214.0, 0.0, 0.0, 1700.0, s_hoop=80.0),
+        _node(100, 60.0, 0.0, 0.0, 1600.0, s_hoop=1550.0),
+        _node(101, 62.0, 0.0, 0.0, 1580.0, s_hoop=1530.0),
+        _node(102, 64.0, 0.0, 0.0, 1560.0, s_hoop=1510.0),
+    ]
+    state = _state(nodes, context={
+        "metrics": {"stress": {"max_node": 1, "max_von_mises_mpa": 1800.0}},
+        "verdicts": [
+            {"quantity": "max_von_mises_mpa", "verdict": "suspect"},
+            {"quantity": "max_load_surface_von_mises_mpa", "verdict": "suspect"},
+        ],
+    })
+
+    result = feedback._rank_problem_regions(_rank_action(), state)["result"]
+
+    assert result["selected_region"]["peak_node"] == 100
+    suspect = next(item for item in result["ranked_regions"]
+                   if item["peak_node"] == 1)
+    assert suspect["optimisation_allowed"] is False
+    assert any("suspect" in reason for reason in suspect["actionability"])
+
+
+def test_ranking_links_an_allowed_region_to_editable_parameters():
+    nodes = [_node(1, 240.0, 0.0, 0.0, 1500.0, s_radial=1400.0),
+             _node(2, 242.0, 0.0, 0.0, 1450.0, s_radial=1350.0)]
+    state = _state(nodes, context={
+        "metrics": {"stress": {"max_node": 1, "max_von_mises_mpa": 1500.0}},
+        "verdicts": [{"quantity": "max_von_mises_mpa", "verdict": "unverified"}],
+    }, document=_aim_doc())
+
+    result = feedback._rank_problem_regions(_rank_action(), state)["result"]
+    selected = result["selected_region"]
+
+    assert selected["optimisation_allowed"] is True
+    assert selected["nearby_editable"]
+    assert any(item["parameter"] == "disc.points[2].y_mm"
+               for item in selected["nearby_editable"])
+
+
+# --- the record the loop has already built ------------------------------
+
+
+def _rules_action(**kwargs):
+    values = {"mechanism": ""}
+    values.update(kwargs)
+    return type("A", (), values)()
+
+
+def _refuted_entry(entry_id="hoop_driven::rim_half_thickness_mm"):
+    entry = knowledge.KnowledgeEntry(
+        id=entry_id, mechanism="hoop_driven",
+        parameter="rim_half_thickness_mm", direction="decrease",
+        at="bore", status="refuted",
+    )
+    for measured in (0.081, 0.114):
+        entry.observations.append(knowledge.Observation(
+            revision="rev-000001", metric="max_von_mises_mpa",
+            predicted_relative_change=-0.05,
+            measured_relative_change=measured, outcome="refuted",
+        ))
+    return entry
+
+
+def test_the_loop_record_is_readable_and_names_what_it_has_never_tested():
+    """The agent that chooses what to test can see what has been tested.
+
+    Measured on D27: six revisions ran, the record held nothing but its eight
+    seed rules, and the rule the loop actually made progress on stayed a
+    candidate with one confirmation. A rule settles only when the same
+    direction is proposed and measured more than once, and the stage that
+    decides what to propose had no sight of the record at all.
+    """
+    base = knowledge.KnowledgeBase.load(__import__("pathlib").Path("none.json"))
+    state = _state([_node(1, 60.0, 0.0, 0.0, 1000.0)], base=base)
+
+    result = feedback._get_rules(
+        _rules_action(mechanism="hoop_driven"), state
+    )["result"]
+
+    assert result["attached"] is True
+    held = result["mechanisms"]["hoop_driven"]
+    assert [entry["id"] for entry in held["rules"]] == [
+        "bore-hoop-rim-mass", "bore-hoop-bore-radius",
+    ]
+    assert held["untested"] == ["bore-hoop-rim-mass", "bore-hoop-bore-radius"]
+    assert "bore-hoop-rim-mass" in result["untested"]
+    assert held["retired"] == []
+
+
+def test_a_change_that_was_tried_and_failed_is_reported_apart_from_advice():
+    base = knowledge.KnowledgeBase()
+    base.entries = [_refuted_entry()]
+    state = _state([_node(1, 60.0, 0.0, 0.0, 1000.0)], base=base)
+
+    held = feedback._get_rules(
+        _rules_action(mechanism="hoop_driven"), state
+    )["result"]["mechanisms"]["hoop_driven"]
+
+    assert held["rules"] == []
+    assert [entry["id"] for entry in held["retired"]] == [
+        "hoop_driven::rim_half_thickness_mm",
+    ]
+    assert len(held["retired"][0]["observations"]) == 2
+    assert held["retired"][0]["refutations"] == 2
+
+
+def test_no_record_is_reported_as_no_record_rather_than_as_an_empty_one():
+    state = _state([_node(1, 60.0, 0.0, 0.0, 1000.0)])
+    result = feedback._get_rules(_rules_action(), state)["result"]
+    assert result["attached"] is False
+    assert "no knowledge base is attached" in result["limits"][0]
+
+
+# --- what the load actually reached --------------------------------------
+
+
+def _audit_context():
+    return {
+        "metrics": {"stress": {"max_von_mises_mpa": 1000.0}},
+        "verdicts": [],
+        "load_audit": {
+            "emission": {
+                "mechanism": "surface_pressure",
+                "pressure_mpa": 285.2,
+                "occ_area_total_mm2": 130.0,
+                "mapped_area_total_mm2": 50.0,
+                "limits": [
+                    "selected face(s) [2] produced no element face. Either the "
+                    "mesh does not reach them, or they are not planar",
+                ],
+            },
+            "area_accounting_by_face": {
+                "1": {"occ_area_mm2": 100.0, "mapped_area_mm2": 50.0,
+                      "element_face_count": 40},
+                "2": {"occ_area_mm2": 30.0, "mapped_area_mm2": 0.0,
+                      "element_face_count": 0},
+            },
+        },
+    }
+
+
+def test_a_face_the_load_never_reached_is_reported_apart_from_a_partial_model():
+    """The two reasons a face is not fully pressed are not the same reason.
+
+    A face with no element face at all received nothing. A face whose element
+    faces cover half its CAD area is what a half-thickness model looks like,
+    and reporting the two as one number - the raw fraction in the audit - is
+    how a correct run reads as a load shortfall.
+    """
+    state = _state(
+        [_node(1, 60.0, 0.0, 0.0, 1000.0)], context=_audit_context()
+    )
+    integrity = feedback._load_integrity(state)
+
+    assert integrity["pressed_area_mm2"] == pytest.approx(50.0)
+    assert integrity["reached_selection_area_mm2"] == pytest.approx(100.0)
+    assert integrity["declared_selection_area_mm2"] == pytest.approx(130.0)
+    assert integrity["mesh_coverage_of_reached_faces"] == pytest.approx(0.5)
+    assert integrity["lowest_single_face_coverage"] == pytest.approx(0.5)
+    assert integrity["faces_with_no_element_face"] == [2]
+    assert integrity["faces_with_no_element_face_area_mm2"] == pytest.approx(30.0)
+    joined = " ".join(integrity["limits"])
+    assert "no load reached them at all" in joined
+    assert "half of every face that straddles the mid-plane" in joined
+
+
+def test_the_result_context_carries_what_the_load_reached():
+    state = _state(
+        [_node(1, 60.0, 0.0, 0.0, 1000.0)], context=_audit_context()
+    )
+    context = feedback._get_result_context(
+        type("A", (), {})(), state
+    )["result"]
+    assert context["load_integrity"]["faces_with_no_element_face"] == [2]
+
+
+def test_a_revision_document_overrides_the_bundle_fallback(monkeypatch, tmp_path):
+    """Feedback sees the design revise will actually edit.
+
+    Some stored jobs carry a bundle path without document.json. The loop has
+    the revision workspace, so it passes that document explicitly; otherwise
+    feedback can propose a template parameter that revise must later reject.
+    """
+    from seekflow_structural.case.model import BundleRef, Case
+
+    monkeypatch.setattr(
+        results.ResultField, "load",
+        classmethod(lambda cls, solve_dir, material_points=None: results.ResultField(nodes=[])),
+    )
+    monkeypatch.setattr(results, "load_context", lambda solve_dir, job_dir=None: {})
+    case = Case(case_id="probe", bundle=BundleRef(path="."))
+    ctx = SimpleNamespace(path=Path(tmp_path), case=case)
+    document = {"schema_version": "probe", "nodes": []}
+    state = feedback._load_state(ctx, document_override=document)
+    assert state.document == document
+
+
 # --- the report the stage writes ----------------------------------------
 
 
@@ -380,6 +630,128 @@ def test_a_finding_with_no_evidence_is_refused():
             state,
         )
     assert "no evidence" in str(excinfo.value)
+
+
+def test_submission_re_reads_evidence_instead_of_trusting_the_claim():
+    """`check_finding` is a convenience, not the gate.
+
+    The agent may skip the dry-run tool. The submission path therefore has to
+    re-read the evidence itself; otherwise a fabricated number can be filed by
+    simply not asking the checker.
+    """
+    from seekflow_structural.errors import StructuralError
+
+    state = _state([_node(1, 60.0, 0.0, 0.0, 1000.0)])
+    with pytest.raises(StructuralError) as excinfo:
+        feedback._submit_feedback(
+            type("A", (), {
+                "findings": [{
+                    "mechanism": "unresolved",
+                    "evidence": [{"quantity": "s_eqv", "value": 1482.0,
+                                  "source": "node:1"}],
+                }],
+                "summary": "", "limits": [], "rationale": "",
+            })(),
+            state,
+        )
+    assert "does not re-read" in str(excinfo.value)
+
+
+def test_submission_rejects_evidence_that_cannot_be_read_back():
+    from seekflow_structural.errors import StructuralError
+
+    state = _state([_node(1, 60.0, 0.0, 0.0, 1000.0)])
+    with pytest.raises(StructuralError) as excinfo:
+        feedback._submit_feedback(
+            type("A", (), {
+                "findings": [{
+                    "mechanism": "unresolved",
+                    "evidence": [{"quantity": "s_eqv", "value": 1000.0,
+                                  "source": "node:999"}],
+                }],
+                "summary": "", "limits": [], "rationale": "",
+            })(),
+            state,
+        )
+    assert "cannot be re-read" in str(excinfo.value)
+
+
+def test_a_geometry_change_without_a_prediction_is_refused():
+    state = _state([_node(1, 210.0, 0.0, 0.0, 1000.0,
+                          s_radial=900.0, s_hoop=100.0)])
+    problems = feedback.finding_argument_problems({
+        "mechanism": "radial_driven",
+        "radius_mm": 210.0,
+        "z_mm": 0.0,
+        "evidence": [{"quantity": "s_radial", "value": 900.0,
+                      "source": "node:1"}],
+        "change": {"parameter": "rim_half_thickness_mm",
+                   "relative_change": 0.1},
+    }, state)
+    assert any("states no prediction" in item for item in problems)
+
+
+def test_a_prediction_must_name_a_metric_this_solve_reported():
+    state = _state(
+        [_node(1, 210.0, 0.0, 0.0, 1000.0,
+               s_radial=900.0, s_hoop=100.0)],
+        context={
+            "metrics": {"stress": {"max_von_mises_mpa": 1000.0}},
+            "verdicts": [],
+        },
+    )
+    problems = feedback.finding_argument_problems({
+        "mechanism": "radial_driven",
+        "radius_mm": 210.0,
+        "z_mm": 0.0,
+        "evidence": [{"quantity": "s_radial", "value": 900.0,
+                      "source": "node:1"}],
+        "change": {"parameter": "rim_half_thickness_mm",
+                   "relative_change": 0.1},
+        "prediction": {"metric": "not_a_reported_metric",
+                       "direction": "decrease",
+                       "expected_relative_change": 0.1},
+    }, state)
+    assert any("did not report" in item for item in problems)
+
+
+def test_a_non_design_mechanism_cannot_carry_a_geometry_change():
+    state = _state([_node(1, 210.0, 0.0, 0.0, 1000.0,
+                          s_radial=900.0, s_hoop=100.0)])
+    problems = feedback.finding_argument_problems({
+        "mechanism": "load_application",
+        "radius_mm": 210.0,
+        "z_mm": 0.0,
+        "evidence": [{"quantity": "s_radial", "value": 900.0,
+                      "source": "node:1"}],
+        "change": {"parameter": "rim_half_thickness_mm",
+                   "relative_change": 0.1},
+        "prediction": {"metric": "max_von_mises_mpa",
+                       "direction": "decrease",
+                       "expected_relative_change": 0.1},
+    }, state)
+    assert any("not a geometry-change diagnosis" in item for item in problems)
+
+
+def test_an_unknown_document_parameter_is_refused_at_submission():
+    state = _state(
+        [_node(1, 208.09, 0.0, 0.0, 1000.0,
+               s_radial=900.0, s_hoop=100.0)],
+        document=_aim_doc(),
+    )
+    problems = feedback.finding_argument_problems({
+        "mechanism": "radial_driven",
+        "radius_mm": 208.09,
+        "z_mm": 0.0,
+        "evidence": [{"quantity": "s_radial", "value": 900.0,
+                      "source": "node:1"}],
+        "change": {"parameter": "not_a_node.radius_mm",
+                   "relative_change": 0.1},
+        "prediction": {"metric": "max_von_mises_mpa",
+                       "direction": "decrease",
+                       "expected_relative_change": 0.1},
+    }, state)
+    assert any("has no such operation parameter" in item for item in problems)
 
 
 def test_a_change_written_under_guessed_key_names_is_recognised():
@@ -506,6 +878,19 @@ def test_a_prediction_whose_direction_is_not_a_direction_is_refused():
     assert any("'increase' or 'decrease'" in problem for problem in problems)
 
 
+def test_a_prediction_without_a_size_is_refused_at_submission():
+    problems = feedback.finding_shape_problems({
+        "mechanism": "radial_driven",
+        "evidence": [{"quantity": "s_radial", "value": 1.0,
+                      "source": "node:1"}],
+        "change": {"parameter": "rim_half_thickness_mm",
+                   "relative_change": 0.1},
+        "prediction": {"metric": "max_von_mises_mpa",
+                       "direction": "decrease"},
+    })
+    assert any("expected_relative_change" in problem for problem in problems)
+
+
 def test_a_citation_with_no_number_is_refused_at_submission():
     problems = feedback.finding_shape_problems({
         "mechanism": "hoop_driven",
@@ -524,6 +909,72 @@ def test_a_well_formed_finding_has_no_problems():
         "prediction": {"metric": "max_von_mises_mpa", "direction": "decrease",
                        "expected_relative_change": 0.05},
     }) == []
+
+
+def _actionable_finding(finding_id: str, parameter: str) -> dict:
+    return {
+        "id": finding_id,
+        "mechanism": "radial_driven",
+        "feature": "rim",
+        "radius_mm": 210.0,
+        "z_mm": 0.0,
+        "evidence": [{"quantity": "s_radial", "value": 900.0,
+                      "source": "node:1"}],
+        "change": {"parameter": parameter, "relative_change": 0.1},
+        "prediction": {"metric": "max_von_mises_mpa",
+                       "direction": "decrease",
+                       "expected_relative_change": 0.1},
+    }
+
+
+def test_one_feedback_revision_can_test_only_one_design_change():
+    from seekflow_structural.errors import StructuralError
+
+    state = _state(
+        [_node(1, 210.0, 0.0, 0.0, 1000.0,
+               s_radial=900.0, s_hoop=100.0)],
+        context={
+            "metrics": {"stress": {"max_von_mises_mpa": 1000.0}},
+            "verdicts": [],
+        },
+    )
+    with pytest.raises(StructuralError) as excinfo:
+        feedback._submit_feedback(
+            type("A", (), {
+                "findings": [
+                    _actionable_finding("F1", "rim_half_thickness_mm"),
+                    _actionable_finding("F2", "web_outer_half_thickness_mm"),
+                ],
+                "summary": "", "limits": [], "rationale": "",
+            })(),
+            state,
+        )
+    assert "multiple_design_changes" in str(excinfo.value.diagnostic.code)
+
+
+def test_duplicate_finding_ids_are_refused():
+    from seekflow_structural.errors import StructuralError
+
+    state = _state(
+        [_node(1, 210.0, 0.0, 0.0, 1000.0,
+               s_radial=900.0, s_hoop=100.0)],
+        context={
+            "metrics": {"stress": {"max_von_mises_mpa": 1000.0}},
+            "verdicts": [],
+        },
+    )
+    with pytest.raises(StructuralError) as excinfo:
+        feedback._submit_feedback(
+            type("A", (), {
+                "findings": [
+                    _actionable_finding("F1", "rim_half_thickness_mm"),
+                    _actionable_finding("F1", "web_outer_half_thickness_mm"),
+                ],
+                "summary": "", "limits": [], "rationale": "",
+            })(),
+            state,
+        )
+    assert "duplicate_finding_id" in str(excinfo.value.diagnostic.code)
 
 
 def test_a_mechanism_outside_the_vocabulary_is_refused_with_the_list():
@@ -659,3 +1110,46 @@ def test_a_change_with_no_peak_to_aim_at_is_not_judged():
     finding = _aim("tooth.radius_mm", 208.09)
     finding.pop("radius_mm")
     assert feedback._reach(finding, _aim_doc()) is None
+
+
+def test_filing_findings_requires_the_region_ranking_first():
+    """The ranking is a stage guarantee, not optional prose advice."""
+    from seekflow_structural.errors import StructuralError
+
+    state = _state([_node(1, 60.0, 0.0, 0.0, 1000.0)], ranked=False)
+    action = type("A", (), {
+        "findings": [{
+            "mechanism": "unresolved",
+            "evidence": [{"quantity": "s_eqv", "value": 1000.0,
+                          "source": "node:1"}],
+        }],
+        "summary": "",
+        "limits": [],
+        "rationale": "",
+    })()
+    with pytest.raises(StructuralError) as excinfo:
+        feedback._submit_feedback(action, state)
+    assert excinfo.value.diagnostic.code == "missing_region_ranking"
+    assert "rank_problem_regions" in str(excinfo.value)
+
+
+def test_proposed_value_and_relative_change_must_not_disagree():
+    state = _state([_node(1, 210.0, 0.0, 0.0, 1000.0,
+                          s_radial=900.0, s_hoop=100.0)])
+    problems = feedback.finding_argument_problems({
+        "mechanism": "radial_driven",
+        "radius_mm": 210.0,
+        "z_mm": 0.0,
+        "evidence": [{"quantity": "s_radial", "value": 900.0,
+                      "source": "node:1"}],
+        "change": {
+            "parameter": "rim_half_thickness_mm",
+            "current_value": 63.0,
+            "proposed_value": 66.0,
+            "relative_change": 0.2,
+        },
+        "prediction": {"metric": "max_von_mises_mpa",
+                       "direction": "decrease",
+                       "expected_relative_change": 0.05},
+    }, state)
+    assert any("disagree" in item for item in problems)

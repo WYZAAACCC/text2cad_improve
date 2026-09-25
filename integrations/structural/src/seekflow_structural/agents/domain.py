@@ -28,7 +28,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from seekflow_structural.case.model import DomainDecision, Vec3, Written
+from seekflow_structural.case.model import DomainDecision, Written
 from seekflow_structural.core.domain_preview import DomainPreviewer
 from seekflow_structural.core.mesh_profile import (
     azimuthal_feature_profile,
@@ -66,6 +66,12 @@ class Action(BaseModel):
     z_symmetry: bool = True
     rationale: str = ""
     questions: list[str] = Field(default_factory=list)
+
+
+class CommitAction(Action):
+    """The last call: decide the domain, or say what is missing."""
+
+    action: Literal["submit_domain", "needs_input"]
 
 
 SYSTEM_PROMPT = """\
@@ -351,6 +357,7 @@ def spec(max_calls: int = 14) -> AgentSpec:
         submit_actions=frozenset({"submit_domain", "needs_input"}),
         max_calls=max_calls,
         timeout_s=300,
+        terminal_model=CommitAction,
     )
 
 
@@ -429,6 +436,7 @@ def domain(ctx: RunContext, *, api_key_file: Path | None = None,
         "final": outcome.final,
         "calls": outcome.calls,
         "exhausted": outcome.exhausted,
+        "rejected_calls": outcome.rejected,
     })
     if outcome.final is None:
         raise StructuralError(

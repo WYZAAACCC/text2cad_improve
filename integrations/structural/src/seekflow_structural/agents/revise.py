@@ -41,6 +41,7 @@ and that is worth being able to see.
 from __future__ import annotations
 
 import dataclasses
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -287,7 +288,12 @@ def _read_design(action, state: ReviseState) -> dict:
         "summary": document_tools.summary(document),
         "editable_count": len(table),
         "editable": table,
+        "dependency_graph": document_tools.dependency_graph(document),
     }
+    graph = out["document"]["dependency_graph"]
+    out["document"]["joint_edit_groups"] = (
+        graph.get("joint_edit_groups") or []
+    )
     # The one thing a reader has to get right about this revision, said where
     # the two vocabularies are both on screen and look equally usable.
     out["note"] = (
@@ -325,6 +331,83 @@ def _read_script(action, state: ReviseState) -> dict:
 # --- changing ------------------------------------------------------------
 
 
+def coupled_vertex_parameters(
+    document: dict | None, parameter: str
+) -> list[str]:
+    """The mirrored vertex parameters that must move with this one.
+
+    A closed meridian profile can contain two vertices with the same radius
+    and opposite axial coordinates. Those vertices define one axisymmetric
+    cylindrical surface. Changing one without the other turns the surface
+    into a cone and changes the feature the finding thought it was editing.
+    """
+    if document is None or "." not in parameter:
+        return []
+    required = document_tools.joint_parameters(
+        document, parameter, required_only=True
+    )
+    if required:
+        return required
+    resolved = document_tools.resolve(document, parameter)
+    if resolved is None:
+        return []
+    entry = document_tools.editable(document).get(parameter)
+    if not entry or entry.get("vertex_index") is None:
+        return []
+    axis = str(entry.get("axis") or "")
+    if axis not in ("x_mm", "y_mm"):
+        return []
+    node = str(entry.get("node") or "")
+    rows = document_tools.world_positions(document, node).get("vertices") or []
+    target = next(
+        (row for row in rows if int(row.get("index", -1)) == int(entry["vertex_index"])),
+        None,
+    )
+    if target is None:
+        return []
+    radius = float(target.get("r_mm") or 0.0)
+    z_mm = float(target.get("z_mm") or 0.0)
+    if abs(radius) <= 1e-12 or abs(z_mm) <= 1e-12:
+        return []
+    counterparts: list[str] = []
+    for row in rows:
+        if int(row.get("index", -1)) == int(entry["vertex_index"]):
+            continue
+        if abs(float(row.get("r_mm") or 0.0) - radius) > 1e-6:
+            continue
+        if abs(float(row.get("z_mm") or 0.0) + z_mm) > 1e-6:
+            continue
+        candidate = f"{node}.points[{int(row['index'])}].{axis}"
+        if candidate in document_tools.editable(document):
+            counterparts.append(candidate)
+    return sorted(counterparts)
+
+
+def _vertex_geometric_position(
+    document: dict | None, parameter: str
+) -> dict | None:
+    """The case-frame position of a profile vertex, when it has one."""
+    if document is None or "." not in parameter:
+        return None
+    entry = document_tools.editable(document).get(parameter)
+    if not entry or entry.get("vertex_index") is None:
+        return None
+    rows = document_tools.world_positions(
+        document, str(entry.get("node") or "")
+    ).get("vertices") or []
+    row = next(
+        (item for item in rows
+         if int(item.get("index", -1)) == int(entry["vertex_index"])),
+        None,
+    )
+    if row is None:
+        return None
+    return {
+        "r_mm": round(float(row.get("r_mm") or 0.0), 9),
+        "z_mm": round(float(row.get("z_mm") or 0.0), 9),
+    }
+
+
 def check_change(
     parameter: str, value: float | None, current: dict,
     base: knowledge.KnowledgeBase, document: dict | None = None,
@@ -355,6 +438,9 @@ def check_change(
         ok = relative is None or abs(relative) <= design_variables.MAX_RELATIVE_CHANGE
         out.append({
             "check": "parameter", "ok": True,
+            "coupled_parameters": coupled_vertex_parameters(
+                document, parameter
+            ),
             "note": (
                 f"{parameter} is a parameter of the {entry['op']} operation "
                 f"{entry['node']!r}; it is {before} now. Whether a value is "
@@ -530,7 +616,10 @@ def _check_change(action, state: ReviseState) -> dict:
             "no_parameter", "check_change needs a parameter to check", "revise"
         )
     checks = check_change(
-        action.parameter, _resolve_value(action, state.workspace.params()),
+        action.parameter,
+        _resolve_value(
+            action, state.workspace.params(), state.workspace.document()
+        ),
         state.workspace.params(), state.base,
         document=state.workspace.document(),
     )
@@ -542,7 +631,40 @@ def _check_change(action, state: ReviseState) -> dict:
     }
 
 
-def _resolve_value(action, current: dict) -> float | None:
+def _current_value(parameter: str, current: dict,
+                   document: dict | None) -> float | None:
+    """What a relative change on this name is a fraction of.
+
+    Two layers hold a current value, and only one of them holds any given
+    name: the document, whose parameters are what a revision that has a
+    document is actually built from, and the template parameters, which exist
+    only for a revision that has no document yet. Looking in the wrong one
+    finds nothing - and finding nothing here used to mean the change could not
+    be applied at all.
+
+    Measured, and this is the fix. A finding that stated only
+    `relative_change` on a document parameter - the shape the feedback prompt
+    asks for, on the grounds that the current value is in the design and the
+    agent should not do the arithmetic - was refused with `no_value`, so the
+    revision agent had to skip it. The change the diagnosis asked for was
+    never made and the loop learnt nothing from the revision it paid for.
+    """
+    if document is not None and parameter:
+        entry = document_tools.editable(document).get(parameter)
+        if entry is not None:
+            try:
+                return float(entry["current_value"])
+            except (KeyError, TypeError, ValueError):
+                return None
+    key = design_variables.template_name(parameter) or parameter
+    try:
+        return float(current.get(key))
+    except (TypeError, ValueError):
+        return None
+
+
+def _resolve_value(action, current: dict,
+                   document: dict | None = None) -> float | None:
     """The value to write, from a value or from a fraction of the current one.
 
     A finding states how far to move a variable far more often than it states
@@ -554,14 +676,77 @@ def _resolve_value(action, current: dict) -> float | None:
         return float(action.value)
     if action.relative_change is None:
         return None
-    key = design_variables.template_name(action.parameter) or action.parameter
-    before = current.get(key)
+    before = _current_value(action.parameter, current, document)
     if before is None:
         return None
     try:
-        return float(before) * (1.0 + float(action.relative_change))
+        return before * (1.0 + float(action.relative_change))
     except (TypeError, ValueError):
         return None
+
+
+def normalise_finding_changes(findings: list[dict]) -> list[dict]:
+    """Make the two magnitude forms in each finding tell one story.
+
+    Feedback may state an absolute proposed value and a rounded relative
+    change. The revision agent should not have to decide which rounded number
+    is authoritative. When both the current and proposed absolute values are
+    present, the relative change is recomputed exactly from them; the finding
+    object is copied so the stored feedback record is not rewritten.
+    """
+    out = []
+    for finding in findings:
+        row = dict(finding)
+        change = finding.get("change")
+        if isinstance(change, dict):
+            normalised = dict(change)
+            current = normalised.get("current_value")
+            proposed = normalised.get("proposed_value")
+            if (
+                current is not None
+                and proposed is not None
+                and abs(float(current)) > 1e-12
+            ):
+                normalised["relative_change"] = (
+                    float(proposed) - float(current)
+                ) / abs(float(current))
+            row["change"] = normalised
+        out.append(row)
+    return out
+
+
+def _finding_authoritative_value(
+    finding: dict, parameter: str, requested: float | None,
+    current: dict, document: dict | None,
+) -> tuple[float | None, str]:
+    """Resolve an explicit finding value without arithmetic drift.
+
+    A finding may carry both a proposed absolute value and a rounded relative
+    change. The two can differ by rounding even when the engineering intent is
+    identical. When the finding names an absolute document value, that value is
+    the contract: its primary parameter and a matching mirrored counterpart
+    receive it exactly. Relative-only findings keep the revision agent's
+    requested arithmetic, which is then checked against the finding on submit.
+    """
+    if document is None or document_tools.resolve(document, parameter) is None:
+        return requested, "tool_call"
+    change = finding.get("change") or {}
+    proposed = change.get("proposed_value")
+    if proposed is None:
+        return requested, "tool_call"
+    primary = str(change.get("parameter") or "")
+    if parameter == primary:
+        return float(proposed), "finding.proposed_value"
+    primary_current = _current_value(primary, current, document)
+    member_current = _current_value(parameter, current, document)
+    if (
+        primary_current is not None
+        and member_current is not None
+        and abs(float(primary_current) - float(member_current))
+        <= 1e-9 * max(1.0, abs(float(primary_current)))
+    ):
+        return float(proposed), "finding.proposed_value_for_matching_pair"
+    return requested, "tool_call"
 
 
 def _set_parameter(action, state: ReviseState) -> dict:
@@ -576,7 +761,31 @@ def _set_parameter(action, state: ReviseState) -> dict:
         raise StructuralError(
             "no_parameter", "set_parameter needs a parameter to set", "revise"
         )
-    value = _resolve_value(action, state.workspace.params())
+    finding = state.finding(action.finding_id)
+    if finding is None:
+        raise StructuralError(
+            "unknown_finding",
+            "set_parameter must name the finding whose change it implements.",
+            "revise",
+        )
+    if not (finding.get("change") or {}).get("parameter"):
+        raise StructuralError(
+            "finding_has_no_structured_change",
+            f"finding {action.finding_id} proposes no geometry change, so it "
+            "cannot authorise set_parameter. A diagnosis that asks for no "
+            "change must be skipped; do not edit the document on its behalf.",
+            "revise",
+        )
+    requested_value = _resolve_value(
+        action, state.workspace.params(), state.workspace.document()
+    )
+    value, value_source = _finding_authoritative_value(
+        finding,
+        action.parameter,
+        requested_value,
+        state.workspace.params(),
+        state.workspace.document(),
+    )
     if value is None:
         raise StructuralError(
             "no_value",
@@ -610,11 +819,35 @@ def _set_parameter(action, state: ReviseState) -> dict:
         document_tools.resolve(document, action.parameter)
         if document is not None and action.parameter else None
     )
+    effect_before = _vertex_geometric_position(document, action.parameter)
     if resolved is not None and document is not None:
         node_id, param = resolved
         before = document_tools.editable(document)[action.parameter][
             "current_value"
         ]
+        for prior in state.applied:
+            if (
+                str(prior.get("finding") or "") == str(action.finding_id)
+                and str(prior.get("asked_for_as") or "") == action.parameter
+            ):
+                raise StructuralError(
+                    "parameter_already_edited",
+                    f"{action.parameter} was already written for finding "
+                    f"{action.finding_id}. Compute and check the finding's "
+                    "value once, then submit the revision; do not overwrite "
+                    "the same parameter repeatedly and record only the last "
+                    "write as the tested change.",
+                    "revise",
+                )
+        if abs(float(before) - float(value)) <= 1e-12:
+            raise StructuralError(
+                "change_without_geometric_effect",
+                f"{action.parameter} is already {before:g}; writing {value:g} "
+                "would be a no-op and would make the revision record a change "
+                "that did not move the geometry. Submit the already-applied "
+                "edit or skip the finding.",
+                "revise",
+            )
         patch = document_tools.set_scalar(document, node_id, param, value)
         state.workspace.write_document(document)
         key = action.parameter
@@ -629,17 +862,27 @@ def _set_parameter(action, state: ReviseState) -> dict:
                  "new_value": value}
         state.workspace.set(key, value)
     state.workspace.verify_master_untouched()
+    effect_after = _vertex_geometric_position(
+        state.workspace.document(), action.parameter
+    )
     state.applied.append({
         "finding": action.finding_id,
         "parameter": key, "asked_for_as": action.parameter,
         "before": before, "after": value,
+        "value_source": value_source,
+        "requested_value": requested_value,
         "patch": patch,
+        "geometric_effect": (
+            {"before": effect_before, "after": effect_after}
+            if effect_before is not None and effect_after is not None else None
+        ),
     })
     return {
         "ok": True,
         "result": {
             "parameter": key, "asked_for_as": action.parameter,
             "before": before, "after": value, "checks": checks,
+            "value_source": value_source, "requested_value": requested_value,
         },
     }
 
@@ -656,6 +899,21 @@ def _write_script(action, state: ReviseState) -> dict:
         raise StructuralError(
             "incomplete_write",
             "write_script needs both the script name and its full new text",
+            "revise",
+        )
+    finding = state.finding(action.finding_id)
+    if finding is None:
+        raise StructuralError(
+            "unknown_finding",
+            "write_script must name the finding whose change it implements.",
+            "revise",
+        )
+    if not (finding.get("change") or {}).get("parameter"):
+        raise StructuralError(
+            "script_without_a_structured_change",
+            f"finding {action.finding_id} proposes no structured design change, "
+            "so a script replacement cannot be attributed to it. Skip the "
+            "finding instead of changing a file nobody asked to change.",
             "revise",
         )
     # A script copy is how a change that is not a value is made - while the
@@ -708,17 +966,101 @@ def _submit_revision(action, state: ReviseState) -> dict:
             "without a reason is indistinguishable from one nobody read.",
             "revise",
         )
-    unknown = [
-        finding_id for finding_id in action.applied
-        if state.finding(finding_id) is None
+    all_ids = {
+        str(finding.get("id") or "")
+        for finding in state.findings
+    }
+    applied_ids = [str(value) for value in action.applied]
+    skipped_ids = [
+        str(entry.get("id") or "")
+        for entry in action.skipped
+        if isinstance(entry, dict)
     ]
+    unknown = [finding_id for finding_id in applied_ids
+               if finding_id not in all_ids]
+    unknown += [finding_id for finding_id in skipped_ids
+                if finding_id not in all_ids]
     if unknown:
         raise StructuralError(
             "unknown_finding",
             "these ids are not findings from this revision: "
-            + ", ".join(unknown),
+            + ", ".join(sorted(set(unknown))),
             "revise",
         )
+    if any(not finding_id for finding_id in skipped_ids):
+        raise StructuralError(
+            "skip_without_id",
+            "every skipped entry must name the finding id it refers to.",
+            "revise",
+        )
+    duplicates = sorted(
+        finding_id for finding_id, count in (
+            {finding_id: applied_ids.count(finding_id) for finding_id in set(applied_ids)}
+            | {finding_id: skipped_ids.count(finding_id) for finding_id in set(skipped_ids)}
+        ).items() if count > 1
+    )
+    if duplicates:
+        raise StructuralError(
+            "finding_reported_twice",
+            "these findings appear more than once across applied/skipped: "
+            + ", ".join(duplicates),
+            "revise",
+        )
+    overlap = sorted(set(applied_ids) & set(skipped_ids))
+    if overlap:
+        raise StructuralError(
+            "finding_both_applied_and_skipped",
+            "these findings are in both lists: " + ", ".join(overlap),
+            "revise",
+        )
+    missing_reason = [
+        str(entry.get("id") or "?")
+        for entry in action.skipped
+        if not isinstance(entry, dict) or not str(entry.get("reason") or "").strip()
+    ]
+    if missing_reason:
+        raise StructuralError(
+            "skip_without_reason",
+            "these findings are skipped without a reason: "
+            + ", ".join(missing_reason),
+            "revise",
+        )
+    reported = set(applied_ids) | set(skipped_ids)
+    missing = sorted(all_ids - reported)
+    if missing:
+        raise StructuralError(
+            "findings_not_reported",
+            "these findings appear in neither applied nor skipped: "
+            + ", ".join(missing),
+            "revise",
+        )
+
+    # A diagnosis that explicitly proposes no change cannot be reported as
+    # applied. Otherwise a later unrelated write can be attributed to it.
+    for finding_id in applied_ids:
+        finding = state.finding(finding_id) or {}
+        if not (finding.get("change") or {}).get("parameter"):
+            raise StructuralError(
+                "applied_finding_has_no_change",
+                f"finding {finding_id} proposes no geometry change, so it "
+                "cannot be listed as applied. Put it in `skipped` with the "
+                "reason it is only a diagnosis.",
+                "revise",
+            )
+
+    for entry in state.applied:
+        effect = entry.get("geometric_effect") or {}
+        before = effect.get("before")
+        after = effect.get("after")
+        if before is not None and after is not None and before == after:
+            raise StructuralError(
+                "change_without_geometric_effect",
+                f"parameter {entry.get('asked_for_as')!r} was written but its "
+                "vertex position is unchanged in the case frame, so the "
+                "design geometry did not move. Do not submit a numerical edit "
+                "that has no geometric effect.",
+                "revise",
+            )
 
     # A finding reported as applied has to have a change behind it.
     #
@@ -732,6 +1074,60 @@ def _submit_revision(action, state: ReviseState) -> dict:
     recorded = {
         entry.get("finding") for entry in state.applied if entry.get("finding")
     }
+    changed_by_finding: dict[str, set[str]] = {}
+    for entry in state.applied:
+        finding_id = str(entry.get("finding") or "")
+        parameters = {
+            str(entry.get("asked_for_as") or ""),
+            str(entry.get("parameter") or ""),
+        }
+        if finding_id:
+            changed_by_finding.setdefault(finding_id, set()).update(
+                parameter for parameter in parameters if parameter
+            )
+    for finding_id in applied_ids:
+        finding = state.finding(finding_id) or {}
+        primary = str((finding.get("change") or {}).get("parameter") or "")
+        dependency_document = (
+            state.workspace.document_base() or state.workspace.document()
+        )
+        changed = changed_by_finding.get(finding_id, set())
+        document_edits_for_finding = [
+            entry for entry in state.applied
+            if str(entry.get("finding") or "") == finding_id
+            and str((entry.get("patch") or {}).get("path") or "")
+            .startswith("/nodes/")
+        ]
+        if (
+            dependency_document is not None
+            and primary
+            and document_edits_for_finding
+            and document_tools.resolve(dependency_document, primary) is not None
+            and primary not in changed
+        ):
+            raise StructuralError(
+                "primary_parameter_not_updated",
+                f"finding {finding_id} proposed {primary!r}, but the revision "
+                "changed only other parameters of the same feature. The "
+                "measurement the next solve tests must include the parameter "
+                "the finding named.",
+                "revise",
+            )
+        missing = sorted(
+            set(coupled_vertex_parameters(dependency_document, primary))
+            - changed
+        )
+        if missing:
+            raise StructuralError(
+                "coupled_parameter_not_updated",
+                f"finding {finding_id} changes {primary!r}, but its mirrored "
+                "axisymmetric counterpart(s) were not changed: "
+                + ", ".join(missing)
+                + ". Move the whole pair so the feature remains the surface "
+                "the finding measured.",
+                "revise",
+            )
+
     unbacked = [
         finding_id for finding_id in action.applied
         if finding_id not in recorded
@@ -744,6 +1140,20 @@ def _submit_revision(action, state: ReviseState) -> dict:
             + ". Every change records the finding it is for - pass "
             "`finding_id` to set_parameter or write_script - and a finding "
             "with no change behind it belongs in `skipped` with the reason.",
+            "revise",
+        )
+    unattributed = sorted({
+        str(entry.get("finding") or "?")
+        for entry in state.applied
+        if str(entry.get("finding") or "") not in applied_ids
+    })
+    if unattributed:
+        raise StructuralError(
+            "change_for_unapplied_finding",
+            "changes were made for findings not listed as applied: "
+            + ", ".join(unattributed)
+            + ". A skipped diagnosis must leave the document untouched; "
+            "record the change under its finding or do not make it.",
             "revise",
         )
 
@@ -764,7 +1174,21 @@ def _submit_revision(action, state: ReviseState) -> dict:
             continue
         finding = state.finding(finding_id) or {}
         proposed = ((finding.get("change") or {}).get("parameter") or "")
-        if proposed and proposed != asked_for_as:
+        allowed_parameters = {proposed}
+        dependency_document = (
+            state.workspace.document_base() or state.workspace.document()
+        )
+        allowed_parameters.update(
+            coupled_vertex_parameters(dependency_document, proposed)
+        )
+        # Feature relations are optional: a finding may request one scalar,
+        # but the revision agent is allowed to carry out a coordinated edit of
+        # the same feature by making several `set_parameter` calls. The primary
+        # parameter still has to be one of them, checked below.
+        allowed_parameters.update(
+            document_tools.joint_parameters(dependency_document, proposed)
+        )
+        if proposed and asked_for_as not in allowed_parameters:
             raise StructuralError(
                 "applied_a_different_change",
                 f"finding {finding_id} asked for {proposed!r} and "
@@ -773,6 +1197,47 @@ def _submit_revision(action, state: ReviseState) -> dict:
                 "result against the finding - so a substituted variable is "
                 "scored as evidence about a change that was never made. If "
                 "the finding's variable is wrong, skip it and say why.",
+                "revise",
+            )
+
+    # And the magnitude has to be the magnitude the finding proposed. A
+    # substituted value is the same attribution failure as a substituted
+    # variable: the next solve tests one change while the knowledge base
+    # records the result against another.
+    for entry in state.applied:
+        finding_id = entry.get("finding")
+        if finding_id not in action.applied:
+            continue
+        finding = state.finding(finding_id) or {}
+        requested = finding.get("change") or {}
+        after = entry.get("after")
+        if not entry.get("asked_for_as") or after is None:
+            continue
+        primary = str(requested.get("parameter") or "")
+        if entry.get("asked_for_as") != primary:
+            document = state.workspace.document_base() or state.workspace.document()
+            if entry.get("asked_for_as") in document_tools.joint_parameters(
+                document, primary
+            ):
+                # Coordinated feature edits may use their own values for the
+                # related parameters; the finding's magnitude is checked on
+                # the primary parameter it named.
+                continue
+        expected = None
+        if requested.get("relative_change") is not None and entry.get("before") is not None:
+            expected = float(entry["before"]) * (1.0 + float(requested["relative_change"]))
+        elif requested.get("proposed_value") is not None:
+            expected = float(requested["proposed_value"])
+        if expected is not None and not math.isclose(
+            float(after), expected, rel_tol=1e-6, abs_tol=1e-9
+        ):
+            raise StructuralError(
+                "applied_a_different_magnitude",
+                f"finding {finding_id} proposed {requested.get('parameter')!r} "
+                f"to become {expected:g}, but {float(after):g} was written. "
+                "The next revision would test one magnitude while the result "
+                "was recorded against another. Apply the finding's own value, "
+                "or skip it with the reason it was not followed.",
                 "revise",
             )
 
@@ -891,7 +1356,11 @@ So the design is `document.json`. Its operations are the vocabulary:
   `<node_id>.<param>` or `<node_id>.points[<i>].<x_mm|y_mm>`, each with the
   operation it belongs to and, where it can be worked out, the radius it acts
   at. Read this first and change things by these names.
-- `set_parameter`  change one of them. Refused with the reason if the name is
+- `set_parameter`  change one of them. Call it more than once with the same
+  `finding_id` when a coherent feature edit needs several parameters. The
+  response's `joint_edit_groups` names mirrored vertex pairs that must move
+  together and optional fillet, pattern, contour and feature bundles that are
+  legal scopes for a coordinated edit. Refused with the reason if the name is
   not in the document or the change is too large.
 - `check_change`   measure a change before making it.
 - `get_findings`   the findings from the last revision - where the problem is,
@@ -979,6 +1448,7 @@ def revise(
     from seekflow_structural.runtime.caller import build_caller
 
     space.verify_master_untouched()
+    findings = normalise_finding_changes(findings)
     state = ReviseState(workspace=space, findings=findings, base=base)
     caller, model_config = build_caller(api_key_file)
     outcome = run_agent(

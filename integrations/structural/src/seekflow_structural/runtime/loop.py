@@ -115,6 +115,14 @@ Dispatch = Callable[[BaseModel, Any], dict]
 # enough that an agent determined to keep exploring still ends.
 TERMINAL_REASKS = 3
 
+# A repeated measurement cannot have a new answer. The model gets one
+# repeated answer because the provider may have omitted or garbled the
+# first reply in its own transcript; after that the call is refused rather
+# than executed again. Measured on D27: feedback made ten identical
+# query_nodes calls and mesh made ten identical inspect_radial_profile
+# calls, spending most of their budgets on answers they already had.
+MAX_IDENTICAL_REPEATS = 2
+
 
 def assistant_message(result) -> dict:
     """The assistant turn the protocol requires before a tool reply.
@@ -165,9 +173,13 @@ def run_agent(
     # and the run ended with no plan after twelve calls of looking. A refusal
     # that is not enforced is a suggestion, so the loop enforces it.
     reasks = TERMINAL_REASKS if spec.terminal_model is not None else 0
+    force_terminal = False
     while outcome.calls < spec.max_calls + reasks:
         remaining = spec.max_calls - outcome.calls
-        narrowed = remaining <= 1 and spec.terminal_model is not None
+        narrowed = (
+            force_terminal
+            or (remaining <= 1 and spec.terminal_model is not None)
+        )
         schema_model = spec.terminal_model if narrowed else spec.action_model
         try:
             result = caller.call_strict_tool(
@@ -297,6 +309,48 @@ def run_agent(
             outcome.repeats + 1 if signature == outcome.last_signature else 0
         )
         outcome.last_signature = signature
+
+        # A repeated call is not a new measurement. The first repeat gets the
+        # answer again and a note; after MAX_IDENTICAL_REPEATS it is refused
+        # without touching the dispatch. The call still costs a turn, so an
+        # agent that ignores the signal cannot spend the rest of its budget
+        # re-running the same deterministic question.
+        if outcome.repeats >= MAX_IDENTICAL_REPEATS:
+            # The agent has already been told this answer cannot change. Give
+            # it one final chance to decide from the evidence it has instead
+            # of letting repeated queries consume the rest of the budget.
+            force_terminal = spec.terminal_model is not None
+            error = (
+                "this call has the same arguments as one you have already "
+                "made twice. Its answer cannot change until the arguments "
+                "do, so it was not run again. Change what you are measuring, "
+                "or submit the decision the evidence already supports."
+            )
+            outcome.rejected.append({
+                "call": outcome.calls,
+                "narrowed": narrowed,
+                "arguments": result.arguments,
+                "error": error,
+            })
+            payload = {
+                "ok": False,
+                "error_code": "duplicate_call_refused",
+                "error": error,
+                "calls_used": outcome.calls,
+                "calls_remaining": spec.max_calls - outcome.calls,
+                "identical_to_the_previous_call": True,
+                "how_many_times_now": outcome.repeats + 1,
+            }
+            conversation.append(assistant_message(result))
+            conversation.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": result.tool_call_id
+                    or f"call_{spec.tool_name}",
+                    "content": json.dumps(payload, ensure_ascii=False),
+                }
+            )
+            continue
 
         # Whether the call actually did anything, as opposed to being refused.
         # The difference decides whether a submission counts as one: see the

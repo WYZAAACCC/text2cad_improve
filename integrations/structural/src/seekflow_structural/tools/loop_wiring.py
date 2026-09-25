@@ -54,10 +54,27 @@ def context_for(job_dir: Path) -> RunContext:
     )
 
 
+def _write_revalidation_note(space: workspace.Workspace | None,
+                             payload: dict) -> None:
+    """Record revalidation outside the sealed structural job.
+
+    The structural job's manifest covers events.jsonl. Appending to that file
+    from the loop would invalidate the manifest after it was sealed, so this
+    sidecar lives in the revision workspace instead.
+    """
+    if space is None:
+        return
+    path = space.root / "feedback_revalidation.json"
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+
 def make_diagnose(
     *,
     api_key_file: Path | None = None,
-    max_calls: int = 24,
+    max_calls: int = 32,
+    base: knowledge.KnowledgeBase | None = None,
 ):
     """The loop's `diagnose`, backed by the feedback agent.
 
@@ -87,9 +104,36 @@ def make_diagnose(
         # left the revision agent acting on a diagnosis the run had not made -
         # and paid for two rounds of the model to do it. The stage is for a
         # job that has not been diagnosed; this is for one that has.
-        if not record.is_file():
-            feedback_stage.feedback(ctx, api_key_file=api_key_file,
-                                     max_calls=max_calls)
+        document = space.document() if space is not None else None
+        stored_findings = None
+        if record.is_file():
+            stored_findings = json.loads(
+                record.read_text(encoding="utf-8")
+            ).get("findings") or []
+            try:
+                state = feedback_stage._load_state(
+                    ctx, base=base, document_override=document
+                )
+            except Exception as exc:
+                _write_revalidation_note(space, {
+                    "kind": "feedback_revalidation_skipped",
+                    "error": f"{type(exc).__name__}: {exc}",
+                })
+            else:
+                problems = feedback_stage.existing_feedback_problems(
+                    stored_findings, state
+                )
+                if problems:
+                    _write_revalidation_note(space, {
+                        "kind": "feedback_revalidated",
+                        "problems": problems,
+                    })
+                    stored_findings = None
+        if stored_findings is None:
+            feedback_stage.feedback(
+                ctx, api_key_file=api_key_file,
+                max_calls=max_calls, base=base, document=document,
+            )
         if not record.is_file():
             raise RuntimeError(
                 f"the feedback stage finished without writing {record}"

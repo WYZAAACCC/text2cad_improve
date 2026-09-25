@@ -1,0 +1,34 @@
+{
+  "final": {
+    "accepted": true,
+    "feature": "n_final_cut",
+    "solid_index": 0,
+    "selected_face_indices": [
+      31,
+      39,
+      47,
+      55
+    ],
+    "selection_method": "measured_candidate_fallback",
+    "criterion": {
+      "intent": "deterministic benchmark oracle"
+    }
+  },
+  "reference_kind": "measured_candidate_fallback",
+  "family": "D29",
+  "feature": "n_final_cut",
+  "solid_index": 0,
+  "sector": {
+    "theta_low_deg": 0.0,
+    "theta_high_deg": 6.0
+  },
+  "separation": {
+    "significant": false,
+    "reason": "no_distinct_outer_load_band",
+    "radial": {
+      "largest_gap": 3.750805,
+      "lower_family_radius_max": 240.098738,
+      "upper_family_radius_min": 243.849542
+    }
+  }
+}

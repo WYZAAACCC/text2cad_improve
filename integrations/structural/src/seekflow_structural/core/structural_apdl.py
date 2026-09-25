@@ -725,13 +725,20 @@ def render_apdl(
         "ALLSEL",
     ]
     if constraints.tangential_anchor:
+        # The anchor has to lie inside the solved sector. A node on a cyclic
+        # boundary is a CPCYC slave, and ANSYS removes an explicit constraint
+        # from a slave degree of freedom; that leaves the tangential rigid-body
+        # mode unconstrained and the sparse solve fails on a small pivot.
+        # Pick a node near the middle of the sector at the measured bore.
+        theta_mid_deg = 0.5 * (theta_low_deg + theta_high_deg)
         lines.extend(
             [
                 "! Remove unsupported rigid tangential motion",
                 "CSYS,1",
                 f"NSEL,S,LOC,X,{_format(bore_radius_mm - 0.5)},"
                 f"{_format(bore_radius_mm + 0.5)}",
-                "NSEL,R,LOC,Z,0,2.0",
+                f"NSEL,R,LOC,Y,{_format(theta_mid_deg - 1.0)},"
+                f"{_format(theta_mid_deg + 1.0)}",
                 "*GET,NANCH,NODE,0,NUM,MIN",
                 "ALLSEL",
                 "D,NANCH,UY,0",

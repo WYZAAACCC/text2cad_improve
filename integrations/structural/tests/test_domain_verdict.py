@@ -92,3 +92,14 @@ def test_the_whole_part_is_usable_with_nothing_to_tie():
     usable, why = _call(0.0, 0, 0, 0.0, 0.0, full=True)
     assert usable is True
     assert "no cut planes" in why
+
+
+def test_the_domain_agent_has_a_terminal_decision_turn():
+    from seekflow_structural.agents import domain
+
+    spec = domain.spec(max_calls=4)
+    assert spec.terminal_model is domain.CommitAction
+    schema = domain.CommitAction.model_json_schema()
+    assert set(schema["properties"]["action"]["enum"]) == {
+        "submit_domain", "needs_input"
+    }

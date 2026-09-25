@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import math
-import sys
 from pathlib import Path
 
 import pytest
@@ -13,7 +12,10 @@ from seekflow_structural.pipeline.params import (  # noqa: E402
     ParamsIncomplete,
     physics_from_params,
 )
-from seekflow_structural.core.structural_apdl import _build_force_rows  # noqa: E402
+from seekflow_structural.core.structural_apdl import (  # noqa: E402
+    _build_force_rows,
+    render_apdl,
+)
 from seekflow_structural.core.structural_intent_models import (  # noqa: E402
     BladeLoadIntent,
     ConstraintIntent,
@@ -97,6 +99,24 @@ def test_a_missing_hard_input_is_a_refusal_not_a_guess():
             "unit",
         )
     assert "material" in exc.value.missing
+
+
+def test_tangential_anchor_is_inside_the_cyclic_sector(tmp_path):
+    mesh = tmp_path / "mesh.inp"
+    mesh.write_text("", encoding="utf-8")
+    load = tmp_path / "load_table.inp"
+    load.write_text("", encoding="utf-8")
+    deck = render_apdl(
+        _intent(1000.0),
+        mesh,
+        tmp_path,
+        load,
+        {"geometry": {"sector_deg": 18.0, "theta_low_deg": 9.0,
+                      "r_bore_mm": 66.0}},
+    )
+    text = deck.read_text(encoding="utf-8")
+    assert "LOC,X,65.5,66.5" in text
+    assert "LOC,Y,17,19" in text
 
 
 def test_ready_intent_requires_load_section():

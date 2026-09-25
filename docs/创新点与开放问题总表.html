@@ -1,0 +1,883 @@
+<title>创新点与开放问题总表</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@600;700&family=Noto+Sans+SC:wght@500;700&family=Noto+Serif+SC:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+
+<style>
+  :root {
+    --ground: #F4F6F6; --surface: #FFFFFF; --surface-2: #E9EDEE;
+    --ink: #14181A; --ink-2: #414A4E; --muted: #737D81;
+    --rule: #D2D9DA; --rule-soft: #E3E8E9;
+    --accent: #0B6E6B; --accent-soft: #DFEFEE; --accent-line: #7FBAB7;
+    --warn: #A6472A; --warn-soft: #F7E7E1;
+    --ok: #2F6B4F; --ok-soft: #E3EFE8;
+    --shadow: 0 1px 2px rgba(20,24,26,.05), 0 10px 28px -18px rgba(20,24,26,.3);
+    --measure: 66ch;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0E1112; --surface: #171C1E; --surface-2: #202628;
+      --ink: #E6EBEC; --ink-2: #B2BCC0; --muted: #869296;
+      --rule: #2B3336; --rule-soft: #222A2C;
+      --accent: #5FBDB8; --accent-soft: #123230; --accent-line: #2E6A67;
+      --warn: #E08A6C; --warn-soft: #35201A;
+      --ok: #7CC4A0; --ok-soft: #16281F;
+      --shadow: 0 1px 2px rgba(0,0,0,.45), 0 10px 28px -18px rgba(0,0,0,.85);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0E1112; --surface: #171C1E; --surface-2: #202628;
+    --ink: #E6EBEC; --ink-2: #B2BCC0; --muted: #869296;
+    --rule: #2B3336; --rule-soft: #222A2C;
+    --accent: #5FBDB8; --accent-soft: #123230; --accent-line: #2E6A67;
+    --warn: #E08A6C; --warn-soft: #35201A;
+    --ok: #7CC4A0; --ok-soft: #16281F;
+    --shadow: 0 1px 2px rgba(0,0,0,.45), 0 10px 28px -18px rgba(0,0,0,.85);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: "Noto Serif SC", Georgia, serif;
+    font-size: 16px; line-height: 1.78;
+    padding-block: 0 7rem; padding-inline: 22px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  h1, h2, h3, h4 { font-family: "Saira Semi Condensed", "Noto Sans SC", system-ui, sans-serif; text-wrap: balance; }
+  code, .mono, .num { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; }
+  .num { font-variant-numeric: tabular-nums; }
+  a { color: var(--accent); text-underline-offset: .18em; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  header.masthead { padding-block: 3.8rem 1.8rem; border-bottom: 3px double var(--rule); margin-bottom: 2.5rem; }
+  .eyebrow { font-family: "IBM Plex Mono", monospace; font-size: .72rem; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); margin: 0 0 1.3rem; }
+  h1 { font-size: clamp(1.8rem, 4.6vw, 2.9rem); line-height: 1.1; font-weight: 700; letter-spacing: -.02em; margin: 0 0 1.1rem; }
+  .standfirst { font-size: 1.05rem; color: var(--ink-2); max-width: 56ch; margin: 0; }
+
+  section { margin-block: 4rem 0; }
+  h2 { font-size: 1.55rem; font-weight: 700; margin: 0 0 .35rem; line-height: 1.25; }
+  h2 .idx { font-family: "IBM Plex Mono", monospace; font-size: .72rem; font-weight: 600; color: var(--accent); letter-spacing: .14em; display: block; margin-bottom: .5rem; }
+  .h2sub { color: var(--muted); font-size: .92rem; margin: 0 0 1.8rem; max-width: var(--measure); font-family: "IBM Plex Mono", monospace; }
+  h3 { font-size: 1.14rem; font-weight: 700; margin: 2.6rem 0 .7rem; }
+  p { max-width: var(--measure); margin: 0 0 1.1rem; }
+  ul, ol { max-width: var(--measure); padding-left: 1.35rem; margin: 0 0 1.1rem; }
+  li { margin-bottom: .55rem; }
+  strong { font-weight: 600; }
+
+  .callout { background: var(--surface); border: 1px solid var(--rule); padding: 1.3rem 1.5rem; margin: 1.7rem 0; max-width: var(--measure); box-shadow: var(--shadow); border-left: 3px solid var(--muted); }
+  .callout.acc { border-left-color: var(--accent); }
+  .callout.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .callout.ok { border-left-color: var(--ok); background: var(--ok-soft); }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .tag { font-family: "IBM Plex Mono", monospace; font-size: .68rem; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: .6rem; }
+
+  .thesis { background: var(--ink); color: var(--ground); padding: 1.9rem 1.8rem; margin: 2.2rem 0 1rem; }
+  :root[data-theme="dark"] .thesis { background: var(--surface-2); color: var(--ink); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .thesis { background: var(--surface-2); color: var(--ink); } }
+  .thesis p { font-family: "Saira Semi Condensed", "Noto Sans SC", sans-serif; font-size: 1.22rem; line-height: 1.55; font-weight: 600; max-width: 44ch; margin: 0; }
+  .thesis .sub { font-family: "Noto Serif SC", serif; font-size: .95rem; font-weight: 400; line-height: 1.8; margin-top: 1rem; max-width: 60ch; opacity: .9; }
+
+  .tablewrap { overflow-x: auto; margin: 1.6rem 0; border: 1px solid var(--rule); background: var(--surface); box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; font-size: .82rem; min-width: 700px; }
+  th, td { text-align: left; padding: .62rem .8rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; line-height: 1.62; }
+  thead th { font-family: "Saira Semi Condensed", "Noto Sans SC", sans-serif; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); background: var(--surface-2); border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: none; }
+  td.n, th.n { text-align: center; font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  caption { caption-side: bottom; text-align: left; font-size: .76rem; color: var(--muted); padding: .7rem .8rem; font-family: "IBM Plex Mono", monospace; line-height: 1.6; }
+
+  .v-open  { color: var(--ok); font-weight: 600; }
+  .v-part  { color: var(--muted); font-weight: 600; }
+  .v-stale { color: var(--warn); font-weight: 600; }
+  .v-fake  { color: var(--warn); font-weight: 700; }
+  tr.openrow { background: var(--ok-soft); }
+  tr.fakerow { background: var(--warn-soft); }
+  td.nm { font-family: "IBM Plex Mono", monospace; font-size: .76rem; color: var(--muted); white-space: nowrap; }
+
+  blockquote { margin: 1.4rem 0; padding: 1rem 0 1rem 1.4rem; border-left: 3px solid var(--accent); max-width: var(--measure); font-size: .93rem; line-height: 1.82; color: var(--ink-2); }
+  blockquote p { margin: 0 0 .7rem; max-width: none; }
+  blockquote p:last-child { margin-bottom: 0; }
+  blockquote cite { display: block; margin-top: .7rem; font-style: normal; font-family: "IBM Plex Mono", monospace; font-size: .73rem; color: var(--muted); }
+
+  .verdict {
+    border: 1px solid var(--rule); background: var(--surface); box-shadow: var(--shadow);
+    padding: 1.4rem 1.6rem; margin: 1.6rem 0; border-left: 3px solid var(--accent);
+  }
+  .verdict h3 { margin-top: 0; }
+  .verdict p:last-child, .verdict ul:last-child { margin-bottom: 0; }
+
+  hr.div { border: none; border-top: 1px solid var(--rule); margin: 3.2rem 0 0; max-width: var(--measure); }
+
+  @media (max-width: 680px) {
+    body { font-size: 15.5px; padding-inline: 17px; }
+    .thesis { padding: 1.4rem 1.2rem; }
+    .thesis p { font-size: 1.08rem; }
+    h2 { font-size: 1.35rem; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">创新点与开放问题总表 · 两轮调研合并 · 2026-09-15</p>
+  <h1>测过的、活下来的、以及不该碰的</h1>
+  <p class="standfirst">
+    本文合并两轮调研的全部结果：<strong>15 个候选创新点的对抗性核验</strong>（§1）、
+    <strong>27 条作者自述开放问题的解决状态</strong>（§2）、
+    <strong>11 条伪造与误归属</strong>（§3），以及据此得到的推荐定位（§4）。
+    每一条都标了判定与置信度。
+  </p>
+</header>
+
+<div class="callout warn" style="max-width:none">
+  <span class="tag">使用前必读 · 方法说明</span>
+  <p>
+    <strong>第一轮的教训：否定性主张不能用检索摘要支撑。</strong>
+    我曾判断"L4 梯度/特征灵敏度完全无人"，结果那只是 <strong>LLM 语料里的空</strong>——
+    古典优化界 1994 年（Choi &amp; Chang，design velocity field）就开始了，
+    2017 年已经用在涡轮上（Verstraete et al., ASME GT2017-65005）。
+  </p>
+  <p>
+    <strong>所以第二轮换了方法：</strong>不再自己猜空白，而是收集<strong>别人写在论文里的开放问题</strong>
+    （可引用的正面陈述），再逐条核验是否已被解决。
+    「有人做过」是好验证的；「没人做过」极难验证——<strong>本表只接受"为什么它necessarily是空的"，不接受"我没搜到"。</strong>
+  </p>
+  <p>
+    <strong>环境限制（影响所有"未找到"结论）：</strong>
+    WebFetch 全域阻断；<code>export.arxiv.org</code> API 不可达；GitHub 不可达；
+    Elsevier / Springer / MDPI 多数 403。可用通道为 <code>curl arxiv.org/abs/ID</code>、<code>/html/ID</code>、Crossref API。
+    <strong>标注 [二手] 的引文必须自己核对原文。</strong>
+  </p>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<section>
+  <h2><span class="idx">§1</span>候选创新点 × 对抗性核验</h2>
+  <p class="h2sub">每个候选都由专门的核验员去<strong>找能推翻它的工作</strong>，而不是确认它。找反证是成功，不是失败。</p>
+
+  <div class="tablewrap">
+    <table>
+      <caption>判定含义：<span class="v-open">存活</span> = 未找到反证且有结构性论证；<span class="v-part">部分</span> = 有人做了一部分；<span class="v-stale">失效</span> = 论证塌了或被占据。</caption>
+      <thead>
+        <tr><th>#</th><th>候选创新点</th><th class="n">判定</th><th>最强反证 / 说明</th></tr>
+      </thead>
+      <tbody>
+        <tr class="openrow">
+          <td class="n">1</td>
+          <td><strong>跨参数化 revision 的逐绑定身份存活</strong>，作为显式被测量的量</td>
+          <td class="n v-open">最窄形式<br>存活</td>
+          <td>最近先行工作：<span class="nm">JCDE 10.1093/jcde/qwag073</span>（3 算例 × 9 迭代，100% convergence）。<br><strong>为何仍空</strong>：古典持久命名社区<strong>没有可规模化的 ground truth</strong>（失败模式组合爆炸，检索"benchmark dataset face correspondence across CAD revisions ground truth"零结果）；两个潜在消费者都不要这个指标（集成社区要流程经济性，厂商要人工分诊——公布 survival 百分比等于自曝 liability）；<strong>adjoint 路线连这个问题都提不出来</strong>（它对每个参数单独算 design velocity，正因没有持久身份）；该指标只在"大量绑定 × 大量 revision × 无人复核的自动环路"下才有意义，<strong>而这个消费者 2025–2026 才出现</strong></td>
+        </tr>
+        <tr>
+          <td class="n">2</td>
+          <td>智能体自己设计<strong>证伪实验</strong></td>
+          <td class="n v-part">部分</td>
+          <td><span class="nm">DASES 2603.29045</span> 有 Abyss Falsifier 角色，动态构造反例环境，"rejects artifacts that static validation would have accepted"；<span class="nm">REFUTE/InvBench 2502.19414</span> 专门测 LLM 能否证伪。<br><strong>残余窄缝</strong>：智能体为自己的<strong>检验器</strong>（而非被测对象）设计灵敏度对照，且由同一个 agent 而非独立角色做</td>
+        </tr>
+        <tr>
+          <td class="n">3</td>
+          <td>把梯度 / adjoint 送进 LLM 的 <strong>context</strong></td>
+          <td class="n v-part">存活<br>但弱</td>
+          <td>核验确认：<strong>无工作把物理 adjoint 场放进 LLM 上下文</strong>（逐篇 grep：SIMPr 2603.25099 "adjoint" 0 次；Embodied CAD "adjoint" 0、"gradient" 0）。<br><strong>但</strong>：<span class="nm">ShapeBench 2605.20763</span> 已把 adjoint 作独立基线与三个 LLM 优化器头对头。属"两个成熟事物的组合"，新颖性弱</td>
+        </tr>
+        <tr>
+          <td class="n">4</td>
+          <td>记忆门控：只有通过证伪判决的经验才入库</td>
+          <td class="n v-stale">失效</td>
+          <td><span class="nm">EDV 2606.24428</span> 的问题陈述逐字就是"wrong-but-self-consistent trajectories are mistakenly treated as valid"；<span class="nm">MemGuard 2608.21867</span> Verifier-Guided Admission；<strong>更根本的是 Doyle 1979 TMS / de Kleer 1986 ATMS</strong>——"撤销无证据支撑的信念"就是 TMS 的定义。<br><strong>附带批评</strong>：「unverified 永不入库」在信息上是贫瘠的——只能积累被证伪的知识，永远无法积累正向程序性知识</td>
+        </tr>
+        <tr>
+          <td class="n">5</td>
+          <td>无 accept 态的判决词汇表</td>
+          <td class="n v-stale">失效</td>
+          <td>四家已有词表<strong>全部都有 accept 态</strong>；而 <strong>attestor 的 conflict-abstention-gate</strong> 已经是不含接受状态的实现（<code>canAdmit=false</code>，文档明写 "deliberately not an admission vocabulary"）。<br><strong>最重的一击</strong>：你的论证在 V&amp;V 里是<strong>1998 年以来的教科书立场</strong>——Sandia 逐字说过「<em>A model cannot be 'validated'. One can only demonstrate that there is no evidence that positively invalidates its predictions.</em>」；ASME V&amp;V 20-2009 写"validation is not a pass/fail exercise"；de Kleer 主张应当用<strong>四值</strong>系统否则有"混淆真与有据之信"的风险</td>
+        </tr>
+        <tr>
+          <td class="n">6</td>
+          <td>智能体自己声明判据，harness 按该判据校验（契约反转）</td>
+          <td class="n v-stale">失效</td>
+          <td><strong>vacuity 检测</strong>（Beer et al., CAV'97 / <em>FMSD</em> 18(2):141–163, 2001）形式化定义了"属性通过但只是<strong>平凡通过</strong>，因此这个通过什么也没证明"，并给出自动检测算法；首次形式验证硬件设计时约 <strong>20% 公式是 vacuous pass</strong>。另有 <span class="nm">PROBE ACL 2026</span> 给它命名 "semantic triviality"、<span class="nm">Vikram 2307.04346</span> 的 property mutation、<span class="nm">Pombal 2604.06996</span> 的 self-preference bias（连程序可判定的 rubric 都有高达 50% 额外误判为 satisfied）<br><strong>⚠️ 附带批评</strong>：「34/34 自判通过、53% 正确」在统计上是<strong>conditioning on the criterion being satisfied</strong>——自选判据的通过率本就不携带关于真实正确率的信息，<strong>方向上是重言式</strong>。写法必须改成"我们测出了这个差距有多大"</td>
+        </tr>
+        <tr>
+          <td class="n">7</td>
+          <td>歧义不可判定时，升级为可审计的工程判断 artifact</td>
+          <td class="n v-stale">失效</td>
+          <td><span class="nm">StructureClaw-Bench 2607.14896</span>：50 个交互鲁棒场景，"声明歧义"是<strong>被评分且要求举证的 typed terminal state</strong>（"a negative case must also satisfy its scenario-specific clarification requirement"）；<span class="nm">ProCAD 2602.03045 (ICML 2026)</span>：text-to-CAD 的澄清后规范作为持久 artifact 传给下游，Chamfer −79.9%。<br>另有 <span class="nm">KnowNo CoRL 2023</span>（conformal 保证）、<span class="nm">Learning to Defer ICML 2020</span>（Bayes 最优性证明）、<strong>de Kleer ATMS 1986</strong>、<strong>NASA-STD-7009B / ASME V&amp;V 10/20 的 Model Uncertainty</strong>——在 CAE 里把建模假设写成可审计 artifact <strong>不是研究贡献，是合规义务</strong></td>
+        </tr>
+        <tr>
+          <td class="n">8</td>
+          <td>用测量（而非配置）发现真实循环对称扇区</td>
+          <td class="n v-stale">失效</td>
+          <td><strong>ANSYS APDL 的 <code>CYCLIC</code> 不带参数调用时自动探测 NSECTOR / ANGLE / KCN</strong>，且用户若给了参数它会先校验；COMSOL 6.4 的 <code>Sector angle</code> 默认就是 <code>Automatic</code>；SDTools <code>fe_cyclic</code>、Boussuge et al. <em>Procedia Eng.</em> 2017（从 B-Rep 自动检测精确 cyclic symmetry）。<strong>20 年以上的工具内置功能</strong></td>
+        </tr>
+        <tr>
+          <td class="n">9</td>
+          <td>在 design loop <strong>内部</strong>做 mesh 收敛门</td>
+          <td class="n v-stale">失效</td>
+          <td><span class="nm">AutoSiMP 2603.27000</span> 八项 evaluator 里五项 pass/fail gate 含 <strong>Convergence</strong> + 闭环重试；<span class="nm">AI CFD Scientist 2605.06607</span> 的 gate 明写 "before any result is accepted"；<strong>Autodesk CFD 自适应网格直接报 mesh-independence 百分比</strong>；LANL 的自动细分 + GCI；adjoint goal-oriented adaptation 结构上就是一个自动门</td>
+        </tr>
+        <tr>
+          <td class="n">10</td>
+          <td>把应力场 / 梯度与<strong>参数化特征</strong>联系起来</td>
+          <td class="n v-stale">失效</td>
+          <td><strong>古典优化界 1994 年起已做完</strong>：Choi &amp; Chang 1994（design velocity field）、Hardee et al. 1999（Pro/E 参数 → stress DSA）、Robinson et al. <em>CADAPS</em> 9(2) 2012（<code>adjoint × design velocity = ∂J/∂CAD参数</code>）、Robinson et al. <em>SMO</em> 46(3) 2012（在四种特征类型里<strong>选收益最大的</strong>）、Agarwal et al. 2019（自动向 feature tree 添加新特征）。<br><strong>最强反例</strong>：<span class="nm">Verstraete et al., ASME GT2017-65005</span>——以 max von Mises 为目标对 CAD 特征参数求伴随梯度，结论写成「extend the back plate near the radial center」，<strong>而且是涡轮</strong>。<br><strong>LLM 侧也已有人做</strong>：<span class="nm">FRAME</span>（VLM 读 FEA 云图 → 提出具名修改如 "increase fillet radius" → 更新 CSG → 重算）；商用 Synera AutoRib、Ansys RBF Morph BGM、Dassault 3DEXPERIENCE 规则驱动</td>
+        </tr>
+        <tr>
+          <td class="n">11</td>
+          <td>物理同构不变性检验</td>
+          <td class="n v-stale">论证已塌</td>
+          <td><strong>抓不到 53%</strong>：两条榫齿带半径差 70 mm（202–214 vs 281–295），扇区旋转把两条<strong>一起</strong>搬走、重编号只改名，<strong>没有任何对称或重编号能互换它们</strong>——那是语义/知识错误（D27 无叶根），不是 shortcut。<br><strong>概念错误</strong>：四类"同构变换"里<strong>单位制切换属协变（covariance）而非不变（invariance）</strong>。<br>它真正能抓的只有"判据依赖面下标/构造顺序/网格编号"——那是代码卫生问题，撑不起创新点</td>
+        </tr>
+        <tr>
+          <td class="n">12</td>
+          <td>失败分类学 + 干预映射</td>
+          <td class="n v-stale">失效</td>
+          <td><span class="nm">2509.25370</span>（5 个失败域各配恢复处理器，+24% 完成率）；<strong><span class="nm">Scale AI 2607.28802</span></strong>（41 种失败模式，按"边 + 该由谁修"分类，<strong>明确定义为 repair-assignment problem</strong>）；Butterfly Effects（EMNLP 2025）；MASFT（Berkeley）</td>
+        </tr>
+        <tr>
+          <td class="n">13</td>
+          <td>仿真结果可信度 benchmark（不只测能不能跑）</td>
+          <td class="n v-stale">失效</td>
+          <td>MooseBench（220 例、PDE 级 ground truth）；<strong>Corral</strong>（25,000+ run、8 领域，"不仅看结果还看怎么得出的"）；<strong>CAWM 2606.23175</strong>（"结果、机制保真度、认知诚实必须分开测"）；Audit-grade harness（ICML，fresh-context verifier 与执行者解耦）；PhyNiKCE</td>
+        </tr>
+        <tr>
+          <td class="n">14</td>
+          <td>跨 revision 语义保持 benchmark</td>
+          <td class="n v-stale">失效</td>
+          <td><span class="nm">HistCAD 2602.19171</span>（Edit Reachability / cPCSR / OES，170,236 条可执行序列）；<span class="nm">MUSE 2605.28579</span>（6 项二值 rubric）；<span class="nm">CIT-CAD 2609.07434</span>（Constraint Intent Tree）；<span class="nm">RealCADBench 2609.03773</span>；Parametric CAD Bench（editability gate）</td>
+        </tr>
+        <tr>
+          <td class="n">15</td>
+          <td>无 benchmark 测 attribution / memory provenance</td>
+          <td class="n v-stale">失效</td>
+          <td><span class="nm">Who&amp;When 2505.00212 (ICML 2025 Spotlight)</span>——失败归因 benchmark，标注 who + when + 解释；<span class="nm">Credit Without Ground Truth 2608.19760</span>（因果真值）；<span class="nm">ProcessBench / PRMBench</span>（83,456 步级标注）；<strong><span class="nm">e-CARE ACL 2022</span> 已有 CEQ 因果解释质量分</strong>；LongMemEval（Knowledge Updates + Abstention 为一级能力）<br><strong>结构性理由</strong>：「benchmark X 不测能力 Y」对任何 (X,Y) 都几乎必然成立——<strong>那是动机段，不是贡献段</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <span class="tag">§1 的读法</span>
+    <p>
+      <strong>15 个候选，12 个直接倒下，2 个只剩很窄的缝，1 个是弱组合式命题。</strong>
+      这不是你的系统的问题——是 2026 年这个领域正在做<strong>广度覆盖</strong>，每个能被想到的机制都在 6–12 个月内被填。
+    </p>
+  </div>
+</section>
+
+<hr class="div">
+
+<!-- ══════════════════════════════════════ -->
+<section>
+  <h2><span class="idx">§2</span>作者自述开放问题 × 是否已解决</h2>
+  <p class="h2sub">四路并行核验：CAD↔CAE 实体/绑定、迭代与记忆、评测与验证、<strong>领域侧（涡轮机械）</strong>。「你的系统」一列标出哪些你已经有答案。</p>
+
+  <h3>2.1 CAD ↔ CAE 实体 / 绑定</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>开放问题（谁声明）</th><th class="n">判定</th><th class="n">置信<br>度</th><th>核验要点</th><th class="n">你的<br>系统</th></tr></thead>
+      <tbody>
+        <tr class="openrow">
+          <td><strong>读不出载荷/约束点坐标</strong><br><span class="nm">LLM-IDA, Engineering 63:204–220</span></td>
+          <td class="n v-open">仍开放</td><td class="n">7</td>
+          <td>逐字：「the LLM-IDA <strong>cannot read the coordinates of the load and constraint points. Therefore, a manual step is required</strong>」。核验：未找到任何工作自动化了这一能力</td>
+          <td class="n v-open">✅<br>已有</td>
+        </tr>
+        <tr class="openrow">
+          <td><strong>「边界条件必须落在材料上」的形式化校验</strong><br><span class="nm">Physics-in-the-Loop §9.3</span></td>
+          <td class="n v-open">仍开放</td><td class="n">8</td>
+          <td>逐字：「<strong>Rarely it happens that the area where loads or fixed supports are applied is not filled with material.</strong>」四组检索全部为空；现存机制只有 VLM 渲染图批判（启发式）与人工检查点。<strong>核验员判为"性价比最高的可发表切入点"</strong></td>
+          <td class="n v-part">部分</td>
+        </tr>
+        <tr class="openrow">
+          <td><strong>反馈无法归因到具体拓扑实体</strong><br><span class="nm">IterCAD 2606.13368</span>（⚠️ 非 CADReasoner）</td>
+          <td class="n v-open">仍开放</td><td class="n">9</td>
+          <td>逐字：「these spatial deviations <strong>fail to localize errors or attribute them to specific 2D sketch dimensions or topological entities</strong>, frequently causing multi-turn iterations to degenerate into an <strong>unguided blind search</strong>」。IterCAD 自己的解法是程序化投影 + 显式尺寸标注，但<strong>未声称解决拓扑实体级归因</strong></td>
+          <td class="n v-open">✅<br>role key</td>
+        </tr>
+        <tr>
+          <td>spatial grounding + topology-aware entity selection<br><span class="nm">COMSOL-MCP, Neurocomputing 703:134481</span></td>
+          <td class="n v-part">部分</td><td class="n">7</td>
+          <td>候选：CADIR（Topology Selector + Geometric Signature Matching，浙大，预印本）、Pointer-CAD（CVPR 2026）、Kerf、<strong>HELM 2606.12025</strong>（真在 ANSYS/LS-PrePost 里跑 BC 的 agent）。<strong>但无人在无人干预的运行中仿真 agent 里端到端解决</strong></td>
+          <td class="n v-open">✅</td>
+        </tr>
+        <tr>
+          <td>MDO Agent 的自动化率<br><span class="nm">2511.17511</span></td>
+          <td class="n v-part">部分</td><td class="n">7</td>
+          <td><strong>⚠️ 数字引错行</strong>：70% 来自 Table 8 不是 Table 5；<strong>最关键的一行被漏掉</strong>——<strong>Named Entity Selection 只有 10% / 40% / 10%</strong>，BC 施加 50%/70%，网格与求解器 100%。原文："Agent struggled with complex geometric entities, requiring manual selection of critical regions"</td>
+          <td class="n">—</td>
+        </tr>
+        <tr>
+          <td>entity selection 仍是公开问题<br><span class="nm">Pointer-CAD CVPR 2026 §2.3</span></td>
+          <td class="n v-part">部分</td><td class="n">6</td>
+          <td>逐字：「<strong>A more robust solution for entity selection remains an open problem.</strong>」CADIR 可能是答案，但未经同行评议，且未覆盖 Pointer-CAD 自报的 non-manifold 失败</td>
+          <td class="n v-open">✅</td>
+        </tr>
+        <tr>
+          <td>跨表示的实体对应<br><span class="nm">JCDE 10.1093/jcde/qwag073</span></td>
+          <td class="n v-part">部分</td><td class="n">8</td>
+          <td>⚠️ 引语是<strong>释义不是逐字</strong>。原文实为"existing persistent-naming mechanisms address intra-CAD exchange but <strong>do not bridge this representational boundary</strong>"。其方案高度领域特定（抽水蓄能），只桥接 CAD↔mesh，<strong>不处理 agent 的实体选择</strong></td>
+          <td class="n">—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>2.2 迭代稳定性与记忆</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>开放问题（谁声明）</th><th class="n">判定</th><th class="n">置信<br>度</th><th>核验要点</th><th class="n">你的<br>系统</th></tr></thead>
+      <tbody>
+        <tr class="openrow">
+          <td><strong>不可恢复 CAD 设计的停止判据</strong><br><span class="nm">Physics-in-the-Loop §9.2</span></td>
+          <td class="n v-open">仍开放</td><td class="n">8</td>
+          <td>逐字（已独立核实）：「However, <strong>with more iterations, the results tend to become more unstable. Future work could focus on detecting stopping criteria when a CAD design becomes unrecoverable.</strong>」<br><strong>核验员判词：「无人定义、也无人检测。这是本次核查中最干净的一个仍然开放的问题。」</strong>Semantic Early-Stopping（2606.27009）全文 grep <code>unrecoverable</code> 零命中；TraceCAD 是有界恢复</td>
+          <td class="n v-part">有接口<br>QualityVector</td>
+        </tr>
+        <tr class="openrow">
+          <td><strong>在 design loop 内部做 mesh / 离散化检查</strong><br><span class="nm">IterSIMP-σ §7.3</span></td>
+          <td class="n v-open">仍开放</td><td class="n">8</td>
+          <td>逐字：「At coarse resolution, <strong>stress concentrations are partially smoothed by the mesh itself, potentially understating the difficulty of the stress constraint.</strong>」<br>关键区分：LLM 驱动的自适应细化<strong>已存在</strong>（PAMF、GReFEM），但<strong>与优化循环是串联而非在环</strong></td>
+          <td class="n v-part">有雏形<br>convergence_check</td>
+        </tr>
+        <tr class="openrow">
+          <td><strong>信用分配信号不优于随机</strong><br><span class="nm">2608.19760</span></td>
+          <td class="n v-open">仍开放</td><td class="n">8</td>
+          <td>逐字：「none of the step-level credit signals we audit -- LLM-judge scores, outcome-conditioned logprob ratios, or the policy's own confidence -- shows reliable incremental fidelity beyond its own marginal-matched shuffled control」；"fluency echo" 中位秩相关 <strong>+0.75</strong>。<br><strong>零篇工作声称在 executed-replay 因果 ground truth 上击败 shuffled control</strong>；领域的应对是<strong>绕开</strong>（Coverage, Not Targeting 宣布"targeting 是二阶的"）</td>
+          <td class="n">—</td>
+        </tr>
+        <tr>
+          <td>hotspot 定位精度<br><span class="nm">IterSIMP-σ</span></td>
+          <td class="n v-part">部分</td><td class="n">6</td>
+          <td>原报 mean normalized seed-to-hotspot distance <strong>0.221</strong>，"localization is not precise enough"。<strong>GReFEM 2607.08798</strong> 用 MLLM + <strong>Zienkiewicz–Zhu 外部物理验证</strong>，precision 0.4595 / recall 0.5930——但仍是 mesh refinement 场景，<strong>不能直接替代 0.221</strong></td>
+          <td class="n">—</td>
+        </tr>
+        <tr>
+          <td>无跨迭代记忆；无 0→1 可行性发现<br><span class="nm">Frontier-Eng 2604.12290</span></td>
+          <td class="n v-part">部分</td><td class="n">6</td>
+          <td>⚠️ <strong>"only a black-box scalar" 不准确</strong>——evaluator 返回<strong>两个</strong>信号：<code>v(x)∈{0,1}</code> 与 <code>s(x)∈ℝ</code>。⚠️ "no cross-task/cross-iteration memory" <strong>不是作者原话</strong>，是从任务定义推断。<br><strong>EngiAgent 2605.02289 (ICML 2026)</strong> 把 feasible solution rate 从 5.66% 提到 <strong>64.15%</strong></td>
+          <td class="n">—</td>
+        </tr>
+        <tr>
+          <td>记忆固化让 agent 变差<br><span class="nm">2605.12978</span></td>
+          <td class="n v-part">部分</td><td class="n">7</td>
+          <td>逐字：「an agent becomes worse on <strong>the very problems its memory was built from</strong>」；Table 5 最硬：raw trajectories <strong>76.6</strong> vs default consolidation <strong>43.2</strong>（低于无记忆基线）。<br>缓解：TrustMem（三类失效各降 40.1%/79.1%/50.0%）、2607.01988、MemGuard。<strong>根因未解</strong>——现有方案全是架构层绕行</td>
+          <td class="n">—</td>
+        </tr>
+        <tr class="fakerow">
+          <td>无 store 区分验证过的教训与侥幸的<br><span class="nm">2608.05179 §13.1</span></td>
+          <td class="n v-stale">引语已过时</td><td class="n">7</td>
+          <td>逐字属实，但已被超越：<strong>Library Drift</strong>（per-skill contribution + attribution verdict + Hoeffding 界）、<strong>The Blind Curator 2607.07436</strong>（false-pass rate <strong>0.45</strong> 阈值，超过后不可恢复）。<br><strong>⚠️ 且该 survey 从未引用这几篇</strong>——是 corpus 覆盖缺口<br><strong>仍开放的第二句</strong>：「no procedure that <strong>re-validates each entry against the regime in which it is being reused</strong>」</td>
+          <td class="n">—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>2.3 评测与验证</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>开放问题（谁声明）</th><th class="n">判定</th><th class="n">置信<br>度</th><th>核验要点</th></tr></thead>
+      <tbody>
+        <tr class="fakerow">
+          <td><strong>ACM CSUR「四项 unanswered」</strong></td>
+          <td class="n v-fake">伪造</td><td class="n">9</td>
+          <td>论文真（DOI 10.1145/3787499，arXiv 2505.08137），但<strong>四项全文零命中</strong>（<code>legacy</code> 0、<code>structural integrity</code> 0、<code>proprietary</code> 0、<code>long-term reliability</code> 0）。真实 §8.5 是 Multimodal Alignment / Evaluation Inconsistency / Data Quality</td>
+        </tr>
+        <tr class="openrow">
+          <td><strong>无真实零件上的自主 CAD–FEA 闭环 + 独立验证</strong><br><span class="nm">Zeman et al. AEI 75:104807</span></td>
+          <td class="n v-open">仍开放<br>（收窄版）</td><td class="n">8</td>
+          <td><strong>⚠️ 有一个反例</strong>：<span class="nm">arXiv:2608.21976</span>（浙大海洋 + 金风科技 + <strong>中国船级社</strong>）在 <strong>20 MW 漂浮式海上风电基础</strong>上跑完整自主闭环（FreeCAD → BESO + CalculiX → PSO + Zwind，BESO 拓扑优化 → 内部 Automated Reviewer 打分门），提交 <strong>CCS Approval in Principle 通过</strong>，钢材与造价各降 8.1%。<br><strong>但边界清楚</strong>：仍是预印本；认证是 <strong>AIP 概念级</strong>，自陈"Detailed design and construction remain entirely human responsibilities"；制造约束只是 "prompt-approximated rather than CAD-CAM exact"<br><strong>收窄后的正确措辞</strong>：「真实零件上的自主闭环<strong>仅有一例</strong>，且停留在概念设计级（AIP）、以预印本发表；<strong>面向详细设计与制造的自主闭环为零</strong>。物理/实验验证为零」</td>
+        </tr>
+        <tr>
+          <td>「评价是本领域主要缺口」<br><span class="nm">2609.03718 正文</span></td>
+          <td class="n v-part">部分</td><td class="n">7</td>
+          <td>逐字属实（正文出现三次，<strong>不在摘要</strong>），且带数字：「we observe gaps of <strong>roughly 20 points</strong> between execution-based and field-level scoring on FoamBench」。<br><strong>但该文全文零引用</strong> MooseBench / SimulCost / StructureClaw / Intent Fidelity——是信息不全下的过度概括。<strong>未过时的只剩后半句</strong>：标准化、工业复杂度、能真正区分 agent 的 benchmark 仍缺（terminal-bench-science #763 自陈无 reference solution / tolerance / 判据）</td>
+        </tr>
+        <tr>
+          <td>无 L4 系统具备外部验证的 in-loop oracle<br><span class="nm">2608.05179</span></td>
+          <td class="n v-part">限其 scope<br>转述过宽</td><td class="n">7</td>
+          <td><strong>原文有强 scope 限定</strong>："in the corpus"、"under our coding rule"；corpus 明确<strong>排除物理与工程域</strong>（90 篇排除项以 "physics and astronomy" 为主）。<br>且它<strong>自相矛盾</strong>：§9.2 引用了 Physics-in-the-Loop 并称"最可信的系统正是那些把验证交给确定性仿真器、内核或物理工具的"，却因 coding rule 要求"<strong>科学假设</strong>的修订"（而 FEA 驱动的是<strong>设计</strong>修订）把这些系统排除在 L4 判定外</td>
+        </tr>
+        <tr>
+          <td>AbstentionBench 的"最难题"与 24%<br><span class="nm">2506.09038</span></td>
+          <td class="n v-part">部分</td><td class="n">8</td>
+          <td>6 类 ✓、24% ✓（<strong>仅 2 个模型对</strong>，且是<strong>绝对跌幅 pp</strong>）。<strong>「UC/UI 最难」不成立</strong>——论文从未做此排序，唯一的 per-scenario 表显示最低的是 False premise (0.53)，且 §D.3 明确 UC 比 UI 更难。<br><strong>工程域已部分解决</strong>：ProCAD 2602.03045 (ICML 2026) 的 proactive clarifying agent。<strong>仍开放</strong>：工程域<strong>没有 abstention benchmark</strong></td>
+        </tr>
+        <tr class="fakerow">
+          <td>design-intent 缺操作性定义<br><span class="nm">2609.05559 §6</span></td>
+          <td class="n v-stale">已过时</td><td class="n">8</td>
+          <td>逐字属实，但已被超越：HistCAD 2602.19171、MUSE 2605.28579、CIT-CAD 2609.07434、RealCADBench 2609.03773 <strong>都早于它</strong>。<br><strong>⚠️ 我点名的三个"解决者"全是误归属</strong>：ProEvolve（电商）、SLUMP（ML 代码）、JSS（UML↔SQL）——<strong>没有一个是 CAD</strong></td>
+        </tr>
+        <tr>
+          <td>84.5% research-stage / 0.8% operational<br><span class="nm">MDPI Electronics 15(15):3485</span></td>
+          <td class="n v-part">部分</td><td class="n">8</td>
+          <td>数字属实，但<strong>限定语 "in their abstracts" 被丢掉</strong>；作者自陈未做全文系统提取、<strong>未算 inter-rater 一致性</strong>。同文另有 <strong>12.3%</strong> "industrial case or operational context"，引用时必须区分。<br>⚠️ 「even Chamfer Distance maps poorly」<strong>误归属</strong>（该文全文 <code>chamfer</code> 0 命中）——但该科学判断本身有 SHREC 2026 / IEEE TPAMI 2026 支撑</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>2.4 领域侧（涡轮机械）—— <span style="color:var(--accent)">本轮最有价值的一路</span></h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>开放问题</th><th class="n">判定</th><th>核验要点与引语</th></tr></thead>
+      <tbody>
+        <tr class="openrow">
+          <td><strong>载荷施加方式对盘应力场的影响半径</strong><br><span class="nm">AIAA 1975-1312 / J. Aircraft 13(12), 1976</span></td>
+          <td class="n v-open">仍开放<br><strong>50 年</strong></td>
+          <td>逐字 [二手]：「Some areas of <strong>negative load</strong> appear in results because of the nature of the boundary conditions at the contact surface. This anomaly <strong>can be avoided only with the development of more advanced boundary condition techniques</strong>.」<br><strong>核验员专门搜索"峰值位置是否随载荷施加方式改变"——没有找到任何一篇正面研究。</strong>找到的全是间接证据：2D 与 3D 给出不同峰值位置；约束点位置直接产生假峰值；摩擦改变<strong>幅值</strong>但不改变<strong>位置</strong>。<br><strong>性质判定：research void，不是公认 open problem</strong>——领域把它当"可接受的近似"用大安全系数吸收。<br>核验员原话：「这是一个<strong>被承认但被回避</strong>的 gap……<strong>你不需要推翻任何共识就能占据一个无人占领的位置。</strong>」<br>支撑：多齿 fir-tree peak/mean 接触压力比 <strong>3.6–5.7</strong>；NAFEMS「<strong>38% 项目时间花在预处理</strong>」[二手]</td>
+        </tr>
+        <tr class="openrow">
+          <td>扇区数 / 循环对称选择的自动化判据</td>
+          <td class="n v-open">solved-but-<br>manualized</td>
+          <td>TU Darmstadt 博士论文一手引文：「In order to <strong>exclude the influence of cyclic symmetric of the model to the results</strong>, a second FE model comprising a turbine disk sector with <strong>two blades</strong> has been utilised for verification... Consequently, the single sector turbine disk model has been considered adequate.」<br><strong>即领域当前实践是手工逐案跑两扇区比对——没有解析判据、没有收敛性保证。</strong><br>⚠️ <strong>务必限定在静强度/LCF/creep，不要碰 mistuning / forced response</strong>（Michigan、Duke、Imperial 饱和）</td>
+        </tr>
+        <tr>
+          <td>哪个位置控制寿命</td>
+          <td class="n v-part">场景依赖<br>未系统化</td>
+          <td>Darmstadt：两个危险点（隔板 rim peel <strong>双轴</strong> / 内孔 hoop burst <strong>单轴</strong>）。Aerospace 2025 [二手] 给出<strong>相反排序</strong>（榫槽根部起裂概率高于内孔；榫槽根部 creep 占损伤 &gt;50%，内孔几乎全疲劳）。<br><strong>「到底哪个位置控制寿命，在文献里从没有被统一成一个判据」</strong></td>
+        </tr>
+        <tr>
+          <td>多齿 fir-tree 载荷分配<br><span class="nm">Int. J. Fatigue 2026 [二手]</span></td>
+          <td class="n v-part">仍开放<br>需实验</td>
+          <td>「Most existing fretting fatigue life models are based on <strong>single-tooth structures</strong> and fail to account for <strong>stiffness coupling between adjacent teeth</strong>」——摩擦引起的载荷重分配、槽弯曲、TCD 未统一。<br><strong>⚠️ 需 fretting 试验验证，不建议碰</strong></td>
+        </tr>
+        <tr>
+          <td>局部应力的 solution verification 理论不完备</td>
+          <td class="n v-open">理论层<br>仍开放</td>
+          <td>Prepp [二手]：「Global error measures, such as Zienkiewicz–Zhu-type measures, <strong>cannot directly estimate error in local stresses accurately</strong>」——奇异构型下<strong>局部应力可以发散而全局误差仍收敛</strong>；「含应力奇异性的构型中，有限元给出的无限应力估计<strong>必须被拒绝</strong>」。案例：265 个 FE 应力、32 个奇异点，<strong>全部被拒绝</strong>。<br>并提出 <strong>divergence check 是 ASME convergence check 的"自然对偶"</strong></td>
+        </tr>
+        <tr>
+          <td>工业界自述的自动化障碍</td>
+          <td class="n v-part">有官方声明</td>
+          <td>NAFEMS CAASE21（<strong>Rolls-Royce</strong>）：「Challenges still remain for a widespread application of simulation-driven design, <strong>especially in regulated industries</strong>」；NWC19：「best practice and <strong>development needs for tools, methods and processes</strong>... key business requirements and current <strong>shortfalls</strong>」。<br>GPPS editorial：「Technology development remains strongly influenced (as well as limited) by the <strong>quality and capability of the conventional design methods and tools</strong>」<br>⚠️ <strong>但「分析设置是瓶颈、不是求解器」这句话没有领域源的原文出处</strong>——不要声称"领域一致认为"</td>
+        </tr>
+        <tr>
+          <td>cold dwell fatigue 方法未建立</td>
+          <td class="n v-part">官方承认<br>需实验</td>
+          <td>FAA DOT/FAA/TC-24/15（2024）[二手]：「<strong>well-established methods had not been developed</strong> to incorporate this failure mode into component life and fracture risk management」。<strong>⚠️ 需大量实验（MTR 表征、FCG 试验），不建议碰</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<hr class="div">
+
+<!-- ══════════════════════════════════════ -->
+<section>
+  <h2><span class="idx">§3</span>伪造与误归属清单</h2>
+  <p class="h2sub">这些是核验员抓到的、流传在检索摘要里的错误。其中几条我曾在文档或消息里用过。</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>项</th><th>真相</th><th class="n">我<br>用过?</th></tr></thead>
+      <tbody>
+        <tr class="fakerow"><td><strong>ACM CSUR「四项 unanswered」</strong></td><td><strong>伪造</strong>。论文真、清单假，四项全文零命中</td><td class="n">未进<br>文档</td></tr>
+        <tr class="fakerow"><td><strong>CADReasoner 的"退化为盲搜"</strong></td><td><strong>归属错误</strong>——逐字出自 <strong>IterCAD</strong>（2606.13368），且那句话正是在<strong>批评</strong> CADReasoner（其参考文献 [11] 就是它）。机制：scite.ai 在引用方页面展示被引论文的句子</td><td class="n v-fake">是</td></tr>
+        <tr class="fakerow"><td><strong>"Hephaestus-CCX"</strong> 这个名字</td><td>arXiv 2605.17448 摘要页 grep <code>hephaestus</code> <strong>0 命中</strong>。真实标题是 <em>Self-Improving CAD Generation Agents with Finite Element Analysis as Feedback</em></td><td class="n v-fake">是</td></tr>
+        <tr class="fakerow"><td><strong>ProEvolve</strong> 作为 CAD intent 定义</td><td>2603.05910 是<strong>电商/机票预订</strong>的 tool-calling 基准</td><td class="n v-fake">是</td></tr>
+        <tr class="fakerow"><td><strong>SLUMP</strong> 作为 CAD intent 定义</td><td>2603.17104 是<strong>长时程 coding agent 在 ML 论文上</strong>的 faithfulness</td><td class="n v-fake">是</td></tr>
+        <tr class="fakerow"><td><strong>JSS change-aware round-trip</strong></td><td>真实存在，但是 <strong>UML/Ecore ↔ SQL/XMI</strong> 的软件模型共演化</td><td class="n v-fake">是</td></tr>
+        <tr class="fakerow"><td><strong>CAWM (2606.23175)</strong> 作为 CAE benchmark</td><td>实为<strong>粒子物理</strong>（Cherenkov / μ 子）的 AI-scientist 立场文</td><td class="n v-fake">是</td></tr>
+        <tr class="fakerow"><td><strong>Corral</strong> 作为 CAE benchmark</td><td>HIPOLE Jena / IIT Delhi 的<strong>化学/材料</strong>过程评价基准，无 CAD/CAE</td><td class="n v-fake">是</td></tr>
+        <tr class="fakerow"><td><strong>专利 US2019/0073438</strong>「高应力则加厚 rib」</td><td>Justia 摘要明确说该专利<strong>不含 "high stress" 字样</strong>。很可能是检索摘要的幻觉</td><td class="n">否</td></tr>
+        <tr class="fakerow"><td><strong>SAFESEAL 的 arXiv ID</strong></td><td>被标为 2605.25002，实测那个 ID 是 <em>MemMark</em>；SAFESEAL 实为 <strong>2605.23175</strong></td><td class="n">否</td></tr>
+        <tr class="fakerow"><td><strong>"Epistemic Closure Score 98–100%"</strong></td><td>检索 <code>"Epistemic Closure Score"</code> <strong>零结果</strong>，无法溯源</td><td class="n v-fake">是</td></tr>
+        <tr class="fakerow"><td><strong>Embodied CAD 是 "solver-grounded"</strong></td><td>它用的是 <strong>CAD 几何内核（FreeCAD）</strong>，无载荷、无应力、无 FEM。GRPO 奖励是 <code>R_format + R_policy + R_exec</code>（几何执行奖励）</td><td class="n v-fake">是</td></tr>
+        <tr class="fakerow"><td>某摘要把 <strong>2608.16554</strong> 说成 "InsufficiencyBench——法律基准"</td><td>实为 <em>Ask, Condition or Abstain: RL for Missing-Premise Reasoning</em></td><td class="n">否</td></tr>
+        <tr class="fakerow"><td><strong>Frontier-Eng "only a black-box scalar"</strong></td><td>不准确——evaluator 返回<strong>两个</strong>信号：<code>v(x)∈{0,1}</code> 与 <code>s(x)∈ℝ</code></td><td class="n v-fake">是</td></tr>
+        <tr class="fakerow"><td><strong>MDO Agent「Table 5: BC 50%/70%」</strong></td><td>70% 来自 <strong>Table 8</strong>；且<strong>漏掉了最关键的一行</strong>——Named Entity Selection 只有 <strong>10%/40%/10%</strong></td><td class="n v-fake">是</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<hr class="div">
+
+<!-- ══════════════════════════════════════ -->
+<section>
+  <h2><span class="idx">§4</span>推荐定位</h2>
+
+  <div class="verdict">
+    <h3>方向：领域优先（AIAA J / ASME J. Turbomachinery / 航空动力学报），不是 AI 方法期刊</h3>
+    <p>
+      <strong>理由</strong>：§1 的 15 个机制候选里 12 个已被占位——AI 方法层面已无位置。
+      但领域侧（§2.4）有一条 <strong>50 年的悬案</strong>，而你的系统恰好是能做这个实验的工具。
+      <strong>「agent 生成的 FEA deck 会因载荷施加方式把控制点搬移 70 mm」在涡轮机械期刊里是力学结论；在那里，「我们做了一个验证层」只是手段。</strong>
+    </p>
+  </div>
+
+  <h3>三条贡献，按推荐度</h3>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th class="n">序</th><th>贡献</th><th>领域锚点</th><th class="n">风险/<br>收益</th><th class="n">你的<br>现状</th></tr></thead>
+      <tbody>
+        <tr class="openrow">
+          <td class="n">①</td>
+          <td><strong>载荷施加方式对涡轮盘应力场的影响半径</strong><br>
+            <span class="nm">Saint-Venant 影响半径量化 + 发散检查</span></td>
+          <td>AIAA 1975-1312 的 50 年悬案 + fir-tree peak/mean 3.6–5.7 + NAFEMS 38% 预处理</td>
+          <td class="n">低 /<br>高</td>
+          <td class="n v-open">✅ D27<br>A/B/C 已有</td>
+        </tr>
+        <tr>
+          <td class="n">②</td>
+          <td><strong>真实零件 + 独立验证</strong><br>
+            <span class="nm">（收窄版 motivation，见 §2.3）</span></td>
+          <td>Zeman 综述 + 唯一反例 2608.21976 停留在 AIP 概念级</td>
+          <td class="n">低 /<br>高</td>
+          <td class="n v-open">✅ 真盘<br>+ 真 ANSYS</td>
+        </tr>
+        <tr>
+          <td class="n">③</td>
+          <td><strong>在 design loop 内部做离散化 / 伪影门</strong></td>
+          <td>IterSIMP-σ §7.3 + Prepp 的 divergence check 理论</td>
+          <td class="n">低-中 /<br>中</td>
+          <td class="n v-part">△ 有雏形<br>convergence_check</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout warn">
+    <span class="tag">明确不要碰</span>
+    <p>
+      <strong>mistuning / forced response / 颤振</strong>（Michigan、Duke、Imperial 饱和）；
+      <strong>cold dwell fatigue 的物理机理</strong>（需大量实验：MTR 表征、FCG 试验）；
+      <strong>fir-tree 多齿接触寿命模型</strong>（需 fretting 试验验证）。
+    </p>
+  </div>
+
+  <div class="callout acc">
+    <span class="tag">下一步建议</span>
+    <p>
+      把 <strong>①</strong> 从你已有的 A/B/C 三点扩展成完整矩阵：在同一参数化盘上，
+      叶根载荷分别以 <strong>均布压力 / 等效节点力 / 剪切面 traction / 多齿接触（含与不含摩擦）/ 刚性叶片质量偏心</strong>施加，
+      输出 (i) 峰值 von Mises 的<strong>位置坐标</strong>、(ii) 幅值、(iii) bore/diaphragm 处的远场应力；
+      配合网格加密与<strong>发散检查</strong>，量化影响半径。
+    </p>
+    <p>
+      可证伪的命题形式：<em>「载荷施加方式的影响半径是 ___ mm；超出该半径后所有施加方式收敛到同一解」</em>。
+      并把结果与文献里 fir-tree 的 3.6–5.7 接触压力比对照，说明"均布压力假设在轮缘处的代价有多大"。
+    </p>
+  </div>
+</section>
+
+<hr class="div">
+
+<!-- ══════════════════════════════════════ -->
+<section>
+  <h2><span class="idx">§5</span>引用纪律</h2>
+  <p class="h2sub">这些是两轮调研用真实代价换来的。每条都对应 §3 里的一个具体事故。</p>
+
+  <ol>
+    <li>
+      <strong>否定性主张不能用检索摘要支撑。</strong>
+      「没人做过 X」需要系统性全库检索，而本环境恰好被阻断。
+      <strong>只接受"为什么它necessarily是空的"</strong>——例如"没有可规模化的 ground truth，所以没有总体统计量"。
+    </li>
+    <li>
+      <strong>"某综述说没人做 X"不能直接信。</strong>
+      2608.05179 有 corpus 覆盖缺口（从未引用 EDV / MemGuard / Library Drift）；
+      CSUR 那四项是伪造。<strong>要去看那篇综述的语料是什么、筛选标准是什么。</strong>
+    </li>
+    <li>
+      <strong>「benchmark X 不测能力 Y」是动机段，不是贡献段。</strong>
+      这类命题对任何 (X, Y) 都几乎必然成立，不可能在别人的评测套件里穷尽你新想出的能力。
+      <strong>把它写成 novelty claim，等于把论文的动机段当成贡献段。</strong>
+    </li>
+    <li>
+      <strong>去原文核对，不看二级来源。</strong>
+      可用通道：<code>curl arxiv.org/abs/ID</code>（取 <code>citation_title</code>/<code>citation_abstract</code> 元标签）、
+      <code>curl arxiv.org/html/ID</code>（全文 grep）、Crossref API。
+      <strong>scite.ai 这类"引用语句"页面会把引用方的句子显示在被引论文页面上，是误归属的高发源。</strong>
+    </li>
+    <li>
+      <strong>标记证据强度。</strong>
+      本表用 [二手] 标注检索索引来源。<strong>MDPI / ScienceDirect / Springer 的全文多数取不到，凡引其数字必须自己核。</strong>
+    </li>
+    <li>
+      <strong>注意自我矛盾。</strong>
+      2608.05179 在同一篇里既把 Physics-in-the-Loop 列为"最可信的系统之一"，
+      又因 coding rule 把它排除在 L4 判定之外。
+      <strong>读到这种矛盾时，是规则有问题，不是事实有问题。</strong>
+    </li>
+  </ol>
+
+  <div class="callout ok">
+    <span class="tag">一句话总结</span>
+    <p>
+      <strong>机制层面已经没有位置了；领域层面有一条 50 年的悬案，而你的系统是能做那个实验的工具。</strong>
+      论文应该是「载荷施加方式对涡轮盘应力场的影响半径」，agent 是手段，力学结论是贡献。
+    </p>
+  </div>
+</section>
+
+<hr class="div">
+
+<!-- ══════════════════════════════════════ -->
+<section>
+  <h2><span class="idx">§6</span>投稿 CJA 的门槛调研</h2>
+  <p class="h2sub">Chinese Journal of Aeronautics（Elsevier / CSAA + 北航）。投递前请以 ScienceDirect 的 Guide for Authors 复核——本文的官方依据来自期刊中文官网 <span class="mono">hkxb.buaa.edu.cn</span> 的《航空学报》/CJA 投稿须知（同一编辑部，须知覆盖两刊）。</p>
+
+  <h3>6.1 基本盘</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>项</th><th>值</th><th>备注</th></tr></thead>
+      <tbody>
+        <tr><td>Impact Factor / CiteScore</td><td class="num"><strong>6.9</strong> / <strong>12.1</strong></td><td>2025；上年 IF 5.7</td></tr>
+        <tr><td>分区</td><td>JCR Q1 Aerospace（<strong>5/59</strong>）；Scopus <strong>6/157</strong>；<strong>中科院 1 区 Top</strong></td><td>不在预警名单</td></tr>
+        <tr><td>栏目</td><td>四栏：流体力学与飞行力学 / <strong>固体力学与飞行器总体设计</strong> / 电子电气与控制 / 材料与机械制造</td><td>涡轮盘结构完整性落第二栏，<strong>明确在范围内</strong></td></tr>
+        <tr><td>文章类型</td><td>full-length article / review</td><td><strong>无真正的 short communication 通道</strong>，按 full paper 写</td></tr>
+        <tr><td>篇幅</td><td><strong>15–25 页</strong></td><td>⚠️ 网传"5000 字 / 8 幅图表"是<strong>医学期刊模板误植</strong>（指南里出现"病例报告"），不要采信</td></tr>
+        <tr><td>审稿</td><td>四审制：编辑初审 → ≥2 位外审 → 编委会主审 → 主编终审；双盲</td><td>官方称约 3 个月，用户上报均值约 5 个月</td></tr>
+        <tr><td>OA</td><td>Gold OA，APC ~2000 USD</td><td>单一二手来源</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>6.2 门槛的真实位置</h3>
+  <div class="callout acc">
+    <p>
+      <strong>不在"有没有实验"，在"你的贡献是方法还是物理事实"。</strong>
+    </p>
+  </div>
+
+  <p>
+    官方投稿须知的审稿要求列了九条（①立题的科学/工程意义 ②对科研进展的了解和引用 ③方法或其应用的创新性
+    ④方法和论证的科学性 ⑤结论/结果的合理可信 ⑥工程应用的前景与效益 ⑦航空航天特色 ⑧信息量 ⑨写作质量），
+    <strong>没有任何一条要求实验验证</strong>。对 CJA 2023 年以来结构类论文的分层抽样显示
+    <strong>约一半是纯仿真</strong>。纯仿真先例（可援引）：
+  </p>
+
+  <div class="tablewrap">
+    <table>
+      <caption>均为纯仿真、无实验的 CJA 涡轮盘/发动机结构论文——这是"方法类贡献不需要实验"的直接证据。</caption>
+      <thead><tr><th>论文</th><th class="n">年</th><th>验证方式</th></tr></thead>
+      <tbody>
+        <tr><td><em>Topology optimization of turbine disk considering maximum stress prediction and constraints</em></td><td class="n">2023</td><td>纯 FEM，与光滑边界解析结构对比 · <span class="nm">10.1016/j.cja.2023.03.019</span></td></tr>
+        <tr><td><em>Damping analysis method for cyclic structure with shroud and blade/disk interfaces</em></td><td class="n">2026</td><td><strong>纯仿真</strong>，cyclic BC + Craig-Bampton ROM · <span class="nm">10.1016/j.cja.2026.104133</span></td></tr>
+        <tr><td><em>Reduced-order modeling of thermal and centrifugal mechanism for turbine tip clearance</em></td><td class="n">2026</td><td>纯仿真，高保真耦合 + 降阶模型互验；自陈 "a purely theoretical method" · <span class="nm">10.1016/j.cja.2026.104319</span></td></tr>
+        <tr><td><em>Stress sensitivity analysis for a wide-chord fan blade using an adjoint method</em></td><td class="n">2024</td><td>纯仿真（adjoint）· <span class="nm">10.1016/j.cja.2024.06.033</span></td></tr>
+        <tr><td><em>Structural design and optimization for vent holes of an industrial turbine sealing disk</em></td><td class="n">2021</td><td>纯仿真 + 自研 Tcl/Tk 建模网格工具 + GA · <span class="nm">10.1016/j.cja.2020.07.010</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>贡献性质</th><th class="n">实验是否必需</th><th>验证方式</th></tr></thead>
+      <tbody>
+        <tr class="openrow"><td><strong>新方法 / 新算法</strong>（拓扑优化、降阶模型、<strong>agent 流水线</strong>）</td><td class="n">不必需</td><td>自洽性 + 交叉代码/高保真对比 + 解析解 + 文献 benchmark + <strong>网格无关性</strong></td></tr>
+        <tr class="fakerow"><td><strong>关于具体硬件的物理结论</strong>（"该盘应力场是 X"、"失效在 Y"）</td><td class="n v-fake">事实上必需</td><td>否则第⑤条"结论/结果的合理可信"过不去</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout warn">
+    <span class="tag">一条必须严肃对待的编辑表态</span>
+    <p>
+      《航空学报》副主编、编辑部主任<strong>蔡斐</strong>在清华学术沙龙的讲座中，把
+      「<strong>模拟结果缺乏实验验证</strong>」列为被退稿文章的特点之一。
+    </p>
+    <p>
+      <strong>三点限定</strong>：这是《航空学报》<em>中文版</em>编辑的经验总结（约 2018 年前后），非 CJA 英文版的书面政策；
+      说的是"退稿文章的特点"，不是"必要条件的否决项"；且与"约一半结构论文纯仿真"的实测并存。
+      <strong>但风险是真实的——如果你的贡献读起来像物理断言，这条会直接命中。</strong>
+    </p>
+  </div>
+
+  <div class="callout warn">
+    <span class="tag">CJA 明文不喜欢的写法</span>
+    <p>
+      Elsevier Guide 原文：「Teaching material, <strong>working accounts</strong>, or technical accounts are
+      <strong>not preferred</strong>」。
+    </p>
+    <p>
+      <strong>「我们把三种载荷施加方式算了同一个盘，结果不同」——这正是 working account。</strong>
+      这条对 §4 的贡献①是致命的，必须改写。
+    </p>
+  </div>
+
+  <h3>6.3 先例：CFD-copilot</h3>
+  <blockquote>
+    <p>
+      DONG Zhehao, DU Shanghai, LU Zhen, YANG Yue.
+      <em>CFD-copilot: Leveraging domain-adapted large language model and model context protocol
+      to enhance simulation automation.</em>
+      <strong>Chinese Journal of Aeronautics, 2026, 39, Article 104321.</strong>
+    </p>
+    <cite>DOI 10.1016/j.cja.2026.104321 · 北京大学湍流与复杂系统国家重点实验室 · arXiv:2512.07917</cite>
+  </blockquote>
+
+  <p>
+    Qwen3-8B + LoRA（NL2FOAM，49,205 对）+ MCP 封装 100+ 工具函数 + 四 agent 自纠环，
+    在 <strong>NACA 0012 / 30P-30N 三段高升力 / Ahmed body</strong> 上验证。
+    <strong>注意标题的写法：贡献定位成航空航天工程的<em>工作流改进</em>，不是 AI 方法。</strong>
+  </p>
+
+  <p>CJA 其他 AI 论文（均已核实 DOI）表明它接受三种框架：</p>
+  <ol>
+    <li><strong>AI 方法为主 + 航空工程 benchmark 做锚点</strong>（CFD-copilot 模式）← 推荐</li>
+    <li><strong>航空设计结果为主 + AI 为工具</strong>（Tong Yao 2025 生成式飞机概念设计，CJA 38(10)，关键词首列是 "Aircraft conceptual design"）</li>
+    <li>Vision / Perspective（Zhang Weiwei 2025）— <strong>不适合</strong>，需要资历</li>
+  </ol>
+
+  <div class="callout acc">
+    <span class="tag">一个对你有利的巧合</span>
+    <p>
+      CJA 的 *AI for Fluids Research and Aircraft Design* 专刊序言点名的挑战是：
+      「robustness, interpretability, and confidence beyond benchmark accuracy...
+      <strong>quantifying applicability domains</strong>」——<strong>这正是你的验证层在做的事。</strong>
+    </p>
+  </div>
+
+  <h3>6.4 两个真实空白（在 CJA 全刊检索命中 0 篇）</h3>
+  <ul>
+    <li><strong>「载荷施加方式 / 边界条件对盘内应力场的影响」</strong>——CJA 0 篇</li>
+    <li><strong>「agent 驱动的 CAD–FEA / 结构自动化」</strong>——CJA 0 篇（CFD-copilot 只覆盖 CFD 侧）</li>
+  </ul>
+
+  <h3>6.5 最大障碍：一篇 2026 年的 CJA 论文</h3>
+  <div class="callout warn">
+    <p>
+      <strong><em>Damping analysis method for cyclic structure with shroud and blade/disk interfaces</em></strong>
+      （CJA 2026, 39:104133, <span class="nm">10.1016/j.cja.2026.104133</span>）——它已经用
+      <strong>cyclic symmetry + Craig-Bampton ROM</strong> 做了盘-叶界面。
+    </p>
+    <p>
+      <strong>如果你的流水线只是"把这个流程自动化了"，第③条创新性和第⑧条信息量都会失分。</strong>
+      必须在自动化的<strong>可靠性 / 可验证性</strong>上做出它没做的东西。
+    </p>
+  </div>
+
+  <h3>6.6 期刊比较</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>期刊</th><th class="n">SCI / IF</th><th>结构强度定位</th><th class="n">适配</th></tr></thead>
+      <tbody>
+        <tr class="openrow"><td><strong>Chinese Journal of Aeronautics</strong></td><td class="n"><strong>IF 6.9</strong><br>Q1, 1区Top</td><td>固体力学与飞行器总体设计</td><td class="n">最高<br>（但门槛高）</td></tr>
+        <tr><td>《航空学报》Acta Aeronautica et Astronautica Sinica</td><td class="n">EI，无 SCI</td><td>与 CJA 同一编辑部、同一批审稿人</td><td class="n">高</td></tr>
+        <tr class="openrow"><td><strong>《航空动力学报》</strong>J. Aerospace Power</td><td class="n">EI，无 SCI</td><td><strong>明确含「结构、强度、振动」</strong></td><td class="n">最匹配<br>贡献①</td></tr>
+        <tr><td><strong>《推进技术》</strong>J. Propulsion Technology</td><td class="n">EI，无 SCI</td><td>发动机结构 / 强度</td><td class="n">匹配①</td></tr>
+        <tr><td>Aerospace Science and Technology</td><td class="n">IF 6.4, Q1</td><td>面广，接受纯仿真比例更高，审稿更快</td><td class="n">中</td></tr>
+        <tr><td>ASME J. Turbomachinery / AIAA Journal</td><td class="n">IF ~2.0 / ~2.1</td><td>叶轮机械<strong>气动/传热</strong>为主；AIAA J 结构设计类基本不收</td><td class="n">低</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>6.7 推荐策略：拆两篇</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th class="n">贡献</th><th>首选</th><th>理由</th></tr></thead>
+      <tbody>
+        <tr class="openrow">
+          <td class="n"><strong>(b)</strong><br>agent 驱动的<br>CAD–FEA 流水线<br>+ 验证层</td>
+          <td><strong>CJA 常规投稿</strong></td>
+          <td>先例明确（CFD-copilot）；CJA 无 agent+FEA 论文（空白位）；航空发动机是 CJA 的核心身份（第⑦条）；
+              验证层恰好回应 CJA 自己点名的 "quantifying applicability domains"<br>
+              <strong>写法</strong>：严格复制 CFD-copilot 结构——讲架构 → 核心指标是自动化成功率 / 自纠收敛率 / 可复现性 / 对比人工建模的偏差 → 算例用真实涡轮流盘</td>
+        </tr>
+        <tr>
+          <td class="n"><strong>(a)</strong><br>载荷施加方式<br>对盘应力场的影响</td>
+          <td><strong>《航空动力学报》</strong><br>或《推进技术》</td>
+          <td>典型的"工程做法对比 + 定量误差评估"；两刊明确收结构强度；<strong>无 SCI 压力意味着不会被"必须实验"卡</strong>；
+              且不会被 CJA 那批做盘结构优化的人认为在抢地盘</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>6.8 若坚持用一篇撑 CJA：单一最优解</h3>
+  <div class="verdict">
+    <p>
+      <strong>把 (a) 的发现作为"验证层有效"的证据，而不是作为独立的物理断言。</strong>
+    </p>
+    <p>
+      贡献 = 「一个 agent 驱动的航空发动机盘 CAD–FEA 自动化流水线，<strong>其验证层揭示了一种常见载荷施加简化会产生伪峰值</strong>」。
+    </p>
+    <ul>
+      <li>主张是<strong>方法</strong>（流水线 + 验证层）→ 安全，符合九条标准的第③④条</li>
+      <li>伪影发现变成<strong>验证层价值的证据</strong>，而不是"我们发现了一个物理规律"→ 避开 "working accounts"</li>
+      <li>而且有<strong>真值仲裁者</strong>：常应力分片试验——节点力路径通不过（183% 误差），SFE 通过。这是<strong>验证性论证</strong>，不是"我认为真值是 X"</li>
+    </ul>
+  </div>
+
+  <div class="callout warn">
+    <span class="tag">若要让 (a) 独立上 CJA，必须先改写</span>
+    <p>
+      从「我们比较了三种载荷施加方式」改成「<strong>我们提出一种载荷施加/边界条件构造方法，并给出其误差界</strong>」。
+      且<strong>必须做</strong>：网格无关性验证 + <strong>至少两个独立来源的交叉验证</strong>（旋转圆盘解析解、或 NAFEMS/文献 benchmark）
+      + 明确讨论适用范围。
+    </p>
+  </div>
+
+  <h3>6.9 硬性要求与 desk reject 情形</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>类别</th><th>内容</th></tr></thead>
+      <tbody>
+        <tr class="fakerow">
+          <td><strong>投稿即退</strong>（官方明文）</td>
+          <td>缺投稿附件或不完整；<strong>未按要求全部作者亲笔签名</strong>；必选打勾项未填；<strong>保密审查表无保密部门盖章</strong>或盖章不清。<br>附件三份：投稿表、版权转让协议、保密审查表。<strong>缺一即退。</strong></td>
+        </tr>
+        <tr class="fakerow">
+          <td><strong>双盲违规</strong></td>
+          <td>投稿时未删除文中全部作者信息（姓名、单位、邮箱、电话、致谢、基金）→ 退回</td>
+        </tr>
+        <tr class="fakerow">
+          <td><strong>一稿多投</strong></td>
+          <td>直接退稿；一稿两发则<strong>第一作者与通信作者两年内禁投</strong></td>
+        </tr>
+        <tr>
+          <td><strong>审稿人默认预期</strong></td>
+          <td><strong>网格无关性验证必须有</strong>（结构类同理）；创新点必须在前三句说清楚——摘要写作要求原文："重点是<strong>方法创新和成果结论</strong>"</td>
+        </tr>
+        <tr>
+          <td><strong>引用策略</strong></td>
+          <td>CJA 是 CSAA 会刊，盘结构方向的审稿人大概率就是 §6.5/6.10 那批作者。<strong>引用他们的工作，并明确说清你的增量在哪</strong>；近五年文献建议 ≥70%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>6.10 CJA 里已有的竞品（审稿人的知识库）</h3>
+  <div class="tablewrap">
+    <table>
+      <caption>全部经 Crossref/OpenAlex 核实。盘结构方向在 CJA 毫无新意；空白在"载荷施加方式"与"agent+结构自动化"两处。</caption>
+      <thead><tr><th>论文</th><th class="n">年</th><th class="n">DOI</th></tr></thead>
+      <tbody>
+        <tr class="fakerow"><td><strong>Damping analysis method for cyclic structure with shroud and blade/disk interfaces</strong> ← <strong>最大障碍</strong></td><td class="n">2026</td><td class="nm">…cja.2026.104133</td></tr>
+        <tr><td>Topology optimization of turbine disk considering maximum stress prediction and constraints</td><td class="n">2023</td><td class="nm">…cja.2023.03.019</td></tr>
+        <tr><td>Structural design and optimization for vent holes of an industrial turbine sealing disk</td><td class="n">2021</td><td class="nm">…cja.2020.07.010</td></tr>
+        <tr><td>Structural optimization of uniaxial symmetry non-circular bolt clearance hole on turbine disk</td><td class="n">2014</td><td class="nm">…cja.2014.03.026</td></tr>
+        <tr><td>An equilibrium multi-objective optimum design for non-circular clearance hole of disk with discrete variables</td><td class="n">2018</td><td class="nm">…cja.2017.11.014</td></tr>
+        <tr><td>Introduction of fretting-contact-induced crack closure: crack initiation and growth path in disk/blade attachment</td><td class="n">2019</td><td class="nm">…cja.2019.04.011</td></tr>
+        <tr><td>Double-notched fatigue experiment and life prediction of compressor disc <span class="nm">（带实验）</span></td><td class="n">2025</td><td class="nm">…cja.2025.104033</td></tr>
+        <tr><td>Information mining and mechanical analysis of new-generation aero-engine turbine discs with ICL reverse engineering</td><td class="n">2025</td><td class="nm">…cja.2025.103398</td></tr>
+        <tr><td>Dynamic Characteristic Analysis and Experiment for Integral Impeller Based on Cyclic Symmetry</td><td class="n">2012</td><td class="nm">…S1000-9361(11)60448-2</td></tr>
+        <tr><td>Reduced-order modeling of thermal and centrifugal mechanism for turbine tip clearance</td><td class="n">2026</td><td class="nm">…cja.2026.104319</td></tr>
+        <tr><td>Stress sensitivity analysis for a wide-chord fan blade using an adjoint method</td><td class="n">2024</td><td class="nm">…cja.2024.06.033</td></tr>
+        <tr><td>Compatible isogeometric analysis algorithm for three kinds of impeller models <span class="nm">（CAD-FEA 几何接口）</span></td><td class="n">2024</td><td class="nm">…cja.2024.11.022</td></tr>
+        <tr class="openrow"><td><strong>CFD-copilot</strong>（先例，非竞品）</td><td class="n">2026</td><td class="nm">…cja.2026.104321</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <span class="tag">未能验证</span>
+    <p>
+      ScienceDirect 全站对本机 IP 返回 Cloudflare 挑战，<strong>英文版 Aims &amp; Scope / Guide for Authors 原文未能抓取</strong>，
+      已用期刊中文官网投稿须知替代（该须知明确覆盖两刊）。另：
+      网传"5000 字 / 8 幅图表"、以及某二手站给出的"录用率 28%、IF 2.899、中科院 2 区"均<strong>判定不可信</strong>
+      （后者 IF 与官方 6.9 严重矛盾）。<strong>投稿前请以 ScienceDirect 官方页复核。</strong>
+    </p>
+  </div>
+</section>
+
+</div>

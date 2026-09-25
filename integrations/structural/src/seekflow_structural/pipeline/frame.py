@@ -57,13 +57,33 @@ def frame(ctx: RunContext) -> Case:
             "frame",
         )
 
+    axes = (
+        _declared_axis(case)
+        or _declared_axis_from_params(getattr(ctx, "params", None))
+        or (Vec3(x=0.0, y=0.0, z=0.0), Vec3(x=0.0, y=0.0, z=1.0))
+    )
+    origin, direction = axes
     profile_path = ctx.path / "model" / "radial_profile.json"
+    profile = None
     if profile_path.is_file():
         import json
 
-        profile = json.loads(profile_path.read_text(encoding="utf-8"))
-    else:
-        profile = build_profile(step, 12)
+        cached = json.loads(profile_path.read_text(encoding="utf-8"))
+        same_axis = (
+            cached.get("frame_axis_origin_mm") == list(origin.as_tuple())
+            and cached.get("frame_axis_direction_mm") == list(
+                direction.as_tuple()
+            )
+        )
+        if same_axis:
+            profile = cached
+    if profile is None:
+        profile = build_profile(
+            step,
+            12,
+            axis_origin_mm=list(origin.as_tuple()),
+            axis_direction_mm=list(direction.as_tuple()),
+        )
         ctx.job.write("model/radial_profile.json", profile)
 
     r_max = float(profile["r_max_mm"])
@@ -71,10 +91,11 @@ def frame(ctx: RunContext) -> Case:
     z_min = float(profile.get("z_min_mm") or 0.0)
     z_max = float(profile.get("z_max_mm") or 0.0)
 
-    axes = _declared_axis(case) or (Vec3(x=0.0, y=0.0, z=0.0),
-                                    Vec3(x=0.0, y=0.0, z=1.0))
-    origin, direction = axes
+    from seekflow_structural.tools.frames import Normalisation
 
+    normalisation = Normalisation(
+        list(origin.as_tuple()), list(direction.as_tuple())
+    )
     case.model = ModelFacts(
         bounds_min_mm=Vec3(x=-r_max, y=-r_max, z=z_min),
         bounds_max_mm=Vec3(x=r_max, y=r_max, z=z_max),
@@ -83,10 +104,11 @@ def frame(ctx: RunContext) -> Case:
         frame=Frame(
             axis_origin_mm=origin,
             axis_direction=direction,
+            to_z=normalisation.as_matrix(),
             measured_from=f"profile of {bundle.name}",
         ),
         symmetry_planes=_plane_candidates(
-            profile, origin, direction, centre_z=(z_min + z_max) / 2.0
+            profile, centre_z=(z_min + z_max) / 2.0
         ),
         bore_radius_mm=r_min if r_min > 0 else None,
         face_count=int(profile.get("face_count") or 0),
@@ -110,6 +132,37 @@ def frame(ctx: RunContext) -> Case:
     return case
 
 
+
+
+def _declared_axis_from_params(params: dict | None):
+    """The rotation axis stated in the parameter file.
+
+    Frame runs before setup, so  is intentionally empty at this
+    point. The parameter file is already loaded into ; reading its
+    rotation block here is what lets a tilted model be normalised before the
+    domain agent measures the part.
+    """
+    if not isinstance(params, dict):
+        return None
+    rotation = params.get("rotation") or {}
+    if not isinstance(rotation, dict):
+        return None
+    origin = rotation.get("axis_origin_mm")
+    direction = rotation.get("axis_direction")
+    if origin is None or direction is None:
+        return None
+    if isinstance(origin, dict):
+        origin = [origin.get("x"), origin.get("y"), origin.get("z")]
+    if isinstance(direction, dict):
+        direction = [
+            direction.get("x"), direction.get("y"), direction.get("z")
+        ]
+    try:
+        return Vec3.of(origin), Vec3.of(direction)
+    except (TypeError, ValueError):
+        return None
+
+
 def _declared_axis(case: Case):
     """An axis the user stated, if they stated one."""
     physics = case.physics
@@ -121,9 +174,7 @@ def _declared_axis(case: Case):
     return rotation.axis_origin_mm, rotation.axis_direction
 
 
-def _plane_candidates(
-    profile: dict, origin: Vec3, direction: Vec3, centre_z: float
-) -> list[Plane]:
+def _plane_candidates(profile: dict, centre_z: float) -> list[Plane]:
     """Each candidate plane, with how much of the surface it maps onto itself.
 
     The score is the evidence. A part that is genuinely symmetric about z=0
@@ -138,7 +189,7 @@ def _plane_candidates(
         point = (
             Vec3(x=0.0, y=0.0, z=centre_z)
             if plane_id == "z0"
-            else origin
+            else Vec3(x=0.0, y=0.0, z=0.0)
         )
         score = probe_mirror_plane(
             faces, point.as_tuple(), normal

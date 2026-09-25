@@ -1,0 +1,41 @@
+{
+  "final": {
+    "accepted": true,
+    "feature": "n_final_cut",
+    "solid_index": 0,
+    "selected_face_indices": [
+      3954,
+      3962,
+      3970,
+      3978,
+      3990,
+      3998,
+      4006,
+      4014,
+      4020,
+      4028,
+      4036,
+      4044,
+      4056,
+      4064,
+      4072,
+      4080,
+      4086,
+      4094,
+      4102,
+      4110,
+      4122,
+      4130,
+      4138,
+      4146
+    ]
+  },
+  "reference_kind": "verified",
+  "family": "D27",
+  "feature": "n_final_cut",
+  "solid_index": 0,
+  "sector": {
+    "theta_low_deg": 9.0,
+    "theta_high_deg": 27.0
+  }
+}

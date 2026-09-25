@@ -12,6 +12,7 @@ import pytest
 
 from seekflow_structural.agents import facefind
 from seekflow_structural.case.model import CountClause, Criterion
+from seekflow_structural.errors import StructuralError
 
 FEATURE = "n_final_cut"
 
@@ -113,6 +114,128 @@ def test_submit_needs_a_criterion(state):
             _action(normal_radial_max=-0.2), state
         )
     assert exc.value.diagnostic.code == "no_criterion"
+
+
+def test_a_selection_outside_the_solved_sector_is_refused(state):
+    """The correct feature in another repeated sector is not in the mesh."""
+    state.sector = {"theta_low_deg": 9.0, "theta_high_deg": 27.0}
+    from seekflow_structural.errors import StructuralError
+
+    with pytest.raises(StructuralError) as exc:
+        facefind._submit_faces(
+            _action(criterion=CRITERION, normal_radial_max=-0.2), state
+        )
+    assert exc.value.diagnostic.code == "selection_outside_sector"
+    assert "theta" in str(exc.value)
+
+
+def _normal_family_rows():
+    """An outer load band with two normal families and a low-radius decoy."""
+    return [
+        _row(area=100.0, r=100.0, theta=float(index),
+             normal=(-0.95, 0.1, 0.0))
+        for index in range(4)
+    ] + [
+        _row(area=100.0, r=250.0, theta=float(index),
+             normal=(-0.8, 0.1, 0.0))
+        for index in range(4)
+    ] + [
+        _row(area=100.0, r=250.0, theta=float(index),
+             normal=(-0.3, 0.1, 0.0))
+        for index in range(4, 8)
+    ]
+
+
+def test_a_flank_selection_cannot_mix_the_two_normal_families():
+    """D27's failure mode: other radial bands and shallow tooth faces are not
+    the working flanks. The gap is measured from the model, so the gate does
+    not hard-code D27's face indices or normal threshold."""
+    rows = _normal_family_rows()
+    state = facefind.FaceFinderState(
+        session=None, cache={(FEATURE, 0): rows}, require_planar=True,
+        load_direction_rule="flank_surface_normal",
+    )
+
+    with pytest.raises(StructuralError) as excinfo:
+        facefind._submit_faces(
+            _action(criterion=CRITERION, normal_radial_max=-0.2), state
+        )
+    assert excinfo.value.diagnostic.code == "selection_mixes_normal_families"
+
+
+def test_the_strong_normal_family_can_be_submitted_whole():
+    rows = _normal_family_rows()
+    state = facefind.FaceFinderState(
+        session=None, cache={(FEATURE, 0): rows}, require_planar=True,
+        load_direction_rule="flank_surface_normal",
+    )
+
+    out = facefind._submit_faces(
+        _action(criterion=CRITERION, radial_min=250.0,
+                normal_radial_min=-0.9, normal_radial_max=-0.7),
+        state,
+    )["result"]
+    assert out["selected_face_indices"] == [4, 5, 6, 7]
+
+
+def test_query_reports_the_normal_family_separation_before_submission():
+    rows = _normal_family_rows()
+    state = facefind.FaceFinderState(
+        session=None, cache={(FEATURE, 0): rows}, require_planar=True,
+        load_direction_rule="flank_surface_normal",
+    )
+
+    out = facefind._query_faces(
+        facefind.Action(action="query_faces", feature=FEATURE), state
+    )["result"]
+    alignment = out["load_normal_alignment"]
+    assert alignment["separation"]["significant"] is True
+    assert alignment["strong_family"]["face_count"] == 4
+    assert alignment["separation"]["normal"][
+        "upper_family_alignment_min"
+    ] == pytest.approx(0.8)
+    assert alignment["strong_family"]["measured_query_bounds"] == {
+        "radial_min": 250.0,
+        "normal_radial_max": -0.8,
+    }
+
+
+def test_query_reports_sector_coverage_before_submission(state):
+    state.sector = {"theta_low_deg": 2.0, "theta_high_deg": 4.0}
+    out = facefind._query_faces(
+        facefind.Action(action="query_faces", feature=FEATURE), state
+    )["result"]
+    coverage = out["sector_coverage"]
+    assert coverage["inside_count"] == 3
+    assert coverage["outside_count"] == 4
+    assert coverage["applicable"] is True
+
+
+def test_a_curved_load_face_is_refused_when_pressure_mapping_requires_a_plane(state):
+    rows = state.cache[(FEATURE, 0)]
+    rows[1]["surface_type"] = "cylinder"
+    state.require_planar = True
+    from seekflow_structural.errors import StructuralError
+
+    with pytest.raises(StructuralError) as exc:
+        facefind._submit_faces(
+            _action(criterion=CRITERION, normal_radial_max=-0.2), state
+        )
+    assert exc.value.diagnostic.code == "selection_not_mappable"
+    assert "planar" in str(exc.value)
+
+
+def test_check_criterion_reports_structural_submission_readiness(state):
+    state.sector = {"theta_low_deg": 9.0, "theta_high_deg": 27.0}
+    out = facefind._check_criterion(
+        facefind.Action(
+            action="check_criterion", feature=FEATURE,
+            criterion=CRITERION, normal_radial_max=-0.2,
+        ),
+        state,
+    )["result"]
+    assert out["submission"]["ready"] is False
+    assert out["submission"]["sector"]["outside_count"] == 6
 
 
 def test_filters_matching_nothing_says_so(state):
@@ -228,7 +351,7 @@ def test_a_listing_larger_than_the_budget_is_cut_and_says_so(state):
     assert out["listed_in_full"] is False
     assert 0 < out["faces_listed"] < 4000
     assert out["listing"]["faces_withheld"] == 4000 - out["faces_listed"]
-    assert f"of 4000 faces" in out["note"]
+    assert "of 4000 faces" in out["note"]
 
 
 def test_an_explicit_limit_still_pages(state):
@@ -264,6 +387,12 @@ def test_query_reports_what_it_actually_asked(state):
         facefind.Action(action="query_faces", feature=FEATURE), state
     )["result"]
     assert empty["filters_applied"] == {}
+
+
+def test_the_agent_is_told_how_the_load_normal_families_are_reported():
+    prompt = facefind.spec(requirement="the loaded faces").system_prompt
+    assert "load_normal_alignment" in prompt
+    assert "strongly aligned" in prompt
 
 
 def test_the_agent_is_told_which_sector_is_being_solved():
@@ -328,7 +457,6 @@ def test_the_retry_condition_is_exhaustion_not_a_missing_final():
     produces `accepted: False`, and retrying a question the agent asked would
     be asking it again and hoping for a different answer.
     """
-    from seekflow_structural.agents import facefind as finder
     from seekflow_structural.runtime.loop import AgentOutcome
 
     out_of_calls = AgentOutcome(final=None, calls=30, exhausted=True)
@@ -341,3 +469,30 @@ def test_the_retry_condition_is_exhaustion_not_a_missing_final():
     assert out_of_calls.exhausted is True
     assert out_of_calls.final is not None or out_of_calls.exhausted
     assert asked_a_question.exhausted is False
+
+def test_a_radial_load_cannot_include_nearly_tangential_faces():
+    """The D25/D26 failure: a population too flat to split still has a
+    physical direction requirement."""
+    rows = [
+        _row(area=100.0, r=250.0, theta=float(index),
+             normal=(-0.8, 0.6, 0.0))
+        for index in range(3)
+    ] + [
+        _row(area=100.0, r=250.0, theta=float(index + 3),
+             normal=(-0.02, 0.999, 0.0))
+        for index in range(3)
+    ]
+    state = facefind.FaceFinderState(
+        session=None, cache={(FEATURE, 0): rows}, require_planar=True,
+        load_direction_rule="flank_surface_normal",
+    )
+    with pytest.raises(StructuralError) as excinfo:
+        facefind._submit_faces(
+            _action(criterion=CRITERION, normal_radial_min=-1.0,
+                    normal_radial_max=0.0),
+            state,
+        )
+    assert "selection_includes_non_radial_faces" in str(
+        excinfo.value.diagnostic.code
+    )
+

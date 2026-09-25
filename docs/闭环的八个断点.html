@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>闭环的八个断点</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --paper:#FAFAF7; --card:#FFFFFF; --ink:#161D24; --muted:#6C7B88;
+  --rule:#E0E6EB; --wash:#F1F4F6;
+  --fail:#A8442A; --fix:#2C6B4E; --data:#2F5D8C;
+  --sans:"Archivo","PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0F141A; --card:#161D24; --ink:#E3E9EE; --muted:#8A99A6;
+    --rule:#25303A; --wash:#161E26;
+    --fail:#D97757; --fix:#5FA983; --data:#7FAAD4;
+  }
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--sans);font-size:16px;line-height:1.78;
+  -webkit-font-smoothing:antialiased;
+  padding:0 22px calc(72px + env(safe-area-inset-bottom,0px));
+}
+.wrap{max-width:900px;margin:0 auto}
+
+header{padding:clamp(44px,7vw,80px) 0 0}
+h1{font-size:clamp(30px,5vw,46px);font-weight:700;letter-spacing:-.02em;
+   line-height:1.1;margin:0 0 18px;text-wrap:balance}
+.lede{font-size:clamp(16px,2vw,18.5px);color:var(--muted);max-width:36em;
+      margin:0 0 30px;text-wrap:pretty}
+.lede b{color:var(--ink);font-weight:600}
+
+dl.spec{display:flex;flex-wrap:wrap;gap:8px 34px;padding:16px 0;margin:0;
+        border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+dl.spec div{display:flex;gap:9px;align-items:baseline}
+dl.spec dt{font-size:12px;color:var(--muted)}
+dl.spec dd{margin:0;font-family:var(--mono);font-size:13px;
+           font-variant-numeric:tabular-nums}
+
+h2{font-size:13px;font-family:var(--mono);font-weight:500;letter-spacing:.11em;
+   text-transform:uppercase;color:var(--muted);
+   margin:clamp(54px,7vw,76px) 0 6px}
+h2 + .sub{font-size:clamp(19px,2.6vw,24px);font-weight:600;letter-spacing:-.012em;
+          margin:0 0 22px;text-wrap:balance}
+p{margin:0 0 16px;text-wrap:pretty}
+p.wide{max-width:none}
+code{font-family:var(--mono);font-size:.875em;background:var(--wash);
+     padding:.12em .38em;border-radius:3px}
+b,strong{font-weight:600}
+
+figure{margin:26px 0}
+.plate{background:var(--card);border:1px solid var(--rule);border-radius:4px;
+       padding:clamp(14px,2.4vw,24px);overflow-x:auto}
+.plate svg{display:block;width:100%;height:auto;max-width:100%;
+           min-width:560px}
+figcaption{margin-top:12px;font-size:14px;color:var(--muted);max-width:66ch;
+           text-wrap:pretty}
+
+table{border-collapse:collapse;width:100%;font-size:14.5px;margin:22px 0}
+th,td{text-align:left;padding:10px 12px 10px 0;border-bottom:1px solid var(--rule);
+      vertical-align:top}
+th{font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap}
+td.num,th.num{text-align:right;font-family:var(--mono);font-size:13.5px;
+              font-variant-numeric:tabular-nums;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+.tbl-wrap{overflow-x:auto}
+
+.bp{background:var(--card);border:1px solid var(--rule);border-radius:4px;
+    padding:20px 22px;margin:14px 0}
+.bp h3{margin:0 0 4px;font-size:17px;font-weight:600;letter-spacing:-.01em;
+       display:flex;gap:11px;align-items:baseline}
+.bp h3 .n{font-family:var(--mono);font-size:12px;color:var(--fail);
+          font-weight:500;letter-spacing:.04em}
+.bp .where{font-family:var(--mono);font-size:11.5px;color:var(--muted);
+           letter-spacing:.04em;margin:0 0 14px}
+.bp p{margin:0 0 12px;font-size:15px}
+.bp p:last-child{margin-bottom:0}
+.bp .said{border-left:2px solid var(--fail);padding:2px 0 2px 14px;
+          margin:12px 0;color:var(--muted);font-size:14.5px}
+.bp .fixed{border-left:2px solid var(--fix);padding:2px 0 2px 14px;
+           margin:12px 0;font-size:14.5px}
+.bp .fixed em{font-style:normal;font-family:var(--mono);font-size:12.5px;
+              color:var(--fix);letter-spacing:.04em}
+
+.note{background:var(--wash);border-radius:4px;padding:20px 22px;margin:26px 0;
+      font-size:15px}
+.note p{margin:0 0 12px}
+.note p:last-child{margin-bottom:0}
+.note .h{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;
+         text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+
+ul{margin:0 0 16px;padding-left:20px}
+li{margin-bottom:9px;text-wrap:pretty}
+
+.result{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+        gap:1px;background:var(--rule);border:1px solid var(--rule);
+        border-radius:4px;overflow:hidden;margin:26px 0}
+.result div{background:var(--card);padding:18px 20px}
+.result .k{font-size:12px;color:var(--muted);margin-bottom:6px}
+.result .v{font-family:var(--mono);font-size:22px;font-variant-numeric:tabular-nums;
+           letter-spacing:-.02em}
+.result .v.bad{color:var(--fail)}
+.result .v.good{color:var(--fix)}
+.result .m{font-size:12.5px;color:var(--muted);margin-top:5px}
+
+footer{margin-top:clamp(56px,8vw,88px);padding-top:22px;
+       border-top:1px solid var(--rule);font-size:13.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>闭环的八个断点</h1>
+  <p class="lede">一个 agent 驱动的涡轮盘设计闭环，九轮真实验，每一轮都停下来了——
+  <b>而停下来的地方从来不是物理。</b>生成、划网格、ANSYS 求解这些环节一次没坏；
+  坏的全是 agent 阶段，以及两轮之间的接缝。</p>
+
+  <dl class="spec">
+    <div><dt>真跑</dt><dd>9 轮</dd></div>
+    <div><dt>测试</dt><dd>446 通过</dd></div>
+    <div><dt>母版改动</dt><dd>0</dd></div>
+    <div><dt>最终结果</dt><dd>预测 −8% / 实测 +45.65%</dd></div>
+  </dl>
+</header>
+
+
+<h2>01</h2>
+<p class="sub">这个闭环在做什么</p>
+
+<p>输入是一份涡轮盘的设计参数，输出是<b>下一版的改法</b>。四个接口，全部是可替换的函数，
+所以整条链可以在没有 CAD 内核、没有求解器、没有模型的情况下被测。</p>
+
+<div class="plate" style="margin:26px 0">
+<svg viewBox="0 0 860 344" role="img" aria-label="闭环的四个接口与知识库">
+  <defs>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="3"
+            orient="auto" markerUnits="strokeWidth">
+      <polygon points="0,0 8,3 0,6" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g font-family="IBM Plex Mono, monospace" font-size="12.5" fill="currentColor">
+    <rect x="24" y="40" width="150" height="46" rx="3" fill="none"
+          stroke="currentColor" stroke-width="1.4"/>
+    <text x="99" y="62" text-anchor="middle">副本 + 文档</text>
+    <text x="99" y="78" text-anchor="middle" font-size="11"
+          fill="var(--muted)">workspace</text>
+
+    <rect x="230" y="40" width="130" height="46" rx="3" fill="none"
+          stroke="currentColor" stroke-width="1.4"/>
+    <text x="295" y="62" text-anchor="middle">生成</text>
+    <text x="295" y="78" text-anchor="middle" font-size="11"
+          fill="var(--muted)">generate</text>
+
+    <rect x="416" y="40" width="130" height="46" rx="3" fill="none"
+          stroke="currentColor" stroke-width="1.4"/>
+    <text x="481" y="62" text-anchor="middle">求解</text>
+    <text x="481" y="78" text-anchor="middle" font-size="11"
+          fill="var(--muted)">solve</text>
+
+    <rect x="602" y="40" width="130" height="46" rx="3" fill="none"
+          stroke="currentColor" stroke-width="1.4"/>
+    <text x="667" y="62" text-anchor="middle">反馈 agent</text>
+    <text x="667" y="78" text-anchor="middle" font-size="11"
+          fill="var(--muted)">diagnose</text>
+
+    <rect x="602" y="170" width="130" height="46" rx="3" fill="none"
+          stroke="currentColor" stroke-width="1.4"/>
+    <text x="667" y="192" text-anchor="middle">修改 agent</text>
+    <text x="667" y="208" text-anchor="middle" font-size="11"
+          fill="var(--muted)">revise</text>
+
+    <rect x="602" y="256" width="130" height="46" rx="3" fill="none"
+          stroke="currentColor" stroke-width="1.4" stroke-dasharray="4 3"/>
+    <text x="667" y="278" text-anchor="middle">知识库</text>
+    <text x="667" y="294" text-anchor="middle" font-size="11"
+          fill="var(--muted)">confirmed / refuted</text>
+
+    <line x1="176" y1="63" x2="226" y2="63" stroke="currentColor"
+          stroke-width="1.4" marker-end="url(#ar)"/>
+    <line x1="362" y1="63" x2="412" y2="63" stroke="currentColor"
+          stroke-width="1.4" marker-end="url(#ar)"/>
+    <line x1="548" y1="63" x2="598" y2="63" stroke="currentColor"
+          stroke-width="1.4" marker-end="url(#ar)"/>
+
+    <line x1="667" y1="88" x2="667" y2="166" stroke="currentColor"
+          stroke-width="1.4" marker-end="url(#ar)"/>
+    <text x="678" y="131" font-size="11" fill="var(--muted)">findings</text>
+
+    <polyline points="598,193 99,193 99,90" fill="none" stroke="currentColor"
+              stroke-width="1.4" marker-end="url(#ar)"/>
+    <text x="120" y="185" font-size="11" fill="var(--muted)">
+      改完的文档写回工作区，下一版从这里建
+    </text>
+
+    <line x1="667" y1="218" x2="667" y2="252" stroke="currentColor"
+          stroke-width="1.4" stroke-dasharray="3 3" marker-end="url(#ar)"/>
+    <text x="678" y="240" font-size="11" fill="var(--muted)">记账</text>
+
+    <text x="24" y="330" font-size="11.5" fill="var(--muted)">
+      每个 stage 的产出都带着 Written(by_stage, kind) 戳记——它决定了一次 resume 该失效哪些下游
+    </text>
+  </g>
+</svg>
+</div>
+
+<p>关键的设计决定是：<b>一条 finding 不是结论，是一个可检验的论证。</b>它必须同时携带五样东西：</p>
+
+<ul>
+  <li><b>机制</b>——从封闭词表里选（局部集中 / 整段过载 / 环向驱动 / 径向驱动 / 载荷施加 / 理想化边界 / 无法归因），因为词表是 harness 能检验的东西</li>
+  <li><b>证据</b>——每一个数都要写它是在哪里读的（<code>node:246</code> / <code>face:14</code> / <code>field:max_von_mises_mpa</code>），harness 逐条重读</li>
+  <li><b>改动</b>——生成侧自己的参数名，加上改成多少</li>
+  <li><b>预测</b>——指标、方向、幅度，写成下一轮可以证伪的形式</li>
+  <li><b>理由</b>——一段散文</li>
+</ul>
+
+<p>harness 重读每一个数、把机制和它自己的特征做比对、检查改动够不够得着目标，
+然后把每一条的残差报回去。<b>它不拒绝</b>——做工程判断的是 agent，harness 不知道什么是对的。
+它做的是让这个论证<b>可被检验</b>，这和选面阶段用 criterion 检查 agent 的声明是同一件事。</p>
+
+
+<h2>02</h2>
+<p class="sub">八个断点</p>
+
+<p>九轮真实验，每一轮都停下来了。按发生的位置分类，正好八类——而且它们全部落在
+<b>agent 阶段</b>或<b>两轮之间的接缝</b>上：</p>
+
+<div class="plate">
+<svg viewBox="0 0 860 250" role="img" aria-label="八个断点在流水线上的分布">
+  <defs>
+    <marker id="ar2" markerWidth="9" markerHeight="9" refX="7" refY="3"
+            orient="auto" markerUnits="strokeWidth">
+      <polygon points="0,0 8,3 0,6" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g font-family="IBM Plex Mono, monospace" font-size="12.5" fill="currentColor">
+    <line x1="60" y1="52" x2="800" y2="52" stroke="currentColor"
+          stroke-width="1.4" marker-end="url(#ar2)"/>
+    <g font-size="12" text-anchor="middle">
+      <text x="130" y="40">生成</text>
+      <text x="300" y="40">求解</text>
+      <text x="470" y="40">反馈</text>
+      <text x="640" y="40">修改</text>
+      <text x="790" y="40">下一轮</text>
+    </g>
+
+    <g fill="var(--fail)">
+      <circle cx="470" cy="52" r="7"/>
+      <circle cx="470" cy="52" r="7" transform="translate(-17,0)"/>
+      <circle cx="470" cy="52" r="7" transform="translate(-34,0)"/>
+      <circle cx="470" cy="52" r="7" transform="translate(-51,0)"/>
+      <circle cx="555" cy="52" r="7"/>
+      <circle cx="640" cy="52" r="7"/>
+      <circle cx="725" cy="52" r="7"/>
+      <circle cx="790" cy="52" r="7"/>
+    </g>
+    <g font-size="11.5" text-anchor="middle" fill="var(--fail)">
+      <text x="436" y="20">① 契约</text>
+      <text x="419" y="20" opacity="0"></text>
+    </g>
+
+    <g font-size="11.5" fill="var(--muted)">
+      <text x="436" y="96">① 契约　② 能力　③ 重复　⑥ 恢复</text>
+      <text x="436" y="114">——都在反馈 agent 这一格</text>
+      <text x="555" y="140">⑤ 层　⑧ 定位</text>
+      <text x="555" y="158">——反馈与修改的接口</text>
+      <text x="640" y="184">④ 诚实</text>
+      <text x="640" y="202">——修改 agent 自己</text>
+      <text x="790" y="228" text-anchor="end">⑦ 传递　——两轮之间</text>
+    </g>
+    <line x1="436" y1="60" x2="436" y2="88" stroke="var(--muted)" stroke-width="0.8"/>
+    <line x1="555" y1="60" x2="555" y2="132" stroke="var(--muted)" stroke-width="0.8"/>
+    <line x1="640" y1="60" x2="640" y2="176" stroke="var(--muted)" stroke-width="0.8"/>
+    <line x1="790" y1="60" x2="790" y2="220" stroke="var(--muted)" stroke-width="0.8"/>
+  </g>
+</svg>
+</div>
+
+<p class="wide"><b>生成、划网格、ANSYS 求解这些环节，没有一次是因为物理本身而失败的。</b>
+唯一一次求解失败是负主元（刚度矩阵非正定），发生在一个网格比上一轮细 1.6 倍的 revision 上——
+那是网格与约束的问题，不是设计的问题。</p>
+
+<div class="bp">
+  <h3><span class="n">①</span>契约</h3>
+  <p class="where">反馈 agent · 提交时的模型校验</p>
+  <p>agent 提交的改动写成 <code>{"variable":..., "current":..., "proposed":...}</code>，
+  而我的模型要求 <code>{"parameter":..., "current_value":..., "proposed_value":...}</code>。
+  <code>ProposedChange(**change)</code> 展开时抛异常，<b>炸掉了一次已经跑完的求解</b>——
+  选面、两套网格、ANSYS，半小时起，为一个字段名作废。</p>
+  <div class="said">ValidationError: 5 validation errors for ProposedChange
+  — parameter Field required / variable Extra inputs forbidden / …</div>
+  <div class="fixed"><em>已修</em>　提示词里写出准确的键名与完整 JSON 形状；
+  提交时校验并给 agent 一次改正机会；识别常见同义词（<code>variable</code>→<code>parameter</code>），
+  无法识别的键丢弃并记录，不致命。</div>
+</div>
+
+<div class="bp">
+  <h3><span class="n">②</span>能力</h3>
+  <p class="where">反馈 agent · 工具集</p>
+  <p>四轮里同一件事以四种面貌出现，每次都以为是最后一个：
+  <b>它有正确的诊断，但够不到。</b></p>
+  <ul>
+    <li>峰值关联不到 CAD 面 → 补 <code>locate_point</code>（包围盒预筛 + 内核精确点面距离）</li>
+    <li>变量名不在它被告知的词汇表里 → 那个词汇表本身是错的（见 ⑤）</li>
+    <li>看到了参数，但不知道它在哪 → 补 <code>at_r_mm</code></li>
+    <li>看到了顶点，但不知道它管哪条边 → 补 <code>spans_r_mm</code></li>
+    <li>161 个可改量里没扫到对的那个 → 补 <code>near_r_mm</code>（按半径问"什么能改这里"，161 → 21）</li>
+  </ul>
+  <div class="said">"No editable parameter acts at r=208: the slot-cutter fillets are all at
+  r=277.9-284.3, and the disc polyline vertices spanning 160-240 reshape the web/rim
+  section, not the fir-tree flank"</div>
+  <p>而峰值其实在一个减重孔的边缘上——名字里没有任何东西说"r=208"。</p>
+</div>
+
+<div class="bp">
+  <h3><span class="n">③</span>重复</h3>
+  <p class="where">反馈 agent · 被调用了两次</p>
+  <p>反馈阶段既注册在链路的末端，又被循环的 <code>diagnose</code> 调一次。
+  第二次的产出覆盖了第一次，<b>修改 agent 拿到的是一份这一轮从没做过的诊断</b>，
+  代价是两轮模型调用。</p>
+  <div class="said">事件日志里 <code>feedback_filed</code> 出现 2 次——这是发现它的方式</div>
+  <div class="fixed"><em>已修</em>　有 <code>feedback.json</code> 就读，没有才跑。</div>
+</div>
+
+<div class="bp">
+  <h3><span class="n">④</span>诚实</h3>
+  <p class="where">修改 agent · 声称与事实</p>
+  <p>提交 <code>applied: ["F1"]</code>，而<b>没有任何东西被写过</b>——
+  没有设参数，没有改脚本。循环信了它，拿<u>完全相同的设计</u>去生成下一版。</p>
+  <p>校验当时只查了 id 是不是已知 finding，没查这个 id 背后有没有改动。
+  <b>一个声称被执行、背后却什么都没有的 finding，和一个没被读到的 finding，在记录里长得一样。</b></p>
+  <div class="fixed"><em>已修</em>　每次改动记录它是为哪条 finding 做的；
+  声称被应用的 finding 必须有一条改动对应，否则拒绝。</div>
+</div>
+
+<div class="bp">
+  <h3><span class="n">⑤</span>层</h3>
+  <p class="where">反馈 ↔ 修改 · 词汇表</p>
+  <p>我把<b>生成侧的可改面</b>编码成了 <code>param_templates.build()</code> 的入参字典——
+  而循环驱动的其实是 <b>CAD 文档</b>。<code>param_templates</code> 只是<u>产出</u>文档的一道工序。</p>
+  <p>文档里有 31 个操作，每个有自己的参数；榫齿刀上就有 7 个 <code>fillet_sketch</code>，
+  每个带一个 <code>radius_mm</code>——那些半径在模板的入参字典里一个都没有。</p>
+  <div class="said">"root_fillet_mm is real in the authoring vocabulary and this generator
+  has no control for it"　← 这句话是错的，而它读起来像是查过了</div>
+  <div class="fixed"><em>已修</em>　设计本体改为 <code>document.json</code>；
+  提示词改掉"这些名字是生成器接受的，没有别的"那句；删掉 <code>not_in_template</code> 这条校验——
+  它把"我的词汇表里没有"报成了"生成器做不到"。</div>
+</div>
+
+<div class="bp">
+  <h3><span class="n">⑥</span>恢复</h3>
+  <p class="where">反馈 agent · provider 层</p>
+  <p>模型吐出的工具调用参数<b>不是合法 JSON</b>（第 2139 字符处一个字符不对）。
+  schema 不匹配能被转成一次可重试的工具回复，但解析失败发生在更早的地方，直接掀掉了整个 run——
+  801 秒的生成、184,337 节点的网格、一次完整求解，全部作废。</p>
+  <div class="said">LlmToolCallError: Tool call arguments were not valid JSON:
+  Expecting ':' delimiter: line 1 column 2139 (char 2138)</div>
+  <div class="fixed"><em>已修</em>　同一个错误早发生一步，就走同一条路：
+  记进 <code>rejected_calls</code>，回一条"这次调用读不了，什么都没跑，再发一次——
+  太长了就发短点"，然后继续。</div>
+</div>
+
+<div class="bp">
+  <h3><span class="n">⑦</span>传递</h3>
+  <p class="where">两轮之间 · 四个决定</p>
+  <p>这一类比前六类都隐蔽，因为它<b>不报错，只是让对比变得不可解读</b>。
+  上一轮的分析决定没有传到下一轮：</p>
+  <div class="tbl-wrap"><table>
+    <tr><th>决定</th><th>没传时的后果</th><th>实测</th></tr>
+    <tr><td>设计本体</td><td>改完的文档没交给下一版，从模板参数重建 → 拿回原设计</td>
+        <td class="num">F0 = 0.85 → 0.698</td></tr>
+    <tr><td>尺寸场</td><td>两轮分辨率差 1.6 倍</td>
+        <td class="num">240,051 / 391,253 节点</td></tr>
+    <tr><td>载荷选面</td><td>同一个合力压在 1/4 面积上，压强 4.6 倍 → 峰值搬到受载面</td>
+        <td class="num">24 面 2679mm² / 8 面 665mm²</td></tr>
+    <tr><td>扇区角</td><td>domain agent 连续 10 次用相同参数调 <code>probe_periodicity</code> 直到预算耗尽</td>
+        <td class="num">整轮报废</td></tr>
+  </table></div>
+  <div class="fixed"><em>已修</em>　三条注入通路：<code>--domain</code> /
+  <code>--face-selection</code> / <code>--mesh-plan</code>。
+  <b>这些都是"怎么做这个实验"，不是"这个设计是什么"——它们本来就该跨 revision 保持一致。</b></div>
+</div>
+
+<div class="bp">
+  <h3><span class="n">⑧</span>定位</h3>
+  <p class="where">反馈 → 修改 · 改动够不够得着</p>
+  <p>诊断对了，峰值也定位对了，<b>而改动落在 76 mm 之外。</b>
+  那一轮改的是榫齿圆角（r = 284.3），峰值在 r = 208.09。</p>
+  <p>之后补了位置与跨度还不够——真正缺的是<b>一条可查的检查</b>：
+  「你说的这个改动，有没有真的碰到你说的那些面？」</p>
+  <div class="fixed"><em>已修</em>　射程检查，在提交时就拒绝，带距离和跨度：<br>
+  <code>change names n_fillet_cutter_0.radius_mm, which acts at r = 284.309 mm —
+  76.219 mm from the r = 208.09 this finding is about</code></div>
+</div>
+
+
+<h2>03</h2>
+<p class="sub">测量纪律：信号必须大于噪声</p>
+
+<p>前六类修完，链路能跑通了——<b>然后发现对比根本读不出来。</b>同一份设计（<code>rim_mm=30</code>，
+20 孔 @ pcd 208，60 槽），三份不同的网格：</p>
+
+<div class="tbl-wrap"><table>
+  <tr><th>运行</th><th class="num">网格节点</th><th class="num">max von Mises (MPa)</th></tr>
+  <tr><td>live</td><td class="num">239,444</td><td class="num">1875.82</td></tr>
+  <tr><td>live3</td><td class="num">282,262</td><td class="num">1764.98</td></tr>
+  <tr><td>live7</td><td class="num">240,051</td><td class="num">1709.37</td></tr>
+</table></div>
+
+<p><b>散布 9.74%。</b>而且注意 live 与 live7——网格规模几乎相同（239,444 对 240,051），
+峰值仍差 9.74%。<b>所以这个噪声不是单元数量的函数，而是节点落在集中区哪个位置的问题。</b></p>
+
+<div class="note">
+  <div class="h">由此得到的判据</div>
+  <p>任何小于约 <b>10%</b> 的"设计效果"，都读不出来。前面八轮里那些
+  <code>−1.72%</code>、<code>−0.00%</code> 的对比，全部落在噪声里——
+  <b>它们说明不了任何事，无论方向看起来多对。</b></p>
+</div>
+
+<p>与此相关的还有三件<b>被算了却没人读</b>的东西：</p>
+
+<ul>
+  <li><b>收敛研究跑了，结果没人用。</b>划网格阶段在两级分辨率上各解一次，
+  两个 <code>structural_metrics.json</code> 就躺在磁盘上；而 <code>verify.py</code> 找的是
+  <code>convergence_report.json</code>——<b>没有任何代码会写那个文件</b>。所以每一个
+  真跑过收敛研究的 run，都被告诉"没做过研究"。实测：峰值在 181,362 与 194,011 节点之间动了 5.09%。</li>
+  <li><b><code>sel</code> 是一列死数据。</b>deck 写的是 ANSYS 的 <code>NSEL</code> 掩码
+  （<code>*VGET,MSK(1),NODE,1,NSEL</code>），而在那个位置没有任何东西收窄过选择——
+  实测 257,401 行<u>全是 1</u>。而 <code>postprocess_structural.py</code> 拿它当过滤条件用。</li>
+  <li><b>应力分量被算出来又扔掉了。</b>deck 写 <code>s_radial, s_hoop, s_axial, s_eqv</code> 四列，
+  <code>_read_csv</code> 四个都解析进 row dict，然后只留 <code>s_eqv</code>。
+  而诊断恰恰活在被扔的那两个数里——孔边 <code>s_hoop=1482</code> 而 <code>s_radial=0.8</code>；
+  榫齿 <code>s_radial=1188</code> 而 <code>s_hoop=268</code>。
+  <b>同一个盘、两个机理、两个相反的改法，而报告里只有后者看不见。</b></li>
+</ul>
+
+
+<h2>04</h2>
+<p class="sub">第一次真实的因果</p>
+
+<p>把八个断点修完、三个混淆源注入掉之后，反馈 agent 第一次把改动指到了峰值上。</p>
+
+<div class="result">
+  <div>
+    <div class="k">参数</div>
+    <div class="v" style="font-size:14px">feat_holes_poly<br>.points[4].y_mm</div>
+    <div class="m">6.0 → 7.0（+16.7%）</div>
+  </div>
+  <div>
+    <div class="k">它预测</div>
+    <div class="v good">−8%</div>
+    <div class="m">max von Mises 下降</div>
+  </div>
+  <div>
+    <div class="k">实测</div>
+    <div class="v bad">+45.65%</div>
+    <div class="m">1709.37 → 2489.72 MPa</div>
+  </div>
+  <div>
+    <div class="k">知识库</div>
+    <div class="v bad" style="font-size:18px">refuted</div>
+    <div class="m">证伪 1 / 确认 0</div>
+  </div>
+</div>
+
+<p>峰值<b>精确地跟到了被改的那个顶点上</b>：</p>
+
+<div class="tbl-wrap"><table>
+  <tr><th></th><th class="num">峰值节点</th><th class="num">r (mm)</th><th class="num">z (mm)</th><th class="num">s_eqv (MPa)</th></tr>
+  <tr><td>rev-1（原孔）</td><td class="num">246</td><td class="num">208.087</td><td class="num">18.112</td><td class="num">1709.4</td></tr>
+  <tr><td>rev-4（孔 +1mm）</td><td class="num">239</td><td class="num">208.118</td><td class="num">18.109</td><td class="num">2489.7</td></tr>
+  <tr><td colspan="5" style="font-family:var(--mono);font-size:12.5px;color:var(--muted)">
+    改动顶点的世界坐标 = hypot(208, 7) = 208.118　←　峰值正在这里</td></tr>
+</table></div>
+
+<p><b>物理上说得通，而且事先就说得出。</b>把一个顶点从局部半径 6 推到 7，
+相邻两点仍在 6——轮廓在那里形成一个<b>尖角</b>，而尖角就是新的应力集中源。</p>
+
+<p>内部一致性也对：受载面在榫齿 r = 280–295，与孔不相干。受载面峰值那
+<code>+2.93%</code> 里，<code>+2.52%</code> 来自压力变化（选中面积 2679.2 → 2611.2 mm²，
+同一个合力），几何只贡献 <code>+0.40%</code>。<b>说明那个 +45.65% 确实来自被改的顶点，
+不是某个全局效应串了进来。</b></p>
+
+<div class="note">
+  <div class="h">这一轮证明了什么、没证明什么</div>
+  <p><b>证明了</b>回路能正确地检验一个假设。定位、改动、可比求解、预测检验，
+  四步都对，而且拿到了 <code>+45.65%</code> 这个远超噪声底的数字。</p>
+  <p><b>没证明</b>它能优化应力。这一轮改动让应力<u>变差了 46%</u>。
+  但它现在手里有一条实测信息：<b>在这个位置加尖角 → 峰值 +46%</b>。
+  下一步该做的是反过来——把那一组顶点做圆滑过渡，而不是推出尖角。</p>
+</div>
+
+
+<h2>05</h2>
+<p class="sub">可改面的三层</p>
+
+<p>「生成侧能改什么」有三层，而把第三层当成全部，正是断点 ⑤：</p>
+
+<div class="tbl-wrap"><table>
+  <tr><th>层</th><th>是什么</th><th>数量</th><th>例子</th></tr>
+  <tr><td>模板参数</td><td><code>param_templates.build()</code> 的入参</td>
+      <td class="num">18</td>
+      <td><code>od_mm</code>、<code>bore_mm</code>、<code>rim_mm</code>、<code>depth_mm</code></td></tr>
+  <tr><td>文档标量</td><td>文档 31 个操作各自 <code>params</code> 里的每个数</td>
+      <td class="num">161</td>
+      <td><code>n_fillet_cutter_0.radius_mm</code>、<code>n_pat_holes.radius_mm</code></td></tr>
+  <tr><td>轮廓顶点</td><td>每个 profile 的每个顶点坐标</td>
+      <td class="num">含在上面</td>
+      <td><code>feat_holes_poly.points[4].y_mm</code></td></tr>
+</table></div>
+
+<p>每一层都带着它的<b>位置</b>：</p>
+
+<pre style="font-family:var(--mono);font-size:12px;background:var(--wash);
+padding:16px 18px;border-radius:4px;overflow-x:auto;line-height:1.85;margin:20px 0"><code style="background:none;padding:0">feat_holes_poly.points[12].x_mm  = -0.0   at_r_mm=208.087  spans_r_mm=[205.779, 210.369]
+n_pat_holes.radius_mm            =  208   at_r_mm=208.0
+n_fillet_cutter_0.radius_mm      =  0.85  at_r_mm=284.309
+n_disc_polyline.points[3].y_mm   = -15.0  at_r_mm=240.0    spans_r_mm=[160.0, 240.0]</code></pre>
+
+<p><b><code>at_r_mm</code> 是它自己在哪；<code>spans_r_mm</code> 是它能够到哪。</b>
+对一个顶点，决定射程的是后者——移动一个顶点会转动与它相邻的两条边，
+所以它能重塑的是两个邻点半径之间的整段。峰值在 208，而
+<code>n_disc_polyline.points[3]</code> 在 240、跨 160–240，<b>所以它是够得着的</b>。</p>
+
+<p>局部坐标到世界坐标的变换只有一条规则，而且是<b>验证过而不是假设的</b>：</p>
+
+<pre style="font-family:var(--mono);font-size:12.5px;background:var(--wash);
+padding:14px 18px;border-radius:4px;margin:18px 0"><code style="background:none;padding:0">world_r = pattern_radius_mm + 局部x_mm</code></pre>
+
+<p>验证方式：把 <code>n_fillet_cutter_0</code> 从 0.698 改到 1.05——只改这一个参数——
+<b>实际移动了 1,064 个面</b>，面心半径从 283.7 到 295.4 mm；而它的六个顶点在
+x = −5.760 / −10.892 / −15.721，按公式给出 r = 294.24 / 289.11 / 284.28。<b>三个都在那组里。</b></p>
+
+
+<h2>06</h2>
+<p class="sub">还没解决的</p>
+
+<p><b>最要紧的一条</b>：孔的切割链上<b>没有任何圆角操作</b>。</p>
+
+<div class="tbl-wrap"><table>
+  <tr><th>特征</th><th>切割链</th><th class="num">圆角数</th></tr>
+  <tr><td>榫齿槽</td>
+      <td style="font-family:var(--mono);font-size:12.5px">cutters ← extrude ← fillet_6 ← … ← fillet_0</td>
+      <td class="num">7</td></tr>
+  <tr><td>减重孔</td>
+      <td style="font-family:var(--mono);font-size:12.5px">holes ← extrude ← close ← add_polyline</td>
+      <td class="num" style="color:var(--fail)">0</td></tr>
+</table></div>
+
+<p>孔是<b>光秃秃的 16 边形</b>直接拉伸切出来的——<b>每个孔 16 个尖角，20 个孔共 320 个</b>，
+而那个 <code>+45.65%</code> 的峰值就落在其中一个上（<code>points[12]</code> 的世界半径 208.087）。</p>
+
+<p>所以正确的下一步——「给孔加倒圆」——需要的不是改一个数，而是<b>往文档里加一个操作</b>。
+而回路现在只能改值（标量、顶点），不能改结构。<b>这是它的能力边界，也是这个案例真正指向的地方。</b></p>
+
+<h3 style="font-size:15px;font-weight:600;margin:28px 0 10px">其余</h3>
+
+<ul>
+  <li><b>回路还没做对过一次改动。</b>唯一一次指对位置的结果是 <code>refuted</code>。
+  用它学到的反过来做——把孔的那组顶点做圆滑过渡而不是推出尖角——才是第一次
+  "基于上一轮结果做出更好的选择"。</li>
+  <li><b>噪声底约 10%，而这是硬约束。</b>同一设计三份网格散布 9.74%，其中两份网格规模几乎相同
+  （239,444 对 240,051）仍差 9.74%——所以它不是单元数量的函数，是节点落在集中区哪个位置的问题。
+  <b>小于 10% 的改动永远读不出来</b>，除非两轮共用同一份网格。</li>
+  <li><b>知识库还是空的。</b><code>refuted</code> 那条目前只在临时脚本里算过，
+  没落盘到 <code>knowledge.json</code>。跑一次正式的 <code>score_applied</code> 才能写进去。</li>
+  <li><b>四个接口从来没一起跑过。</b>446 个测试全绿，但它们跑在假函数上；
+  真正把 <code>generate</code>/<code>solve</code>/<code>diagnose</code>/<code>revise</code>
+  全部接上连跑两轮的，只有那九轮手工驱动。</li>
+  <li><b>接触参照还没做。</b>整个项目最初的那个未验证前提依然成立：
+  常应力分片试验只说明一条载荷施加路径<b>更自洽</b>，没说明它<b>符合真实</b>。</li>
+</ul>
+
+<footer>
+  闭环反馈系统设计记录 · 九轮真实验 · 446 测试通过 ·
+  参数化母版 <code>_param_experiment/</code> 零改动（哈希守卫每次写入后核对）
+</footer>
+
+</div>
+</body>
+</html>

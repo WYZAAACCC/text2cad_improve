@@ -66,6 +66,7 @@ def face_table(
     feature: str,
     solid_index: int = 0,
     cache_dir: Path | str | None = None,
+    normalisation=None,
 ) -> list[dict]:
     """Every face of one solid, measured. Built once and kept if given a place.
 
@@ -76,6 +77,11 @@ def face_table(
     tool call is not.
     """
     cache: Path | None = None
+    if normalisation is not None and not normalisation.is_identity:
+        # A cached table was written in a frame this call cannot know. Rebuild
+        # into the case frame instead of joining a normalised point to raw
+        # face facts.
+        cache_dir = None
     if cache_dir is not None:
         cache = Path(cache_dir) / f"solid_faces_{feature}_{solid_index}.json"
         if cache.is_file():
@@ -90,7 +96,9 @@ def face_table(
 
     session = geometry.open_bundle(Path(bundle))
     try:
-        rows = geometry.face_rows(session, feature, solid_index)
+        rows = geometry.face_rows(
+            session, feature, solid_index, normalisation=normalisation
+        )
     finally:
         close = getattr(session, "close", None)
         if callable(close):
@@ -217,6 +225,7 @@ def locate_point(
     cache_dir: Path | str | None = None,
     tolerance_mm: float = DEFAULT_TOLERANCE_MM,
     limit: int = DEFAULT_LIMIT,
+    normalisation=None,
 ) -> dict:
     """The whole join: a point in the field, and the faces of the model at it.
 
@@ -226,7 +235,11 @@ def locate_point(
     the point is on from a face whose box merely contains it.
     """
     rows = face_table(
-        bundle, feature=feature, solid_index=solid_index, cache_dir=cache_dir
+        bundle,
+        feature=feature,
+        solid_index=solid_index,
+        cache_dir=cache_dir,
+        normalisation=normalisation,
     )
     # `face_rows` returns facts without an index, so one is attached here -
     # a face the agent cannot name is a face it cannot ask a further question
@@ -246,6 +259,10 @@ def locate_point(
     if candidates:
         from seekflow_structural.tools import geometry
 
+        distance_point = (
+            normalisation.inverse_point(*point_mm)
+            if normalisation is not None else point_mm
+        )
         session = geometry.open_bundle(Path(bundle))
         try:
             shapes = geometry.faces_of(session, feature, solid_index)
@@ -254,7 +271,7 @@ def locate_point(
                 index = int(row["index"])
                 if 0 <= index < len(shapes):
                     distances[index] = point_face_distance_mm(
-                        shapes[index], point_mm
+                        shapes[index], distance_point
                     )
         finally:
             close = getattr(session, "close", None)

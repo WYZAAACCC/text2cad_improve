@@ -21,7 +21,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from seekflow_structural.agents import facefind
-from seekflow_structural.case.model import Case, LoadBinding, Physics
+from seekflow_structural.case.model import Case, Physics
 from seekflow_structural.errors import StructuralError
 from seekflow_structural.pipeline.orchestrator import RunContext
 
@@ -45,7 +45,9 @@ REQUIREMENTS = {
         "the faces that carry the blade load into the body. The load acts "
         "normal to the bearing surface, pressing into the material, so the "
         "outward normal of each of these faces points into the space the "
-        "blade root occupies."
+        "blade root occupies. For a centrifugal blade load that pressure is "
+        "outward from the rotation axis, so the selected face normals have a "
+        "negative radial component (`normal_radial < 0`)."
     ),
     "radial_outward_from_rotation_axis": (
         "the faces the load is applied to, where a radial pull acts outward "
@@ -172,6 +174,7 @@ def _find_faces(ctx: RunContext, *, requirement: str,
     are still in hand, so a selection that cannot be the one asked for is
     visible at the stage that made it.
     """
+    from seekflow_structural.pipeline.materialize import normalisation_for
     from seekflow_structural.runtime.caller import build_caller
 
     from seekflow_structural.tools import geometry
@@ -197,6 +200,14 @@ def _find_faces(ctx: RunContext, *, requirement: str,
             if domain and domain.sector_deg is not None
             else None
         ),
+        # The structural deck's surface-pressure path maps a planar CAD face
+        # to element faces. Refuse a curved selection here rather than after a
+        # mesh and solve have exposed only a missing fraction of the load.
+        require_planar=(
+            "pressure" in str(ctx.case.physics.blade_load.distribution).lower()
+        ),
+        load_direction_rule=ctx.case.physics.blade_load.direction_rule,
+        normalisation=normalisation_for(ctx.case),
         # Scripts the agent writes run under the job, so their text and output
         # are artifacts like everything else the run produced.
         workdir=ctx.path / "agent" / "analyses",

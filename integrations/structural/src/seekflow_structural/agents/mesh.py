@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from seekflow_structural.case.model import (
     MeshPlan,
@@ -636,11 +636,28 @@ def mesh(ctx: RunContext, *, api_key_file: Path | None = None,
     work_dir = ctx.path / "mesh"
     work_dir.mkdir(parents=True, exist_ok=True)
 
+    frame = case.model.frame if case.model else None
+    axis_kwargs = {}
+    if frame is not None:
+        axis_kwargs = {
+            "axis_origin_mm": list(frame.axis_origin_mm.as_tuple()),
+            "axis_direction_mm": list(frame.axis_direction.as_tuple()),
+        }
     profile_path = ctx.path / "model" / "radial_profile.json"
+    profile = None
     if profile_path.is_file():
-        profile = json.loads(profile_path.read_text(encoding="utf-8"))
-    else:
-        profile = build_profile(Path(case.bundle.path) / "model.step", 12)
+        cached = json.loads(profile_path.read_text(encoding="utf-8"))
+        expected_origin = axis_kwargs.get("axis_origin_mm")
+        expected_direction = axis_kwargs.get("axis_direction_mm")
+        if (
+            cached.get("frame_axis_origin_mm") == expected_origin
+            and cached.get("frame_axis_direction_mm") == expected_direction
+        ):
+            profile = cached
+    if profile is None:
+        profile = build_profile(
+            Path(case.bundle.path) / "model.step", 12, **axis_kwargs
+        )
         ctx.job.write("model/radial_profile.json", profile)
 
     centroids = _load_face_centroids(case)
@@ -766,6 +783,7 @@ def _build_final_mesh(ctx: RunContext, case, state: MeshState) -> dict:
     mapping against nothing.
     """
     from seekflow_structural.core.mesh_feedback import build_mesh
+    from seekflow_structural.pipeline.materialize import normalisation_for
     from seekflow_structural.tools import geometry
 
     submitted = state.submitted or {}
@@ -782,12 +800,34 @@ def _build_final_mesh(ctx: RunContext, case, state: MeshState) -> dict:
             "selected",
             "mesh",
         )
+    normalisation = normalisation_for(case)
+    mapping_mesh = ctx.path / "mesh" / "mesh.inp"
+    if not normalisation.is_identity and not report.get("frame_applied"):
+        # The mesher did not apply the case frame. Map against a normalised
+        # copy rather than against source coordinates with transformed CAD
+        # facts, which would silently match the wrong nodes. The node ids are
+        # preserved, so materialize can apply the same transform to mesh.inp.
+        from seekflow_structural.tools.frames import normalise_mesh
+
+        mapping_mesh = ctx.path / "mesh" / "mesh_normalised_for_mapping.inp"
+        moved = normalise_mesh(
+            ctx.path / "mesh" / "mesh.inp", mapping_mesh, normalisation
+        )
+        if not moved:
+            raise StructuralError(
+                "mesh_normalisation_failed",
+                "the case axis is not global +Z but the mesher reported no "
+                "frame transform and no node moved; the mesh and CAD facts "
+                "do not describe the same coordinates",
+                "mesh",
+            )
     mapping = geometry.map_selection_to_nodes(
         Path(case.bundle.path),
         surface.feature,
         surface.solid_index,
         surface.face_indices,
-        ctx.path / "mesh" / "mesh.inp",
+        mapping_mesh,
+        normalisation=normalisation,
     )
     ctx.job.write("solve/selected_face_nodes.json", mapping)
     if mapping["union_node_count"] == 0:
@@ -804,6 +844,8 @@ def _build_final_mesh(ctx: RunContext, case, state: MeshState) -> dict:
         "min_sicn": (report.get("quality") or {}).get("min_sicn"),
         "mapped_face_count": mapping["mapped_face_count"],
         "union_node_count": mapping["union_node_count"],
+        "frame_applied": bool(report.get("frame_applied")),
+        "frame": report.get("frame"),
     }
 
 
@@ -834,7 +876,10 @@ def _stage_inputs(ctx: RunContext, case, work_dir: Path) -> None:
     mesh and the mapping do not exist yet, and do not need to: the two paths
     below are placeholders that the check replaces with its own per level.
     """
-    from seekflow_structural.pipeline.materialize import intent_from_case
+    from seekflow_structural.pipeline.materialize import (
+        deck_axis_for,
+        intent_from_case,
+    )
 
     selection = ctx.path / "solve" / "selected_face_nodes.json"
     face_intent = work_dir / "face_intent.json"
@@ -852,7 +897,10 @@ def _stage_inputs(ctx: RunContext, case, work_dir: Path) -> None:
     )
 
     intent = intent_from_case(
-        case, mesh_inp=work_dir / "mesh.inp", selection=selection
+        case,
+        mesh_inp=work_dir / "mesh.inp",
+        selection=selection,
+        axis=deck_axis_for(case),
     )
     (work_dir / "intent.json").write_text(
         json.dumps(

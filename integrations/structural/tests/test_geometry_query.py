@@ -16,6 +16,7 @@ import pytest
 
 from seekflow_structural.agents.facefind import _bounds, _filters
 from seekflow_structural.tools import geometry
+from seekflow_structural.tools.frames import Normalisation
 
 NO_BOUNDS = {name: None for name in geometry.CYLINDRICAL_FILTERS}
 
@@ -160,6 +161,35 @@ def test_summarise_of_a_narrowed_set(rows):
     summary = geometry.summarise(rows, [1, 2])
     assert summary["count"] == 2
     assert summary["surface_types"] == {"plane": 1, "cylinder": 1}
+
+
+def test_face_facts_can_be_expressed_in_the_case_frame():
+    facts = {
+        "surface_type": "plane",
+        "area_mm2": 10.0,
+        "centroid_mm": [13.0, 0.0, 2.0],
+        "centroid_cyl_mm_deg": [13.0, 0.0, 2.0],
+        "normal_xyz": [0.0, 0.0, 1.0],
+        "normal_cylindrical": {
+            "radial": 0.0, "tangential": 0.0, "axial": 1.0
+        },
+        "bbox_mm": [12.0, -1.0, 1.0, 14.0, 1.0, 3.0],
+        "plane_axis": {
+            "origin_mm": [13.0, 0.0, 2.0],
+            "direction": [0.0, 0.0, 1.0],
+        },
+    }
+    translated = geometry._case_frame_facts(
+        facts, Normalisation((10.0, 0.0, 0.0), (0.0, 0.0, 1.0))
+    )
+    assert translated["centroid_mm"] == pytest.approx([3.0, 0.0, 2.0])
+    assert translated["centroid_cyl_mm_deg"] == pytest.approx([3.0, 0.0, 2.0])
+    assert translated["bbox_mm"] == pytest.approx(
+        [2.0, -1.0, 1.0, 4.0, 1.0, 3.0]
+    )
+    assert translated["plane_axis"]["origin_mm"] == pytest.approx(
+        [3.0, 0.0, 2.0]
+    )
 
 
 def test_unset_bounds_become_none_not_a_wide_number():

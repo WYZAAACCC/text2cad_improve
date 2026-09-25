@@ -1,0 +1,1005 @@
+<title>空的那一层</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@600;700&family=Noto+Sans+SC:wght@500;700&family=Noto+Serif+SC:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+
+<style>
+  :root {
+    --ground: #F4F6F6;
+    --surface: #FFFFFF;
+    --surface-2: #E9EDEE;
+    --ink: #14181A;
+    --ink-2: #414A4E;
+    --muted: #737D81;
+    --rule: #D2D9DA;
+    --rule-soft: #E3E8E9;
+    --accent: #0B6E6B;
+    --accent-soft: #DFEFEE;
+    --accent-line: #7FBAB7;
+    --warn: #A6472A;
+    --warn-soft: #F7E7E1;
+    --shadow: 0 1px 2px rgba(20,24,26,.05), 0 10px 28px -18px rgba(20,24,26,.3);
+    --measure: 66ch;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0E1112; --surface: #171C1E; --surface-2: #202628;
+      --ink: #E6EBEC; --ink-2: #B2BCC0; --muted: #869296;
+      --rule: #2B3336; --rule-soft: #222A2C;
+      --accent: #5FBDB8; --accent-soft: #123230; --accent-line: #2E6A67;
+      --warn: #E08A6C; --warn-soft: #35201A;
+      --shadow: 0 1px 2px rgba(0,0,0,.45), 0 10px 28px -18px rgba(0,0,0,.85);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0E1112; --surface: #171C1E; --surface-2: #202628;
+    --ink: #E6EBEC; --ink-2: #B2BCC0; --muted: #869296;
+    --rule: #2B3336; --rule-soft: #222A2C;
+    --accent: #5FBDB8; --accent-soft: #123230; --accent-line: #2E6A67;
+    --warn: #E08A6C; --warn-soft: #35201A;
+    --shadow: 0 1px 2px rgba(0,0,0,.45), 0 10px 28px -18px rgba(0,0,0,.85);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: "Noto Serif SC", Georgia, serif;
+    font-size: 16.5px; line-height: 1.8;
+    padding-block: 0 7rem; padding-inline: 22px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1060px; margin: 0 auto; }
+  h1, h2, h3, h4, .ui { font-family: "Saira Semi Condensed", "Noto Sans SC", system-ui, sans-serif; text-wrap: balance; }
+  code, .mono, .num { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; }
+  .num { font-variant-numeric: tabular-nums; }
+  a { color: var(--accent); text-underline-offset: .18em; text-decoration-thickness: .06em; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+
+  /* ── masthead ────────────────────────────────── */
+  header.masthead { padding-block: 4rem 2rem; border-bottom: 3px double var(--rule); margin-bottom: 3rem; }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace; font-size: .72rem; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--muted); margin: 0 0 1.4rem;
+  }
+  h1 { font-size: clamp(2rem, 5.2vw, 3.4rem); line-height: 1.08; font-weight: 700; letter-spacing: -.02em; margin: 0 0 1.2rem; }
+  h1 .q { color: var(--accent); }
+  .standfirst { font-size: 1.1rem; color: var(--ink-2); max-width: 54ch; margin: 0; }
+
+  /* ── sections ───────────────────────────────── */
+  section { margin-block: 4.5rem 0; }
+  h2 {
+    font-size: 1.7rem; font-weight: 700; letter-spacing: -.01em;
+    margin: 0 0 .4rem; line-height: 1.2;
+  }
+  h2 .idx {
+    font-family: "IBM Plex Mono", monospace; font-size: .72rem; font-weight: 600;
+    color: var(--accent); letter-spacing: .14em; display: block; margin-bottom: .55rem;
+  }
+  .h2sub { color: var(--muted); font-size: .95rem; margin: 0 0 2rem; max-width: var(--measure); font-family: "IBM Plex Mono", monospace; }
+  h3 { font-size: 1.18rem; font-weight: 700; margin: 2.8rem 0 .8rem; }
+  h4 { font-size: .8rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 2rem 0 .6rem; }
+  p { max-width: var(--measure); margin: 0 0 1.15rem; }
+  .lede { font-size: 1.06rem; }
+  ul, ol { max-width: var(--measure); padding-left: 1.35rem; margin: 0 0 1.15rem; }
+  li { margin-bottom: .6rem; }
+  strong { font-weight: 600; }
+  em.term { font-style: normal; font-weight: 600; color: var(--accent); }
+
+  /* ── thesis ─────────────────────────────────── */
+  .thesis {
+    background: var(--ink); color: var(--ground);
+    padding: 2.2rem 2rem; margin: 2.5rem 0 1rem;
+  }
+  :root[data-theme="dark"] .thesis { background: var(--surface-2); color: var(--ink); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .thesis { background: var(--surface-2); color: var(--ink); } }
+  .thesis p { font-family: "Saira Semi Condensed", "Noto Sans SC", sans-serif; font-size: 1.32rem; line-height: 1.55; font-weight: 600; max-width: 40ch; margin: 0; }
+  .thesis .sub { font-family: "Noto Serif SC", serif; font-size: .98rem; font-weight: 400; line-height: 1.8; margin-top: 1.2rem; max-width: 62ch; opacity: .9; }
+
+  /* ── callouts ───────────────────────────────── */
+  .callout { background: var(--surface); border: 1px solid var(--rule); padding: 1.4rem 1.6rem; margin: 1.8rem 0; max-width: var(--measure); box-shadow: var(--shadow); border-left: 3px solid var(--muted); }
+  .callout.acc { border-left-color: var(--accent); }
+  .callout.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .tag { font-family: "IBM Plex Mono", monospace; font-size: .68rem; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: .65rem; }
+
+  /* ── pull quote (原文引语) ────────────────────── */
+  blockquote {
+    margin: 1.6rem 0; padding: 1.2rem 0 1.2rem 1.5rem;
+    border-left: 3px solid var(--accent); max-width: var(--measure);
+    font-size: .96rem; line-height: 1.85; color: var(--ink-2);
+  }
+  blockquote p { margin: 0 0 .8rem; max-width: none; }
+  blockquote p:last-child { margin-bottom: 0; }
+  blockquote cite {
+    display: block; margin-top: .9rem; font-style: normal;
+    font-family: "IBM Plex Mono", monospace; font-size: .74rem; color: var(--muted);
+  }
+
+  /* ── tables ─────────────────────────────────── */
+  .tablewrap { overflow-x: auto; margin: 1.8rem 0; border: 1px solid var(--rule); background: var(--surface); box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; font-size: .83rem; min-width: 620px; }
+  th, td { text-align: left; padding: .7rem .85rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; line-height: 1.65; }
+  thead th {
+    font-family: "Saira Semi Condensed", "Noto Sans SC", sans-serif; font-size: .74rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
+    background: var(--surface-2); border-bottom: 1px solid var(--rule); white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.n, th.n { text-align: center; font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+  .lv { font-family: "IBM Plex Mono", monospace; font-weight: 600; font-size: .8rem; white-space: nowrap; }
+  .lv.gap { color: var(--accent); }
+  tr.gaprow { background: var(--accent-soft); }
+  tr.gaprow td { border-bottom-color: var(--accent-line); }
+  caption { caption-side: bottom; text-align: left; font-size: .77rem; color: var(--muted); padding: .75rem .85rem; font-family: "IBM Plex Mono", monospace; line-height: 1.65; }
+
+  /* ── figure ─────────────────────────────────── */
+  figure { margin: 2.5rem 0; }
+  figure svg { display: block; width: 100%; height: auto; color: var(--ink-2); }
+  figcaption { font-size: .8rem; color: var(--muted); margin-top: 1rem; max-width: var(--measure); font-family: "IBM Plex Mono", monospace; line-height: 1.7; }
+
+  /* ── innovation cards ───────────────────────── */
+  .inv {
+    border: 1px solid var(--rule); background: var(--surface);
+    box-shadow: var(--shadow); margin-bottom: 2rem;
+  }
+  .inv > header {
+    padding: 1.4rem 1.7rem 1.1rem; border-bottom: 1px solid var(--rule-soft);
+    background: var(--surface-2);
+  }
+  .inv > header .kicker {
+    font-family: "IBM Plex Mono", monospace; font-size: .68rem; letter-spacing: .15em;
+    text-transform: uppercase; color: var(--accent); display: block; margin-bottom: .5rem;
+  }
+  .inv > header h3 { margin: 0; font-size: 1.28rem; line-height: 1.3; }
+  .inv > header .one { color: var(--ink-2); font-size: .92rem; margin: .5rem 0 0; max-width: 60ch; }
+  .inv .body { padding: 1.5rem 1.7rem 1.7rem; }
+  .inv .body > *:last-child { margin-bottom: 0; }
+  .inv dl { margin: 0; max-width: none; }
+  .inv dt {
+    font-family: "IBM Plex Mono", monospace; font-size: .7rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--accent); margin-top: 1.7rem; padding-top: 1.2rem;
+    border-top: 1px dashed var(--rule);
+  }
+  .inv dt:first-of-type { margin-top: 0; padding-top: 0; border-top: none; }
+  .inv dd { margin: .6rem 0 0; }
+  .inv dd p, .inv dd ul { max-width: none; }
+
+  .evidence {
+    font-family: "IBM Plex Mono", monospace; font-size: .78rem; line-height: 1.75;
+    color: var(--muted); background: var(--surface-2); padding: .95rem 1.1rem; margin-top: .8rem;
+  }
+  .evidence b { color: var(--ink-2); font-weight: 600; }
+
+  /* ── ruled list (roads not taken) ───────────── */
+  .ruled { max-width: var(--measure); margin: 1.6rem 0; }
+  .ruled .item { border-top: 1px solid var(--rule); padding: 1.2rem 0; }
+  .ruled .item:last-child { border-bottom: 1px solid var(--rule); }
+  .ruled .item .h {
+    font-family: "Saira Semi Condensed", "Noto Sans SC", sans-serif; font-weight: 700;
+    font-size: 1.02rem; display: flex; gap: .7rem; align-items: baseline; margin-bottom: .45rem;
+  }
+  .ruled .item .h .x {
+    font-family: "IBM Plex Mono", monospace; color: var(--warn); font-size: .85rem; flex: none;
+  }
+  .ruled .item p { margin: 0; font-size: .95rem; color: var(--ink-2); }
+
+  hr.div { border: none; border-top: 1px solid var(--rule); margin: 3.5rem 0 0; max-width: var(--measure); }
+
+  @media (max-width: 680px) {
+    body { font-size: 15.5px; padding-inline: 17px; }
+    .thesis { padding: 1.5rem 1.2rem; }
+    .thesis p { font-size: 1.14rem; }
+    .inv .body, .inv > header { padding-inline: 1.1rem; }
+    h2 { font-size: 1.45rem; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+<div style="border:2px solid #A6472A;background:#F7E7E1;color:#14181A;padding:1.3rem 1.5rem;margin:0 0 2.5rem;font-family:'Noto Serif SC',serif;line-height:1.75">
+  <strong style="font-family:'IBM Plex Mono',monospace;font-size:.8rem;letter-spacing:.1em">⚠ 更正声明 · 2026-09-15 · 本文档部分结论已被证伪，请勿引用</strong>
+  <p style="margin:.8rem 0 .5rem"><strong>创新点 A 不成立。</strong>「把应力场/梯度与参数化特征联系起来」在古典优化界已于 1994 年启动、2012 年成熟，并且<strong>已用于涡轮</strong>：Verstraete, Müller &amp; Müller（ASME Turbo Expo 2017, GT2017-65005）以 max von Mises 为目标对 CAD 特征参数求伴随梯度，结论直接表述为「extend the back plate near the radial center」。Robinson, Armstrong &amp; Chua（<em>SMO</em> 46(3), 2012）更早就用 adjoint 灵敏度图在四种特征类型里<strong>选收益最大的那个</strong>。</p>
+  <p style="margin:0 0 .5rem"><strong>LLM 侧也已有人做。</strong>FRAME（OpenReview <span class="mono">2TdYc5V4jU</span>）用 VLM 读 FEA 云图 → 识别应力集中 → 提出具名几何修改（如「increase fillet radius」）→ 生成脚本更新 CSG → 重算。这正是本文档「创新点 A」描述的工作流。</p>
+  <p style="margin:0 0 .5rem"><strong>创新点 C 的论证基础塌了。</strong>同构不变性检验<strong>抓不到</strong>那个 53% 的选面错误——两条榫齿带半径差 70 mm（202–214 vs 281–295），没有任何对称或重编号能把一条映射成另一条。该错误是<strong>语义/知识错误</strong>（D27 模型里没有叶根），不是 shortcut。另，四类「同构变换」中<strong>单位制切换不是不变性而是协变性</strong>，属概念错误。</p>
+  <p style="margin:.8rem 0 0"><strong>本文档待重写，在重写之前请勿作为写作依据。</strong>仍可能成立的部分见 §4 末尾的「使能前提」一节（实体身份），但需按同样标准重查。</p>
+  <p style="margin:.8rem 0 0"><strong>→ 当前结论见 <a href="开放问题登记表.md" style="color:#A6472A;font-weight:600">《开放问题登记表》</a></strong>——该文按「作者自述的开放问题 × 是否已解决」逐条核验（8 条仍开放、6 条部分占位、5 条引语过时、11 条伪造或误归属），并给出推荐定位：<strong>领域优先，主贡献 = 载荷施加方式对涡轮盘应力场的影响半径</strong>（1975 年 AIAA 50 年悬案），motivation = 真实零件 + 独立验证。</p>
+</div>
+
+<header class="masthead">
+  <p class="eyebrow">横向对比与创新点阐释 · 2026-09-15</p>
+  <h1>空的那一层<span class="q">。</span></h1>
+  <p class="standfirst">
+    这份文档回答三个问题：<strong>别人做到哪了</strong>、<strong>空白具体在哪</strong>、
+    <strong>以及为什么我们选的这个方向既没人做过、又一定做得成</strong>。
+    全部结论都有出处，关键处附原文引语。
+  </p>
+</header>
+
+<!-- ══════════════════════════════════════════ -->
+<section>
+  <h2><span class="idx">论点</span>问题不在"有没有闭环"，在"闭环里的反馈有多细"</h2>
+
+  <p class="lede">
+    2025–2026 年，"让 LLM 把 CAD 和 CAE 串起来，根据仿真结果改设计"这件事已经被至少十项工作做过。
+    所以第一件要说清的事是：<strong>我们不能靠"做了闭环"来立论。</strong>
+  </p>
+
+  <p>
+    但把这十项工作放在一起看，会发现一个规律——它们对**反馈信号**的使用方式，几乎全部停在最粗的两档：
+    要么只知道"跑通了没有"，要么只知道"最大应力是多少"。而越往细走，人越少，到"梯度"这一档，
+    <strong>一个人都没有</strong>。
+  </p>
+
+  <div class="thesis">
+    <p>反馈的语义分辨率，决定了闭环能不能收敛。<br>而分辨率不能再靠"让模型多看图"来提高。</p>
+    <p class="sub">
+      把反馈按分辨率排成五档，就会发现：<strong>L0 和 L1 挤满了人，L2 是经典力学几十年的地盘，
+      L3 有人试过并且失败了，L4 完全空着。</strong>
+      而 L3 的失败方式很说明问题——不是模型不够强，是它被要求从一张彩色云图里，
+      反推一个它根本算不出来的量。
+    </p>
+  </div>
+</section>
+
+<hr class="div">
+
+<!-- ══════════════════════════════════════════ -->
+<section>
+  <h2><span class="idx">§1 横向对比</span>五档分辨率，以及每档里站着谁</h2>
+  <p class="h2sub">这是全文的分析框架。把每一项工作放进它所在的那一档，空白就自己显现了。</p>
+
+  <figure>
+    <svg viewBox="0 0 900 400" role="img" aria-label="五档反馈语义分辨率的占用情况：L0 布尔与 L1 标量两档拥挤，L2 网格单元档由经典形状优化占据，L3 参数化特征档有人尝试但失败，L4 梯度与特征灵敏度档完全空白。">
+      <defs>
+        <pattern id="hatch" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+          <line x1="0" y1="0" x2="0" y2="7" stroke="var(--accent-line)" stroke-width="1.4"></line>
+        </pattern>
+      </defs>
+
+      <!-- row L4 -->
+      <text x="0" y="34" font-family="IBM Plex Mono, monospace" font-size="13" font-weight="600" fill="var(--accent)">L4</text>
+      <text x="0" y="52" font-family="Noto Serif SC, serif" font-size="11.5" fill="var(--muted)">梯度 · adjoint</text>
+      <rect x="130" y="18" width="330" height="40" fill="url(#hatch)" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="6 4"></rect>
+      <text x="295" y="43" text-anchor="middle" font-family="Saira Semi Condensed, sans-serif" font-size="14" font-weight="700" fill="var(--accent)">无人</text>
+      <text x="480" y="34" font-family="Noto Serif SC, serif" font-size="12.5" fill="var(--ink-2)">SIMP 内层本来就在算，但从未被指向决策层</text>
+      <text x="480" y="52" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--muted)">两侧接口都现成 —— 只缺一个连接</text>
+
+      <!-- row L3 -->
+      <text x="0" y="104" font-family="IBM Plex Mono, monospace" font-size="13" font-weight="600" fill="var(--accent)">L3</text>
+      <text x="0" y="122" font-family="Noto Serif SC, serif" font-size="11.5" fill="var(--muted)">云图 → 特征</text>
+      <rect x="130" y="88" width="330" height="40" fill="url(#hatch)" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="6 4"></rect>
+      <circle cx="176" cy="108" r="11" fill="var(--warn)"></circle>
+      <text x="176" y="112" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="600" fill="#fff">2</text>
+      <text x="480" y="104" font-family="Noto Serif SC, serif" font-size="12.5" fill="var(--ink-2)">IterSIMP-σ 失败（p = 0.382）；LLM-IDA 承认退回人工</text>
+      <text x="480" y="122" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--warn)">两篇自己承认做不到</text>
+
+      <!-- row L2 -->
+      <text x="0" y="174" font-family="IBM Plex Mono, monospace" font-size="13" font-weight="600" fill="var(--muted)">L2</text>
+      <text x="0" y="192" font-family="Noto Serif SC, serif" font-size="11.5" fill="var(--muted)">→ 网格单元</text>
+      <rect x="130" y="158" width="250" height="40" fill="var(--surface-2)" stroke="var(--rule)" stroke-width="1.2"></rect>
+      <text x="255" y="183" text-anchor="middle" font-family="Saira Semi Condensed, sans-serif" font-size="12.5" font-weight="600" fill="var(--ink-2)">经典力学的地盘</text>
+      <text x="480" y="174" font-family="Noto Serif SC, serif" font-size="12.5" fill="var(--ink-2)">SIMP 热点、形状优化、feature-mapping + PDV</text>
+      <text x="480" y="192" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--muted)">几十年成熟，不要在这里声称创新</text>
+
+      <!-- row L1 -->
+      <text x="0" y="244" font-family="IBM Plex Mono, monospace" font-size="13" font-weight="600" fill="var(--muted)">L1</text>
+      <text x="0" y="262" font-family="Noto Serif SC, serif" font-size="11.5" fill="var(--muted)">全场 → 标量</text>
+      <rect x="130" y="228" width="660" height="40" fill="var(--surface-2)" stroke="var(--rule)" stroke-width="1.2"></rect>
+      <text x="460" y="253" text-anchor="middle" font-family="Saira Semi Condensed, sans-serif" font-size="12.5" font-weight="600" fill="var(--ink-2)">COSMO-Agent · Physics-in-the-Loop · TurboAgent · FeaGPT · Hephaestus-CCX …</text>
+      <text x="480" y="288" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--muted)">拥挤</text>
+
+      <!-- row L0 -->
+      <text x="0" y="314" font-family="IBM Plex Mono, monospace" font-size="13" font-weight="600" fill="var(--muted)">L0</text>
+      <text x="0" y="332" font-family="Noto Serif SC, serif" font-size="11.5" fill="var(--muted)">跑通 / 报错</text>
+      <rect x="130" y="298" width="660" height="40" fill="var(--surface-2)" stroke="var(--rule)" stroke-width="1.2"></rect>
+      <text x="460" y="323" text-anchor="middle" font-family="Saira Semi Condensed, sans-serif" font-size="12.5" font-weight="600" fill="var(--ink-2)">绝大多数 CFD / OpenFOAM agent · CAD-Judge · TraceCAD</text>
+      <text x="480" y="358" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--muted)">拥挤</text>
+    </svg>
+    <figcaption>
+      图 1 · 横轴长度表示该档的拥挤程度。灰色为已被占据，斜纹加虚线为空白。
+      越往上反馈越细，人越少，到 L4 一个人都没有。
+    </figcaption>
+  </figure>
+
+  <div class="tablewrap">
+    <table>
+      <caption>十项已把 CAE 结果回改几何的工作，按它们使用的反馈信号归档。注意没有一项在 L3 以上。</caption>
+      <thead>
+        <tr><th class="n">层</th><th>反馈信号</th><th>代表工作</th><th>改什么</th><th class="n">信用<br>归因</th></tr>
+      </thead>
+      <tbody>
+        <tr class="gaprow">
+          <td class="n lv gap">L4</td>
+          <td><strong>梯度 / adjoint / 特征灵敏度</strong></td>
+          <td><em>无</em></td><td>—</td><td class="n">—</td>
+        </tr>
+        <tr class="gaprow">
+          <td class="n lv gap">L3</td>
+          <td>全场 → <strong>定位到参数化特征</strong></td>
+          <td>IterSIMP-σ（尝试并失败）；LLM-IDA（承认退回人工）</td><td>—</td><td class="n">—</td>
+        </tr>
+        <tr>
+          <td class="n lv">L2</td><td>全场 → 网格单元 / 区域</td>
+          <td>SIMP 热点、经典形状优化、feature-mapping + Parametric Design Velocities</td>
+          <td>密度场 / 形状</td><td class="n">解析</td>
+        </tr>
+        <tr>
+          <td class="n lv">L1</td><td>全场 → <strong>标量</strong>（max σ、compliance）</td>
+          <td>COSMO-Agent、Physics-in-the-Loop、Hephaestus-CCX、TurboAgent、FeaGPT、DesAgent、IPMSM、MDO Agent</td>
+          <td>参数 / 代码 / 拓扑</td><td class="n">仅 ANOVA</td>
+        </tr>
+        <tr>
+          <td class="n lv">L0</td><td>布尔：跑通 / 报错</td>
+          <td>CAD-Judge、TraceCAD、Embodied CAD、多数 CFD agent</td>
+          <td>代码 / 配置</td><td class="n">无</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    这张表和图 1 是本文的立论基础。它同时说明了两件事：
+    <strong>第一，闭环本身不新</strong>（L0/L1 挤满了人）；
+    <strong>第二，真正的空白在 L3 和 L4，而且不是"没人想到"，是"有人试过、失败了、或者承认做不到"。</strong>
+  </p>
+</section>
+
+<hr class="div">
+
+<!-- ══════════════════════════════════════════ -->
+<section>
+  <h2><span class="idx">§2 不要创新的地方</span>已经堵死的三档</h2>
+  <p class="h2sub">先划掉不能去的地方，剩下的才是方向。每一条都有实测证据。</p>
+
+  <h3>L0 / L1 不是"还可以做得更好"，是已经做到了天花板</h3>
+
+  <p>
+    最直接的证据来自一篇专门做的对照实验（arXiv:2609.03718）。它在信息量与修复预算固定的条件下，
+    比较"一个通用编码 harness"和"精心设计的多 agent 专用系统"：
+  </p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>对照项</th><th class="n">结果</th><th>含义</th></tr></thead>
+      <tbody>
+        <tr><td>通用单 agent harness vs 专用多 agent</td><td class="n"><strong>96.4% vs 88.2%</strong></td><td>多 agent 编排<strong>没有优势</strong></td></tr>
+        <tr><td>execution-feedback repair</td><td class="n">71.8% → 96.4%</td><td>真正的驱动力是"读日志改代码"</td></tr>
+        <tr><td>scripted reflection（让 LLM 反思）</td><td class="n"><strong>零增益</strong></td><td>反思这条路已经走完了</td></tr>
+        <tr><td>注入 solver tutorials（领域知识）</td><td class="n">80.9% → 96.4%</td><td>唯一还有增益的输入是<strong>知识</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    这篇的结论直接点名了领域的缺口：
+    <strong>「多数 CAE 基准只检查生成的代码能不能跑，不检查物理是否正确」</strong>。
+    但它同时说明：<strong>在 L0/L1 这一层，"再加一个 agent"或"再让 LLM 反思一轮"已经不出活了。</strong>
+  </p>
+
+  <h3>L2 是经典力学几十年的地盘</h3>
+  <p>
+    "全场 → 网格单元"这一档早就被解决了，只是解决它的人不在 AI 社区：
+    SIMP 的热点检测、经典形状优化、以及 CAD 侧的
+    <em>feature-mapping optimization</em>（Shannon / Robinson 等，Queen's University Belfast 2023）
+    与 <em>Parametric Design Velocities</em>——后者已经把 adjoint 表面灵敏度与
+    "CAD 参数变化引起的边界法向移动"链接起来，<strong>直接给出目标函数对 CAD 参数的梯度</strong>。
+  </p>
+  <p>
+    <strong>在这三档里声称创新，会被审稿人用几十年文献压掉。</strong>
+    但它们的存在有一个反过来的用处——见 §3。
+  </p>
+
+  <h3>还有三条看起来诱人、实际已经死掉的路</h3>
+
+  <div class="ruled">
+    <div class="item">
+      <div class="h"><span class="x">✕</span><span>"再多迭代几轮就好了"</span></div>
+      <p>
+        Frontier-Eng 在 47 个真实工程任务上测出<strong>双重幂律衰减</strong>：改进频率按 t⁻¹（R² = 0.84）、
+        改进幅度按 k⁻¹ 衰减，<strong>中位数每任务只有 7 次改善</strong>，50–100 轮后趋零。
+        Physics-in-the-Loop 更直白地自陈：「<em>迭代越多，结果越不稳定</em>」，
+        并要求未来工作去研究「何时判定一个 CAD 设计已不可恢复」。
+        <strong>迭代次数不是免费资源，它有上限。</strong>
+      </p>
+    </div>
+    <div class="item">
+      <div class="h"><span class="x">✕</span><span>"让 LLM 看应力云图，自己提设计建议"</span></div>
+      <p>
+        IterSIMP-σ（2605.19110）正是这么做的——多模态 LLM 读密度图 + von Mises 渲染图，
+        提出"空间干预"（软密度种子）。结果：几何均值低 1.9%，<strong>但不显著（W = 33, 双侧 p = 0.382）</strong>，
+        而<strong>确定性 exact-hotspot 启发式打平</strong>。作者的结论原话是：
+        「尚不能作为 LLM 视觉推理改善应力约束优化的证据」。
+        <strong>给模型更多图，不会让它更懂力学。</strong>
+      </p>
+    </div>
+    <div class="item">
+      <div class="h"><span class="x">✕</span><span>"我们的 agent 省了仿真次数"</span></div>
+      <p>
+        这个主张有两个硬对照必须打赢。一是 <em>When Is an LLM Worth It for HPO?</em>（2606.21641）：
+        budget-matched 条件下给经典搜索同样的 warm-start，<strong>LLM 提议不带来任何 sample efficiency 优势</strong>
+        （TPE/GP-BO 约 12 次评估后追平，40 次反超）。二是 SimulCost（2603.20253，ICML）：
+        LLM agent 比传统 scanning <strong>慢 1.5–2.5×</strong>。
+        <strong>省算力这条路上，LLM 目前是输的。</strong>
+      </p>
+    </div>
+  </div>
+
+  <div class="callout acc">
+    <span class="tag">把 §2 的结论合起来</span>
+    <p>
+      L0/L1 堵死、L2 是老地盘、三条诱人路径都有实测反例。
+      剩下的空间非常小，但也因此非常清楚——<strong>只能往反馈的语义分辨率上走。</strong>
+    </p>
+  </div>
+</section>
+
+<hr class="div">
+
+<!-- ══════════════════════════════════════════ -->
+<section>
+  <h2><span class="idx">§3 空白</span>两篇自己承认做不到的工作</h2>
+  <p class="h2sub">这是本次调研最有价值的部分：空白不是我们推断出来的，是别人写在正文里的。</p>
+
+  <h3>3.1 L4 的空白：梯度就在那里，只是没人把它递过去</h3>
+
+  <p>
+    先看一句原文。IterSIMP-σ 的作者在 §7.1 主动交代了他们<strong>架构上的选择以及它的代价</strong>：
+  </p>
+
+  <blockquote>
+    <p>
+      "This is a deliberate architectural choice, not an equivalence claim, and it has concrete consequences.
+      <strong>The SIMP density update receives no gradient information about the stress field:
+      sensitivities ∂σ<sub>vm</sub>/∂ρ<sub>e</sub> are never computed</strong>, and the optimality-criteria update
+      drives densities toward compliance reduction without direct knowledge of where stress concentrations are forming.
+      <strong>In classical stress-constrained formulations—P-norm penalty, augmented Lagrangian, or q-p-relaxation—
+      the stress constraint enters the Lagrangian directly, and adjoint analysis provides element-wise stress
+      sensitivity to guide the density update.</strong>"
+    </p>
+    <cite>IterSIMP-σ, arXiv:2605.19110 §7.1</cite>
+  </blockquote>
+
+  <p>
+    这段话的意思是：<strong>经典方法本来就会算这个梯度，而我们故意没算，因为我们要让 LLM 来做决策。</strong>
+    于是问题来了——梯度去哪了？
+  </p>
+
+  <div class="tablewrap">
+    <table>
+      <caption>三种模式，梯度都没有到达 LLM。这是逐篇 grep 与全文核实的结论。</caption>
+      <thead><tr><th>模式</th><th>代表工作</th><th>梯度去哪了</th></tr></thead>
+      <tbody>
+        <tr><td>LLM 编排梯度求解器</td><td>TO-Master 2607.01812、SGA 2405.09783、Metasurface 2604.01480</td><td>在求解器内部闭环，<strong>不回传 LLM</strong></td></tr>
+        <tr><td>LLM 只看原始场 / 标量</td><td>SIMPr 2603.25099（6 个标量）、IterSIMP-σ（渲染图）</td><td>只给 primal field，<strong>不给 derivative field</strong></td></tr>
+        <tr><td>数值融合（无 LLM 决策）</td><td>Zero-shot rib design 2609.10643：FE sensitivity 与生成梯度逐迭代数值组合</td><td>融合了，但<strong>决策者不是 LLM</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    核实方式是逐篇的：SIMPr、IterSIMP-σ、AutoSiMP、TO-Master、SGA、Metasurface、Zero-shot rib、
+    AirfoilAgent、Luo、Gandarela 十项，另加全文 grep——`2603.25099` 里 "adjoint" 出现 <strong>0 次</strong>，
+    `2606.31252` 里 adjoint 0 次、gradient 0 次。
+  </p>
+
+  <div class="callout">
+    <span class="tag">这个空白最特别的地方</span>
+    <p>
+      <strong>两侧都是成熟的，只缺一个接口。</strong>
+      仿真侧：SIMP 内层<strong>必须</strong>算 adjoint 才能更新密度——所以梯度是免费的、现成的。
+      CAD 侧：feature-mapping + Parametric Design Velocities 已经把"目标对特征参数的梯度"做好了。
+      <strong>而没有任何一篇 LLM-CAE 闭环工作引用过这条路线。</strong>
+    </p>
+  </div>
+
+  <h3>3.2 L3 的空白：最接近的竞争者在正文里承认退回人工</h3>
+
+  <p>
+    第二句引语来自 LLM-IDA——十项工作里架构最完整的一篇（L0/L1/L2 三层、PyAnsys、NSGA-II）。
+    在摩托车车架案例中，作者写道：
+  </p>
+
+  <blockquote>
+    <p>
+      "It is important to note that to simulate diverse industrial design scenarios, the input is
+      <strong>not a 3D modeling code, but a completed 3D model</strong>. This implies that
+      <strong>the LLM-IDA cannot read the coordinates of the load and constraint points.
+      Therefore, a manual step is required</strong> to select the load points based on LLM-IDA simulation suggestions…
+      <strong>If future research enables the identification and selection of the simulation load and constraint
+      points</strong>, LLM-IDA can achieve full-process automation in complex scenarios."
+    </p>
+    <cite>LLM-IDA, <em>Engineering</em>, DOI 10.1016/j.eng.2026.04.009</cite>
+  </blockquote>
+
+  <p>
+    这段话是<strong>持久命名问题被承认、但未被立项的书面证据</strong>——
+    出自最接近的竞争者，写在正文而不是 limitation 里，并且被列为未来工作。
+  </p>
+
+  <h3>3.3 为什么这个问题至今没被解决</h3>
+
+  <p>
+    十项工作都用同一种手法绕开了它：<strong>让参数向量承载身份，而不是让具名面承载身份。</strong>
+    几何永远由参数化代码重新生成，所以拓扑命名问题在受限案例集里根本不暴露。
+    一旦几何改动跨越参数化模板边界——换拓扑、加特征、载荷路径重排——四种绕过策略全部失效：
+  </p>
+
+  <div class="tablewrap">
+    <table>
+      <caption>最硬的证据是 MDO Agent 的 Table 5：几何导入与网格/求解器设置都高度自动化，唯独边界条件施加卡在 50–70%。</caption>
+      <thead><tr><th>绕过策略</th><th>代表</th><th>代价</th></tr></thead>
+      <tbody>
+        <tr><td>语义方位谓词</td><td>FeaGPT：「left edge」→ surface patch → Gmsh physical group → <code>*NSET</code></td><td>设计域空间布局必须固定</td></tr>
+        <tr><td>坐标包围盒谓词</td><td>Physics-in-the-Loop：<code>spatial_selectors: {x_min, x_max, ...}</code></td><td><strong>载荷会落到虚空里</strong>——其 §9.3 自陈「有时载荷或固定支撑所在的区域<strong>没有材料</strong>」，并为此专门设了一个 Geometry Reviewer</td></tr>
+        <tr><td>外部状态机 resolver</td><td>Embodied CAD：operation family + 构造状态 / 计数器 / 对称规则</td><td><strong>每换一个领域就要新写 resolver</strong></td></tr>
+        <tr><td>人工兜底</td><td>MDO Agent：<code>ask_for_human_help()</code></td><td>边界条件施加自动化率仅 <strong>50% / 70%</strong>（网格与求解器设置是 100%）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    还有一条几乎是替你写的第三方诊断，来自 CADReasoner：
+    这些空间偏差<strong>「无法定位错误、也无法归因到具体的草图尺寸或拓扑实体，
+    频繁导致多轮迭代退化为无引导的盲搜」</strong>。
+  </p>
+</section>
+
+<hr class="div">
+
+<!-- ══════════════════════════════════════════ -->
+<section>
+  <h2><span class="idx">§4 创新点</span>三个位置，以及为什么是我们</h2>
+  <p class="h2sub">
+    每一项按同一结构展开：<strong>是什么 → 别人做到哪了 → 为什么这算创新 → 为什么选它 → 我们已有的证据</strong>。
+  </p>
+
+  <!-- ── 创新点 A ── -->
+  <article class="inv">
+    <header>
+      <span class="kicker">创新点 A · L4</span>
+      <h3>把特征灵敏度递进智能体的决策上下文</h3>
+      <p class="one">
+        不再让模型从云图里猜"哪里该改"，而是直接告诉它"目标对每个命名特征参数的灵敏度是多少"。
+      </p>
+    </header>
+    <div class="body">
+      <dl>
+
+        <dt>是什么</dt>
+        <dd>
+          <p>
+            把仿真侧已经算出来的 adjoint 灵敏度（或 CAD 侧的 feature-mapping / Parametric Design Velocities 梯度），
+            <strong>整理成"对某个命名特征参数的灵敏度"的形式，作为工具返回值交给智能体</strong>。
+            智能体拿到的不是一张图，而是一个排序过的、带单位的、指向具体特征参数的清单。
+          </p>
+        </dd>
+
+        <dt>别人做到哪了</dt>
+        <dd>
+          <p>
+            <strong>没有人把导数场送进 LLM。</strong>三种现有模式全部止步于原函数场：
+            LLM 编排梯度求解器（梯度在求解器内闭环）、LLM 只看标量或渲染图（只有 primal field）、
+            或数值融合但决策者不是 LLM。IterSIMP-σ 的作者甚至主动写明"我们故意不算这个梯度"。
+          </p>
+          <p>
+            一个必须知道的现代威胁：<strong>ShapeBench</strong>（2605.20763，Stanford，103 个 ASO 任务）
+            已经把 <code>E.1 Adjoint (IPOPT)</code> 作为一个 baseline，与三个 LLM 优化器在同一批任务、
+            同一预算下<strong>头对头对打</strong>。所以"adjoint 对比 LLM"这件事本身已经有人做了。
+          </p>
+          <p>
+            <strong>但它做的不是同一件事</strong>：它把 adjoint 当作一个<em>独立的优化基线</em>来跑，
+            并没有把梯度放进 LLM 的上下文。两者是"用梯度代替 LLM"和"把梯度交给 LLM"的区别。
+          </p>
+        </dd>
+
+        <dt>为什么这算创新</dt>
+        <dd>
+          <p>
+            有三层理由，从弱到强：
+          </p>
+          <ul>
+            <li>
+              <strong>它是唯一"两侧成熟、只缺接口"的位置。</strong>
+              不是要发明新的梯度算法，也不是要发明新的 CAD 参数化——两边的工具都在，只是从没接上。
+              这类创新风险最低、最容易做出对比实验。
+            </li>
+            <li>
+              <strong>它绕开了已被证伪的那条路。</strong>
+              IterSIMP-σ 的 p = 0.382 说明"让模型从图里反推干预"打不过确定性启发式。
+              原因很可能是：<strong>那个量根本不是从图里能推出来的</strong>。
+              梯度是局部导数信息，云图是全局原函数信息——要模型从后者反推前者，
+              等于要求它做一次它没有工具的积分逆运算。
+              给梯度，是把问题从"推断"降级为"读取"。
+            </li>
+            <li>
+              <strong>它把 LLM 放回了它擅长的地方。</strong>
+              两篇独立工作都测出 LLM 在数值优化上不占优（HPO 对照、SimulCost）。
+              但语义工作——"这个灵敏度是挂在哪个特征上的""这个特征改动会不会破坏装配"——
+              恰恰是 LLM 能做好而梯度法做不了的。灵敏度给数值方向，LLM 给语义约束，
+              这是分工而不是竞争。
+            </li>
+          </ul>
+        </dd>
+
+        <dt>为什么选它（可行性）</dt>
+        <dd>
+          <p>
+            因为我们的系统有一个别人没有的东西：<strong>命名的、跨 revision 稳定的特征参数</strong>。
+            这不是巧合——"σ 对 <code>rim_junc</code> 圆角半径的灵敏度"这句话要成立，
+            前提就是 <code>rim_junc</code> 在两次迭代之间是<em>同一个实体</em>。
+            没有这个前提，梯度算出来了也无处可挂（挂到"第 47 号面"上，下一次迭代这个编号就变了）。
+          </p>
+          <p>
+            <strong>换句话说：这条路别人不是没想到，是他们的身份系统撑不住。</strong>
+          </p>
+        </dd>
+
+        <dt>我们已有的证据</dt>
+        <dd>
+          <div class="evidence">
+            <b>身份存活（前提已具备）</b> · D19 rev-000002，榫槽 cutter 截面宽度扰动 2%：
+            <b>8/8 role ID 原生复解</b>，面类型变化 0，面积相对变化 0.795%–1.648%，
+            最大质心移动 0.130 mm，法向绝对点积最小 <b>0.99995</b>。<br>
+            <b>身份的质量</b> · 336 个 OCAF 拓扑命名测试全绿 + 5 个 C++ 原生 fixture<br>
+            <b>待补</b> · 把灵敏度接进 agent 的工具集，并对照三种基线（ANOVA / 标量 / 渲染图）
+          </div>
+        </dd>
+
+      </dl>
+    </div>
+  </article>
+
+  <!-- ── 创新点 B ── -->
+  <article class="inv">
+    <header>
+      <span class="kicker">创新点 B · 反馈可信度</span>
+      <h3>把"这条反馈是不是假象"做成环路的门</h3>
+      <p class="one">
+        现有系统会把网格改善、载荷施加伪影、绑定缺失当成设计改善记下来。我们要在它进入接受准则之前拦住。
+      </p>
+    </header>
+    <div class="body">
+      <dl>
+
+        <dt>是什么</dt>
+        <dd>
+          <p>
+            在"仿真结果 → 设计决策"这条边上，插入一个<strong>可信度判定</strong>：
+            这条反馈是真实的设计改善，还是数值假象？
+            判据包括常应力分片试验、网格收敛检查、正负对照。
+            <strong>只有通过判定的反馈才有资格驱动设计。</strong>
+          </p>
+        </dd>
+
+        <dt>别人做到哪了</dt>
+        <dd>
+          <p>
+            假象<strong>是被记录在案的</strong>，但没人拦它。Hephaestus-CCX 对九例 pass-flip 做了归因分析，
+            四类修复里有<strong>两类是假象</strong>：
+          </p>
+          <ul>
+            <li>
+              <strong>「mesh-sensitive geometry simplification」</strong>——
+              把加载路径简化、网格随之变好，<strong>被记为设计改善</strong>。
+            </li>
+            <li>
+              <strong>「checker-contract repairs」</strong>——物理本来就对，
+              只是 metric alias / mass field / <strong>selector binding</strong> 缺失导致判失败。
+            </li>
+          </ul>
+          <p>
+            网格本身也在掩盖问题。IterSIMP-σ §7.3 自陈：「基准问题用的网格相对粗糙（1,600–8,000 单元）……
+            <strong>在粗分辨率下，应力集中被网格本身部分抹平，可能低估了应力约束的难度</strong>」。
+            而它 §7.5 给出的下一步不是调 prompt，是"固定体积的 3D 重算与<strong>网格细化检查</strong>"。
+          </p>
+          <p>
+            验证这一侧也不是没人做，但做的不是这件事。2026 有一个成型的子领域做"物理是否正确"：
+            PDE-Grounded Intent Verification 验的是<strong>设置的方程对不对</strong>（220 例中 39–40% 能跑但解错物理）；
+            PHACT 验的是<strong>可行性</strong>；PA-SciML / PhysVEC 验的是<strong>场是否满足守恒律与对称性</strong>。
+            <strong>它们全都是一次性验一个产物，没有一个把判定做成迭代环路里的门。</strong>
+          </p>
+        </dd>
+
+        <dt>为什么这算创新</dt>
+        <dd>
+          <p>
+            <strong>因为空白的形状很精确：</strong>
+          </p>
+          <div class="callout acc" style="margin:1rem 0">
+            <p>
+              没有任何工作把<strong>网格收敛 / 离散化检查</strong>作为 accept/reject 门放进 agent 环。
+            </p>
+          </div>
+          <p>
+            检索是零命中的——没有一篇用"同一网格"或"网格收敛性研究"作为改进验证的协议。
+            ShapeBench 有诊断套件能<em>诊断出</em> surrogate exploitation
+            （逐字证据：DrivAerStar 的 20 个参数里 <strong>13 个在所有方法的收敛最优解上都被推到边界</strong>，
+            「indicating that this convergence pattern is a <strong>landscape property of the surrogate</strong>」），
+            但它<strong>不把诊断结果作为门</strong>。
+            唯一认真处理求解器可信度的是 Luo et al.（OpenSeesPy 误差 <1%、与独立 ANSYS APDL 容差 2–3%），
+            但只做到<strong>引擎精度层</strong>，而且是一次性的，不在迭代里。
+          </p>
+          <p>
+            <strong>更深一层，这件事有理论依据。</strong>
+            有一篇工作论证了：作为 test oracle 的仿真器<strong>必须先被认证</strong>，它的 verdict 才算保证证据；
+            而且给出一个反直觉结果——<strong>视觉保真度最高的模型，在闭环 verdict 的可靠性上排名更低</strong>。
+            另一份可信度阶梯把它们分级：Tier III（数值仿真与守恒律）
+            「<strong>不真正解题就很难伪造</strong>」，而 Tier V（学习型 verifier / 代理奖励）会撞上
+            <em>reliability cliff</em>，且「<strong>代理模型自己的置信度，对特定实例没有任何证明力</strong>」。
+            另有报告指出<strong>同模型 verifier 反而让任务成功率回退 8.4 个百分点</strong>。
+          </p>
+        </dd>
+
+        <dt>为什么选它</dt>
+        <dd>
+          <p>
+            因为<strong>我们已经在做这件事，而且做出过一次否定自己的结果</strong>。
+            这是最难伪造的一种资历：不是"我们设计了一个验证器"，而是"我们的验证器推翻了我们自己的头条数字"。
+          </p>
+          <p>
+            而且它有一个 20 年历史的理论归宿：这正是 VV&amp;UQ 里的 <em>solution verification</em>
+            （ASME V&amp;V 20 / Oberkampf），而 <strong>PCMM（Sandia 2007，六要素四级，每要素打成熟度/证据强度/相关性三个分）
+            与 LLM agent 至今没有交集</strong>——我专门查过，检索结论是它们「没有专门处理 LLM agent 执行自动可信度评估」。
+            落在 CMAME 这样既懂力学又懂方法的期刊上，这条线索是加分项。
+          </p>
+        </dd>
+
+        <dt>我们已有的证据</dt>
+        <dd>
+          <div class="evidence">
+            <b>推翻了自身结论</b> · 载荷施加从逐节点集中力改为 SFE 面压力后，全局峰值从载荷面（r = 212.29）
+            迁回内孔（r = 60），最大 von Mises <b>1553.78 → 1482.90 MPa</b>。
+            判定依据不是"数字更小"，而是一次<b>常应力分片试验</b>：节点力路径误差 183% 并产生 5.8 MPa 虚假 σ<sub>yy</sub>，
+            SFE 路径通过。<br>
+            <b>正对照</b> · 故意错 <code>LKEY</code> 给出 4.6 倍应力（6775.03 MPa），证明这组指标对错误敏感<br>
+            <b>近零载荷对照</b> · 1124.595 vs 1123.468 MPa，相对差 0.1003%，证明新实现无求解退化<br>
+            <b>否定结论</b> · 位移对叶片载荷几乎不敏感（三组都在 3.22–3.25 mm），<b>不可用作加载方式的回归判据</b><br>
+            <b>三态判决词汇表</b> · <code>confirmed_wrong / suspect / unverified</code>，<b>刻意没有 verified</b>
+          </div>
+        </dd>
+
+      </dl>
+    </div>
+  </article>
+
+  <!-- ── 创新点 C ── -->
+  <article class="inv">
+    <header>
+      <span class="kicker">创新点 C · 新机制</span>
+      <h3>物理同构不变性检验</h3>
+      <p class="one">
+        用"结论在保持物理语义的变换下是否不变"来判据真伪。原理已被证明有效，但没人定义过物理设计的同构变换。
+      </p>
+    </header>
+    <div class="body">
+      <dl>
+
+        <dt>是什么</dt>
+        <dd>
+          <p>
+            对智能体给出的结论，施加一组<strong>保持物理语义的变换</strong>，看结论是否依然成立。
+            例如："这批面是承力面"——把扇区旋转 k × 6°，这个物理事实不应该变。
+            如果结论崩了，那它就不是从物理事实得来的，而是从某个偶然特征得来的。
+          </p>
+          <p>涡轮盘的候选变换集是天然存在、且可以自动生成的：</p>
+          <ul>
+            <li><strong>周期扇区旋转</strong>（60 重对称，旋转 k × 6°）</li>
+            <li><strong>特征重编号</strong>（榫槽 1..60 循环重排）</li>
+            <li><strong>单位制切换</strong>（mm-N-s ↔ m-kg-s；代码里已有 mm-N-t-s 的明确约定）</li>
+            <li><strong>网格节点重排</strong>（同一几何、不同编号）</li>
+          </ul>
+        </dd>
+
+        <dt>别人做到哪了</dt>
+        <dd>
+          <p>
+            原理来自 IPT（Isomorphic Perturbation Testing，2604.15149，DFKI / TU Darmstadt），
+            但它做的是<strong>逻辑规则域</strong>。它发现：
+          </p>
+          <ul>
+            <li>
+              只检查 <em>extensional correctness</em>（给定的那些实例对不对）的验证器，
+              <strong>会主动诱导</strong>模型放弃规则学习、转而枚举实例级标签
+            </li>
+            <li>shortcut 率：GPT-5-nano <strong>36.8%</strong>、GPT-5-mini-high <strong>8.4%</strong>、GPT-4o 与 Ministral <strong>0%</strong></li>
+            <li><strong>随着任务复杂度与推理算力上升而上升</strong>——算力越多，越会钻空子</li>
+            <li>
+              对照训练证明是因果而非相关：<strong>extensional 验证诱导 shortcut，isomorphic 验证消除 shortcut</strong>
+            </li>
+          </ul>
+          <p>
+            <strong>而没有人定义过"物理设计的同构变换"是什么。</strong>这是一个机制级空白。
+          </p>
+        </dd>
+
+        <dt>为什么这算创新，以及为什么它能解释我们已有的现象</dt>
+        <dd>
+          <p>
+            我们的选面 agent 用的是<strong>纯 extensional 验证器</strong>：它自己写下判据，
+            harness 拿这份判据去校验它的提交，<code>check_criterion</code> 每次都通过。
+            实测 34 次：正确 18（<strong>53%</strong>）、选错 8、未提交 8。
+            当时我只能说"这是自洽而非正确"——<strong>现在有了因果解释</strong>。
+          </p>
+          <p>
+            更关键的是，同构检验能<strong>精确定位那个错误</strong>：
+            主导错误（8 次里 7 次）是同一个槽、同一方位角、半径差 70 mm 的两条榫齿带。
+            这两条带在所有几何量上无法区分，<strong>在扇区旋转和特征重编号下也不可区分</strong>——
+            而 agent 的判据把它们区分了。
+            <strong>也就是说：那条判据本身就是一个 shortcut。</strong>
+            同构检验会直接把它抓出来，而不需要人去看。
+          </p>
+          <p>
+            <strong>而且它回应了一个理论挑战。</strong>
+            有工作论证：没有任何固定的 reward function 能在策略能力增长时保持有效，
+            验证必须与生成器共同演化。这对"agent 自己写判据"是一个直接威胁——
+            判据若静态，会被 agent 追上并钻空子。
+            <strong>同构不变性是不依赖判据内容的独立检验</strong>，因此不受这条威胁影响。
+          </p>
+        </dd>
+
+        <dt>为什么选它（投入产出比最高）</dt>
+        <dd>
+          <p>
+            实现成本低——复用已有的对称性测量、role 重映射、单位换算，不需要新算法。
+            而它给出的<strong>不是一个新指标，是一个可否证、可预测的检验</strong>：
+            要么结论在变换下存活，要么它就是个 shortcut，没有解释空间。
+            这是三个创新点里最可能在审稿中被认作"新方法"的一块，也是最便宜的一块。
+          </p>
+        </dd>
+
+        <dt>我们已有的证据</dt>
+        <dd>
+          <div class="evidence">
+            <b>extensional 通过率</b> · 34 次选面，<code>check_criterion</code> 100% 通过，实际正确率 <b>53%</b><br>
+            <b>被数据否定的干预</b> · 工具回复里加分布直方图：提交率 39% → 67%，
+            但错答案 <b>0 → 9</b>（p ≈ 0.002），九次全是同一个错误，<b>而链路把九个全接受了</b>。该干预已撤销<br>
+            <b>建议性提示无效</b> · 「这是第 N 次相同调用」发了 21 次被完全无视<br>
+            <b>待补</b> · 构造四类同构变换，测 extensional 通过率与 isomorphic 存活率之差（即 shortcut 率）
+          </div>
+        </dd>
+
+      </dl>
+    </div>
+  </article>
+
+  <!-- ── 使能前提 ── -->
+  <article class="inv" style="border-left:3px solid var(--accent)">
+    <header>
+      <span class="kicker">使能前提 · 不是创新点，是别人做不了的原因</span>
+      <h3>溯源锚定的跨 revision 实体身份</h3>
+      <p class="one">
+        它不是三个创新点之一——它是那三个能成立的前提条件。
+      </p>
+    </header>
+    <div class="body">
+      <p>
+        <strong>A 需要它</strong>：灵敏度必须挂在命名特征上，"σ 对 <code>rim_junc</code> 圆角半径的灵敏度"
+        要求 <code>rim_junc</code> 跨迭代是同一个实体。<br>
+        <strong>B 需要它</strong>：可信度判定要锚到具体实体上，"这条面绑定的结果不可引用"要说得清是哪条面。<br>
+        <strong>C 需要它</strong>：同构变换里的"特征重编号"本身就是身份操作。
+      </p>
+      <p>
+        而 COMSOL-MCP（<em>Neurocomputing</em> 2026，76 个工具的多物理场 agent 接口）在 future work 里
+        写的就是 <strong>spatial grounding + topology-aware entity selection</strong>，
+        并给出痛点原话：「<strong>语法合法的 API 调用仍可能生成物理上无效的模型</strong>」。
+      </p>
+      <div class="callout" style="margin:1.2rem 0 0">
+        <span class="tag">为什么这不是"我们也做了个持久命名"</span>
+        <p>
+          Kerf、CADIR、MusubiCAD 都做了持久化。但三条经典路线各有硬伤：
+          TNaming 跨布尔脆弱（FreeCAD 1.0 仍部分失效）、
+          <strong>几何哈希在对称件上歧义</strong>（Kerf 自陈在齿轮齿、螺栓孔阵列上碰撞）、
+          occurrence path 只是快照不跨重建。
+          <strong>而枞树形榫槽的 60 重对称，正是几何哈希路线的死穴。</strong>
+        </p>
+      </div>
+      <div class="evidence" style="margin-top:1.2rem">
+        <b>D19 rev-000002</b> · 榫槽 cutter 截面宽度扰动 2%：<b>8/8 role ID 原生复解</b>，面类型变化 0，
+        面积相对变化 0.795%–1.648%，最大质心移动 0.130 mm，法向绝对点积最小 <b>0.99995</b><br>
+        <b>文献里没有对照物</b> · 没有任何一篇 LLM-CAE 工作把"几何变化后重新建立载荷/约束绑定"当作指标来评测。
+        Physics-in-the-Loop 报的 4.2× 复杂度、FeaGPT 的 element count CV，都不是身份度量
+      </div>
+    </div>
+  </article>
+</section>
+
+<hr class="div">
+
+<!-- ══════════════════════════════════════════ -->
+<section>
+  <h2><span class="idx">§5 汇总</span>一张表看完</h2>
+
+  <div class="tablewrap">
+    <table>
+      <caption>「别人做到哪」一列是这份文档最重要的一列——它决定了每个创新点的护城河有多宽。</caption>
+      <thead>
+        <tr>
+          <th>创新点</th><th>别人做到哪了</th><th>为什么这算创新</th><th class="n">我们已有<br>的证据</th><th class="n">还需补<br>的实验</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="gaprow">
+          <td><strong>A · 特征灵敏度<br>递进决策上下文</strong></td>
+          <td>无人把导数场送进 LLM。三种现有模式都止步于原函数场。<br>
+              <em>威胁</em>：ShapeBench 已做 adjoint vs LLM 头对头，但把梯度当<strong>独立基线</strong>而非 LLM 的输入</td>
+          <td>唯一"两侧成熟、只缺接口"的位置；绕开已被证伪的"看图提建议"；把 LLM 放回语义而非数值</td>
+          <td class="n">身份前提<br>✅</td>
+          <td class="n">E7<br>2–3 周</td>
+        </tr>
+        <tr class="gaprow">
+          <td><strong>B · 反馈可信度<br>作为环路的门</strong></td>
+          <td>假象被记录在案但无人拦（Hephaestus-CCX 四类修复中两类是假象）。<br>
+              网格检查<strong>零命中</strong>；ShapeBench 只诊断不设门；Luo 只做到引擎精度且不在迭代里</td>
+          <td>空白的形状极精确；有 20 年 VV&amp;UQ 理论归宿（PCMM 与 LLM agent 至今无交集）；<strong>我们已用它推翻过自己的结论</strong></td>
+          <td class="n">A/B/C 对照<br>✅</td>
+          <td class="n">E3<br>1 周</td>
+        </tr>
+        <tr class="gaprow">
+          <td><strong>C · 物理同构<br>不变性检验</strong></td>
+          <td>IPT 证明了原理但只在逻辑规则域。<br><strong>没人定义过物理设计的同构变换</strong></td>
+          <td>成本低；给出可否证、可预测的检验而非又一个指标；<strong>解释了我们测到的 53%</strong>；不受"判据会被追上"这条威胁影响</td>
+          <td class="n">53% 实测<br>✅</td>
+          <td class="n">E5<br>1–2 周</td>
+        </tr>
+        <tr>
+          <td><strong>前提 · 溯源锚定<br>实体身份</strong></td>
+          <td>COMSOL-MCP 亲口点名为未解决；LLM-IDA 正文承认退回人工；十项工作全部绕过</td>
+          <td>不是"也做了个持久命名"，而是三个创新点的<strong>共同前提</strong>——别人不是没想到，是身份系统撑不住</td>
+          <td class="n">D19 8/8<br>✅</td>
+          <td class="n">E2<br>1–2 周</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout acc">
+    <span class="tag">建议的推进顺序</span>
+    <p>
+      <strong>E5（同构不变性，1–2 周）→ E2（身份存活对照，1–2 周）→ E7（特征灵敏度接入，2–3 周）→ E3（可信度消融，1 周）。</strong>
+      前两项各只要一两周，加起来就是论文的核心论据；
+      E7 是最强的新意但依赖身份前提；E3 是把已有的验证层变成可发表的形式。
+    </p>
+    <p>
+      <strong>闭环本身（E1，3–4 周）应该排在最后。</strong>
+      因为闭环已经不是论据了——十项工作做过。它是三个创新点的<em>载体</em>，不是卖点。
+    </p>
+  </div>
+</section>
+
+<hr class="div">
+
+<!-- ══════════════════════════════════════════ -->
+<section>
+  <h2><span class="idx">§6 边界</span>必须如实说出的限制</h2>
+
+  <ul>
+    <li>
+      <strong>载荷是合成的。</strong>当前为 10 kN/槽的烟测值，状态
+      <code>synthetic_or_unconfirmed_pipeline_validation</code>。
+      写法上应把贡献定位为<em>方法</em>而非<em>该盘的设计结论</em>，并说明载荷可替换。
+    </li>
+    <li>
+      <strong>选面 53%。</strong>这不是可以藏的数字，而恰好是创新点 C 的主体。
+      要把它从"系统缺陷"转成"被测量的现象 + 由此得出的机制性解释"。
+    </li>
+    <li>
+      <strong>闭环尚未实现。</strong>仓库里有 8 个修复环（几何有效性、求解收敛、网格质量）、
+      有设计探索、有能产出丰富指标的仿真——但<strong>没有任何一行代码读走仿真结果去改设计参数</strong>。
+      E1 是硬门槛。
+    </li>
+    <li>
+      <strong>CFD 侧 LLM 未启用，且 CFD 修复环目前是空转的</strong>（写 <code>solver.control.relaxation</code>
+      而 worker 从不消费该字段，重试与失败 run 逐字节相同）。声称"多物理场"时必须写清。
+    </li>
+    <li>
+      <strong>引用卫生。</strong>COSMO-Agent 在 arXiv 上有两个 ID 同标题同摘要（是一篇不是两篇）；
+      Embodied CAD 用的是 CAD 几何内核不是物理求解器；
+      DesAgent 是 closed access、数字中等置信度；
+      部分文献链接是机构代理镜像，正式稿需换回规范链接。
+    </li>
+  </ul>
+</section>
+
+</div>

@@ -632,6 +632,377 @@ def editable(document: dict) -> dict[str, dict]:
     return out
 
 
+def _node_feature_keys(document: dict) -> dict[str, str]:
+    """The design feature each operation belongs to.
+
+    Most operations name their component directly. Assembly operations are
+    anonymous and belong to the feature whose body they cut or pattern, which
+    is recovered from the document's own input edges rather than from an id
+    naming convention.
+    """
+    rows = {str(n.get("id")): n for n in document.get("nodes") or [] if n.get("id")}
+    memo: dict[str, str] = {}
+
+    def resolve(node_id: str, visiting: set[str] | None = None) -> str:
+        if node_id in memo:
+            return memo[node_id]
+        node = rows.get(node_id)
+        if node is None:
+            return node_id
+        component = str(node.get("component") or "")
+        if component and component != "__assembly__":
+            memo[node_id] = component
+            return component
+        visiting = set(visiting or ())
+        if node_id in visiting:
+            return node_id
+        visiting.add(node_id)
+        for entry in node.get("inputs") or []:
+            source = str(entry.get("node") or "")
+            if not source:
+                continue
+            feature = resolve(source, visiting)
+            if feature:
+                memo[node_id] = feature
+                return feature
+        memo[node_id] = node_id
+        return node_id
+
+    for node_id in rows:
+        resolve(node_id)
+    return memo
+
+
+def _parameter_feature(document: dict, entry: dict) -> str:
+    node = str(entry.get("node") or "")
+    node_row = find(document, node) or {}
+    component = str(node_row.get("component") or "")
+    if component and component != "__assembly__":
+        return component
+    return _node_feature_keys(document).get(node, node)
+
+
+def _paths_for_nodes(
+    document: dict, node_ids: set[str], *, params: set[str] | None = None
+) -> list[str]:
+    wanted = params
+    out = []
+    for path, entry in editable(document).items():
+        if str(entry.get("node") or "") not in node_ids:
+            continue
+        if wanted is not None and str(entry.get("param") or "") not in wanted:
+            # `editable` stores the operation parameter under `op`, not a
+            # separate `param` key for scalar rows; the path is the authority.
+            path_param = path.rsplit(".", 1)[-1]
+            if path_param not in wanted:
+                continue
+        out.append(path)
+    return sorted(set(out))
+
+
+def _ancestor_node_ids(document: dict, node_id: str) -> set[str]:
+    rows = {str(n.get("id")): n for n in document.get("nodes") or [] if n.get("id")}
+    seen: set[str] = set()
+    stack = [node_id]
+    while stack:
+        current = stack.pop()
+        if current in seen:
+            continue
+        seen.add(current)
+        node = rows.get(current) or {}
+        for entry in node.get("inputs") or []:
+            source = str(entry.get("node") or "")
+            if source and source not in seen:
+                stack.append(source)
+    return seen
+
+
+def _mirror_vertex_groups(document: dict) -> list[dict]:
+    groups: list[dict] = []
+    for node in document.get("nodes") or []:
+        node_id = str(node.get("id") or "")
+        points = (node.get("params") or {}).get("points")
+        if not node_id or not isinstance(points, list):
+            continue
+        vertices = world_positions(document, node_id).get("vertices") or []
+        table = editable(document)
+        seen: set[tuple[int, int, str]] = set()
+        for left_index, left in enumerate(vertices):
+            left_i = int(left.get("index", -1))
+            if left_i < 0:
+                continue
+            radius = float(left.get("r_mm") or 0.0)
+            z_mm = float(left.get("z_mm") or 0.0)
+            if abs(radius) <= 1e-12 or abs(z_mm) <= 1e-12:
+                continue
+            for right in vertices[left_index + 1:]:
+                right_i = int(right.get("index", -1))
+                if right_i < 0:
+                    continue
+                if abs(float(right.get("r_mm") or 0.0) - radius) > 1e-6:
+                    continue
+                if abs(float(right.get("z_mm") or 0.0) + z_mm) > 1e-6:
+                    continue
+                for axis in ("x_mm", "y_mm"):
+                    key = (min(left_i, right_i), max(left_i, right_i), axis)
+                    if key in seen:
+                        continue
+                    members = sorted(
+                        path for path in (
+                            f"{node_id}.points[{left_i}].{axis}",
+                            f"{node_id}.points[{right_i}].{axis}",
+                        )
+                        if path in table
+                    )
+                    if len(members) < 2:
+                        continue
+                    seen.add(key)
+                    groups.append({
+                        "id": f"mirror:{node_id}:{left_i}:{right_i}:{axis}",
+                        "kind": "mirror_vertex_pair",
+                        "feature": _parameter_feature(document, table[members[0]]),
+                        "members": members,
+                        "required": True,
+                        "transform": "paired_equal_coordinate",
+                        "rationale": (
+                            "These two meridian vertices describe the same "
+                            "axisymmetric surface at mirrored axial positions. "
+                            "Moving one without the other turns that surface "
+                            "into a cone."
+                        ),
+                    })
+    return groups
+
+
+def dependency_graph(document: dict) -> dict:
+    """A feature-level graph of operations and their editable relationships.
+
+    The graph has three levels because a design change needs all three:
+
+    * operations and their input edges describe what consumes what;
+    * feature groups collect the operations that make one named feature;
+    * parameter groups describe edits that are related even when the operation
+      graph alone cannot say so - mirrored meridian vertices, a family of
+      fillets in one profile, the source parameters repeated by a pattern, and
+      the contour / port definition of a hole or slot.
+
+    It is derived from the document. It does not claim that every member of an
+    optional group must move together; it exposes the relation so the revision
+    agent can choose a coherent joint edit instead of treating every scalar as
+    independent.
+    """
+    feature_keys = _node_feature_keys(document)
+    nodes = []
+    edges = []
+    for node in document.get("nodes") or []:
+        node_id = str(node.get("id") or "")
+        if not node_id:
+            continue
+        nodes.append({
+            "id": node_id,
+            "op": node.get("op"),
+            "component": node.get("component"),
+            "feature": feature_keys.get(node_id, ""),
+            "phase": node.get("phase"),
+        })
+        for inp in node.get("inputs") or []:
+            source = inp.get("node")
+            if source:
+                edges.append({
+                    "from": str(source),
+                    "to": node_id,
+                    "kind": "consumes",
+                    "via": inp.get("output"),
+                })
+        if node.get("op") == "fillet_sketch":
+            for source in {
+                str(inp.get("node")) for inp in node.get("inputs") or []
+                if inp.get("node")
+            }:
+                edges.append({
+                    "from": source,
+                    "to": node_id,
+                    "kind": "rounds_vertex",
+                    "at_vertex_index": (
+                        (node.get("params") or {}).get("at_vertex_index")
+                    ),
+                })
+        if node.get("op") == "circular_pattern_component":
+            for source in {
+                str(inp.get("node")) for inp in node.get("inputs") or []
+                if inp.get("node")
+            }:
+                edges.append({
+                    "from": source, "to": node_id, "kind": "pattern_source"
+                })
+
+    table = editable(document)
+    groups: list[dict] = []
+    # Mandatory physical identities first: mirrored meridian vertices.
+    groups.extend(_mirror_vertex_groups(document))
+
+    # A family of fillets in one profile. The operation graph says these are
+    # chained consumers; the design intent is usually a common blend family, so
+    # the relation is reported as a possible uniform edit rather than silently
+    # applied.
+    fillets: dict[str, list[str]] = {}
+    for path, entry in table.items():
+        if entry.get("op") != "fillet_sketch":
+            continue
+        if str(entry.get("param") or "") not in ("radius_mm", ""):
+            if not path.endswith(".radius_mm"):
+                continue
+        fillets.setdefault(_parameter_feature(document, entry), []).append(path)
+    for feature, members in sorted(fillets.items()):
+        if len(members) < 2:
+            continue
+        groups.append({
+            "id": f"fillets:{feature}",
+            "kind": "fillet_family",
+            "feature": feature,
+            "members": sorted(set(members)),
+            "required": False,
+            "transform": "uniform_relative",
+            "rationale": (
+                "These fillet operations round vertices of the same feature. "
+                "A uniform radius change preserves the blend family; an "
+                "individual radius change is still a legal operation."
+            ),
+        })
+
+    # A circular pattern's source feature and its placement parameters are a
+    # single design object. Changing the source profile is replicated by the
+    # pattern; changing the pitch radius moves every instance.
+    for node in document.get("nodes") or []:
+        if node.get("op") != "circular_pattern_component":
+            continue
+        node_id = str(node.get("id") or "")
+        source_ids = {
+            str(entry.get("node")) for entry in node.get("inputs") or []
+            if entry.get("node")
+        }
+        source_params = _paths_for_nodes(document, source_ids)
+        own_params = _paths_for_nodes(document, {node_id})
+        members = sorted(set(source_params + own_params))
+        if len(members) < 2:
+            continue
+        groups.append({
+            "id": f"pattern:{node_id}",
+            "kind": "pattern_instances",
+            "feature": feature_keys.get(node_id, ""),
+            "members": members,
+            "required": False,
+            "transform": "shared_source",
+            "rationale": (
+                "The pattern repeats its input body; the source profile and "
+                "the pattern placement together define every repeated feature."
+            ),
+        })
+
+    # One contour is a set of dependent coordinates. This is deliberately a
+    # relation, not a requirement: a finding may legitimately move one pair of
+    # vertices while leaving the rest of the contour alone.
+    for node in document.get("nodes") or []:
+        if not isinstance((node.get("params") or {}).get("points"), list):
+            continue
+        node_id = str(node.get("id") or "")
+        members = sorted(
+            path for path in table
+            if str(table[path].get("node") or "") == node_id
+        )
+        if len(members) < 2:
+            continue
+        groups.append({
+            "id": f"contour:{node_id}",
+            "kind": "profile_contour",
+            "feature": feature_keys.get(node_id, ""),
+            "members": members,
+            "required": False,
+            "transform": "coordinate_set",
+            "rationale": (
+                "These coordinates make one closed contour. Moving one point "
+                "changes the two edges that meet it; the whole contour is "
+                "available when a finding needs a joint section edit."
+            ),
+        })
+
+    # Every parameter of one named feature, assembled as the coarse fallback
+    # for a joint edit that is not captured by a narrower relation.
+    by_feature: dict[str, list[str]] = {}
+    for path, entry in table.items():
+        by_feature.setdefault(_parameter_feature(document, entry), []).append(path)
+    for feature, members in sorted(by_feature.items()):
+        if len(members) < 2:
+            continue
+        groups.append({
+            "id": f"feature:{feature}",
+            "kind": "feature_bundle",
+            "feature": feature,
+            "members": sorted(set(members)),
+            "required": False,
+            "transform": "feature_scope",
+            "rationale": (
+                "These are the editable parameters of one named generation "
+                "feature. They are the allowed scope for a coordinated edit "
+                "when a single scalar cannot express the design intent."
+            ),
+        })
+
+    # Deduplicate identical member lists while retaining the strongest
+    # relation: a required mirror relation wins over an optional bundle.
+    by_members: dict[tuple[str, ...], dict] = {}
+    rank = {"mirror_vertex_pair": 4, "fillet_family": 3,
+            "pattern_instances": 2, "profile_contour": 1, "feature_bundle": 0}
+    for group in groups:
+        key = tuple(group["members"])
+        previous = by_members.get(key)
+        if previous is None or rank.get(group["kind"], 0) > rank.get(previous["kind"], 0):
+            by_members[key] = group
+    joint = sorted(
+        by_members.values(),
+        key=lambda group: (not group.get("required", False), group["kind"], group["id"]),
+    )
+    feature_groups: dict[str, list[str]] = {}
+    for node in nodes:
+        feature_groups.setdefault(str(node.get("feature") or node.get("component") or node["id"]), []).append(node["id"])
+    return {
+        "schema_version": "document_dependency_graph_v2",
+        "nodes": nodes,
+        "edges": edges,
+        "feature_groups": feature_groups,
+        "parameter_groups": joint,
+        "joint_edit_groups": joint,
+    }
+
+
+def joint_parameters(
+    document: dict, parameter: str, *, required_only: bool = False
+) -> list[str]:
+    """Editable parameters related to one parameter by the dependency graph."""
+    if document is None or not parameter:
+        return []
+    out: set[str] = set()
+    for group in dependency_graph(document).get("parameter_groups") or []:
+        members = [str(value) for value in group.get("members") or []]
+        if parameter not in members:
+            continue
+        if required_only and not group.get("required", False):
+            continue
+        out.update(members)
+    out.discard(parameter)
+    return sorted(out)
+
+
+def dependencies_for(document: dict, parameter: str) -> list[str]:
+    """Mandatory parameters that must move with one named parameter.
+
+    Optional feature relations are exposed by `joint_parameters`; this
+    function is deliberately narrow because it is used by the revision gate
+    that refuses one-sided edits.
+    """
+    return joint_parameters(document, parameter, required_only=True)
+
+
 def resolve(document: dict, parameter: str) -> tuple[str, str] | None:
     """`"n_fillet_cutter_0.radius_mm"` -> `("n_fillet_cutter_0", "radius_mm")`.
 
